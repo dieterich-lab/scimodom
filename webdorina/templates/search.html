@@ -6,7 +6,7 @@
                 data-target="#collapseTwo"
                 aria-controls="collapseTwo">
                 <span class="text-black"
-                      data-bind="text: selected_regulators().length > 0 ? selected_regulators().length  + ' regulators selected' : 'Choose regulators '"></span>
+                      data-bind="text: selected_regulators().length > 0 ? selected_regulators().length  + ' regulators selected' : 'Choose modifications '"></span>
             </h4>
         </h5>
     </div>
@@ -20,27 +20,27 @@
                     <div class="row">
                         <div class="col-6">
                             <label class="text-muted" for="shown-types">
-                                Regulator types to show
+                                Modification types to show (currently include all)
                             </label>
                             <select multiple class="form"
                                     id="shown-types"
-                                    placeholder="Select regulator types to show...">
+                                    placeholder="Select modification types to show...">
                             </select>
                         </div>
                         <div class="col-6">
-                            <label for="regulators">Regulators (set
+                            <label for="regulators">Modifications (set
                                 A)</label>
                             <select multiple class="form"
                                     id="regulators"
                                     data-bind="selectedOptions: selected_regulators"
-                                    placeholder="Select one or more regulators...">
+                                    placeholder="Select one or more modification...">
                             </select>
                         </div>
                     </div>
 
                     <div class="row form-group">
                         <div class="col-3-md ml-3">
-                            <label>Regulators match:</label><br>
+                            <label>Modifications match:</label><br>
                             <div class="btn-group" id="match_a"
                                  data-toggle="buttons"
                                  data-bind="radio: match_a">
@@ -169,28 +169,28 @@
                             </div>
                             <div class="row">
                                 <div class="col-6 ">
-                                    <label for="shown-types-setb">Regulator
-                                        types to show</label>
+                                    <label for="shown-types-setb">Modification types to show 
+                                    (currently include all)</label>
                                     <select multiple class="form"
                                             id="shown-types-setb"
-                                            placeholder="Select regulator types to show...">
+                                            placeholder="Select modifications types to show...">
                                     </select>
                                 </div>
                                 <div class="col-6 ">
-                                    <label for="regulators_setb">Regulators
+                                    <label for="regulators_setb">Modifications
                                         (set
                                         B)</label>
                                     <select multiple class="form"
                                             id="regulators_setb"
                                             data-bind="selectedOptions: selected_regulators_setb"
-                                            placeholder="Select one or more regulators">
+                                            placeholder="Select one or more modifications">
                                     </select>
                                 </div>
                             </div>
                         </div>
 
                         <div class="col-6 mt-1 align-content-start">
-                            <label>Look for binding sites in
+                            <label>Look for modification sites in
                                 region:</label>
                             <div class="btn-group"
                                  data-toggle="buttons"
@@ -290,7 +290,7 @@
                                 <div class="card-body">
                                     <p class="card-text"
                                        id="readable-set-operation"
-                                       data-bind="text: 'Return binding sites of set A and set B being ' + readableSetOperation()"></p>
+                                       data-bind="text: 'Return modification sites of set A and set B being ' + readableSetOperation()"></p>
                                 </div>
                             </div>
                         </div>
