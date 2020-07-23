@@ -11,3 +11,4 @@ local/*
 .idea/
 __pycache__/
 !/webdorina/static/js/dorina.js
+dump.rdb
