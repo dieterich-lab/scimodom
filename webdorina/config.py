@@ -1,13 +1,12 @@
 # !/usr/bin/env python3
 # coding=utf-8
-DATA_PATH="/mnt/prj/dorina2/"
-# DATA_PATH='/Users/tbrittoborges/'
+DATA_PATH="/home/dorina/data"
 SESSION_TTL=3600
 RESULT_TTL=86400
 REGULATORS_TTL=3600
 MAX_RESULTS=100
 SESSION_STORE="/tmp/dorina-{unique_id}"
-PORT=49200
-HOST='0.0.0.0'
+PORT=7777
+HOST='127.0.0.1'
 DEBUG=True
 TEMPLATES_AUTO_RELOAD = True

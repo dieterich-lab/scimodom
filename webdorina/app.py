@@ -272,6 +272,10 @@ def download_results(uuid):
                      as_attachment=True)
 
 
+@app.route('/modomics')
+def modomics():
+    return render_template('modomics.html')
+
 @app.route('/news')
 def news():
     return render_template('news.html')
