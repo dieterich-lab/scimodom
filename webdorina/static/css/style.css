@@ -232,3 +232,18 @@ a .active{
 .bg-theme {
     background-color: rgb(91, 185, 207);
 }
+
+@font-face {
+  font-family: "HamburgerHeaven";
+  src: local("HamburgerHeaven"), url("/static/fonts/ham.woff") format("woff");
+  font-style: normal;
+  font-weight: bold;
+}
+
+.modtitle {
+    font-family: 'HamburgerHeaven';
+    padding-top: 1px;
+    padding-bottom: 1px;
+    text-align: center;
+}
+
