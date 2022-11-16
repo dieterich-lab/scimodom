@@ -8,6 +8,7 @@ dorina
 .coverage
 cover/*
 local/*
+data/
 .idea/
 __pycache__/
 !/webdorina/static/js/dorina.js

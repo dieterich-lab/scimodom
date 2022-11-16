@@ -234,7 +234,7 @@ def search():
     if conn.get(query_pending_key):
         return jsonify(session_dict)
 
-    conn.set(query_pending_key, True)
+    conn.set(query_pending_key, int(True))
     conn.expire(query_pending_key, 30)
 
     q = Queue(connection=conn, default_timeout=600)

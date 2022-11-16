@@ -49,17 +49,32 @@ def run_analyse(datadir, query_key, query_pending_key, query, uuid,
         lines = result.splitlines()
         logger.debug("returning {} rows".format(len(lines)))
         redis_store.rpush(query_key, *lines)
-        redis_store.setex('results:sessions:{0}'.format(uuid), json.dumps(dict(
-            redirect=query_key)), SESSION_TTL)
+
+        #ilogger.info(f"uuid={uuid}, dict={json.dumps(dict(redirect=query_key))}, SESSION_TTL={SESSION_TTL}")
+        #print(f"++++++++++++++++uuid={uuid}, dict={json.dumps(dict(redirect=query_key))}, SESSION_TTL={SESSION_TTL}")
+
+        #redis_store.setex('results:sessions:{0}'.format(uuid), json.dumps(dict(
+        #    redirect=query_key)), SESSION_TTL)
+        redis_store.setex('results:sessions:{0}'.format(uuid), SESSION_TTL, json.dumps(dict(
+            redirect=query_key)))
     except Exception as e:
         result = 'Job failed: %s' % str(e)
-        redis_store.setex('sessions:{0}'.format(uuid), json.dumps(dict(
-            state='error', uuid=uuid)), SESSION_TTL)
+        
+
+        logger.info(f">>>>>>>>>>>>>>>>>>> uuid={uuid}, dict={json.dumps(dict(state='error', uuid=uuid))}, SESSION_TTL={SESSION_TTL}")
+        print(f">>>>>>>>>>>>>>>>>>> uuid={uuid}, dict={json.dumps(dict(state='error', uuid=uuid))}, SESSION_TTL={SESSION_TTL}")
+
+        #redis_store.setex('sessions:{0}'.format(uuid), json.dumps(dict(
+        #    state='error', uuid=uuid)), SESSION_TTL)
+        redis_store.setex('sessions:{0}'.format(uuid), SESSION_TTL, json.dumps(dict(
+            state='error', uuid=uuid)))
         redis_store.rpush(query_key, result)
 
     redis_store.expire(query_key, RESULT_TTL)
-    redis_store.setex('sessions:{0}'.format(uuid), json.dumps(dict(
-        state='done', uuid=uuid)), SESSION_TTL)
+    #redis_store.setex('sessions:{0}'.format(uuid), json.dumps(dict(
+    #    state='done', uuid=uuid)), SESSION_TTL)
+    redis_store.setex('sessions:{0}'.format(uuid), SESSION_TTL, json.dumps(dict(
+        state='done', uuid=uuid)))
     redis_store.delete(query_pending_key)
 
 
@@ -91,7 +106,11 @@ def filter_genes(genes, full_query_key, query_key, query_pending_key, uuid,
     redis_store.expire(query_key, result_ttl)
     redis_store.delete(query_pending_key)
 
-    redis_store.setex('sessions:{0}'.format(uuid), json.dumps(dict(
-        state='done', uuid=uuid)), session_ttl)
-    redis_store.setex('results:sessions:{0}'.format(uuid), json.dumps(dict(
-        redirect=query_key)), session_ttl)
+    #redis_store.setex('sessions:{0}'.format(uuid), json.dumps(dict(
+    #    state='done', uuid=uuid)), session_ttl)
+    redis_store.setex('sessions:{0}'.format(uuid), session_ttl, json.dumps(dict(
+        state='done', uuid=uuid)))
+    #redis_store.setex('results:sessions:{0}'.format(uuid), json.dumps(dict(
+    #    redirect=query_key)), session_ttl)
+    redis_store.setex('results:sessions:{0}'.format(uuid), session_ttl, json.dumps(dict(
+        redirect=query_key)))
