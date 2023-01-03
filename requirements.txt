@@ -8,8 +8,8 @@ itsdangerous
 pybedtools
 python-dateutil
 pytz
-redis==2.10.6
-rq==0.12
+redis
+rq
 six
 python-daemon
 future
