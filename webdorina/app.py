@@ -10,6 +10,9 @@ import sys
 import uuid
 from io import BytesIO
 
+from collections import defaultdict
+from itertools import dropwhile
+
 import flask
 from dorina.genome import Genome
 from dorina.regulator import Regulator
@@ -101,13 +104,20 @@ def inject_data():
 def welcome():
     return render_template('welcome.html')
 
+# this is not robust...
+#def count_columns(filename):
+    #with open(filename) as open_f:
+        #first_line = next(open_f).rstrip()
+        #data = first_line.split()
+        #return len(data)
+def is_comment(s):
+    return s.startswith('#')
 
 def count_columns(filename):
-    with open(filename) as open_f:
-        first_line = next(open_f).rstrip()
-        data = first_line.split()
-        return len(data)
-
+    with open(filename) as fh:
+        for line in dropwhile(is_comment, fh):
+            data = line.split()
+            return len(data)
 
 @app.route('/search', methods=['GET', 'POST'])
 def index():
@@ -161,6 +171,8 @@ def search():
 
     if not query['genes']:
         query['genes'] = [u'all']
+        
+    app.logger.info(f"genes: {query['genes']}")
 
     query['match_a'] = request.form.get('match_a', u'any')
     query['region_a'] = request.form.get('region_a', u'any')
@@ -211,7 +223,7 @@ def search():
 
         if conn.exists(full_query_key):
             conn.expire(full_query_key, app.config['RESULT_TTL'])
-            conn.set(query_pending_key, True)
+            conn.set(query_pending_key, int(True))
             conn.expire(query_pending_key, 30)
             session_dict = dict(state='pending', uuid=unique_id)
             conn.set('sessions:{0}'.format(unique_id),
@@ -268,13 +280,13 @@ def download_results(uuid):
     result = '\n'.join(conn.lrange(result_key, 0, -1))
     return send_file(BytesIO(result.encode('utf-8')),
                      mimetype='text/tsv',
-                     attachment_filename='carina_{}.txt'.format(uuid),
+                     download_name='scimodom_{}.bed'.format(uuid),
                      as_attachment=True)
 
 
-@app.route('/modomics')
-def modomics():
-    return render_template('modomics.html')
+#@app.route('/modomics')
+#def modomics():
+#    return render_template('modomics.html')
 
 @app.route('/news')
 def news():
@@ -338,6 +350,9 @@ def list_regulators(assembly):
                 conn.set(cache_key, json.dumps(regulators_))
                 conn.expire(cache_key, app.config['REGULATORS_TTL'])
 
+    
+    #app.logger.info(f"regulators_: {regulators_}")
+    
     return jsonify(regulators_)
 
 
@@ -352,12 +367,14 @@ def list_genes(assembly, query):
         end = "+"
 
     cache_key = "genes:{0}".format(assembly)
-
+    
     if not conn.exists(cache_key):
         new_genes = Genome.get_genes(assembly)
         for gene in new_genes:
-            conn.zadd(cache_key, gene, 0)
-
+            #app.logger.info(f"cache_key: {cache_key}")
+            #app.logger.info(f"gene: {gene}")
+            conn.zadd(cache_key, {gene: 0})
+    
     genes = conn.zrangebylex(cache_key, start, end)
     return jsonify(dict(genes=genes[:500]))
 
@@ -375,9 +392,9 @@ def get_result(uuid):
     if len(result) > 1000:
         return jsonify(
             dict(state='done', results=result[:999],
-                 message='The result table was limited due to its size, '
-                         'please limit your search query or use the download '
-                         'button.',
+                 #message='The result table was limited due to its size, '
+                         #'please limit your search query or use the download '
+                         #'button.',
                  total_results=len(result)))
 
     if 'Job failed' in result[0]:
@@ -402,7 +419,24 @@ def get_result(uuid):
     #except KeyError:
         #return jsonify(dict(message='Tissue not found'))
 
+@app.route('/api/v1.0/modifications/<assembly>/')
+def get_modifications(assembly):
+    
+    regulators = list_regulators(assembly)
+    
+    # WARNING hard coded mods
+    mods = ["m6A", "m5C", "Y"]
+    modifications = defaultdict(list)
 
+    for key, val in regulators.items():
+        for m in mods:
+            try:
+                if m in val["tags"]:
+                    modifications[m].append(key)
+            except:
+                pass
+    return jsonify(dict(modifications=modifications.keys()))
+    
 if __name__ == "__main__":
     app.run(debug=app.config['DEBUG'], host=app.config['HOST'], port=app.config[
         'PORT'])

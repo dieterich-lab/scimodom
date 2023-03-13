@@ -4,7 +4,7 @@
     <div class="jumbotron">
         <h4 class="typography-display-1">Tutorials</h4>
         <ul class="nav nav-pills mt-3 mb-3" id="pills-tab" role="tablist">
-            <li class="nav-item">
+<!--            <li class="nav-item">
                 <a class="nav-link active"
                    id="random_example"
                    data-toggle="pill"
@@ -12,7 +12,7 @@
                    role="tab"
                    aria-controls="example_of_usage"
                    aria-expanded="true">Example of usage</a>
-            </li>
+            </li>-->
             <!--<li class="nav-item">
                 <a class="nav-link"
                    id="custom_regulator-tab"
@@ -26,9 +26,8 @@
         <div class="tab-content" id="pills-tabContent">
             <div class="tab-pane fade show active" id="example_of_usage"
                  role="tabpanel" aria-labelledby="random_example">
-                <h4>Example: m6A modifications found in HEK293 cells (derived from human 
-                embryonic kidney cells), but not in Huh7 cells (differentiated hepatocyte-derived 
-                carcinoma cell line, originally taken from a liver tumor)</h4>
+                <h4>Example 1: m6A modifications found in HEK293T cells from 2 replicates
+                treated with GLORI.</h4>
 
                 <!--<p>SR proteins are RNA-binding proteins that are associated with
                     alternative splicing,
@@ -46,11 +45,21 @@
                     these exons can be identified with doRiNA 2 in the following
                     manner:</p>-->
 
-                <p>As we're not uploading a custom regulator, we just click the
-                    "Search modifications" tab, and select the organism and
+                <p>Click the "Search modifications" tab, and select the organism and
                     assembly we want to work with on the right side of the page.
                 <div class="thumbnail">
-                    <img src="{{ url_for('static', filename='images/select_assembly_new.png') }}"
+                    <img src="{{ url_for('static', filename='images/1.png') }}"
+                         width="66%" class="img-responsive">
+                    <!--<div class="caption">
+                        doRiNA 2 start page, click "Search".
+                    </div>-->
+                </div>
+                </p>
+                
+                <p>We can now construct the query. Sci-Modom currently allows to select datasets
+                by modification and method. 
+                <div class="thumbnail">
+                    <img src="{{ url_for('static', filename='images/2.png') }}"
                          width="66%" class="img-responsive">
                     <!--<div class="caption">
                         doRiNA 2 start page, click "Search".
@@ -71,15 +80,13 @@
                 </div>
                 </p>-->
 
-                <p>We can now construct the query. We select our currently available
-                   dataset of HEK293 cells. Then we use the autocompletion option of the "Modifications
-                    (set A)" field to quickly find the dataset of interest.
-                    For this example, we limit our search to modifications found in the 5'UTR.
+                <p>We select the chosen dataset from "Available dataset
+                    (set A)". For this example, we limit our search to modifications found in the 3'UTR.
                     As we don't want to limit our search to a set of candidate genes, we ignore
                     this option. We now expand the combinatorial search settings
                     by clicking on "Combinatorial search", and repeat the same procedure,
-                    this time selecting the Huh7 dataset. As we are interested in modifications
-                    found in HEK293, but not in Huh7, we use the 'NOT" set operation.
+                    this time selecting "replicate 2". As we are interested in modifications
+                    found in both replicates, we use the "AND" set operation.
                     
                     <!-- As we are only
                     interested in exons, we select "CDS" in the "Look for
@@ -92,7 +99,7 @@
                     just scrolled the list without
                     narrowing down the displayed regulators.-->
                 <div class="thumbnail">
-                    <img src="{{ url_for('static', filename='images/search_new.png') }}"
+                    <img src="{{ url_for('static', filename='images/3.png') }}"
                          width="66%" class="img-responsive">
                     <div class="caption">
                        <!-- <ol>
@@ -137,21 +144,15 @@
                 </div>
                 </p>-->
 
-                <p>After a few seconds, the results page is displayed. Buttons at the
-                    top and the bottom of the
-                    page allow you to start a new search (chose this if you want
-                    to search on a different
-                    assembly) or to go back to the search options to redo the
-                    search on the same assembly
-                    with changed search options. A button on the top of the page
+                <p>After a few seconds, the results page is displayed. A button at the top of the page
                     allows you to download the
-                    complete results in BED file format. To optimise loading
+                    complete results in EUF file format (in progress). To optimise loading
                     times, the results page only
                     displays the top 100 hits, a button on the bottom of the
                     page allows you to load more
-                    results.
+                    results. Public data can be viewed on the USCS Genome Browser.
                 <div class="thumbnail">
-                    <img src="{{ url_for('static', filename='images/results_new.png') }}"
+                    <img src="{{ url_for('static', filename='images/4.png') }}"
                          width="66%" class="img-responsive">
                     <!--<div class="caption">
                         Results page, abridged.
@@ -159,6 +160,58 @@
                     </div>-->
                 </div>
             </div>
+            
+            <br>
+            <br>
+            
+            <div class="tab-pane fade show active" id="example_of_usage"
+                 role="tabpanel" aria-labelledby="random_example">
+                <h4>Example 2: Y modifications found in both my results and
+                a published dataset</h4>
+
+                <!--<p>SR proteins are RNA-binding proteins that are associated with
+                    alternative splicing,
+                    and recent findings suggest that they are involved in both
+                    exon skipping and
+                    inclusion events (<a
+                            href="http://doi.org/10.1016/j.molcel.2013.:w03.001">Pandit
+                        <em>et al.</em> 2013</a>).
+                    Furthermore, Pandit <em>et al.</em> suggest although Srsf1
+                    and Srsf2 binding sites
+                    largely target the same exons, certain exons are regulated
+                    by only one of the two
+                    factors, such that there is mutually exclusive binding of
+                    Srsf1 or Srsf2. Exactly
+                    these exons can be identified with doRiNA 2 in the following
+                    manner:</p>-->
+
+                <p>This time, we use the "Browse" button to "submit" our own results (BED or EUF), and select the organism and
+                    assembly we want to work with on the right side of the page.
+                <div class="thumbnail">
+                    <img src="{{ url_for('static', filename='images/5.png') }}"
+                         width="66%" class="img-responsive">
+                    <!--<div class="caption">
+                        doRiNA 2 start page, click "Search".
+                    </div>-->
+                </div>
+                </p>
+                
+                <p>We move immediately to the "Combinatorial search", and select "set B" from the
+                available dataset. As we are interested in modifications
+                    found in both our results and the published BID-seq results (Mouse Heart tissue), 
+                    we use the "AND" set operation.
+                <div class="thumbnail">
+                    <img src="{{ url_for('static', filename='images/6.png') }}"
+                         width="66%" class="img-responsive">
+                    <!--<div class="caption">
+                        doRiNA 2 start page, click "Search".
+                    </div>-->
+                </div>
+                </p>
+
+            </div>
+            
+            
   <!--          <div class="tab-pane fade"
                  id="custom_regulator"
                  role="tabpanel"

@@ -16,24 +16,33 @@
             <form class="form-horizontal" role="form"
                   data-bind="submit: run_simple_search">
                 {# SET A #}
+<!--                <div class="col-4 form-group"
+                    data-bind="visible: available_modifications">
+                    <label for="modification">Or by tissue:</label>
+                    <select class="form" id="modification"
+                            placeholder="Limit targets by tissue expression"
+                            data-bind="selectedOptions: modification">
+                            <option value="none" selected>None</option>
+                    </select>
+                </div>-->
                 <div class="form" role="form">
                     <div class="row">
                         <div class="col-6">
-                            <label class="text-muted" for="shown-types">
-                                Modification types to show (currently include all)
+                            <label class="text-muted" for="shown-mods">
+                                Modification + Detection method
                             </label>
                             <select multiple class="form"
-                                    id="shown-types"
-                                    placeholder="Select modification types to show...">
+                                    id="shown-mods"
+                                    placeholder="Select modification and associated method...">
                             </select>
                         </div>
                         <div class="col-6">
-                            <label for="regulators">Modifications (set
+                            <label for="regulators">Available data (set
                                 A)</label>
                             <select multiple class="form"
                                     id="regulators"
                                     data-bind="selectedOptions: selected_regulators"
-                                    placeholder="Select one or more modification...">
+                                    placeholder="Select one or more dataset...">
                             </select>
                         </div>
                     </div>
@@ -56,7 +65,7 @@
                         </div>
 
                         <div class="col-8-md ml-5">
-                            <label>Filter by feature:</label><br>
+                            <label>Restrict search to genomic region:</label><br>
                             <div class="btn-group" data-toggle="buttons"
                                  data-bind="radio: region_a">
                                 <label class="btn btn-default">
@@ -169,29 +178,27 @@
                             </div>
                             <div class="row">
                                 <div class="col-6 ">
-                                    <label for="shown-types-setb">Modification types to show 
-                                    (currently include all)</label>
+                                    <label for="shown-mods-setb">Modification + Detection method</label>
                                     <select multiple class="form"
-                                            id="shown-types-setb"
-                                            placeholder="Select modifications types to show...">
+                                            id="shown-mods-setb"
+                                            placeholder="Select modifications and associated method...">
                                     </select>
                                 </div>
                                 <div class="col-6 ">
-                                    <label for="regulators_setb">Modifications
+                                    <label for="regulators_setb">Available data 
                                         (set
                                         B)</label>
                                     <select multiple class="form"
                                             id="regulators_setb"
                                             data-bind="selectedOptions: selected_regulators_setb"
-                                            placeholder="Select one or more modifications">
+                                            placeholder="Select one or more dataset">
                                     </select>
                                 </div>
                             </div>
                         </div>
 
                         <div class="col-6 mt-1 align-content-start">
-                            <label>Look for modification sites in
-                                region:</label>
+                            <label>Restrict search to genomic region:</label>
                             <div class="btn-group"
                                  data-toggle="buttons"
                                  data-bind="radio: region_b">
