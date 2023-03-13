@@ -162,6 +162,7 @@ function DoRiNAViewModel(net, uuid, custom_regulator) {
     self.origin = ko.observable(window.location.origin);
     self.chosenAssembly = ko.observable();
     self.regulators = ko.observableArray([]);
+//     self.methods = ko.observableArray([]);
     self.regulator_types = ko.observableArray([]);
     self.selected_regulators = ko.observableArray([]);
     self.selected_regulators_setb = ko.observableArray([]);
@@ -172,6 +173,7 @@ function DoRiNAViewModel(net, uuid, custom_regulator) {
     self.genes = ko.observableArray([]);
     self.tissue = ko.observableArray([]);
     self.available_tissues = ko.observable(false);
+    self.available_modifications = ko.observable(false);
     self.match_a = ko.observable('any');
     self.region_a = ko.observable('any');
     self.match_b = ko.observable('any');
@@ -232,9 +234,9 @@ function DoRiNAViewModel(net, uuid, custom_regulator) {
     }, self);
 
     self.ucsc_url = ko.computed(function () {
-        var url = "http://genome.dieterichlab.org/cgi-bin/hgTracks?db=" +
+        var url = "https://genome.dieterichlab.org/cgi-bin/hgTracks?db=" +
             self.chosenAssembly();
-        url += "&hubUrl=http://porta.dieterichlab.org/trackhubs/dorinaHub/hub.txt";
+        url += "&hubUrl=https://trackhub.dieterichlab.org/eboileau/scimodomHub/hub.txt";
         url += self.trackVisibility();
         url += "&position=";
         return url;
@@ -273,12 +275,11 @@ function DoRiNAViewModel(net, uuid, custom_regulator) {
                 self.regulators.push({
                     id: self.uuid(),
                     experiment: 'CUSTOM',
-                    summary: 'uploaded custom regulator',
-                    description: 'Custom regulator uploaded by user'
+                    summary: 'Uploaded modification data',
+                    description: 'Custom modification data uploaded by user'
                 });
                 regulator_types['CUSTOM'] = true;
             }
-
             for (var i in data) {
                 regulator_types[data[i].experiment] = true;
                 self.regulators.push(data[i]);
@@ -288,11 +289,32 @@ function DoRiNAViewModel(net, uuid, custom_regulator) {
             }
         });
     };
-
+    
+//                         hard coded options
+//                         ad hoc filtering 
     self.show_simple_search = function () {
         self.loading_regulators(true);
         setTimeout(function () {
                 self.get_regulators(self.chosenAssembly()).then(function () {
+                        
+                        var options_hg38 = [{"id": "m6A GLORI"}, {"id": "m6A MazF-FTO"}, {"id": "m6A MeRIP-seq"},
+                                {"id": "m6A Nanopore"}, {"id": "m6A eTAM-seq"}, {"id": "m6A m6A-SAC-seq"},
+                                {"id": "m6A m6ACE-seq"}, {"id": "m6A miCLIP"}, {"id": "Y BID-seq"}, {"id": "m6A miCLIP2"}
+                            ];
+                        var options_hg19 = [{"id": "m6A DART-seq"}];
+                        var options_mm10 = [{"id": "m6A GLORI"}, {"id": "m6A eTAM-seq"}, {"id": "Y BID-seq"}, {"id": "m6A miCLIP2"}];
+                        var options_dm6 = [{"id": "m6A miCLIP"}];
+//                         var options_assembly = (self.chosenAssembly() == "hg38")? options_hg38 : options_mm10;
+                        
+                        if (self.chosenAssembly() == "dm6") {
+                            var options_assembly = options_dm6
+                        } else if (self.chosenAssembly() == "mm10") {
+                            var options_assembly = options_mm10
+                        } else if (self.chosenAssembly() == "hg19") {
+                            var options_assembly = options_hg19
+                        } else {
+                            var options_assembly = options_hg38
+                        }
 
                         $('#search').collapse('show');
                         $(document.getElementById('collapseTwo')).collapse('show');
@@ -301,28 +323,46 @@ function DoRiNAViewModel(net, uuid, custom_regulator) {
                         var $genes;
                         var $regulators;
                         var $regulators_setb;
-                        var $shown_types;
-                        var $shown_types_setb;
-//                         var dropdown = $('#tissue');
-
-//                         var tissueURL = 'api/v1.0/tissues/' + self.chosenAssembly();
-//                         net.getJSON(tissueURL, function (data) {
-//                             dropdown.prop('selectedIndex', 0);
-//                             if ('message' in data) {
-//                                 bootstrap_alert(data.message);
-//                             }
-//                             if (data['tissue'].length > 0) {
-//                                 self.available_tissues(true);
-// 
-//                                 $.each(
-//                                     data['tissue'].sort(),
-//                                     function (index, value) {
-//                                         dropdown.append($('<option></option>').text(
-//                                             value.replace('_', ' ')).val(value))
-//                                     })
-//                             }
-//                         });
-
+                        var $shown_mods;
+                        var $shown_mods_setb;
+                        
+                        $shown_mods = $('#shown-mods').selectize({
+                            options: options_assembly,
+                            items: [],
+                            plugins: {
+                                "remove_button": {title: "Remove"}
+                            },
+                            valueField: "id",
+                            labelField: "id",
+                            create: false,
+                            onChange: function (values) {
+                                regulators.disable();
+                                regulators.clearOptions();
+                                if (values && values.length > 0) {
+                                    var filtered_regs = self.regulators().filter(function (reg) {
+                                        if (reg.hasOwnProperty('tags')) {
+                                            for (i in values) {
+                                                const mm = values[i].split(" ");
+                                                if (reg.tags.includes(mm[0])) {
+                                                    if (reg.methods.includes(mm[1])) {
+                                                        return reg.experiment;
+                                                    }
+                                                        
+                                                }
+                                            }
+                                            
+                                        }
+                                    });
+                                    for (var i in filtered_regs) {
+                                        regulators.addOption(filtered_regs[i]);
+                                    }
+                                }
+                                regulators.refreshOptions();
+                                regulators.enable();
+                            }
+                        });
+                        shown_mods = $shown_mods[0].selectize;
+                        
                         $genes = $('#genes').selectize({
                             options: [],
                             valueField: 'id',
@@ -375,8 +415,31 @@ function DoRiNAViewModel(net, uuid, custom_regulator) {
                             }
                         });
 
-                        $shown_types = $('#shown-types').selectize({
-                            options: self.regulator_types(),
+//                         $shown_types_setb = $('#shown-types-setb').selectize({
+//                             options: self.regulator_types(),
+//                             items: [],
+//                             valueField: 'id',
+//                             labelField: 'id',
+//                             onChange: function (values) {
+//                                 regulators_setb.disable();
+//                                 if (values && values.length > 0) {
+//                                     var filtered_regs = self.regulators().filter(function (reg) {
+//                                         return values.indexOf(reg.experiment) > -1;
+//                                     });
+// 
+//                                     for (var i in filtered_regs) {
+//                                         regulators_setb.addOption(filtered_regs[i]);
+//                                     }
+//                                 }
+// 
+//                                 regulators_setb.refreshOptions();
+//                                 regulators_setb.enable();
+//                             }
+//                         });
+//                         shown_types_setb = $shown_types_setb[0].selectize;
+                        
+                        $shown_mods_setb = $('#shown-mods-setb').selectize({
+                            options: options_assembly,
                             items: [],
                             plugins: {
                                 "remove_button": {title: "Remove"}
@@ -385,44 +448,32 @@ function DoRiNAViewModel(net, uuid, custom_regulator) {
                             labelField: "id",
                             create: false,
                             onChange: function (values) {
-                                regulators.disable();
-                                regulators.clearOptions();
-                                if (values && values.length > 0) {
-                                    var filtered_regs = self.regulators().filter(function (reg) {
-                                        return values.indexOf(reg.experiment) > -1;
-                                    });
-                                    for (var i in filtered_regs) {
-                                        regulators.addOption(filtered_regs[i]);
-                                    }
-                                }
-                                regulators.refreshOptions();
-                                regulators.enable();
-                            }
-                        });
-                        shown_types = $shown_types[0].selectize;
-
-                        $shown_types_setb = $('#shown-types-setb').selectize({
-                            options: self.regulator_types(),
-                            items: [],
-                            valueField: 'id',
-                            labelField: 'id',
-                            onChange: function (values) {
                                 regulators_setb.disable();
+                                regulators_setb.clearOptions();
                                 if (values && values.length > 0) {
                                     var filtered_regs = self.regulators().filter(function (reg) {
-                                        return values.indexOf(reg.experiment) > -1;
+                                        if (reg.hasOwnProperty('tags')) {
+                                            for (i in values) {
+                                                const mm = values[i].split(" ");
+                                                if (reg.tags.includes(mm[0])) {
+                                                    if (reg.methods.includes(mm[1])) {
+                                                        return reg.experiment;
+                                                    }
+                                                        
+                                                }
+                                            }
+                                            
+                                        }
                                     });
-
                                     for (var i in filtered_regs) {
                                         regulators_setb.addOption(filtered_regs[i]);
                                     }
                                 }
-
                                 regulators_setb.refreshOptions();
                                 regulators_setb.enable();
                             }
                         });
-                        shown_types_setb = $shown_types_setb[0].selectize;
+                        shown_mods_setb = $shown_mods_setb[0].selectize;
 
                         $regulators = $('#regulators').selectize({
                             options: self.regulators(),
@@ -456,7 +507,7 @@ function DoRiNAViewModel(net, uuid, custom_regulator) {
                             render: {
                                 option: function (item, escape) {
                                     return '<div><span class="regulator">' + escape(item.summary) +
-                                        '</span><br><span class="description">(' + escape(item.sites) + ' sites) '
+//                                         '</span><br><span class="description">(' + escape(item.sites) + ' sites) '
                                         + escape(item.description) + '</span></div>';
                                 }
                             }
@@ -550,7 +601,7 @@ function DoRiNAViewModel(net, uuid, custom_regulator) {
 
                             temp.push(
                                 Array(
-                                    result_i.track,
+                                    //result_i.track,
                                     result_i.gene,
                                     result_i.data_source,
                                     result_i.score,
@@ -575,16 +626,15 @@ function DoRiNAViewModel(net, uuid, custom_regulator) {
                         processing: "Processing, please wait",
                     },
                 columns: [
-                    {title: "Track name"},
-                    {title: "Target gene"},
+                    {title: "Feature"},
                     {title: "Data source"},
                     {title: "Score"},
-                    {title: "Regulator"},
-                    {title: "Target coordinates"},
-                    {title: "Interaction coordinates"}],
+                    {title: "Modification"},
+                    {title: "Feature coordinates"},
+                    {title: "Modification coordinates"}],
                 columnDefs: [
                     {
-                        targets: [5, 6],
+                        targets: [4, 5],
                         render: function (data, type, row) {
                             data = '<a target="_blank" href="' + self.ucsc_url() +
                                 data().split('(')[0] + '">' + data() + '</a>';
@@ -593,7 +643,7 @@ function DoRiNAViewModel(net, uuid, custom_regulator) {
                     }
                 ],
                 "order":
-                    [[3, "desc"]]
+                    [[2, "desc"]]
             }
         );
         $(document.getElementById("collapseThree")).collapse("show");

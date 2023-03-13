@@ -3,13 +3,12 @@
 <head>
     <!-- Required meta tags -->
     <meta charset="utf-8">
-    <title>Carina &middot; {{ active_page | title }} </title>
-    <meta name="description" content="Carina curates post-transcription
-    information associated with the heart physiology and cardiovascular
-    diseases">
+    <title>Sci-Modom &middot; {{ active_page | title }} </title>
+    <meta name="description" content="Sci-Modom is a unique resource to elucidate on 
+    a transcriptome-wide scale the impact and the role of processing and modification on RNA function. ">
     <meta content="initial-scale=1, shrink-to-fit=no, width=device-width"
           name="viewport">
-    <meta name="author" content="Thiago Britto-Borges">
+    <meta name="author" content="Dieterich Lab">
     <!-- CSS -->
     <!-- Add Material font (Roboto) and Material icon as needed -->
     <link href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,500,500i,700,700i"
@@ -34,7 +33,6 @@
 {% set navigation_bar = [
     ('/', 'index', 'Home'),
     ('/search', 'Search', 'Search modifications'),
-    ('/modomics', 'modomics', 'Modomics'),
     ('/tutorials', 'tutorials', 'Tutorials'),
     ('/docs', 'documentation', 'Documentation'),
     ('/news', 'news', 'News')] -%}
@@ -69,7 +67,7 @@
     <div class="navdrawer-content">
         <div class="flex-column doc-navdrawer-body">
             <div class="navdrawer-header d-flex justify-content-center">
-                <img style="max-width:100%;height:150px;"
+                <img style="max-width:100%;"
                      src="../static/images/logo_full.png">
 
 
@@ -108,7 +106,7 @@
                 <div class="navdrawer-divider mt-no"></div>
                 <div class="navdrawer-nav">
                     <a class="nav-item nav-link text-black-secondary"
-                       href="https://github.com/dieterich-lab/webdorina"
+                       href="https://github.com/dieterich-lab/rmap_web"
                        target="_blank">
                         <i class="material-icons mr-3">code</i>Source code
                     </a>

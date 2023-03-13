@@ -2,15 +2,24 @@
 {% set active_page = "index" %}
 {% block body %}
     <div class="jumbotron mb-5 px-lg-3"
-         style="background-color: #5bb9cf !important;">
+         style="background-color: #00aa4f !important;">
         <!--<h2 class="typography-display-4 font-weight-bold d-flex justify-content-center">-->
         <h2 class="typography-display-4 modtitle d-flex justify-content-center">
        	    Sci-ModoM</h2>
         <br>
-        <p class="d-flex justify-content-center mt-2 font-weight-medium typography-title">
-        is a unique resource to elucidate on a transcriptome-wide scale the impact and the role of processing and modification on RNA function.            
+        <p class="d-flex justify-content-center mt-2 font-weight-medium typography-title"
+           style="font-size:30px">
+        a database of transcriptome-wide high-throughput RNA modification sites          
         </p>
     </div>
+    
+    <style>
+        .alert {
+        padding: 20px;
+        background-color: #00b0f0;
+        color: white;
+        }
+    </style>
 
     <div class="jumbotron px-lg-3">
         <div class="doc-main">
@@ -18,18 +27,19 @@
                 <div class="row justify-content-center">
 
                     <div class="bd-content mb-5">
-                        <p><b>Sci-ModoM v0.0.0-alpha development server has limited functionality.</b></p> 
-                        <p><b>It is possible to perform queries
-                        to determine if a site is subject to modification or processing events for a test dataset.</b></p> 
+                        <div class="alert"
+                             style="text-align:center">
+                            <strong>Sci-ModoM v0.0.0-alpha</strong> is under active development: it's appearance and functionality may change at any time!
+                        </div>
                         <hr style="width:100%;text-align:left;margin-left:0">
-			<p style="margin-top:1.5cm;"><h1 style="display: inline; font-family: HamburgerHeaven; font-size: 16pt">Sci-ModoM</h1>, a project of RMap (RNA Modification and Processing), aims to:</p>
-
+			<p style="margin-top:1.5cm;"><h1 style="display: inline; font-family: HamburgerHeaven; font-size: 16pt">Sci-ModoM</h1>, the central data repository and database hub for the Collaborative Research Centre RMaP, aims to</p>
 
                         <ul class="list-group">
-			    <li class="list-group-item">constitute a reference database for high-throughput transcriptome-wide RNA modification mapping data</li>
+			    <li class="list-group-item">constitute a reference database for RNA modification high-throughput assays</li>
 			    <li class="list-group-item">integrate RNA processing events and other relevant public data</li>
-                            <li class="list-group-item">harmonize transcriptome-wide data exchange formats and interoperability standards</li>
+                            <li class="list-group-item">harmonize data exchange formats and interoperability standards</li>
                             <li class="list-group-item">provide a critical assessment of and integration with public data</li>
+                            <li class="list-group-item">facilitate data curation, integration, access and availability</li>
                             <!--<li class="list-group-item">encompass all known
                             RNA modifications across multiple assays or 
                             experimental techniques
