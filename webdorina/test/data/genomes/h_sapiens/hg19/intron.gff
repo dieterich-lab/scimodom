@@ -1,5 +1,0 @@
-#gff2
-chr1	doRiNA2	intron	301	401	.	.	.	ID=gene01.01
-chr1	doRiNA2	intron	701	800	.	.	.	ID=gene01.01
-chr1	doRiNA2	intron	2301	2401	.	.	.	ID=gene01.02
-chr1	doRiNA2	intron	2701	2800	.	.	.	ID=gene01.02

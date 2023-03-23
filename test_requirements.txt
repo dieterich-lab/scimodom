@@ -1,5 +1,0 @@
-Flask-Testing
-MiniMock
-coverage
-fakeredis
-nose
