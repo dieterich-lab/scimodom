@@ -4,16 +4,16 @@
     <div class="jumbotron">
         <h4 class="typography-display-1">Tutorials</h4>
         <ul class="nav nav-pills mt-3 mb-3" id="pills-tab" role="tablist">
-            <li class="nav-item">
+<!--            <li class="nav-item">
                 <a class="nav-link active"
-                   id="regulator_centric_tab"
+                   id="random_example"
                    data-toggle="pill"
-                   href="#regulator_centric"
+                   href="#example_of_usage"
                    role="tab"
-                   aria-controls="regulator_centric"
-                   aria-expanded="true">Regulator-centric</a>
-            </li>
-            <li class="nav-item">
+                   aria-controls="example_of_usage"
+                   aria-expanded="true">Example of usage</a>
+            </li>-->
+            <!--<li class="nav-item">
                 <a class="nav-link"
                    id="custom_regulator-tab"
                    data-toggle="pill"
@@ -21,15 +21,15 @@
                    role="tab"
                    aria-controls="custom_regulator"
                    aria-expanded="true">Custom regulator</a>
-            </li>
+            </li>-->
         </ul>
         <div class="tab-content" id="pills-tabContent">
-            <div class="tab-pane fade show active" id="regulator_centric"
-                 role="tabpanel" aria-labelledby="regulator_centric_tab">
-                <h4>Example: Mutual exclusive Srsf1 and Srsf2 binding on
-                    exons</h4>
+            <div class="tab-pane fade show active" id="example_of_usage"
+                 role="tabpanel" aria-labelledby="random_example">
+                <h4>Example 1: m6A modifications found in HEK293T cells from 2 replicates
+                treated with GLORI.</h4>
 
-                <p>SR proteins are RNA-binding proteins that are associated with
+                <!--<p>SR proteins are RNA-binding proteins that are associated with
                     alternative splicing,
                     and recent findings suggest that they are involved in both
                     exon skipping and
@@ -43,21 +43,31 @@
                     factors, such that there is mutually exclusive binding of
                     Srsf1 or Srsf2. Exactly
                     these exons can be identified with doRiNA 2 in the following
-                    manner:</p>
+                    manner:</p>-->
 
-                <p>As we're not uploading a custom regulator, we just click the
-                    blue "Search" button
-                    on the left side of the start page.
+                <p>Click the "Search modifications" tab, and select the organism and
+                    assembly we want to work with on the right side of the page.
                 <div class="thumbnail">
-                    <img src="{{ url_for('static', filename='images/start_page_search.png') }}"
+                    <img src="{{ url_for('static', filename='images/1.png') }}"
                          width="66%" class="img-responsive">
-                    <div class="caption">
+                    <!--<div class="caption">
                         doRiNA 2 start page, click "Search".
-                    </div>
+                    </div>-->
+                </div>
+                </p>
+                
+                <p>We can now construct the query. Sci-Modom currently allows to select datasets
+                by modification and method. 
+                <div class="thumbnail">
+                    <img src="{{ url_for('static', filename='images/2.png') }}"
+                         width="66%" class="img-responsive">
+                    <!--<div class="caption">
+                        doRiNA 2 start page, click "Search".
+                    </div>-->
                 </div>
                 </p>
 
-                <p>Having clicked "Search", we now can select the organism and
+                <!--<p>Having clicked "Search", we now can select the organism and
                     assembly we want to
                     work with. We select the mouse assembly "mm9", and click the
                     "Search Database" button.
@@ -68,12 +78,17 @@
                         Select the mm9 assembly and click "Search Database".
                     </div>
                 </div>
-                </p>
+                </p>-->
 
-                <p>In the search page, we can build up the search we are
-                    interested in. We don't want to
-                    limit our search to a set of candidate genes, so we ignore
-                    that option. As we are only
+                <p>We select the chosen dataset from "Available dataset
+                    (set A)". For this example, we limit our search to modifications found in the 3'UTR.
+                    As we don't want to limit our search to a set of candidate genes, we ignore
+                    this option. We now expand the combinatorial search settings
+                    by clicking on "Combinatorial search", and repeat the same procedure,
+                    this time selecting "replicate 2". As we are interested in modifications
+                    found in both replicates, we use the "AND" set operation.
+                    
+                    <!-- As we are only
                     interested in exons, we select "CDS" in the "Look for
                     binding sites in region" settings.
                     Then we use the autocompletion option of the "Regulators
@@ -82,23 +97,23 @@
                     the return key. Alternatively,
                     we could have used the mouse to select the entry, or even
                     just scrolled the list without
-                    narrowing down the displayed regulators.
+                    narrowing down the displayed regulators.-->
                 <div class="thumbnail">
-                    <img src="{{ url_for('static', filename='images/search_set_a_srsf1.png') }}"
+                    <img src="{{ url_for('static', filename='images/3.png') }}"
                          width="66%" class="img-responsive">
                     <div class="caption">
-                        <ol>
+                       <!-- <ol>
                             <li>Look for binding sites in CDS regions only</li>
                             <li>Type "Srsf1" into the "Regulators (set A)" field
                                 to search for
                                 the Srsf1 HITS-CLIP dataset
                             </li>
-                        </ol>
+                        </ol>-->
                     </div>
                 </div>
                 </p>
 
-                <p>Now to repeat the process for Srsf2, we first expand the
+               <!-- <p>Now to repeat the process for Srsf2, we first expand the
                     combinatorial search settings
                     by clicking on "Combinatorial search". Then we again look
                     for binding sites in CDS regions
@@ -127,33 +142,77 @@
                         </ol>
                     </div>
                 </div>
-                </p>
+                </p>-->
 
-                <p>After a few seconds, the results page is displayed, giving
-                    44,476 results that are
-                    bound by either Srsf1 or Srsf2, but not both. Buttons at the
-                    top and the bottom of the
-                    page allow you to start a new search (chose this if you want
-                    to search on a different
-                    assembly) or to go back to the search options to redo the
-                    search on the same assembly
-                    with changed search options. A button on the top of the page
+                <p>After a few seconds, the results page is displayed. A button at the top of the page
                     allows you to download the
-                    complete results in BED file format. To optimise loading
+                    complete results in EUF file format (in progress). To optimise loading
                     times, the results page only
                     displays the top 100 hits, a button on the bottom of the
                     page allows you to load more
-                    results.
+                    results. Public data can be viewed on the USCS Genome Browser.
                 <div class="thumbnail">
-                    <img src="{{ url_for('static', filename='images/results_page_srsf1_2.png') }}"
+                    <img src="{{ url_for('static', filename='images/4.png') }}"
                          width="66%" class="img-responsive">
-                    <div class="caption">
+                    <!--<div class="caption">
                         Results page, abridged.
 
-                    </div>
+                    </div>-->
                 </div>
             </div>
-            <div class="tab-pane fade"
+            
+            <br>
+            <br>
+            
+            <div class="tab-pane fade show active" id="example_of_usage"
+                 role="tabpanel" aria-labelledby="random_example">
+                <h4>Example 2: Y modifications found in both my results and
+                a published dataset</h4>
+
+                <!--<p>SR proteins are RNA-binding proteins that are associated with
+                    alternative splicing,
+                    and recent findings suggest that they are involved in both
+                    exon skipping and
+                    inclusion events (<a
+                            href="http://doi.org/10.1016/j.molcel.2013.:w03.001">Pandit
+                        <em>et al.</em> 2013</a>).
+                    Furthermore, Pandit <em>et al.</em> suggest although Srsf1
+                    and Srsf2 binding sites
+                    largely target the same exons, certain exons are regulated
+                    by only one of the two
+                    factors, such that there is mutually exclusive binding of
+                    Srsf1 or Srsf2. Exactly
+                    these exons can be identified with doRiNA 2 in the following
+                    manner:</p>-->
+
+                <p>This time, we use the "Browse" button to "submit" our own results (BED or EUF), and select the organism and
+                    assembly we want to work with on the right side of the page.
+                <div class="thumbnail">
+                    <img src="{{ url_for('static', filename='images/5.png') }}"
+                         width="66%" class="img-responsive">
+                    <!--<div class="caption">
+                        doRiNA 2 start page, click "Search".
+                    </div>-->
+                </div>
+                </p>
+                
+                <p>We move immediately to the "Combinatorial search", and select "set B" from the
+                available dataset. As we are interested in modifications
+                    found in both our results and the published BID-seq results (Mouse Heart tissue), 
+                    we use the "AND" set operation.
+                <div class="thumbnail">
+                    <img src="{{ url_for('static', filename='images/6.png') }}"
+                         width="66%" class="img-responsive">
+                    <!--<div class="caption">
+                        doRiNA 2 start page, click "Search".
+                    </div>-->
+                </div>
+                </p>
+
+            </div>
+            
+            
+  <!--          <div class="tab-pane fade"
                  id="custom_regulator"
                  role="tabpanel"
                  aria-labelledby="custom_regulator-tab">
@@ -305,7 +364,7 @@
                     </div>
                 </div>
 
-            </div>
+            div></-->
         </div>
     </div>
 

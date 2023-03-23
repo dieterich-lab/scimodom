@@ -1,8 +1,15 @@
 *.swp
 *.pyc
+*aux
+*swp
+*bak
+*.egg-info
 dorina
 .coverage
 cover/*
+local/*
+data/
 .idea/
 __pycache__/
 !/webdorina/static/js/dorina.js
+dump.rdb

@@ -2,28 +2,29 @@
 <html>
 <head>
   <meta charset="utf-8">
+  <!-- encoding must be set for mocha's special characters to render properly -->
   <title>Test Runner</title>
   <link rel="stylesheet" href="mocha.css" />
 </head>
 <body>
   <div id="mocha"></div>
-  <script src="../static/js/jquery.js"></script>
-  <script src="../static/js/knockout.js"></script>
-  <script src="../static/js/dorina.js"></script>
+  <script src="mocha.js"></script>
   <script src="chai.js"></script>
   <script src="chai-as-promised.js"></script>
-  <script src="mocha.js"></script>
-  <script>mocha.setup('bdd');
-          chai.should();
-  </script>
-  <script src="test_dorina.js"></script>
+  
+  <!--   path to...? -->
+  <script src="dorina.js"></script>
+  <script src="test_dorina.js"></script> 
   <script src="test_result.js"></script>
+  
   <script>
-    if (window.mochaPhantomJS) {
-      mochaPhantomJS.run();
-    } else {
-      mocha.run();
-    }
-  </script>
+    mocha.ui('bdd')
+    expect = chai.expect
+  </script> 
+  <script src="jquery.js"></script>
+  <script src="knockout.js"></script>
+  <script>
+    mocha.run()
+  </script> 
 </body>
 </html>

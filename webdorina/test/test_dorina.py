@@ -176,9 +176,11 @@ class DorinaTestCase(TestCase):
         mock('webdorina.Queue', tracker=self.tt, returns=fake_queue)
         # use tracker=None to not track uuid4() calls
         mock('webdorina.uuid.uuid4', tracker=None, returns="fake-uuid")
+        self.Regulator = Regulator.init(webdorina.datadir)
 
     def tearDown(self):
         self.r.flushdb()
+        self.Regulator = None
         restore()
 
     def test_index(self):
@@ -697,7 +699,7 @@ Called fake_store.llen(
         fakeredis.FakeRedis.zrangebylex = Mock(
             'zrangebylex', returns=['gene01.01', 'gene01.02'], tracker=self.tt)
         got = self.client.get('/api/v1.0/genes/hg19')
-
+        
         self.assertEqual(got.json, expected)
 
     def test_download_regulator(self):
@@ -724,8 +726,7 @@ Called fake_store.llen(
         key = 'results:{"combine": "or", "genes": ["all"], "genome": "hg19", '
         key += '"match_a": "any", "match_b": "any", "region_a": "any", '
         key += '"region_b": "any", "set_a": ["scifi"], "set_b": null}'
-        res = ['chr1	doRiNA2	gene	1	1000	.	+	.	ID=gene01.01	chr1	250	260	PARCLIP#scifi*scifi_cds	6	+	250	260',
-        ]
+        res = ['chr1	doRiNA2	gene	1	1000	.	+	.	ID=gene01.01	chr1	250	260	PARCLIP#scifi*scifi_cds	6	+	250	260']
 
         self.r.rpush(key, res)
         self.r.set('results:sessions:fake-uuid', json.dumps(dict(redirect=key)))
