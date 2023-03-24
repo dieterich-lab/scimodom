@@ -12,7 +12,7 @@ Migration
 - Operations performed on files (no database).
 - Missing functionalities (authentication, *etc.*).
 
-Single-Page Application (SPA) to separate Flask and Vue
+Proposed architecture: single-page application (SPA) to separate Flask and VueJS.
 
 ### Back-end (server)
 
@@ -20,7 +20,7 @@ Single-Page Application (SPA) to separate Flask and Vue
 - MySQL database
 - Redis cache
 
-- Proposed architecture:
+- Model:
   * API
   * Services (operate on data objects)
   * Data Objects (stateful models, CRUD)
@@ -28,12 +28,12 @@ Single-Page Application (SPA) to separate Flask and Vue
 
 ### Front-end (client)
 
-- Vue
+- VueJS
 - vue-router
 - pinia (state management)
 - Firebase (authentication)
 
-- Proposed architecture:
+- Model:
   * SPA
 
 Installation

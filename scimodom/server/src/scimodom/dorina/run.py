@@ -10,12 +10,18 @@ from pybedtools import BedTool
 from scimodom.dorina.genome import Genome
 from scimodom.dorina.regulator import Regulator
 
+log = logging.getLogger(__name__)
 
 class Dorina(object):
-    def __init__(self, datadir):
+    def __init__(self, datadir, debug=False):
         Genome.init(datadir)
         Regulator.init(datadir)
-
+        
+        if debug:
+            log.setLevel(logging.DEBUG)
+        else:
+            log.setLevel(logging.INFO)
+        
     def analyse(self, genome,
                 set_a, match_a='any', region_a='any',
                 set_b=None, match_b='any', region_b='any',
@@ -23,7 +29,7 @@ class Dorina(object):
                 window_a=-1,
                 window_b=-1):
         """Run doRiNA analysis"""
-        logging.debug("analyse(%r, %r(%s) <-'%s'-> %r(%s))" % (
+        log.debug("analyse(%r, %r(%s) <-'%s'-> %r(%s))" % (
             genome, set_a, match_a, combine, set_b, match_b))
 
         def compute_result(region, regulators, match, window):

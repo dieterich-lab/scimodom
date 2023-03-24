@@ -45,6 +45,7 @@ dependencies = [
 ]
 
 [project.scripts]
+dorina = "scimodom.dorina.__main__:cli"
 
 [project.urls]
 Github = "https://github.com/dieterich-lab/scimodom"

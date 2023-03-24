@@ -24,7 +24,7 @@ from scimodom.workers import filter_genes, run_analyse
 
 # templates and static are one dir up
 this_dir = os.path.dirname(os.path.abspath(__file__))
-app = flask.Flask('webdorina',
+app = flask.Flask('scimodom',
                   template_folder=os.path.join(this_dir, '../templates'),
                   static_folder=os.path.join(this_dir, '../static'))
 app.secret_key = os.urandom(24)
