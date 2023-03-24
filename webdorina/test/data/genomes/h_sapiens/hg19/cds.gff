@@ -1,7 +1,0 @@
-#gff2
-chr1	doRiNA2	CDS	201	300	.	+	0	ID=gene01.01
-chr1	doRiNA2	CDS	401	700	.	+	2	ID=gene01.01
-chr1	doRiNA2	CDS	801	900	.	+	0	ID=gene01.01
-chr1	doRiNA2	CDS	2201	2300	.	+	2	ID=gene01.02
-chr1	doRiNA2	CDS	2401	2700	.	+	1	ID=gene01.02
-chr1	doRiNA2	CDS	2801	2900	.	+	2	ID=gene01.02

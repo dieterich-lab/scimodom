@@ -1,8 +1,0 @@
-{
-  "datadir": "/data/projects/doRiNA2/",
-  "session_ttl": 3600,
-  "result_ttl": 86400,
-  "regulators_ttl": 3600,
-  "max_results": 100,
-  "session_store": "/tmp/dorina-{unique_id}"
-}

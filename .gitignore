@@ -4,12 +4,11 @@
 *swp
 *bak
 *.egg-info
-dorina
 .coverage
 cover/*
 local/*
 data/
 .idea/
 __pycache__/
-!/webdorina/static/js/dorina.js
+!/scimodom/server/src/static/js/dorina.js
 dump.rdb
