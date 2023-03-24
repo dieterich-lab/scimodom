@@ -1,2 +1,2 @@
-recursive-include webdorina/templates *
-recursive-include webdorina/static *
+recursive-include scimodom/server/src/templates *
+recursive-include scimodom/server/src/static *
