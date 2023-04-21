@@ -1,0 +1,9 @@
+<template>
+  <DefaultLayout>
+    <SectionLayout>
+      <div>
+        <h1>Browse</h1>
+      </div>
+    </SectionLayout>
+  </DefaultLayout>
+</template>

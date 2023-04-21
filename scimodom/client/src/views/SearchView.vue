@@ -1,0 +1,9 @@
+<template>
+  <DefaultLayout>
+    <SectionLayout>
+  <div>
+    <h1>Search</h1>
+  </div>
+    </SectionLayout>
+  </DefaultLayout>
+</template>
