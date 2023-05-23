@@ -11,6 +11,7 @@ body:
       label: A clear and concise description of what the bug is.
       description: | 
       Describe the expected behavior and the issue you're experiencing. Make sure that this bug has not already been filed before opening a duplicate issue.
+      placeholder: Step by step description to reproduce the bug...
       value: |
         Minimal steps to reproduce the bug:
         1. step 1
