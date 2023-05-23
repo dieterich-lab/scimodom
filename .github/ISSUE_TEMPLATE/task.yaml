@@ -1,7 +1,6 @@
 name: Task
 description: WIP tasks and todos
-title: ""
-labels: ""
+title: "<Title>"
 assignees:
   - eboileau
 body:
