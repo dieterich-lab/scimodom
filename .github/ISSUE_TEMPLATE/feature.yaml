@@ -1,6 +1,6 @@
 name: Feature Request
 description: Suggest an idea to improve Sci-ModoM
-title: ""
+title: "<Title>"
 labels: "T: type:enhancement"
 assignees:
   - eboileau
