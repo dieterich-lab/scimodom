@@ -1,0 +1,24 @@
+name: Task
+description: WIP tasks and todos
+title: ""
+labels: ""
+assignees:
+  - eboileau
+body:
+  - type: textarea
+    id: context
+    attributes:
+      label: Aims/objectives.
+      description: Provide background, context and/or objectives.
+      value: |
+        Why do we need to do this? Is this related to the design of the app, the data model, BE, or FE?
+    validations:
+      required: false
+  - type: textarea
+    id: tasks
+    attributes:
+      label: A clear and concise description of todo items.
+      description: Describe what is to be done. 
+    validations:
+      required: true
+      
