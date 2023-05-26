@@ -155,6 +155,140 @@ const species = ref([
         label: 'Viria'
     }
 ])
+
+const genes = [
+  {name: 'Agene', id: 'Aid'},
+  {name: 'Bgene', id: 'Bid'},
+  {name: 'Cgene', id: 'Cid'},
+  {name: 'Dgene', id: 'Did'},
+  {name: 'Egene', id: 'Eid'},
+  {name: 'Fgene', id: 'Fid'}
+]
+const selectedGenes = ref()
+const suggestedGenes = ref([])
+
+const searchGenes = (event) => {
+  setTimeout(() => {
+    if (!event.query.trim().length) {
+      suggestedGenes.value = [...genes];
+    } else {
+      suggestedGenes.value = genes.filter((gene) => {
+        return gene.name.toLowerCase().startsWith(event.query.toLowerCase());
+      });
+    }
+  }, 250);
+}
+
+const chroms = [
+  {name: 'chr1', id: 1, size: 200709},
+  {name: 'chr2', id: 2, size: 300500},
+  {name: 'chr3', id: 3, size: 400000},
+  {name: 'chr4', id: 4, size: 546987}
+]
+const selectedChrom = ref(chroms[0])
+const rangeChrom = ref([1, selectedChrom.size])
+
+const sampleResultsTable = ref([
+  {
+      id: '1000',
+      chrom: '1',
+      chromStart: '25',
+      chromEnd: '26',
+      name: 'm6A',
+      score: '500',
+      strand: '+',
+      coverage: '22',
+      frequency: '30',
+      gene: 'Agene',
+      gene_id: 'AgeneId',
+      technology: 'RiboMeth-seq',
+      organism: 'H. Sapiens',
+      label: 'Heart'
+  },
+  {
+      id: '1001',
+      chrom: '2',
+      chromStart: '125',
+      chromEnd: '126',
+      name: 'm6A',
+      score: '600',
+      strand: '-',
+      coverage: '52',
+      frequency: '80',
+      gene: 'Bgene',
+      gene_id: 'BgeneId',
+      technology: 'm6A-SAC-seq',
+      organism: 'H. Sapiens',
+      label: 'HEK293'
+  },
+  {
+      id: '1002',
+      chrom: '1',
+      chromStart: '45',
+      chromEnd: '46',
+      name: 'm6A',
+      score: '300',
+      strand: '+',
+      coverage: '22',
+      frequency: '70',
+      gene: 'Agene',
+      gene_id: 'AgeneId',
+      technology: 'DART-seq',
+      organism: 'H. Sapiens',
+      label: 'Heart'
+  },
+  {
+      id: '1003',
+      chrom: '15',
+      chromStart: '5455',
+      chromEnd: '5456',
+      name: 'm5C',
+      score: '560',
+      strand: '+',
+      coverage: '456',
+      frequency: '60',
+      gene: 'Cgene',
+      gene_id: 'CgeneId',
+      technology: 'RiboMeth-seq',
+      organism: 'M. Musculus',
+      label: 'Heart'
+  },
+  {
+      id: '1004',
+      chrom: '3',
+      chromStart: '259',
+      chromEnd: '260',
+      name: 'm5C',
+      score: '100',
+      strand: '-',
+      coverage: '2',
+      frequency: '10',
+      gene: 'Dgene',
+      gene_id: 'DgeneId',
+      technology: 'm6A-seq/MeRIP',
+      organism: 'M. Musculus',
+      label: 'mESCs'
+  }
+])
+
+
+const columns = ref([
+  {field: 'gene', header: 'Gene'},
+  {field: 'gene_id', header: 'Gene ID'},
+  {field: 'technology', header: 'Technology'},
+  {field: 'organism', header: 'Organism'},
+  {field: 'label', header: 'Cell/Tissue'}
+])
+const selectedColumns = ref(columns.value)
+const onToggle = (val) => {
+  selectedColumns.value = columns.value.filter(col => val.includes(col));
+}
+
+const dt = ref()
+const exportCSV = () => {
+  dt.value.exportCSV()
+}
+
 </script>
 
 <template>
@@ -205,11 +339,75 @@ const species = ref([
       </div>
       </div>
       <div>
-        <h1 v-if="searchBy === 'byGenes'">Genes</h1>
-        <h1 v-else-if="searchBy === 'byCoords'">Coords</h1>
-        <h1 v-else ></h1> 
+        <h1 v-if="searchBy === 'byGenes'">
+          <div class="flex flex-row">
+            <AutoComplete v-model="selectedGenes" optionLabel="name" multiple :suggestions="suggestedGenes" @complete="searchGenes" class="w-full" />
+          </div>
+        </h1>
+        <h1 v-else-if="searchBy === 'byCoords'">
+          <div class="grid grid-rows-3 grid-flow-col gap-4">
+            <div class="row-span-3">
+              <Dropdown v-model="selectedChrom" :options="chroms" optionLabel="name" placeholder="Chromosome" />
+            </div>
+            <div class="col-span-2 inline-block align-middle">
+              Start: {{ rangeChrom[0] }}
+              End: {{ rangeChrom[1] }}
+            </div>
+            <div class="row-span-2 col-span-2">
+              <Slider v-model="rangeChrom" range :min="1" :max="selectedChrom.size" />
+            </div>
+          </div>
+        </h1>
+        <h1 v-else ></h1>
       </div>
     </div>
+    </SectionLayout>
+    <!-- results table -->
+    <SectionLayout>
+      <div class="card">
+
+        <!-- <DataTable :value="sampleResultsTable" stripedRows tableStyle="min-width: 50rem">
+             <template #header>
+             <div style="text-align:left">
+             <MultiSelect :modelValue="selectedColumns" :options="columns" optionLabel="header" @update:modelValue="onToggle"
+             display="chip" placeholder="Select Columns" />
+             </div>
+             </template>
+             <Column field="code" header="Code" style="width: 20%"></Column>
+             <Column field="name" header="Name" style="width: 20%"></Column>
+             <Column field="price" header="Price"></Column>
+             <Column field="category" header="Category" style="width: 20%"></Column>
+             <Column field="quantity" header="Quantity" style="width: 20%"></Column>
+             </DataTable> -->
+        <DataTable :value="sampleResultsTable" ref="dt" stripedRows removableSort sortMode="multiple" :multiSortMeta="[{field: 'chrom', order: 1}, {field: 'chromStart', order: 1}]" tableStyle="min-width: 50rem">
+          <template #header>
+            <div style="text-align:left">
+              <MultiSelect :modelValue="selectedColumns" :options="columns" optionLabel="header" @update:modelValue="onToggle"
+                display="chip" placeholder="Select Columns" />
+            </div>
+            <div style="text-align: right">
+              <Button icon="pi pi-external-link" label="Export" @click="exportCSV($event)" />
+            </div>
+          </template>
+          <Column field="chrom" header="Chrom" sortable exportHeader="Chromosome" style="width: 20%"></Column>
+          <Column field="chromStart" header="Start" sortable style="width: 20%"></Column>
+          <Column field="chromEnd" header="End" sortable style="width: 20%"></Column>
+          <Column field="name" header="Name" style="width: 20%"></Column>
+          <Column field="score" header="Score" sortable style="width: 20%"></Column>
+          <Column field="strand" header="Strand" style="width: 20%"></Column>
+          <Column field="coverage" header="Coverage" sortable style="width: 20%"></Column>
+          <Column field="frequency" header="Frequency" sortable style="width: 20%"></Column>
+          <!-- <Column field="name" header="Name" sortable style="width: 20%"></Column> -->
+          <!-- <Column field="price" header="Price" :sortable="true">
+               <template #body="slotProps">
+               {{ formatCurrency(slotProps.data.price) }}
+               </template>
+               </Column> -->
+          <!-- <Column field="category" header="Category" sortable style="width: 20%"></Column> -->
+          <!-- <Column field="quantity" header="Quantity" sortable style="width: 20%"></Column> -->
+          <Column v-for="(col, index) of selectedColumns" :field="col.field" :header="col.header" :key="col.field + '_' + index"></Column>
+        </DataTable>
+      </div>
     </SectionLayout>
   </DefaultLayout>
 </template>

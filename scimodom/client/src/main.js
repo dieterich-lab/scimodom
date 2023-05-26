@@ -20,14 +20,31 @@ import TreeSelect from 'primevue/treeselect'
 import MultiSelect from 'primevue/multiselect'
 import SelectButton from 'primevue/selectbutton'
 import RadioButton from 'primevue/radiobutton'
+import AutoComplete from 'primevue/autocomplete'
+import Slider from 'primevue/slider'
+import DataTable from 'primevue/datatable'
+// check if we need this
+import Column from 'primevue/column'
 // layout components
 import DefaultLayout from '@/components/layout/DefaultLayout.vue'
 import SectionLayout from '@/components/layout/SectionLayout.vue'
+import Toast from 'primevue/toast'
+import ToastService from 'primevue/toastservice'
+
+// to clean for CRUD table
+import FileUpload from 'primevue/fileupload'
+import Toolbar from 'primevue/toolbar'
+import Rating from 'primevue/rating'
+import Tag from 'primevue/tag'
+import Textarea from 'primevue/textarea'
+import InputNumber from 'primevue/inputnumber'
+import Dialog from 'primevue/dialog'
 
 const app = createApp(App)
 // app.use(createPinia())
 app.use(router)
 app.use(PrimeVue)
+app.use(ToastService)
 app.component('DefaultLayout', DefaultLayout)
 app.component('SectionLayout', SectionLayout)
 app.component('MultiSelect', MultiSelect)
@@ -38,4 +55,17 @@ app.component('Dropdown', Dropdown)
 app.component('Divider', Divider)
 app.component('InputText', InputText)
 app.component('Button', Button)
+app.component('AutoComplete', AutoComplete)
+app.component('Slider', Slider)
+app.component('DataTable', DataTable)
+app.component('Column', Column)
+
+app.component('FileUpload', FileUpload)
+app.component('Toolbar', Toolbar)
+app.component('Rating', Rating)
+app.component('Tag', Tag)
+app.component('Textarea', Textarea)
+app.component('InputNumber', InputNumber)
+app.component('Dialog', Dialog)
+
 app.mount('#app')
