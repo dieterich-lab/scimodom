@@ -17,12 +17,16 @@ import Divider from 'primevue/divider'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import TreeSelect from 'primevue/treeselect'
+import CascadeSelect from 'primevue/cascadeselect'
 import MultiSelect from 'primevue/multiselect'
 import SelectButton from 'primevue/selectbutton'
 import RadioButton from 'primevue/radiobutton'
 import AutoComplete from 'primevue/autocomplete'
 import Slider from 'primevue/slider'
 import DataTable from 'primevue/datatable'
+import Accordion from 'primevue/accordion'
+import AccordionTab from 'primevue/accordiontab'
+
 // check if we need this
 import Column from 'primevue/column'
 // layout components
@@ -49,6 +53,7 @@ app.component('DefaultLayout', DefaultLayout)
 app.component('SectionLayout', SectionLayout)
 app.component('MultiSelect', MultiSelect)
 app.component('TreeSelect', TreeSelect)
+app.component('CascadeSelect', CascadeSelect)
 app.component('SelectButton', SelectButton)
 app.component('RadioButton', RadioButton)
 app.component('Dropdown', Dropdown)
@@ -67,5 +72,7 @@ app.component('Tag', Tag)
 app.component('Textarea', Textarea)
 app.component('InputNumber', InputNumber)
 app.component('Dialog', Dialog)
+app.component('Accordion', Accordion)
+app.component('AccordionTab', AccordionTab)
 
 app.mount('#app')

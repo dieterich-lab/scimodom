@@ -1,15 +1,12 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+// import axios from 'axios'
+import axios from '@/services/axios.js'
 
 const searchBy = ref('byRegions')
 
 const selectedModifications = ref()
-const modifications = ref([
-  { short_name: 'm6A', name: 'N6-methyladenosine', modomics: '6A', moiety: 'nucleoside' },
-  { short_name: 'm5C', name: '5-methylcytidine', modomics: '5C', moiety: 'nucleoside' },
-  { short_name: 'Y', name: 'Pseudouridine', modomics: '9U', moiety: 'nucleoside' },
-  { short_name: 'Q', name: 'Queuosine', modomics: '10G', moiety: 'nucleoside' }
-])
+const modifications = ref(null)
 
 const selectedRegions = ref()
 const regions = ref([
@@ -24,13 +21,14 @@ const selectedTechnologies = ref()
 const technologies = ref([
     {
         key: '0',
-        label: 'Quantification'
+      label: 'Quantification',
+      optionDisabled: true
     },
-    {
-        key: '1',
-        label: 'Locus-specific'
-    },
-    {
+  {
+    key: '1',
+    label: 'Locus-specific'
+  },
+  {
         key: '2',
         label: 'NGS 2nd generation',
         children: [
@@ -44,8 +42,8 @@ const technologies = ref([
                 label: 'Chemical-assisted sequencing',
                 data: 'NGS Chemical-assisted',
                 children: [
-                    { key: '2-1-0', label: 'm6A-SAC-seq', data: 'Chemical m6A-SAC-seq' },
-                    { key: '2-1-1', label: 'RiboMeth-seq', data: 'Chemical RiboMeth-seq' }
+                  { key: '2-1-0', label: 'm6A-SAC-seq', data: 'Chemical m6A-SAC-seq' },
+                  { key: '2-1-1', label: 'RiboMeth-seq', data: 'Chemical RiboMeth-seq' }
                 ]
             },
             {
@@ -289,6 +287,20 @@ const exportCSV = () => {
   dt.value.exportCSV()
 }
 
+
+onMounted(() => {
+  axios
+    .getMods()
+    .then((response) => {
+      // console.log('modifications:', response.data)
+      modifications.value = response.data
+    })
+    .catch((error) => {
+      console.log(error)
+    })
+})
+
+
 </script>
 
 <template>
@@ -310,9 +322,10 @@ const exportCSV = () => {
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div>
         <!-- display="chip" -->
-        <MultiSelect v-model="selectedModifications" :options="modifications" optionLabel="short_name" placeholder="Select RNA modifications"
-          :maxSelectedLabels="3" class="w-full md:w-20rem" />
-      </div>
+          <!-- <MultiSelect v-model="selectedModifications" :options="modifications" optionDisabled="optionDisabled" optionLabel="short_name" placeholder="Select RNA modifications"
+               :maxSelectedLabels="3" class="w-full md:w-20rem" /> -->
+          <TreeSelect v-model="selectedModifications" :options="modifications" selectionMode="checkbox" placeholder="Select RNA modifications" class="w-full md:w-20rem" />
+        </div>
       <div>
         <TreeSelect v-model="selectedTechnologies" :options="technologies" selectionMode="checkbox" placeholder="Select technologies" class="w-full md:w-20rem" />
       </div>
@@ -321,7 +334,7 @@ const exportCSV = () => {
       </div>
       <div>
         <!-- display="chip" -->
-        <MultiSelect v-model="selectedRegions" :options="regions" optionLabel="name" placeholder="Select regions"
+        <MultiSelect v-model="selectedRegions" :options="regions" optionLabel="name" placeholder="select regions"
           :maxselectedlabels="3" class="w-full md:w-20rem" />
       </div>
       <div class="flex flex-wrap justify-evenly content-center">
@@ -362,6 +375,18 @@ const exportCSV = () => {
       </div>
     </div>
     </SectionLayout>
+
+    <SectionLayout>
+    <p>SELECTED MODS:{{ selectedModifications }}</p>
+    <p>SELECTED TECHS:{{ selectedTechnologies }}</p>
+    <ul>
+      <li v-for="check in technologies.keys(selectedTechnologies || {})">
+        {{ check }}
+      </li>
+    </ul>
+    <p>SELECTED SPECIES:{{ selectedSpecies }}</p>
+    </SectionLayout>
+
     <!-- results table -->
     <SectionLayout>
       <div class="card">
