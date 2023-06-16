@@ -10,7 +10,7 @@ const HTTP = axios.create({
 })
 
 export default {
-  getMods() {
-    return HTTP.get('/modification')
+  getConcurrent(endpoints) {
+    return Promise.all(endpoints.map((endpoint) => HTTP.get(endpoint)))
   },
 }

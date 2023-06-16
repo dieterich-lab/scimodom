@@ -26,6 +26,7 @@ import Slider from 'primevue/slider'
 import DataTable from 'primevue/datatable'
 import Accordion from 'primevue/accordion'
 import AccordionTab from 'primevue/accordiontab'
+import InputMask from 'primevue/inputmask'
 
 // check if we need this
 import Column from 'primevue/column'
@@ -74,5 +75,6 @@ app.component('InputNumber', InputNumber)
 app.component('Dialog', Dialog)
 app.component('Accordion', Accordion)
 app.component('AccordionTab', AccordionTab)
+app.component('InputMask', InputMask)
 
 app.mount('#app')

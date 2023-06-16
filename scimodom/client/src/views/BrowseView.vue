@@ -1,5 +1,6 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import service from '@/services/index.js'
 import { FilterMatchMode, FilterOperator } from 'primevue/api'
 import { useToast } from 'primevue/usetoast'
 
@@ -7,81 +8,32 @@ import { useToast } from 'primevue/usetoast'
 const toast = useToast()
 const dt = ref()
 
-const products = ref([
-  {
-      smid: '1000',
-      name: 'Dataset and/or paper name 1',
-      rnaType: 'mRNA',
-      modification: 'm6A',
-      technology: 'DART-seq',
-      species: '9606',
-      cto: 'Heart',
-      datePublished: '2023-06-06',
-      dateAdded: '2023-06-06',
-      doi: '10.123456',
-      pmid: '123123',
-      access: 'restricted',
-      assembly: 'GRCh38.p13',
-      annotationSrc: 'Ensembl',
-      annotationVer: '106',
-      seqPlatform: 'Illumina',
-      basecalling: '',
-    description: '1 Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.'
-   },
-   {
-      smid: '1001',
-      name: 'Dataset and/or paper name 2',
-      rnaType: 'mRNA',
-      modification: 'm6A',
-      technology: 'm6A-seq/MeRIP',
-      species: '9606',
-      cto: 'HEK293',
-      datePublished: '2023-06-06',
-      dateAdded: '2023-06-06',
-      doi: '12.123456',
-      pmid: '0123123',
-      access: 'public',
-      assembly: 'GRCh38.p13',
-      annotationSrc: 'Ensembl',
-      annotationVer: '106',
-      seqPlatform: 'Illumina',
-      basecalling: '',
-     description: '2 Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.'
-   },
-     {
-      smid: '1002',
-      name: 'Dataset and/or paper name 3',
-      rnaType: 'mRNA',
-      modification: 'm6A,m5C',
-      technology: 'ONT',
-      species: '9606',
-      cto: 'Liver',
-      datePublished: '2023-06-06',
-      dateAdded: '2023-06-06',
-      doi: '13.123456',
-      pmid: '223123',
-      access: 'public',
-      assembly: 'GRCh38.p13',
-      annotationSrc: 'Ensembl',
-      annotationVer: '106',
-      seqPlatform: 'ONT',
-      basecalling: '',
-       description: '3 Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.'
-   }
-])
 
 const columns = [
-  { field: 'dateAdded', header: 'Added' },
-  { field: 'datePublished', header: 'Published' },
+  { field: 'date_added', header: 'Added' },
+  { field: 'date_published', header: 'Published' },
   { field: 'doi', header: 'DOI' },
   { field: 'pmid', header: 'PMID' },
   { field: 'assembly', header: 'Assembly' },
-  { field: 'annotationSrc', header: 'Annotation' },
-  { field: 'annotationVer', header: 'Version' },
-  { field: 'seqPlatform', header: 'Seq. Platform' },
+  { field: 'annotation_src', header: 'Annotation' },
+  { field: 'annotation_ver', header: 'Version' },
+  { field: 'seq_platform', header: 'Seq. Platform' },
   { field: 'basecalling', header: 'Basecalling' },
 ];
 
+
+const endpoints = ['/dataset']
+const products = ref()
+onMounted(() => {
+  service
+    .getConcurrent(endpoints)
+    .then(function (response) {
+      products.value = response[0].data
+    })
+    .catch((error) => {
+      console.log(error)
+    })
+})
 
 const productDialog = ref(false);
 const deleteProductDialog = ref(false);
@@ -93,10 +45,10 @@ const initFilters = () => {
   filters.value = {
     global: { value: null, matchMode: FilterMatchMode.CONTAINS },
     name: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
-    rnaType: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.EQUALS }] },
+    rna_type: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.EQUALS }] },
     modification: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
     technology: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
-    species: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.EQUALS }] },
+    taxid: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.EQUALS }] },
     cto: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
     // access: { value: null, matchMode: FilterMatchMode.IN },
     access: { operator: FilterOperator.OR, constraints: [{ value: null, matchMode: FilterMatchMode.EQUALS }] }
@@ -202,115 +154,128 @@ const deleteSelectedProducts = () => {
         Use filters to find available dataset
       </p>
       <Divider :pt="{ root: { class: 'bg-crmapgreen' } }" />
-          <div>
+      <div>
         <div class="card">
-            <Toolbar class="mb-4">
-                <template #start>
-                    <Button label="New" icon="pi pi-plus" severity="success" class="mr-2" @click="openNew" disabled />
-                </template>
+          <Toolbar class="mb-4">
+            <template #start>
+              <Button label="New" icon="pi pi-plus" severity="success" class="mr-2" @click="openNew" disabled />
+            </template>
+            <template #end>
+              <FileUpload
+                mode="basic"
+                accept="image/*"
+                :maxFileSize="1000000"
+                label="Import"
+                chooseLabel="Import"
+                class="mr-2 inline-block"
+                disabled
+              />
+              <Button label="Export" icon="pi pi-upload" severity="help" @click="exportCSV($event)" />
+            </template>
+          </Toolbar>
 
-                <template #end>
-                    <FileUpload mode="basic" accept="image/*" :maxFileSize="1000000" label="Import" chooseLabel="Import" class="mr-2 inline-block" disabled />
-                    <Button label="Export" icon="pi pi-upload" severity="help" @click="exportCSV($event)" />
-                </template>
-            </Toolbar>
+          <DataTable
+            ref="dt"
+            :value="products"
+            v-model:selection="selectedProducts"
+            dataKey="smid"
+            :paginator="true"
+            :rows="10"
+            v-model:filters="filters"
+            filterDisplay="menu"
+            :globalFilterFields="['smid', 'name', 'rna_type', 'modification', 'technology', 'taxid', 'cto', 'access']"
+            paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown" :rowsPerPageOptions="[5,10,25]"
+            currentPageReportTemplate="Showing {first} to {last} of {totalRecords} products">
+            <template #header>
+              <div class="flex justify-between">
+                <Button type="button" icon="pi pi-filter-slash" label="Clear" outlined @click="clearFilter()" />
+						    <span class="p-input-icon-left">
+                  <i class="pi pi-search" />
+                  <InputText v-model="filters['global'].value" placeholder="Search..." />
+                </span>
+					    </div>
+            </template>
+            <template #empty> No results found. </template>
+            <Column selectionMode="multiple" style="width: 3rem" :exportable="false"></Column>
+            <Column field="smid" header="SMID" sortable style="width: 5%"></Column>
+            <Column field="name" header="Name" filterField="name" style="width: 25%">
+              <template #body="{ data }">
+                {{ data.name }}
+              </template>
+              <template #filter="{ filterModel }">
+                <InputText v-model="filterModel.value" type="text" class="p-column-filter" placeholder="Search by name" />
+              </template>
+            </Column>
+            <Column field="rna_type" header="RNA" filterField="rna_type" style="width: 10%">
+              <template #body="{ data }">
+                {{ data.rna_type }}
+              </template>
+              <template #filter="{ filterModel }">
+                <InputText v-model="filterModel.value" type="text" class="p-column-filter" placeholder="Search by RNA type" />
+              </template>
+            </Column>
+            <Column field="modification" header="Modification" filterField="modification" style="width: 10%">
+              <template #body="{ data }">
+                {{ data.modification }}
+              </template>
+              <template #filter="{ filterModel }">
+                <InputText v-model="filterModel.value" type="text" class="p-column-filter" placeholder="Search by modification" />
+              </template>
+            </Column>
+            <Column field="technology" header="Technology" filterField="technology" style="width: 20%">
+              <template #body="{ data }">
+                {{ data.technology }}
+              </template>
+              <template #filter="{ filterModel }">
+                <InputText v-model="filterModel.value" type="text" class="p-column-filter" placeholder="Search by technology" />
+              </template>
+            </Column>
+            <Column field="taxid" header="Organism" filterField="taxid" style="width: 10%">
+              <template #body="{ data }">
+                {{ data.taxid}}
+              </template>
+              <template #filter="{ filterModel }">
+                <InputText v-model="filterModel.value" type="text" class="p-column-filter" placeholder="Search by organism" />
+              </template>
+            </Column>
 
-            <DataTable ref="dt" :value="products" v-model:selection="selectedProducts" dataKey="smid"
-              :paginator="true" :rows="10" v-model:filters="filters" filterDisplay="menu"
-              :globalFilterFields="['smid', 'name', 'rnaType', 'modification', 'technology', 'species', 'cto', 'access']"
-                paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown" :rowsPerPageOptions="[5,10,25]"
-                currentPageReportTemplate="Showing {first} to {last} of {totalRecords} products">
-                <template #header>
-                    <div class="flex justify-between">
-                      <Button type="button" icon="pi pi-filter-slash" label="Clear" outlined @click="clearFilter()" />
-						<span class="p-input-icon-left">
-                            <i class="pi pi-search" />
-                            <InputText v-model="filters['global'].value" placeholder="Search..." />
-                        </span>
-					</div>
-                </template>
-                <template #empty> No results found. </template>
-                <Column selectionMode="multiple" style="width: 3rem" :exportable="false"></Column>
-                <Column field="smid" header="SMID" sortable style="width: 5%"></Column>
-                <Column field="name" header="Name" filterField="name" style="width: 25%">
-                  <template #body="{ data }">
-                    {{ data.name }}
-                  </template>
-                  <template #filter="{ filterModel }">
-                    <InputText v-model="filterModel.value" type="text" class="p-column-filter" placeholder="Search by name" />
-                  </template>
-                </Column>
-                <Column field="rnaType" header="RNA" filterField="rnaType" style="width: 10%">
-                    <template #body="{ data }">
-                        {{ data.rnaType }}
-                    </template>
-                    <template #filter="{ filterModel }">
-                      <InputText v-model="filterModel.value" type="text" class="p-column-filter" placeholder="Search by RNA type" />
-                    </template>
-                </Column>
-                <Column field="modification" header="Modification" filterField="modification" style="width: 10%">
-                  <template #body="{ data }">
-                    {{ data.modification }}
-                  </template>
-                  <template #filter="{ filterModel }">
-                    <InputText v-model="filterModel.value" type="text" class="p-column-filter" placeholder="Search by modification" />
-                  </template>
-                </Column>
-                <Column field="technology" header="Technology" filterField="technology" style="width: 20%">
-                  <template #body="{ data }">
-                    {{ data.technology }}
-                  </template>
-                  <template #filter="{ filterModel }">
-                    <InputText v-model="filterModel.value" type="text" class="p-column-filter" placeholder="Search by technology" />
-                  </template>
-                </Column>
-                <Column field="species" header="Organism" filterField="species" style="width: 10%">
-                  <template #body="{ data }">
-                    {{ data.species}}
-                  </template>
-                  <template #filter="{ filterModel }">
-                    <InputText v-model="filterModel.value" type="text" class="p-column-filter" placeholder="Search by organism" />
-                  </template>
-                </Column>
+            <Column field="cto" header="Cell-Organ" filterField="cto" style="width: 10%">
+              <template #body="{ data }">
+                {{ data.cto}}
+              </template>
+              <template #filter="{ filterModel }">
+                <InputText v-model="filterModel.value" type="text" class="p-column-filter" placeholder="Search by organism" />
+              </template>
+            </Column>
 
-                <Column field="cto" header="Cell-Organ" filterField="cto" style="width: 10%">
-                  <template #body="{ data }">
-                    {{ data.cto}}
-                  </template>
-                  <template #filter="{ filterModel }">
-                    <InputText v-model="filterModel.value" type="text" class="p-column-filter" placeholder="Search by organism" />
-                  </template>
-                </Column>
+            <Column field="access" header="Access" filterField="access" :showFilterMatchModes="false" style="width: 5%">
+              <template #body="{ data }">
+                {{ data.access}}
+              </template>
+              <template #filter="{ filterModel }">
+                <Dropdown v-model="filterModel.value" :options="statuses" placeholder="Select access...">
+                </Dropdown>
+              </template>
+            </Column>
 
+            <!-- export columns shown in dialog -->
+            <Column field="date_added" header="Added" style="display:none"></Column>
+            <Column field="date_published" header="Published" style="display:none"></Column>
+            <Column field="doi" header="DOI" style="display:none"></Column>
+            <Column field="pmid" header="PMID" style="display:none"></Column>
+            <Column field="assembly" header="Assembly" style="display:none"></Column>
+            <Column field="annotation_src" header="Annotation" style="display:none"></Column>
+            <Column field="annotation_ver" header="Version" style="display:none"></Column>
+            <Column field="seq_platform" header="Seq. Platform" style="display:none"></Column>
+            <Column field="basecalling" header="Basecalling" style="display:none"></Column>
+            <Column field="description" header="Description" style="display:none"></Column>
 
-                <Column field="access" header="Access" filterField="access" :showFilterMatchModes="false" style="width: 5%">
-                  <template #body="{ data }">
-                    {{ data.access}}
-                  </template>
-                  <template #filter="{ filterModel }">
-                    <Dropdown v-model="filterModel.value" :options="statuses" placeholder="Select access...">
-                    </Dropdown>
-                  </template>
-                </Column>
-
-                <!-- export columns shown in dialog -->
-                <Column field="dateAdded" header="Added" style="display:none"></Column>
-                <Column field="datePublished" header="Published" style="display:none"></Column>
-                <Column field="doi" header="DOI" style="display:none"></Column>
-                <Column field="pmid" header="PMID" style="display:none"></Column>
-                <Column field="assembly" header="Assembly" style="display:none"></Column>
-                <Column field="annotationSrc" header="Annotation" style="display:none"></Column>
-                <Column field="annotationVer" header="Version" style="display:none"></Column>
-                <Column field="seqPlatform" header="Seq. Platform" style="display:none"></Column>
-                <Column field="basecalling" header="Basecalling" style="display:none"></Column>
-                <Column field="description" header="Description" style="display:none"></Column>
-
-                <Column :exportable="false" style="width: 5%">
-                    <template #body="slotProps">
-                        <Button icon="pi pi-plus" outlined rounded class="mr-2" @click="editProduct(slotProps.data)" />
-                    </template>
-                </Column>
-            </DataTable>
+            <Column :exportable="false" style="width: 5%">
+              <template #body="slotProps">
+                <Button icon="pi pi-plus" outlined rounded class="mr-2" @click="editProduct(slotProps.data)" />
+              </template>
+            </Column>
+          </DataTable>
         </div>
 
         <Dialog v-model:visible="productDialog" header="Additional information" :modal="true" class="p-fluid">
