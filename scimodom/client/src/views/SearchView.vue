@@ -19,6 +19,13 @@ const selectedGenes = ref()
 const suggestedGenes = ref([])
 
 const sampleResultsTable = ref()
+const productTable = ref()
+
+const loading = ref(false)
+const totalRecords = ref(0) 
+const lazyParams = ref({})
+
+console.log(selectedModification.value)
 
 const chroms = [
   {name: 'chr1', id: 1, size: 200709},
@@ -31,10 +38,10 @@ const rangeChrom = ref([1, selectedChrom.size])
 
 const columns = ref([
   {field: 'gene', header: 'Gene'},
-  {field: 'gene_id', header: 'Gene ID'},
+  // {field: 'gene_id', header: 'Gene ID'},
   {field: 'technology', header: 'Technology'},
-  {field: 'organism', header: 'Organism'},
-  {field: 'label', header: 'Cell/Tissue'}
+  // {field: 'organism', header: 'Organism'},
+  {field: 'cto', header: 'Cell/Tissue'}
 ])
 const selectedColumns = ref(columns.value)
 const onToggle = (val) => {
@@ -46,9 +53,20 @@ const exportCSV = () => {
   dt.value.exportCSV()
 }
 
-const endpoints = ['/modification', '/technology', '/species', '/region', '/eufext', '/genes']
+const endpoints = ['/modification', '/technology', '/species', '/region', '/genes', '/totalRecords']
+// const endpoints = ['/modification', '/technology', '/species', '/region', '/euf?_limit=200', '/genes']
 
 onMounted(() => {
+  loading.value = true
+
+  lazyParams.value = {
+    first: 0,
+    rows: dt.value.rows,
+    // sortField: null,
+    // sortOrder: null,
+    // filters: filters.value
+  }
+
   service
     .getConcurrent(endpoints)
     .then(function (response) {
@@ -56,13 +74,144 @@ onMounted(() => {
       technology.value = response[1].data
       species.value = response[2].data
       region.value = response[3].data
-      sampleResultsTable.value = response[4].data
-      genes.value = response[5].data
+      // sampleResultsTable.value = response[4].data
+      genes.value = response[4].data
+      // genes.value = response[5].data
+      totalRecords.value = response[5].data[0] // ??????
+      console.log(totalRecords.value)
+      loadLazyData()
     })
     .catch((error) => {
       console.log(error)
     })
 })
+
+const loadLazyData = () => {
+  loading.value = true
+  // productTable.value = sampleResultsTable.value.slice(
+  //   lazyParams.value.first,
+  //   lazyParams.value.first + lazyParams.value.rows
+  // )
+  // loading.value = false
+
+  // construct query by checking if variables are defined
+  // only for quick prototyping
+  let endpoint = 'euf?_start=' + lazyParams.value.first + '&_limit=' + lazyParams.value.rows
+  if (!(selectedModification.value === undefined)) {
+    const selected = JSON.parse(JSON.stringify(selectedModification.value))
+    var dataArray = Object.keys(selected)
+    let i = 0
+    while (i < dataArray.length) {
+      // console.log(dataArray[i])
+      const name = '&name=' + dataArray[i]
+      endpoint += name
+      // console.log('>>>', endpoint)
+      i++
+    }
+  }
+  // endpoint = endpoint + '&name=' + selectedModification.value
+  if (!(selectedTechnology.value === undefined)) {
+    const selected = JSON.parse(JSON.stringify(selectedTechnology.value))
+    var dataArray = Object.keys(selected)
+    let i = 0
+    while (i < dataArray.length) {
+      // console.log(dataArray[i])
+      const name = '&technology=' + dataArray[i]
+      endpoint += name
+      // console.log('>>>', endpoint)
+      i++
+    }
+  }
+  if (!(selectedSpecies.value === undefined)) {
+    const selected = JSON.parse(JSON.stringify(selectedSpecies.value))
+    var dataArray = Object.keys(selected)
+    let i = 0
+    while (i < dataArray.length) {
+      // console.log(dataArray[i])
+      const name = '&cto=' + dataArray[i]
+      endpoint += name
+      // console.log('>>>', endpoint)
+      i++
+    }
+  }
+
+  if (!(selectedRegion.value === undefined)) {
+    const selected = JSON.parse(JSON.stringify(selectedRegion.value))
+    var dataArray = Object.keys(selected)
+    let i = 0
+    while (i < dataArray.length) {
+      // console.log(dataArray[i])
+      const name = '&' + dataArray[i] + '=true'
+      endpoint += name
+      // console.log('>>>', endpoint)
+      i++
+    }
+  }
+
+  if (!(selectedGenes.value === undefined)) {
+    // console.log(selectedGenes.value)
+    const selected = JSON.parse(JSON.stringify(selectedGenes.value))
+    // console.log(selected)
+    // var dataArray = Object.keys(selected)
+    let i = 0
+    while (i < selected.length) {
+      // console.log('>>', selected[i].gene)
+      const name = '&gene=' + selected[i].gene
+      endpoint += name
+      // console.log('>>>', endpoint)
+      i++
+    }
+  }
+
+  service
+    .getEndpoint(endpoint)
+    .then(function (response) {
+      productTable.value = response.data
+      // console.log(response.headers["x-total-count"])
+      // totalRecords.value = response.data.totalRecords
+      totalRecords.value = parseInt(response.headers["x-total-count"])
+    })
+    .catch((error) => {
+      console.log(error)
+    })
+  loading.value = false
+
+  // if (!(selectedModification.value === undefined)) {
+  //   console.log(selectedModification.value)
+  // }
+
+}
+
+const onPage = (event) => {
+  lazyParams.value = event
+  loadLazyData()
+}
+
+const updateMod = () => {
+  selectedTechnology.value = undefined
+  selectedSpecies.value = undefined
+  selectedRegion.value = undefined
+  loadLazyData()
+}
+
+const updateTech = () => {
+  selectedSpecies.value = undefined
+  selectedRegion.value = undefined
+  loadLazyData()
+}
+
+const updateSpec = () => {
+  selectedRegion.value = undefined
+  loadLazyData()
+}
+
+const updateReg = () => {
+  loadLazyData()
+}
+
+const updateGene = () => {
+  loadLazyData()
+}
 
 const searchGenes = (event) => {
   setTimeout(() => {
@@ -70,7 +219,7 @@ const searchGenes = (event) => {
       suggestedGenes.value = [...genes];
     } else {
       suggestedGenes.value = genes.value.filter((gene) => {
-        return gene.name.toLowerCase().startsWith(event.query.toLowerCase());
+        return gene.gene.toLowerCase().startsWith(event.query.toLowerCase());
       });
     }
   }, 250);
@@ -97,6 +246,7 @@ const searchGenes = (event) => {
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div>
           <TreeSelect
+            @change="updateMod()"
             v-model="selectedModification"
             :options="modification"
             selectionMode="multiple"
@@ -107,6 +257,7 @@ const searchGenes = (event) => {
         </div>
         <div>
           <TreeSelect
+            @change="updateTech()"
             v-model="selectedTechnology"
             :options="technology"
             selectionMode="multiple"
@@ -117,6 +268,7 @@ const searchGenes = (event) => {
         </div>
         <div>
           <TreeSelect
+            @change="updateSpec()"
             v-model="selectedSpecies"
             :options="species"
             selectionMode="multiple"
@@ -131,6 +283,7 @@ const searchGenes = (event) => {
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div>
           <TreeSelect
+            @change="updateReg()"
             v-model="selectedRegion"
             :options="region"
             selectionMode="multiple"
@@ -141,8 +294,9 @@ const searchGenes = (event) => {
         </div>
         <div>
           <AutoComplete
+            @change="updateGene()"
             v-model="selectedGenes"
-            optionLabel="name"
+            optionLabel="gene"
             multiple
             :suggestions="suggestedGenes"
             @complete="searchGenes"
@@ -169,40 +323,21 @@ const searchGenes = (event) => {
       </div>
     </SectionLayout>
 
-    <SectionLayout>
-      <ul>
-        <li v-for="check in Object.keys(selectedModification || {})">
-          {{check}}
-        </li>
-      </ul>
-    <p>SELECTED MODS:{{ selectedModification }}</p>
-    <ul>
-      <li v-for="check in Object.keys(selectedTechnology || {})">
-        {{check}}
-      </li>
-    </ul>
-    <p>SELECTED TECHS:{{ selectedTechnology }}</p>
-    <!-- <ul>
-         <li v-for="check in technology.keys(selectedTechnology || {})">
-         {{ check }}
-         </li>
-         </ul> -->
-    <p>SELECTED SPECIES:{{ selectedSpecies }}</p>
-    <p>SELECTED REGIONS:{{ selectedRegion }}</p>
-    </SectionLayout>
-
     <!-- results table -->
     <SectionLayout>
       <div class="card">
         <DataTable
-          :value="sampleResultsTable"
+          :value="productTable"
+          lazy paginator
+          :rows="10"
+          :totalRecords="totalRecords"
+          :loading="loading"
+          @page="onPage($event)"
           ref="dt"
           stripedRows
           removableSort
           sortMode="multiple"
-          :multiSortMeta="[{field: 'chrom', order: 1}, {field: 'start', order: 1}]"
-          paginator
-          :rows="5"
+          :multiSortMeta="[{field: 'chrom', order: 1}, {field: 'chromStart', order: 1}]"
           tableStyle="min-width: 50rem">
           <template #header>
             <div style="text-align:left">
@@ -220,8 +355,8 @@ const searchGenes = (event) => {
             </div>
           </template>
           <Column field="chrom" header="Chrom" sortable exportHeader="Chromosome" style="width: 20%"></Column>
-          <Column field="start" header="Start" sortable style="width: 20%"></Column>
-          <Column field="end" header="End" sortable style="width: 20%"></Column>
+          <Column field="chromStart" header="Start" sortable style="width: 20%"></Column>
+          <Column field="chromEnd" header="End" sortable style="width: 20%"></Column>
           <Column field="name" header="Name" style="width: 20%"></Column>
           <Column field="score" header="Score" sortable style="width: 20%"></Column>
           <Column field="strand" header="Strand" style="width: 20%"></Column>

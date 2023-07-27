@@ -6,7 +6,8 @@
 *.egg-info
 .coverage
 cover/*
-local/*
+local/
+scimodom/client/jsons/
 data/
 .idea/
 __pycache__/
