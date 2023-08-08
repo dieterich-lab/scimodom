@@ -1,5 +1,11 @@
 
-from .database import Base
+from pathlib import Path
+import sys
+path_root = Path(__file__).parents[2]
+sys.path.append(str(path_root))
+
+#from .database import Base
+from database import Base
 
 from datetime import datetime
 
@@ -8,6 +14,9 @@ from typing import List, Optional
 from sqlalchemy import String, Text, DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+#from sqlalchemy.orm import DeclarativeBase
+#class Base(DeclarativeBase):
+    #pass
 
 class Modomics(Base):
     '''
@@ -15,7 +24,7 @@ class Modomics(Base):
     '''
     __tablename__ = "modomics"
     
-    id: Mapped[str] = mapped_column(primary_key=True) # MODOMICS code
+    id: Mapped[str] = mapped_column(String(128), primary_key=True) # MODOMICS code
     name: Mapped[str] = mapped_column(String(255), nullable=False) # NVARCHAR ?
     short_name: Mapped[str] = mapped_column(String(32), nullable=False) # NVARCHAR ?
     moiety: Mapped[str] = mapped_column(String(32), nullable=False)
