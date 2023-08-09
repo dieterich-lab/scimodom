@@ -1,0 +1,124 @@
+Using pip 23.2.1 from /home/eboileau/.venv/scimodom-server/lib/python3.9/site-packages/pip (python 3.9)
+Obtaining file:///home/eboileau/prj/RMapDFGTRR319/repositories/scimodom/server
+  Installing build dependencies: started
+  Running command pip subprocess to install build dependencies
+  Collecting setuptools>=61.0
+    Obtaining dependency information for setuptools>=61.0 from https://files.pythonhosted.org/packages/c7/42/be1c7bbdd83e1bfb160c94b9cafd8e25efc7400346cf7ccdbdb452c467fa/setuptools-68.0.0-py3-none-any.whl.metadata
+    Using cached setuptools-68.0.0-py3-none-any.whl.metadata (6.4 kB)
+  Collecting wheel
+    Obtaining dependency information for wheel from https://files.pythonhosted.org/packages/28/f5/6955d7b3a5d71ce6bac104f9cf98c1b0513ad656cdaca8ea7d579196f771/wheel-0.41.1-py3-none-any.whl.metadata
+    Using cached wheel-0.41.1-py3-none-any.whl.metadata (2.2 kB)
+  Using cached setuptools-68.0.0-py3-none-any.whl (804 kB)
+  Using cached wheel-0.41.1-py3-none-any.whl (64 kB)
+  Installing collected packages: wheel, setuptools
+  Successfully installed setuptools-68.0.0 wheel-0.41.1
+  Installing build dependencies: finished with status 'done'
+  Checking if build backend supports build_editable: started
+  Running command Checking if build backend supports build_editable
+  Checking if build backend supports build_editable: finished with status 'done'
+  Getting requirements to build editable: started
+  Running command Getting requirements to build editable
+  /tmp/pip-build-env-xtidawl5/overlay/lib/python3.9/site-packages/setuptools/config/pyprojecttoml.py:66: _BetaConfiguration: Support for `[tool.setuptools]` in `pyproject.toml` is still *beta*.
+    config = read_configuration(filepath, True, ignore_option_errors, dist)
+  running egg_info
+  creating src/scimodom.egg-info
+  writing src/scimodom.egg-info/PKG-INFO
+  writing dependency_links to src/scimodom.egg-info/dependency_links.txt
+  writing entry points to src/scimodom.egg-info/entry_points.txt
+  writing requirements to src/scimodom.egg-info/requires.txt
+  writing top-level names to src/scimodom.egg-info/top_level.txt
+  writing manifest file 'src/scimodom.egg-info/SOURCES.txt'
+  reading manifest file 'src/scimodom.egg-info/SOURCES.txt'
+  reading manifest template 'MANIFEST.in'
+  writing manifest file 'src/scimodom.egg-info/SOURCES.txt'
+  Getting requirements to build editable: finished with status 'done'
+  Preparing editable metadata (pyproject.toml): started
+  Running command Preparing editable metadata (pyproject.toml)
+  /tmp/pip-build-env-xtidawl5/overlay/lib/python3.9/site-packages/setuptools/config/pyprojecttoml.py:66: _BetaConfiguration: Support for `[tool.setuptools]` in `pyproject.toml` is still *beta*.
+    config = read_configuration(filepath, True, ignore_option_errors, dist)
+  running dist_info
+  creating /tmp/pip-modern-metadata-5_1edez9/scimodom.egg-info
+  writing /tmp/pip-modern-metadata-5_1edez9/scimodom.egg-info/PKG-INFO
+  writing dependency_links to /tmp/pip-modern-metadata-5_1edez9/scimodom.egg-info/dependency_links.txt
+  writing entry points to /tmp/pip-modern-metadata-5_1edez9/scimodom.egg-info/entry_points.txt
+  writing requirements to /tmp/pip-modern-metadata-5_1edez9/scimodom.egg-info/requires.txt
+  writing top-level names to /tmp/pip-modern-metadata-5_1edez9/scimodom.egg-info/top_level.txt
+  writing manifest file '/tmp/pip-modern-metadata-5_1edez9/scimodom.egg-info/SOURCES.txt'
+  reading manifest file '/tmp/pip-modern-metadata-5_1edez9/scimodom.egg-info/SOURCES.txt'
+  reading manifest template 'MANIFEST.in'
+  writing manifest file '/tmp/pip-modern-metadata-5_1edez9/scimodom.egg-info/SOURCES.txt'
+  creating '/tmp/pip-modern-metadata-5_1edez9/scimodom-0.0.1.dist-info'
+  Preparing editable metadata (pyproject.toml): finished with status 'done'
+Requirement already satisfied: alembic in /home/eboileau/.venv/scimodom-server/lib/python3.9/site-packages (from scimodom==0.0.1) (1.11.1)
+Requirement already satisfied: Flask in /home/eboileau/.venv/scimodom-server/lib/python3.9/site-packages (from scimodom==0.0.1) (2.3.2)
+Requirement already satisfied: Flask-Cors in /home/eboileau/.venv/scimodom-server/lib/python3.9/site-packages (from scimodom==0.0.1) (4.0.0)
+Requirement already satisfied: mysqlclient in /home/eboileau/.venv/scimodom-server/lib/python3.9/site-packages (from scimodom==0.0.1) (2.2.0)
+Requirement already satisfied: SQLAlchemy in /home/eboileau/.venv/scimodom-server/lib/python3.9/site-packages (from scimodom==0.0.1) (2.0.19)
+Requirement already satisfied: pandas in /home/eboileau/.venv/scimodom-server/lib/python3.9/site-packages (from scimodom==0.0.1) (2.0.3)
+Requirement already satisfied: Mako in /home/eboileau/.venv/scimodom-server/lib/python3.9/site-packages (from alembic->scimodom==0.0.1) (1.2.4)
+Requirement already satisfied: typing-extensions>=4 in /home/eboileau/.venv/scimodom-server/lib/python3.9/site-packages (from alembic->scimodom==0.0.1) (4.7.1)
+Requirement already satisfied: greenlet!=0.4.17 in /home/eboileau/.venv/scimodom-server/lib/python3.9/site-packages (from SQLAlchemy->scimodom==0.0.1) (2.0.2)
+Requirement already satisfied: Werkzeug>=2.3.3 in /home/eboileau/.venv/scimodom-server/lib/python3.9/site-packages (from Flask->scimodom==0.0.1) (2.3.6)
+Requirement already satisfied: Jinja2>=3.1.2 in /home/eboileau/.venv/scimodom-server/lib/python3.9/site-packages (from Flask->scimodom==0.0.1) (3.1.2)
+Requirement already satisfied: itsdangerous>=2.1.2 in /home/eboileau/.venv/scimodom-server/lib/python3.9/site-packages (from Flask->scimodom==0.0.1) (2.1.2)
+Requirement already satisfied: click>=8.1.3 in /home/eboileau/.venv/scimodom-server/lib/python3.9/site-packages (from Flask->scimodom==0.0.1) (8.1.6)
+Requirement already satisfied: blinker>=1.6.2 in /home/eboileau/.venv/scimodom-server/lib/python3.9/site-packages (from Flask->scimodom==0.0.1) (1.6.2)
+Requirement already satisfied: importlib-metadata>=3.6.0 in /home/eboileau/.venv/scimodom-server/lib/python3.9/site-packages (from Flask->scimodom==0.0.1) (6.8.0)
+Requirement already satisfied: python-dateutil>=2.8.2 in /home/eboileau/.venv/scimodom-server/lib/python3.9/site-packages (from pandas->scimodom==0.0.1) (2.8.2)
+Requirement already satisfied: pytz>=2020.1 in /home/eboileau/.venv/scimodom-server/lib/python3.9/site-packages (from pandas->scimodom==0.0.1) (2023.3)
+Requirement already satisfied: tzdata>=2022.1 in /home/eboileau/.venv/scimodom-server/lib/python3.9/site-packages (from pandas->scimodom==0.0.1) (2023.3)
+Requirement already satisfied: numpy>=1.20.3 in /home/eboileau/.venv/scimodom-server/lib/python3.9/site-packages (from pandas->scimodom==0.0.1) (1.25.2)
+Requirement already satisfied: zipp>=0.5 in /home/eboileau/.venv/scimodom-server/lib/python3.9/site-packages (from importlib-metadata>=3.6.0->Flask->scimodom==0.0.1) (3.16.2)
+Requirement already satisfied: MarkupSafe>=2.0 in /home/eboileau/.venv/scimodom-server/lib/python3.9/site-packages (from Jinja2>=3.1.2->Flask->scimodom==0.0.1) (2.1.3)
+Requirement already satisfied: six>=1.5 in /home/eboileau/.venv/scimodom-server/lib/python3.9/site-packages (from python-dateutil>=2.8.2->pandas->scimodom==0.0.1) (1.16.0)
+Building wheels for collected packages: scimodom
+  Building editable for scimodom (pyproject.toml): started
+  Running command Building editable for scimodom (pyproject.toml)
+  /tmp/pip-build-env-xtidawl5/overlay/lib/python3.9/site-packages/setuptools/config/pyprojecttoml.py:66: _BetaConfiguration: Support for `[tool.setuptools]` in `pyproject.toml` is still *beta*.
+    config = read_configuration(filepath, True, ignore_option_errors, dist)
+  running editable_wheel
+  creating /tmp/pip-wheel-luxqt0if/.tmp-t6wl9deg/scimodom.egg-info
+  writing /tmp/pip-wheel-luxqt0if/.tmp-t6wl9deg/scimodom.egg-info/PKG-INFO
+  writing dependency_links to /tmp/pip-wheel-luxqt0if/.tmp-t6wl9deg/scimodom.egg-info/dependency_links.txt
+  writing entry points to /tmp/pip-wheel-luxqt0if/.tmp-t6wl9deg/scimodom.egg-info/entry_points.txt
+  writing requirements to /tmp/pip-wheel-luxqt0if/.tmp-t6wl9deg/scimodom.egg-info/requires.txt
+  writing top-level names to /tmp/pip-wheel-luxqt0if/.tmp-t6wl9deg/scimodom.egg-info/top_level.txt
+  writing manifest file '/tmp/pip-wheel-luxqt0if/.tmp-t6wl9deg/scimodom.egg-info/SOURCES.txt'
+  reading manifest file '/tmp/pip-wheel-luxqt0if/.tmp-t6wl9deg/scimodom.egg-info/SOURCES.txt'
+  reading manifest template 'MANIFEST.in'
+  writing manifest file '/tmp/pip-wheel-luxqt0if/.tmp-t6wl9deg/scimodom.egg-info/SOURCES.txt'
+  creating '/tmp/pip-wheel-luxqt0if/.tmp-t6wl9deg/scimodom-0.0.1.dist-info'
+  creating /tmp/pip-wheel-luxqt0if/.tmp-t6wl9deg/scimodom-0.0.1.dist-info/WHEEL
+  running build_py
+  running egg_info
+  creating /tmp/tmpati5w8h_.build-temp/scimodom.egg-info
+  writing /tmp/tmpati5w8h_.build-temp/scimodom.egg-info/PKG-INFO
+  writing dependency_links to /tmp/tmpati5w8h_.build-temp/scimodom.egg-info/dependency_links.txt
+  writing entry points to /tmp/tmpati5w8h_.build-temp/scimodom.egg-info/entry_points.txt
+  writing requirements to /tmp/tmpati5w8h_.build-temp/scimodom.egg-info/requires.txt
+  writing top-level names to /tmp/tmpati5w8h_.build-temp/scimodom.egg-info/top_level.txt
+  writing manifest file '/tmp/tmpati5w8h_.build-temp/scimodom.egg-info/SOURCES.txt'
+  reading manifest file '/tmp/tmpati5w8h_.build-temp/scimodom.egg-info/SOURCES.txt'
+  reading manifest template 'MANIFEST.in'
+  writing manifest file '/tmp/tmpati5w8h_.build-temp/scimodom.egg-info/SOURCES.txt'
+
+          Editable install will be performed using .pth file to extend `sys.path` with:
+          ['src']
+
+  Options like `package-data`, `include/exclude-package-data` or
+  `packages.find.exclude/include` may have no effect.
+
+  adding '__editable__.scimodom-0.0.1.pth'
+  creating '/tmp/pip-wheel-luxqt0if/.tmp-t6wl9deg/scimodom-0.0.1-0.editable-py3-none-any.whl' and adding '/tmp/tmpu0vjnwitscimodom-0.0.1-0.editable-py3-none-any.whl' to it
+  adding 'scimodom-0.0.1.dist-info/METADATA'
+  adding 'scimodom-0.0.1.dist-info/WHEEL'
+  adding 'scimodom-0.0.1.dist-info/entry_points.txt'
+  adding 'scimodom-0.0.1.dist-info/top_level.txt'
+  adding 'scimodom-0.0.1.dist-info/RECORD'
+  Building editable for scimodom (pyproject.toml): finished with status 'done'
+  Created wheel for scimodom: filename=scimodom-0.0.1-0.editable-py3-none-any.whl size=2310 sha256=64f6b0bc7b117b21a9f71424d78ffa1aefdb62d3c7b9f4923dba34aed53e0658
+  Stored in directory: /tmp/pip-ephem-wheel-cache-nb_tg29h/wheels/68/30/34/1e4ad13730bd7406acaec3d6306566646ac1faf4d8ea7dd5ee
+Successfully built scimodom
+Installing collected packages: scimodom
+  changing mode of /home/eboileau/.venv/scimodom-server/bin/upsert to 755
+Successfully installed scimodom-0.0.1
