@@ -22,7 +22,7 @@ def create_app():
 
     # app.config.from_object(config[config_mode])
     app.session = scoped_session(Session)
-    init()
+    init(lambda: app.session)
     
     # does this goes here?
     @app.teardown_appcontext

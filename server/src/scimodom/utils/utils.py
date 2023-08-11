@@ -3,6 +3,7 @@ import sys
 import logging
 logger = logging.getLogger(__name__)
 
+
 # logging_utils
 
 def add_log_opts(parser, logf=""):
@@ -24,7 +25,7 @@ def add_log_opts(parser, logf=""):
 
     logging_levels = ['NOTSET', 'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
     
-    logging_options = parser.add_argument_group("Logging")
+    logging_options = parser.add_argument_group("logging options")
 
     logging_options.add_argument('--log-file', help="Log file.", default=logf)
     logging_options.add_argument('--log-stdout', help="""Log to stdout in addition
@@ -85,4 +86,94 @@ def update_logging(args,
         formatter = logging.Formatter(format_str)
         h.setFormatter(formatter)
         logger.addHandler(h)
+
+
+# various helper functions
+# NOTE: location of these may change, e.g. to service.utils
+
+def check_keys_exist(d, keys):
+    """
+    Check if keys are present in the dictionary, w/o
+    type, value, etc. validation.
+   
+    Parameters
+    ----------
+    d (dict)
+        A dictionary.
+    keys (list)
+        A list of keys to check.
+        
+    Returns
+    -------
+    list of keys that are not found
+
+    Raises
+    ------
+    KeyError
+    """
+    
+    missing_keys = [k for k in keys if k not in d]
+
+    if len(missing_keys) > 0:
+        missing_keys = " ".join(missing_keys)
+        msg = f"Keys not found: {missing_keys}."
+        raise KeyError(msg)
+
+    return missing_keys
+
+
+def get_model(model):
+    """
+    Get model class by name.
+    
+    Parameters
+    ----------
+    model
+        Name of class.
+    
+    Returns
+    -------
+    Class
+        The model class.
+    """
+    
+    import inspect
+    import scimodom.database.models as models
+    
+    try:
+        return {
+            name: cls for name, cls in inspect.getmembers(models, inspect.isclass)
+            if cls.__module__ == models.__name__
+        }[model]
+    except:
+        msg = f"Model undefined: {model}."
+        raise KeyError(msg)
+    
+
+def get_table_columns(model, remove=[]):
+    """
+    Get columns from model table, optionally
+    removing a subset of them. 
+    
+    Parameters
+    ----------
+    model
+        Name of class.
+    remove
+        List of column names
+        
+    Returns
+    -------
+    List of columns.
+    """
+    
+    Model = get_model(model)
+    return [column.key for column in Model.__table__.columns if not column.key in remove]
+    
+    
+
+def to_list(i):
+    # converts string, list, set, and None to list
+    # does not unpack tuple or dict
+    return i if isinstance(i, list) else list(i) if isinstance(i, set) else [] if i is None else [i]
 

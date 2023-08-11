@@ -11,37 +11,22 @@ import logging
 
 import pandas as pd
 
+
+#????
 import scimodom.database.models as models
+
+
+
 from scimodom.database.database import Session, init
 
 import scimodom.utils.utils as utils
 
-import inspect
+
 
 from sqlalchemy.dialects.mysql import insert
 
 logger = logging.getLogger(__name__)
 
-
-def get_model(model):
-    """
-    Get model class by name.
-    
-    Parameters
-    ----------
-    model
-        Name of class.
-    
-    Returns
-    -------
-    Class
-        The model class.
-    """
-    
-    return {
-        name: cls for name, cls in inspect.getmembers(models, inspect.isclass)
-        if cls.__module__ == models.__name__
-    }[model]
 
 
 def confirm(msg):
@@ -85,15 +70,13 @@ def main():
     utils.update_logging(args)
     
     # init DB
-    init()
+    init(lambda: Session)
     
     if args.model:
-        try:
-            model = get_model(args.model)
-        except:
-            msg = f"Undefined --model {args.model}. Terminating!"
-            logger.error(msg)
-            return
+        
+        # qactually wdon't need model just cols, since below this goes in db...
+        model = utils.get_model(args.model)
+
         cols = set([column.key for column in model.__table__.columns])
         table = pd.read_csv(args.table)
         table = table.loc[:, table.columns.isin(cols)]

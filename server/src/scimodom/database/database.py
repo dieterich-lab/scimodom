@@ -2,6 +2,9 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 
+_session = None
+
+
 # hard coded here now - TODO: config
 DATABASE = "mysql+mysqldb://eboileau:@localhost/scimodom"
 
@@ -13,14 +16,23 @@ Session = sessionmaker(autocommit=False,
                        autoflush=False,
                        bind=engine)
 
-# from sqlalchemy.orm import scoped_session
-# in app import Session, then define app.session = scoped_session(Session)
 
 
 class Base(DeclarativeBase):
     pass
 
-def init():
+
+def get_session():
+    if _session is None:
+        raise Exception("Session not initialized!")
+    else:
+        return _session()
+    
+    
+def init(session):
+    
+    global _session
+    _session = session
     
     import scimodom.database.models
     Base.metadata.create_all(engine)

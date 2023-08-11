@@ -139,10 +139,21 @@ class Project(Base):
     contact_email: Mapped[str] = mapped_column(String(320), nullable=False)
     date_published: Mapped[datetime] = mapped_column(DateTime, nullable=False) # datetime declaration/default format ?  YYYY-MM-DD ISO 8601
     date_added: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    
+    inst_project_source: Mapped["ProjectSource"] = relationship(back_populates="projects")
+    
+    datasets: Mapped[List["Dataset"]] = relationship(back_populates="inst_project")
+    
+    
+class ProjectSource(Base):
+    __tablename__ = "project_source"
+    
+    id: Mapped[int] = mapped_column(primary_key=True) 
+    project_id: Mapped[int] = mapped_column(ForeignKey("project.id")) # SMID
     doi: Mapped[Optional[str]] = mapped_column(String(255), nullable=True) # NVARCHAR ?
     pmid: Mapped[Optional[int]] = mapped_column(nullable=True)
     
-    datasets: Mapped[List["Dataset"]] = relationship(back_populates="inst_project")
+    projects: Mapped[List["Project"]] = relationship(back_populates="inst_project_source")
     
 # bedRMod metadata - redundant taxid, assembly at upload, lifted is None (==assembly) or final assembly
 # for RNA type/mod, technology, and tissue/cell/organ, use an association table/model
