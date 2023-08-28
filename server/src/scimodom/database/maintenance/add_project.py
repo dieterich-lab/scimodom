@@ -7,7 +7,7 @@ import logging
 
 #from scimodom.database.models import Project, ProjectSource
 
-from scimodom.database.database import Session, init
+from scimodom.database.database import engine, Session, init
 
 import scimodom.utils.utils as utils
 
@@ -37,7 +37,7 @@ def main():
     utils.update_logging(args)
     
     # init DB
-    init(lambda: Session)
+    init(engine, lambda: Session)
     # load project metadata
     project = json.load(open(args.project))
     

@@ -2,7 +2,9 @@
 
 import scimodom.utils.utils as utils
 
-from scimodom.database.models import Project, ProjectSource
+from scimodom.database.models import Project, ProjectSource, Modification, DetectionTechnology, Organism, Selection, Assembly
+
+import scimodom.database.queries as queries
 
 from sqlalchemy import select, func
 
@@ -17,7 +19,6 @@ class DuplicateProjectError(Exception):
 
 class ProjectService:
     
-    # >>> ProjectService(get_session(), project) 
     def __init__(self, session, project):
         self._session = session
         self._project = project
@@ -32,20 +33,19 @@ class ProjectService:
         utils.check_keys_exist(self._project.keys(), cols)
     
         if self._project["external_sources"] is not None:
-            keys = list(set(chain.from_iterable(utils.to_list(self._project["external_sources"]))))
             cols = utils.get_table_columns("ProjectSource", ["id", "project_id"])
-            utils.check_keys_exist(keys, cols)
+            for d in utils.to_list(self._project["external_sources"]):
+                utils.check_keys_exist(d.keys(), cols)
             
-        keys = list(set(chain.from_iterable(utils.to_list(self._project["metadata"]))))
-        cols = utils.get_table_columns("Modification", remove=["id"])
-        cols.extend(utils.get_table_columns("DetectionTechnology", remove=["id"]))
-        utils.check_keys_exist(keys, cols)
-        
-        keys = utils.to_list(self._project["metadata"])[0]["organism"].keys()
-        cols = utils.get_table_columns("Organism", remove=["id"])
-        cols.append("assembly")
-        utils.check_keys_exist(keys, cols)
-             
+        m_cols = utils.get_table_columns("Modification", remove=["id"])
+        m_cols.extend(utils.get_table_columns("DetectionTechnology", remove=["id"]))
+        m_cols.append("organism")
+        o_cols = utils.get_table_columns("Organism", remove=["id"])
+        o_cols.append("assembly")
+        for d in utils.to_list(self._project["metadata"]):
+            utils.check_keys_exist(d.keys(), m_cols)
+            utils.check_keys_exist(d["organism"].keys(), o_cols) 
+    
     
     def _get_prj_src(self):
     
@@ -54,19 +54,22 @@ class ProjectService:
         ors = or_(False)
         ands = and_(True)
         
-        for s in utils.to_list(self._project["external_sources"]):
-            doi = s["doi"]
-            pmid = s["pmid"]
-            if doi is None:
-                if pmid is not None:
-                    ands = and_(ProjectSource.doi.is_(None), ProjectSource.pmid.in_([pmid]))
+        if self._project["external_sources"] is not None:
+            for s in utils.to_list(self._project["external_sources"]):
+                doi = s["doi"]
+                pmid = s["pmid"]
+                if doi is None:
+                    if pmid is not None:
+                        ands = and_(ProjectSource.doi.is_(None), ProjectSource.pmid.in_([pmid]))
+                    #else:
+                        #ands = and_(ProjectSource.doi.is_(None), ProjectSource.pmid.is_(None))
+                elif pmid is None:
+                    ands = and_(ProjectSource.doi.in_([doi]), ProjectSource.pmid.is_(None))
                 else:
-                    ands = and_(ProjectSource.doi.is_(None), ProjectSource.pmid.is_(None))
-            elif pmid is None:
-                ands = and_(ProjectSource.doi.in_([doi]), ProjectSource.pmid.is_(None))
-            else:
-                ands = tuple_(ProjectSource.doi, ProjectSource.pmid).in_([tuple([doi, pmid])])
-            ors = or_(ors, ands)
+                    ands = tuple_(ProjectSource.doi, ProjectSource.pmid).in_([tuple([doi, pmid])])
+                ors = or_(ors, ands)
+        else:
+            ors = ands # if no sources
         return ors
 
 
@@ -84,18 +87,80 @@ class ProjectService:
         if smid:
             msg = f"A similar record with SMID = {smid} already exists. " \
                   f"Query based on a combination of title = {self._project['title']}, " \
-                  f"and published sources (DOI = {self._project['doi']}, " \
-                  f"PMID = {self._project['pmid']}), where available. Aborting transaction!"
+                  f"and published sources, where available. Aborting transaction!"
             raise DuplicateProjectError(msg)
-        
     
+    
+    def _add_selection(self):
+        
+        # no upsert, add only if 
+        # on_conflict_do_nothing?
+        
+        for d in utils.to_list(self._project["metadata"]):
+            # modification
+            rna = d["rna"]
+            modomics_id = d["modomics_id"]
+            query = queries.modification(rna, modomics_id)
+            modification_id = self._session.execute(query).scalar()
+            if not modification_id:
+                modification = Modification(rna=rna, modomics_id=modomics_id)
+                self._session.add(modification)
+                self._session.commit()
+                modification_id = modification.id
+
+            # technology
+            tech = d["tech"]
+            method_id = d["method_id"]
+            query = queries.technology(tech, method_id)
+            technology_id = self._session.execute(query).scalar()
+            if not technology_id:
+                technology = DetectionTechnology(tech=tech, method_id=method_id)
+                self._session.add(technology)
+                self._session.commit()
+                technology_id = technology.id
+                
+            # organism
+            d_organism = d["organism"]
+            cto = d_organism["cto"]
+            taxa_id = d_organism["taxa_id"]
+            query = queries.organism(cto, taxa_id)
+            organism_id = self._session.execute(query).scalar()
+            if not organism_id:
+                organism = Organism(cto=cto, taxa_id=taxa_id)
+                self._session.add(organism)
+                self._session.commit()
+                organism_id = organism.id
+                
+            # assembly
+            # TODO: query DB assembly version for organism
+            # TODO: liftover (nothing to do here, unless download files, etc. ready for upload)
+            name = d_organism["assembly"]
+            query = queries.assembly(name, taxa_id)
+            assembly_id = self._session.execute(query).scalar()
+            if not assembly_id:
+                assembly = Assembly(name=name, taxa_id=taxa_id)
+                self._session.add(assembly)
+                self._session.commit()
+
+            # selection
+            query = queries.selection(modification_id, technology_id, organism_id)
+            selection_id = self._session.execute(query).scalar()
+            if not selection_id:
+                selection = Selection(modification_id=modification_id, 
+                                      technology_id=technology_id,
+                                      organism_id=organism_id)
+                self._session.add(selection)
+                self._session.commit()
+                selection_id = selection.id
+
+            
     def _create_smid(self):
         
         import uuid
         import shortuuid
         
         from datetime import datetime, timezone
-        
+
         SMID_LENGTH = 8
         
         query = select(Project.id)
@@ -106,27 +171,38 @@ class ProjectService:
         while smid in smids:
             smid = shortuuid.encode(u)[:SMID_LENGTH]
         
-        stamp = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+        stamp = datetime.now(timezone.utc).replace(microsecond=0)#.isoformat()
         
-        return smid, stamp
+        project = Project(
+            id=smid,
+            title=self._project["title"],
+            summary=self._project["summary"],
+            contact_name=self._project["contact_name"],
+            contact_institution=self._project["contact_institution"],
+            contact_email=self._project["contact_email"],
+            date_published=datetime.fromisoformat(self._project["date_published"]),
+            date_added=stamp
+        )
+        
+        sources = [project]
+        for s in utils.to_list(self._project["external_sources"]):
+            print(f"SERVICE DOI={s['doi']}, PMID={s['pmid']}")
+            source = ProjectSource(
+                project_id=smid,
+                doi=s["doi"],
+                pmid=s["pmid"]
+            )
+            sources.append(source)
+        
+        self._session.add_all(sources)
+        self._session.commit()
+            
     
-        
     def create_project(self):
         
         self._validate_keys()
         self._validate_entry()
-            
-        smid, stamp = self._create_smid()
-        # stamp is string ?
-        print(f"{smid}, {stamp}")
+        self._add_selection()
+        self._create_smid()
         
-        # add missing selection to DB
-
-
-        # add project to DB
-            
-        # testing: keys combination
-        # testing: add new project, add existing project, external_sources, metadata combination
-        # testing: add missing selection or not ?
-
-        # what to do with assembly?
+        

@@ -131,7 +131,7 @@ class Selection(Base):
 class Project(Base):
     __tablename__ = "project"
     
-    id: Mapped[int] = mapped_column(primary_key=True) # SMID - NOT INCREMENT, BUT WHAT?
+    id: Mapped[str] = mapped_column(primary_key=True) # SMID - NOT INCREMENT, BUT WHAT?
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     summary: Mapped[str] = mapped_column(Text) # TEXT ?
     contact_name: Mapped[str] = mapped_column(String(128), nullable=False)
@@ -149,7 +149,7 @@ class ProjectSource(Base):
     __tablename__ = "project_source"
     
     id: Mapped[int] = mapped_column(primary_key=True) 
-    project_id: Mapped[int] = mapped_column(ForeignKey("project.id")) # SMID
+    project_id: Mapped[str] = mapped_column(ForeignKey("project.id")) # SMID
     doi: Mapped[Optional[str]] = mapped_column(String(255), nullable=True) # NVARCHAR ?
     pmid: Mapped[Optional[int]] = mapped_column(nullable=True)
     
@@ -163,7 +163,7 @@ class Dataset(Base):
     __tablename__ = "dataset"
     
     id: Mapped[int] = mapped_column(primary_key=True) # EUFID
-    project_id: Mapped[int] = mapped_column(ForeignKey("project.id")) # SMID
+    project_id: Mapped[str] = mapped_column(ForeignKey("project.id")) # SMID
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     # header information - bedRMod
     # read from header or selected from dropdown options (SMID/project, RNA type/mod, technology, organism/cto, assembly)
