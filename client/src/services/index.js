@@ -5,8 +5,8 @@ const HTTP = axios.create({
   withCredentials: false,
   headers: {
     Accept: 'application/json',
-    'Content-Type': 'application/json',
-  },
+    'Content-Type': 'application/json'
+  }
 })
 
 export default {
@@ -15,5 +15,5 @@ export default {
   },
   getEndpoint(endpoint) {
     return HTTP.get(endpoint)
-  },
+  }
 }

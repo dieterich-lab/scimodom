@@ -2,8 +2,8 @@
 defineProps({
   icon: {
     type: String,
-    required: true,
-  },
+    required: true
+  }
 })
 </script>
 
@@ -16,6 +16,6 @@ defineProps({
 
 <style scoped>
 .button-icon {
-  @apply focus:ring-4 focus:outline-none font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center mr-2
+  @apply focus:ring-4 focus:outline-none font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center mr-2;
 }
 </style>

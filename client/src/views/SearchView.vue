@@ -22,30 +22,30 @@ const sampleResultsTable = ref()
 const productTable = ref()
 
 const loading = ref(false)
-const totalRecords = ref(0) 
+const totalRecords = ref(0)
 const lazyParams = ref({})
 
 console.log(selectedModification.value)
 
 const chroms = [
-  {name: 'chr1', id: 1, size: 200709},
-  {name: 'chr2', id: 2, size: 300500},
-  {name: 'chr3', id: 3, size: 400000},
-  {name: 'chr4', id: 4, size: 546987}
+  { name: 'chr1', id: 1, size: 200709 },
+  { name: 'chr2', id: 2, size: 300500 },
+  { name: 'chr3', id: 3, size: 400000 },
+  { name: 'chr4', id: 4, size: 546987 }
 ]
 const selectedChrom = ref(chroms[0])
 const rangeChrom = ref([1, selectedChrom.size])
 
 const columns = ref([
-  {field: 'gene', header: 'Gene'},
+  { field: 'gene', header: 'Gene' },
   // {field: 'gene_id', header: 'Gene ID'},
-  {field: 'technology', header: 'Technology'},
+  { field: 'technology', header: 'Technology' },
   // {field: 'organism', header: 'Organism'},
-  {field: 'cto', header: 'Cell/Tissue'}
+  { field: 'cto', header: 'Cell/Tissue' }
 ])
 const selectedColumns = ref(columns.value)
 const onToggle = (val) => {
-  selectedColumns.value = columns.value.filter(col => val.includes(col));
+  selectedColumns.value = columns.value.filter((col) => val.includes(col))
 }
 
 const dt = ref()
@@ -61,7 +61,7 @@ onMounted(() => {
 
   lazyParams.value = {
     first: 0,
-    rows: dt.value.rows,
+    rows: dt.value.rows
     // sortField: null,
     // sortOrder: null,
     // filters: filters.value
@@ -169,7 +169,7 @@ const loadLazyData = () => {
       productTable.value = response.data
       // console.log(response.headers["x-total-count"])
       // totalRecords.value = response.data.totalRecords
-      totalRecords.value = parseInt(response.headers["x-total-count"])
+      totalRecords.value = parseInt(response.headers['x-total-count'])
     })
     .catch((error) => {
       console.log(error)
@@ -179,7 +179,6 @@ const loadLazyData = () => {
   // if (!(selectedModification.value === undefined)) {
   //   console.log(selectedModification.value)
   // }
-
 }
 
 const onPage = (event) => {
@@ -216,13 +215,13 @@ const updateGene = () => {
 const searchGenes = (event) => {
   setTimeout(() => {
     if (!event.query.trim().length) {
-      suggestedGenes.value = [...genes];
+      suggestedGenes.value = [...genes]
     } else {
       suggestedGenes.value = genes.value.filter((gene) => {
-        return gene.gene.toLowerCase().startsWith(event.query.toLowerCase());
-      });
+        return gene.gene.toLowerCase().startsWith(event.query.toLowerCase())
+      })
     }
-  }, 250);
+  }, 250)
 }
 </script>
 
@@ -328,7 +327,8 @@ const searchGenes = (event) => {
       <div class="card">
         <DataTable
           :value="productTable"
-          lazy paginator
+          lazy
+          paginator
           :rows="10"
           :totalRecords="totalRecords"
           :loading="loading"
@@ -337,10 +337,14 @@ const searchGenes = (event) => {
           stripedRows
           removableSort
           sortMode="multiple"
-          :multiSortMeta="[{field: 'chrom', order: 1}, {field: 'chromStart', order: 1}]"
-          tableStyle="min-width: 50rem">
+          :multiSortMeta="[
+            { field: 'chrom', order: 1 },
+            { field: 'chromStart', order: 1 }
+          ]"
+          tableStyle="min-width: 50rem"
+        >
           <template #header>
-            <div style="text-align:left">
+            <div style="text-align: left">
               <MultiSelect
                 :modelValue="selectedColumns"
                 :options="columns"
@@ -354,7 +358,13 @@ const searchGenes = (event) => {
               <Button icon="pi pi-external-link" label="Export" @click="exportCSV($event)" />
             </div>
           </template>
-          <Column field="chrom" header="Chrom" sortable exportHeader="Chromosome" style="width: 20%"></Column>
+          <Column
+            field="chrom"
+            header="Chrom"
+            sortable
+            exportHeader="Chromosome"
+            style="width: 20%"
+          ></Column>
           <Column field="chromStart" header="Start" sortable style="width: 20%"></Column>
           <Column field="chromEnd" header="End" sortable style="width: 20%"></Column>
           <Column field="name" header="Name" style="width: 20%"></Column>
@@ -362,12 +372,16 @@ const searchGenes = (event) => {
           <Column field="strand" header="Strand" style="width: 20%"></Column>
           <Column field="coverage" header="Coverage" sortable style="width: 20%"></Column>
           <Column field="frequency" header="Frequency" sortable style="width: 20%"></Column>
-          <Column v-for="(col, index) of selectedColumns" :field="col.field" :header="col.header" :key="col.field + '_' + index"></Column>
+          <Column
+            v-for="(col, index) of selectedColumns"
+            :field="col.field"
+            :header="col.header"
+            :key="col.field + '_' + index"
+          ></Column>
         </DataTable>
       </div>
     </SectionLayout>
   </DefaultLayout>
 </template>
 
-<style scoped>
-</style>
+<style scoped></style>

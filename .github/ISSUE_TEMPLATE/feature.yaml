@@ -10,8 +10,8 @@ body:
       label: Is this related to an existing bug, feature or PR request?
       description: If yes, please add a link to the issue/PR number in the next section.
       options:
-      - label: Is this related to an existing issue or PR?
-        required: true
+        - label: Is this related to an existing issue or PR?
+          required: true
   - type: textarea
     id: context
     attributes:
@@ -25,7 +25,6 @@ body:
     id: request
     attributes:
       label: A concise description of your feature request.
-      description: Describe a possible solution. Did you consider alternative solutions? 
+      description: Describe a possible solution. Did you consider alternative solutions?
     validations:
       required: true
-      

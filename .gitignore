@@ -18,13 +18,13 @@ tramp
 *.orig
 *.tmp
 
-# Swap 
+# Swap
 .*.kate-swp
 .swp.*
 
 # Swap - Vim
 [._]*.s[a-v][a-z]
-# !*.svg 
+# !*.svg
 [._]*.sw[a-p]
 [._]s[a-rt-v][a-z]
 [._]ss[a-gi-z]
@@ -39,5 +39,3 @@ Sessionx.vim
 # Projetc specific
 local/
 logs/
-
-

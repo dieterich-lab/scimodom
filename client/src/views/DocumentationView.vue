@@ -8,9 +8,7 @@
           Documentation
         </span>
       </h1>
-      <p class="text-lg font-normal text-gray-500 lg:text-xl">
-        How to...
-      </p>
+      <p class="text-lg font-normal text-gray-500 lg:text-xl">How to...</p>
       <Divider :pt="{ root: { class: 'bg-crmapgreen' } }" />
     </SectionLayout>
   </DefaultLayout>

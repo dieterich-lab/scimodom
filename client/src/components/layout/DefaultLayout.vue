@@ -10,9 +10,9 @@ defineProps({
 </script>
 
 <template>
- <div class="flex flex-col min-h-screen">
-   <HeaderLayout />
-   <slot></slot>
-   <FooterLayout v-show="footer" />
- </div>
+  <div class="flex flex-col min-h-screen">
+    <HeaderLayout />
+    <slot></slot>
+    <FooterLayout v-show="footer" />
+  </div>
 </template>

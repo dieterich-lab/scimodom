@@ -1,18 +1,16 @@
 import pytest
 
 import scimodom.utils.utils as utils
-            
-            
-def _get_project(external_sources_fmt="list", 
-                metadata_fmt="list",
-                missing_key=None):
-    '''\
+
+
+def _get_project(external_sources_fmt="list", metadata_fmt="list", missing_key=None):
+    """\
     2023-08-25 Project template (JSON format).
-    
-    All keys are required. 
+
+    All keys are required.
     "external_sources" can be None (null in yml).
     "external_sources" and "metadata" can be list of dict, or dict.
-    
+
     Parameters
     ----------
     external_sources_fmt: str or None
@@ -21,14 +19,14 @@ def _get_project(external_sources_fmt="list",
         "metadata" format (list or dict)
     missing_key: str or None
         missing_key
-        
+
     Returns
     -------
     dict
         Project template
-    '''
+    """
     from itertools import chain
-    
+
     project = dict()
     project["title"] = "Title"
     project["summary"] = "Summary"
@@ -37,14 +35,8 @@ def _get_project(external_sources_fmt="list",
     project["contact_email"] = "Contact Email"
     project["date_published"] = "2024-01-01"
     external_sources = [
-        {
-            "doi": "DOI1",
-            "pmid": None
-        },
-        {
-            "doi": "DOI2",
-            "pmid": 22222222
-        }
+        {"doi": "DOI1", "pmid": None},
+        {"doi": "DOI2", "pmid": 22222222},
     ]
     if external_sources_fmt == "list":
         pass
@@ -57,25 +49,25 @@ def _get_project(external_sources_fmt="list",
     metadata = [
         {
             "rna": "mRNA",
-            "modomics_id": "6A",    
+            "modomics_id": "6A",
             "tech": "Technology 1",
             "method_id": 1,
-            "organism": {"taxa_id": 9606, "cto": "Cell Type 1", "assembly": "GRCh38"}
+            "organism": {"taxa_id": 9606, "cto": "Cell Type 1", "assembly": "GRCh38"},
         },
         {
             "rna": "mRNA",
-            "modomics_id": "6A",    
+            "modomics_id": "6A",
             "tech": "Technology 1",
             "method_id": 1,
-            "organism": {"taxa_id": 9606, "cto": "Cell Type 2", "assembly": "GRCh38"}
+            "organism": {"taxa_id": 9606, "cto": "Cell Type 2", "assembly": "GRCh38"},
         },
         {
             "rna": "mRNA",
             "modomics_id": "5C",
             "tech": "Technology 2",
             "method_id": 1,
-            "organism": {"taxa_id": 9606, "cto": "Organ 1", "assembly": "GRCh38"}
-        }
+            "organism": {"taxa_id": 9606, "cto": "Organ 1", "assembly": "GRCh38"},
+        },
     ]
     if metadata_fmt == "list":
         pass
@@ -85,28 +77,36 @@ def _get_project(external_sources_fmt="list",
         raise ValueError
     project["external_sources"] = external_sources
     project["metadata"] = metadata
-        
+
     if missing_key:
         if missing_key in project.keys():
             del project[missing_key]
         else:
-            if not missing_key == "external_sources" and missing_key in list(set(chain.from_iterable(utils.to_list(project["external_sources"])))):
+            if not missing_key == "external_sources" and missing_key in list(
+                set(chain.from_iterable(utils.to_list(project["external_sources"])))
+            ):
                 if external_sources_fmt == "list":
                     del project["external_sources"][0][missing_key]
                 else:
                     del project["external_sources"][missing_key]
                 # what is None???
-            elif not missing_key == "metadata" and missing_key in list(set(chain.from_iterable(utils.to_list(project["metadata"])))):
+            elif not missing_key == "metadata" and missing_key in list(
+                set(chain.from_iterable(utils.to_list(project["metadata"])))
+            ):
                 if metadata_fmt == "list":
                     del project["metadata"][0][missing_key]
                 else:
                     del project["metadata"][missing_key]
-            elif not missing_key == "organism" and missing_key in utils.to_list(project["metadata"])[0]["organism"].keys():
+            elif (
+                not missing_key == "organism"
+                and missing_key
+                in utils.to_list(project["metadata"])[0]["organism"].keys()
+            ):
                 if metadata_fmt == "list":
                     del project["metadata"][0]["organism"][missing_key]
                 else:
                     del project["metadata"]["organism"][missing_key]
-            
+
     return project
 
 
@@ -126,7 +126,7 @@ def _get_project(external_sources_fmt="list",
         # second level keys w/ list or dict
         ("_get_project", "list", "list", "doi"),
         ("_get_project", "dict", "list", "doi"),
-        #("_get_project", None, "list", "doi"), does not raise KeyError!
+        # ("_get_project", None, "list", "doi"), does not raise KeyError!
         ("_get_project", "list", "list", "pmid"),
         ("_get_project", "list", "list", "rna"),
         ("_get_project", "list", "dict", "rna"),
@@ -138,63 +138,68 @@ def _get_project(external_sources_fmt="list",
         ("_get_project", "list", "list", "taxa_id"),
         ("_get_project", "list", "dict", "taxa_id"),
         ("_get_project", "list", "list", "cto"),
-        ("_get_project", "list", "list", "assembly")
+        ("_get_project", "list", "list", "assembly"),
     ],
 )
-def test_project_validate_keys_error(project, 
-                                     external_sources_fmt, 
-                                     metadata_fmt, 
-                                     missing_key, 
-                                     Session):
-    
+def test_project_validate_keys_error(
+    project, external_sources_fmt, metadata_fmt, missing_key, Session
+):
     from scimodom.services.project import ProjectService
-        
-    project = _get_project(external_sources_fmt=external_sources_fmt, 
-                           metadata_fmt=metadata_fmt,
-                           missing_key=missing_key)
+
+    project = _get_project(
+        external_sources_fmt=external_sources_fmt,
+        metadata_fmt=metadata_fmt,
+        missing_key=missing_key,
+    )
     with pytest.raises(KeyError):
         ProjectService(Session(), project)._validate_keys()
 
-    
+
 def test_project_add_selection(Session, setup):
-    
     from sqlalchemy import select
-    
-    from scimodom.database.models import Modification, DetectionTechnology, Organism, Selection
-    
+
+    from scimodom.database.models import (
+        Modification,
+        DetectionTechnology,
+        Organism,
+        Selection,
+    )
+
     from scimodom.services.project import ProjectService
-    
+
     with Session() as session, session.begin():
         session.add_all(setup)
-        
+
         modification = Modification(rna="mRNA", modomics_id="6A")
         technology = DetectionTechnology(tech="Technology 1", method_id=1)
         organism = Organism(cto="Cell Type 1", taxa_id=9606)
         session.add_all([modification, technology, organism])
         session.flush()
         # add (1, 1, 1, 1)
-        selection = Selection(modification_id=modification.id, 
-                              technology_id=technology.id,
-                              organism_id=organism.id)
+        selection = Selection(
+            modification_id=modification.id,
+            technology_id=technology.id,
+            organism_id=organism.id,
+        )
         session.add(selection)
         session.commit()
 
-    project = _get_project(external_sources_fmt="list", 
-                          metadata_fmt="list",
-                          missing_key=None)
+    project = _get_project(
+        external_sources_fmt="list", metadata_fmt="list", missing_key=None
+    )
     # add selection if not exists
     ProjectService(Session(), project)._add_selection()
-    
+
     expected_records = [(1, 1, 1, 1), (2, 1, 1, 2), (3, 2, 2, 3)]
-    
+
     with Session() as session, session.begin():
-        records = session.execute(
-            select(Selection)
-        ).scalars().all()
-        records = [(r.id, r.modification_id, r.technology_id, r.organism_id) for r in records]
+        records = session.execute(select(Selection)).scalars().all()
+        records = [
+            (r.id, r.modification_id, r.technology_id, r.organism_id) for r in records
+        ]
         assert records == expected_records
-        
-        
+
+
 @pytest.mark.parametrize(
     "project,external_sources_fmt,metadata_fmt,missing_key",
     [
@@ -203,31 +208,27 @@ def test_project_add_selection(Session, setup):
         ("_get_project", None, "list", None),
     ],
 )
-def test_project_validate_existing_entry(project, 
-                                         external_sources_fmt, 
-                                         metadata_fmt, 
-                                         missing_key, 
-                                         Session,
-                                         setup):
-    
+def test_project_validate_existing_entry(
+    project, external_sources_fmt, metadata_fmt, missing_key, Session, setup
+):
     from scimodom.services.project import ProjectService, DuplicateProjectError
-    
+
     from scimodom.database.models import Project, ProjectSource
-    
+
     import uuid
     import shortuuid
-        
+
     from datetime import datetime, timezone
-    
+
     SMID_LENGTH = 8
     u = uuid.uuid4()
     smid = shortuuid.encode(u)[:SMID_LENGTH]
-    
+
     stamp = datetime.now(timezone.utc).replace(microsecond=0)
 
     with Session() as session, session.begin():
         session.add_all(setup)
-        
+
         project = Project(
             id=smid,
             title="Title",
@@ -236,61 +237,51 @@ def test_project_validate_existing_entry(project,
             contact_institution="Contact Institution",
             contact_email="Contact Email",
             date_published=datetime.fromisoformat("2024-01-01"),
-            date_added=stamp
+            date_added=stamp,
         )
-        source1 = ProjectSource(
-            project_id=smid,
-            doi="DOI1",
-            pmid=None
-        )
-        source2 = ProjectSource(
-            project_id=smid,
-            doi="DOI2",
-            pmid=22222222
-        )
+        source1 = ProjectSource(project_id=smid, doi="DOI1", pmid=None)
+        source2 = ProjectSource(project_id=smid, doi="DOI2", pmid=22222222)
         session.add_all([project, source1, source2])
         session.commit()
 
-    project = _get_project(external_sources_fmt=external_sources_fmt, 
-                           metadata_fmt=metadata_fmt,
-                           missing_key=missing_key)
+    project = _get_project(
+        external_sources_fmt=external_sources_fmt,
+        metadata_fmt=metadata_fmt,
+        missing_key=missing_key,
+    )
 
     # excinfo.value contains msg
     with pytest.raises(DuplicateProjectError) as excinfo:
         ProjectService(Session(), project)._validate_entry()
-    
-    
+
+
 def test_project_validate_entry(Session):
-    
     from scimodom.services.project import ProjectService
-    
-    project = _get_project(external_sources_fmt="list", 
-                          metadata_fmt="list",
-                          missing_key=None)
-    assert ProjectService(Session(), project)._validate_entry() == None
-    
-    
+
+    project = _get_project(
+        external_sources_fmt="list", metadata_fmt="list", missing_key=None
+    )
+    assert ProjectService(Session(), project)._validate_entry() is None
+
+
 def test_project_create_project(Session, setup):
-    
     from datetime import date, datetime, timezone
-    
+
     from sqlalchemy import select
     from scimodom.services.project import ProjectService
     from scimodom.database.models import Project, ProjectSource
-    
-    stamp = datetime.now(timezone.utc).replace(microsecond=0)#.isoformat()
-    
-    project = _get_project(external_sources_fmt="list", 
-                           metadata_fmt="list",
-                           missing_key=None)
-    
+
+    stamp = datetime.now(timezone.utc).replace(microsecond=0)  # .isoformat()
+
+    project = _get_project(
+        external_sources_fmt="list", metadata_fmt="list", missing_key=None
+    )
+
     ProjectService(Session(), project).create_project()
-    
+
     with Session() as session, session.begin():
-        session.add_all(setup) 
-        records = session.execute(
-            select(Project)
-        ).scalar()
+        session.add_all(setup)
+        records = session.execute(select(Project)).scalar()
         assert records.title == "Title"
         assert records.summary == "Summary"
         assert records.contact_name == "Contact Name"
@@ -301,16 +292,9 @@ def test_project_create_project(Session, setup):
         assert records.date_added.month == stamp.month
         assert records.date_added.day == stamp.day
         smid = records.id
-        records = session.execute(
-            select(ProjectSource)
-        ).scalars().all()
+        records = session.execute(select(ProjectSource)).scalars().all()
         sources = [("DOI1", None), ("DOI2", 22222222)]
         for record, source in zip(records, sources):
             assert record.project_id == smid
             assert record.doi == source[0]
             assert record.pmid == source[1]
-            
-    
-
-        
-        

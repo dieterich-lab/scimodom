@@ -1,4 +1,4 @@
-import {createRouter, createWebHistory} from 'vue-router'
+import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '@/views/HomeView.vue'
 import SearchView from '@/views/SearchView.vue'
 import BrowseView from '@/views/BrowseView.vue'
@@ -12,33 +12,33 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      component: HomeView,
+      component: HomeView
     },
     {
       path: '/search',
       name: 'search',
-      component: SearchView,
+      component: SearchView
     },
     {
       path: '/browse',
       name: 'browse',
-      component: BrowseView,
+      component: BrowseView
     },
     {
       path: '/compare',
       name: 'compare',
-      component: CompareView,
+      component: CompareView
     },
     {
       path: '/download',
       name: 'download',
-      component: DownloadView,
+      component: DownloadView
     },
     {
       path: '/documentation',
       name: 'documentation',
-      component: DocumentationView,
-    },
+      component: DocumentationView
+    }
     // {
     //   path: '/about',
     //   name: 'about',
@@ -47,7 +47,7 @@ const router = createRouter({
     //   // which is lazy-loaded when the route is visited.
     //   component: () => import('../views/AboutView.vue'),
     // },
-  ],
+  ]
 })
 
 export default router

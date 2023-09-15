@@ -1,47 +1,59 @@
-
 import sys
 import logging
+
 logger = logging.getLogger(__name__)
 
 
 # logging_utils
 
+
 def add_log_opts(parser, logf=""):
     """
     Add options for logging.
     Statements are always written to stderr.
-    
+
     Parameters
     ----------
     parser
         argparse.ArgumentParser
     logf
         Log file
-        
+
     Returns
     -------
     None
     """
 
-    logging_levels = ['NOTSET', 'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
-    
+    logging_levels = ["NOTSET", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+
     logging_options = parser.add_argument_group("logging options")
 
-    logging_options.add_argument('--log-file', help="Log file.", default=logf)
-    logging_options.add_argument('--log-stdout', help="""Log to stdout in addition
-                                 to LOG_FILE if [--log-file LOG_FILE] is given.""", 
-                                 action='store_true')
-    
-    logging_options.add_argument('--logging-level', help="Logging level for all logs", 
-                                 choices=logging_levels, default="WARNING")
-    logging_options.add_argument('--file-logging-level', help="""Logging level for the
+    logging_options.add_argument("--log-file", help="Log file.", default=logf)
+    logging_options.add_argument(
+        "--log-stdout",
+        help="""Log to stdout in addition
+                                 to LOG_FILE if [--log-file LOG_FILE] is given.""",
+        action="store_true",
+    )
+
+    logging_options.add_argument(
+        "--logging-level",
+        help="Logging level for all logs",
+        choices=logging_levels,
+        default="WARNING",
+    )
+    logging_options.add_argument(
+        "--file-logging-level",
+        help="""Logging level for the
                                  log file if [--log-file]. Overrides [--logging-level]""",
-                                 choices=logging_levels, default="NOTSET")
+        choices=logging_levels,
+        default="NOTSET",
+    )
 
 
-def update_logging(args, 
-                   logger=None, 
-                   format_str='%(levelname)-8s %(name)-8s %(asctime)s : %(message)s'):
+def update_logging(
+    args, logger=None, format_str="%(levelname)-8s %(name)-8s %(asctime)s : %(message)s"
+):
     """
     Configure loggers/handlers.
 
@@ -63,8 +75,8 @@ def update_logging(args,
 
     # get root logger
     if logger is None:
-        logger = logging.getLogger('')
-            
+        logger = logging.getLogger("")
+
     logger.handlers = []
 
     # set base logging level
@@ -76,7 +88,7 @@ def update_logging(args,
         h = logging.FileHandler(args.log_file)
         formatter = logging.Formatter(format_str)
         h.setFormatter(formatter)
-        if args.file_logging_level != 'NOTSET':
+        if args.file_logging_level != "NOTSET":
             l = logging.getLevelName(args.file_logging_level)
             h.setLevel(l)
         logger.addHandler(h)
@@ -91,18 +103,19 @@ def update_logging(args,
 # various helper functions
 # NOTE: location of these may change, e.g. to service.utils
 
+
 def check_keys_exist(d, keys):
     """
     Check if keys are present in the dictionary, w/o
     type, value, etc. validation.
-   
+
     Parameters
     ----------
     d (dict)
         A dictionary.
     keys (list)
         A list of keys to check.
-        
+
     Returns
     -------
     list of keys that are not found
@@ -111,7 +124,7 @@ def check_keys_exist(d, keys):
     ------
     KeyError
     """
-    
+
     missing_keys = [k for k in keys if k not in d]
 
     if len(missing_keys) > 0:
@@ -125,55 +138,64 @@ def check_keys_exist(d, keys):
 def get_model(model):
     """
     Get model class by name.
-    
+
     Parameters
     ----------
     model
         Name of class.
-    
+
     Returns
     -------
     Class
         The model class.
     """
-    
+
     import inspect
     import scimodom.database.models as models
-    
+
     try:
         return {
-            name: cls for name, cls in inspect.getmembers(models, inspect.isclass)
+            name: cls
+            for name, cls in inspect.getmembers(models, inspect.isclass)
             if cls.__module__ == models.__name__
         }[model]
     except:
         msg = f"Model undefined: {model}."
         raise KeyError(msg)
-    
+
 
 def get_table_columns(model, remove=[]):
     """
     Get columns from model table, optionally
-    removing a subset of them. 
-    
+    removing a subset of them.
+
     Parameters
     ----------
     model
         Name of class.
     remove
         List of column names
-        
+
     Returns
     -------
     List of columns.
     """
-    
+
     Model = get_model(model)
-    return [column.key for column in Model.__table__.columns if not column.key in remove]
-    
-    
+    return [
+        column.key for column in Model.__table__.columns if column.key not in remove
+    ]
+
 
 def to_list(i):
     # converts string, list, set, and None to list
     # does not unpack tuple or dict
-    return i if isinstance(i, list) else list(i) if isinstance(i, set) else [] if i is None else [i]
-
+    return (
+        i
+        if isinstance(i, list)
+        else list(i)
+        if isinstance(i, set)
+        else []
+        if i is None
+        else [i]
+    )

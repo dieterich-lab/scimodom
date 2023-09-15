@@ -1,5 +1,5 @@
 <script setup>
-import ScimodomLogo  from './ScimodomLogo.vue'
+import ScimodomLogo from './ScimodomLogo.vue'
 import NavigationBar from './NavigationBar.vue'
 import ButtonIcon from '@/components/ui/ButtonIcon.vue'
 </script>
@@ -26,7 +26,7 @@ import ButtonIcon from '@/components/ui/ButtonIcon.vue'
           Sign Up
         </ButtonIcon>
       </div>
-    <!-- <SearchForm /> -->
+      <!-- <SearchForm /> -->
     </div>
   </header>
 </template>

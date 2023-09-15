@@ -6,4 +6,3 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/), and this 
 ## [Unreleased] - started 2023-08
 
 Migration
-
