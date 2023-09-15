@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker
 from scimodom.database.database import init
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def Session():
     engine = create_engine('sqlite:///:memory:')
     session = sessionmaker(autocommit=False,
@@ -24,7 +24,7 @@ def Session():
     session().close()
     
     
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def setup():
     
     from scimodom.database.models import Modomics, Taxonomy, Taxa, Assembly

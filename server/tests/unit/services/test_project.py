@@ -260,7 +260,7 @@ def test_project_validate_existing_entry(project,
         ProjectService(Session(), project)._validate_entry()
     
     
-def test_project_validate_entry(Session, setup):
+def test_project_validate_entry(Session):
     
     from scimodom.services.project import ProjectService
     
@@ -287,7 +287,7 @@ def test_project_create_project(Session, setup):
     ProjectService(Session(), project).create_project()
     
     with Session() as session, session.begin():
-        session.add_all(setup) # DO WE NEED THIS AND/OR WHEN? CHECK OTHER FUNCS ABOVE...
+        session.add_all(setup) 
         records = session.execute(
             select(Project)
         ).scalar()
