@@ -1,11 +1,18 @@
-class Config(object):
-    TESTING = False
+import os
+from dotenv import load_dotenv
+
+if os.getenv("LOCAL_APP"):
+    env_file = ".env.local"
+else:
+    env_file = ".env.development"
+load_dotenv(env_file)
 
 
-class DevConfig(Config):
-    DATABASE_URI = "mysql+mysqldb://eboileau:@localhost/scimodom"
+class Config:
+    """Set Flask config variables"""
 
-
-class TestConfig(Config):
-    DATABASE_URI = "sqlite:///:memory:"
-    TESTING = True
+    FLASK_DEBUG = os.getenv("FLASK_DEBUG")
+    DATABASE_URI = os.getenv("DATABASE_URI")
+    SECRET_KEY = os.getenv("SECRET_KEY")
+    SESSION_COOKIE_SAMESITE = os.getenv("SESSION_COOKIE_SAMESITE")
+    SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE")

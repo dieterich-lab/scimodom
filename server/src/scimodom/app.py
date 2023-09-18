@@ -13,27 +13,32 @@ from scimodom import create_app
 
 from scimodom.database.database import get_session
 
-# app = create_app(os.getenv("CONFIG_MODE"))
+
 app = create_app()
 
 
 # TODO: to controller
 
 
-@app.route("/", methods=["POST"])
-@cross_origin(supports_credentials=True)
-def hello():
-    project = request.get_json()
-    # if "modification" in project.keys():
-    # return json.dumps({'success':True}), 200, {'ContentType':'application/json'}
-    # else:
-    print(project)
-    return json.dumps({"success": True}), 200, {"ContentType": "application/json"}
-    # return (json.dumps({ 'message': "Hello world!" }),
-    # 200, { 'content_type': 'application/json'})
+# @app.route("/", methods=["POST"])
+# @cross_origin(supports_credentials=True)
+# def hello():
+# project = request.get_json()
+## if "modification" in project.keys():
+## return json.dumps({'success':True}), 200, {'ContentType':'application/json'}
+## else:
+# print(project)
+# return json.dumps({"success": True}), 200, {"ContentType": "application/json"}
+## return (json.dumps({ 'message': "Hello world!" }),
+## 200, { 'content_type': 'application/json'})
+
+# @app.route("/")
+# def hello_world():
+# return "<p>Hello, World!</p>"
 
 
-@app.route("/test")
+# @app.route("/test")
+@app.route("/")
 @cross_origin(supports_credentials=True)
 def test():
     # values = app.session.execute(
