@@ -19,6 +19,10 @@ def create_app():
     app.session = scoped_session(session)
     init(engine, lambda: app.session)
 
+    from .api import api
+
+    app.register_blueprint(api, url_prefix="/api/v0")
+
     # does this goes here?
     @app.teardown_appcontext
     def cleanup(exception=None):
