@@ -13,6 +13,12 @@ class Config:
 
         if import_dir is None:
             import_dir = Path(parent_dir, "import")
+        self.import_dir = import_dir
+
+        self.modomics_tbl = Path(import_dir, "modomics.csv")
+        self.assembly_tbl = Path(import_dir, "assembly.csv")
+        self.taxonomy_tbl = Path(import_dir, "taxonomy.csv")
+        self.ncbi_taxa_tbl = Path(import_dir, "ncbi_taxa.csv")
 
     # move .env files to parent directory?
     # class is not instantiated by app
