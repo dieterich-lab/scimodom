@@ -142,7 +142,9 @@ class Selection(Base):
 class Project(Base):
     __tablename__ = "project"
 
-    id: Mapped[str] = mapped_column(primary_key=True)  # SMID - NOT INCREMENT, BUT WHAT?
+    id: Mapped[str] = mapped_column(
+        String(8), primary_key=True
+    )  # SMID - NOT INCREMENT, BUT WHAT?
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     summary: Mapped[str] = mapped_column(Text)  # TEXT ?
     contact_name: Mapped[str] = mapped_column(String(128), nullable=False)

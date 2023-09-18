@@ -3,20 +3,13 @@
 # draft script to access the DB outside the app, ie. w/o running the app
 # for loading/updating tables
 
-# import models, session and engine from app
-
 import sys
-import argparse
+from argparse import ArgumentParser, SUPPRESS
 import logging
 
 import pandas as pd
 
-
-# ????
-import scimodom.database.models as models
-
-
-from scimodom.database.database import Session, init
+from scimodom.database.database import make_session, init
 
 import scimodom.utils.utils as utils
 
@@ -49,13 +42,28 @@ def confirm(msg):
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        description="""Update DB""",
+    parser = ArgumentParser(
+        add_help=False,
+        description="""Upsert selected DB tables. With [-db/--database] only,
+        init database schema.""",
     )
 
-    parser.add_argument(
-        "-m",
+    required = parser.add_argument_group("required arguments")
+    optional = parser.add_argument_group("optional arguments")
+
+    required.add_argument(
+        "-db", "--database", help="""Database URI""", type=str, required=True
+    )
+
+    optional.add_argument(
+        "-h",
+        "--help",
+        help="show this help message and exit",
+        action="help",
+        default=SUPPRESS,
+    )
+
+    optional.add_argument(
         "--model",
         help="""Upsert MODEL using [--table TABLE].
                         Performs an INSERT... ON DUPLICATE KEY UPDATE. Requires [--table TABLE]""",
@@ -63,8 +71,7 @@ def main():
         required="--table" in sys.argv,
     )
 
-    parser.add_argument(
-        "-t",
+    optional.add_argument(
         "--table",
         help="""Database table for MODEL with column
                         names. Only columns matching __table__.columns are used.
@@ -78,12 +85,17 @@ def main():
     utils.update_logging(args)
 
     # init DB
-    init(lambda: Session)
+    logger.info(f"Creating schema for {args.database}...")
+    engine, Session = make_session(args.database)
+    init(engine, lambda: Session)
 
     if args.model:
-        # qactually wdon't need model just cols, since below this goes in db...
-        model = utils.get_model(args.model)
-
+        try:
+            model = utils.get_model(args.model)
+        except KeyError as error:
+            msg = f"Model undefined: {args.model}. Terminating!"
+            logger.error(msg)
+            raise KeyError(error)
         cols = set([column.key for column in model.__table__.columns])
         table = pd.read_csv(args.table)
         table = table.loc[:, table.columns.isin(cols)]
@@ -109,9 +121,6 @@ def main():
             ucols = {c.name: c for c in stmt.inserted}  # filter id column ?
             stmt = stmt.on_duplicate_key_update(**ucols)
             session.execute(stmt)
-
-    else:
-        logger.info("NOTHING")
 
 
 if __name__ == "__main__":
