@@ -15,47 +15,48 @@ class SetupService:
     def __init__(self, session):
         self._session = session
         self._config = Config()
+        # the order matters!
         self._tables = [
             self._config.modomics_tbl,
-            self._config.assembly_tbl,
             self._config.taxonomy_tbl,
             self._config.ncbi_taxa_tbl,
+            self._config.assembly_tbl,
         ]
         self._models = [
             "Modomics",
-            "Assembly",
             "Taxonomy",
             "Taxa",
+            "Assembly",
         ]
 
     # to importer class...
 
-    def get_values(model, table):
+    def get_table(self, model, table):
         cols = set([column.key for column in model.__table__.columns])
         table = pd.read_csv(table)
         table = table.loc[:, table.columns.isin(cols)]
+        return table
 
+    def validate_table(self, model, table):
         cols = table.columns.tolist()
         if table.shape[1] == 1:
             msg = (
                 f"Only {cols[0]} found in TABLE. At least id "
                 f"and one other column are required. Terminating!"
             )
-            logger.error(msg)
-            return
+            raise Exception(msg)
         msg = (
             f"Updating {model.__name__} (table {model.__table__.name}) using "
             f"the following columns: {cols}."
         )
+        logger.debug(msg)
 
-        table = table.where(pd.notnull(table), None)
-        values = table.to_dict(orient="records")
-
-        return values, msg
-
-    def bulk_upsert(self, model, values):
+    def bulk_upsert(self, model, table):
         from sqlalchemy.dialects.mysql import insert
 
+        # Nan to None - check docs
+        table = table.where(pd.notnull(table), None)
+        values = table.to_dict(orient="records")
         stmt = insert(model).values(values)
         ucols = {c.name: c for c in stmt.inserted}  # filter id column ?
         stmt = stmt.on_duplicate_key_update(**ucols)
@@ -64,10 +65,10 @@ class SetupService:
         self._session.commit()
 
     def upsert_all(self):
-        # model = utils.get_model(model_str)
+        for m, t in zip(self._models, self._tables):
+            model = utils.get_model(m)
+            table = self.get_table(model, t)
+            self.validate_table(model, table)
+            self.bulk_upsert(model, table)
 
-        for model_str, table in zip(self._models, self._tables):
-            print(f"MODEL {model_str}, TABLE {table}")
-            model = utils.get_model(model_str)
-            values, msg = self.get_values(model, table)
-            logger.info(msg)
+    # TODO: upsert selected tables from DB (version) dump

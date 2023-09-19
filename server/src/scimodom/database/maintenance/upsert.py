@@ -1,22 +1,14 @@
 #! /usr/bin/env python3
 
-# draft script to access the DB outside the app, ie. w/o running the app
-# for loading/updating tables
 
 import sys
 from argparse import ArgumentParser, SUPPRESS
 import logging
 
-import pandas as pd
-
 from scimodom.database.database import make_session, init
-
 from scimodom.services.setup import SetupService
-
 import scimodom.utils.utils as utils
 
-
-from sqlalchemy.dialects.mysql import insert
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +74,12 @@ def main():
         required="--model" in sys.argv,
     )
 
+    optional.add_argument(
+        "--all",
+        help="""Default upsert all tables defined in config.py. Overrides [--model/--table].""",
+        action="store_true",
+    )
+
     utils.add_log_opts(parser)
     args = parser.parse_args()
     utils.update_logging(args)
@@ -91,59 +89,23 @@ def main():
     engine, Session = make_session(args.database)
     init(engine, lambda: Session)
 
-    # upsert one table
-    # or upset all path to import directory
-    # dump
+    setup = SetupService(Session())
 
-    setup = SetupService(Session)
-
-    # if # upsert one table
-
-    # model = utils.get_model(args.model)
-    # values, msg = setup.get_values(model, args.table)
-    # if not confirm(msg):
-    # return
-
-    # setup.bulk_upsert(model, values)
-
-    # else if # uspert all
-
-    # setup.upsert_all()
-
-    # else # pass
-
-    # if args.model:
-    # try:
-    # model = utils.get_model(args.model)
-    # except KeyError as error:
-    # msg = f"Model undefined: {args.model}. Terminating!"
-    # logger.error(msg)
-    # raise KeyError(error)
-    # cols = set([column.key for column in model.__table__.columns])
-    # table = pd.read_csv(args.table)
-    # table = table.loc[:, table.columns.isin(cols)]
-    # cols = table.columns.tolist()
-    # if table.shape[1] == 1:
-    # msg = (
-    # f"Only {cols[0]} found in TABLE. At least id "
-    # f"and one other column are required. Terminating!"
-    # )
-    # logger.error(msg)
-    # return
-    # msg = (
-    # f"Updating {args.model} (table {model.__table__.name}) using "
-    # f"the following columns: {cols}."
-    # )
-    # if not confirm(msg):
-    # return
-    ## Nan to None - check docs
-    # table = table.where(pd.notnull(table), None)
-    # values = table.to_dict(orient="records")
-    # with Session() as session, session.begin():
-    # stmt = insert(model).values(values)
-    # ucols = {c.name: c for c in stmt.inserted}  # filter id column ?
-    # stmt = stmt.on_duplicate_key_update(**ucols)
-    # session.execute(stmt)
+    if args.all:
+        setup.upsert_all()
+    elif args.model:
+        model = utils.get_model(args.model)
+        table = setup.get_table(model, args.table)
+        setup.validate_table(model, table)
+        msg = (
+            f"Updating {model.__name__} (table {model.__table__.name}) using "
+            f"the following columns: {table.columns.tolist()}."
+        )
+        if not confirm(msg):
+            return
+        setup.bulk_upsert(model, table)
+    else:
+        pass
 
 
 if __name__ == "__main__":

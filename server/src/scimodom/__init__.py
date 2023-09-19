@@ -11,6 +11,8 @@ def create_app():
     from sqlalchemy.orm import scoped_session
     from scimodom.database.database import make_session, init
 
+    from scimodom.services.setup import SetupService
+
     app = Flask(__name__)
     CORS(app)
     app.config.from_object("scimodom.config.Config")
@@ -18,6 +20,9 @@ def create_app():
     engine, session = make_session(app.config["DATABASE_URI"])
     app.session = scoped_session(session)
     init(engine, lambda: app.session)
+
+    setup = SetupService(app.session)
+    setup.upsert_all()
 
     from .api import api
 
