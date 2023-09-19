@@ -191,7 +191,6 @@ class ProjectService:
 
         sources = [project]
         for s in utils.to_list(self._project["external_sources"]):
-            print(f"SERVICE DOI={s['doi']}, PMID={s['pmid']}")
             source = ProjectSource(project_id=smid, doi=s["doi"], pmid=s["pmid"])
             sources.append(source)
 

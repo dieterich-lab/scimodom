@@ -5,15 +5,36 @@ import json
 from argparse import ArgumentParser, SUPPRESS
 import logging
 
-# from scimodom.database.models import Project, ProjectSource
-
-from scimodom.database.database import engine, Session, init
+from scimodom.database.database import make_session, init
 
 import scimodom.utils.utils as utils
 
 from scimodom.services.project import ProjectService
+from scimodom.services.setup import SetupService
 
 logger = logging.getLogger(__name__)
+
+
+def confirm(msg):
+    """
+    Prompt confirmation (case-insensitive).
+
+    Parameters
+    ----------
+    msg
+        Prompt message.
+
+    Returns
+    -------
+    Bool
+        True if the answer is Y/y.
+    """
+
+    answer = ""
+    while answer not in ["y", "n"]:
+        prompt = f"{msg}\nConfirm to continue [Y/N]? "
+        answer = input(prompt).lower()
+    return answer == "y"
 
 
 def main():
@@ -23,6 +44,10 @@ def main():
 
     required = parser.add_argument_group("required arguments")
     optional = parser.add_argument_group("optional arguments")
+
+    required.add_argument(
+        "-db", "--database", help="""Database URI""", type=str, required=True
+    )
 
     required.add_argument(
         "-p",
@@ -46,16 +71,19 @@ def main():
     utils.update_logging(args)
 
     # init DB
+    engine, Session = make_session(args.database)
     init(engine, lambda: Session)
+
+    setup = SetupService(Session())
+    setup.upsert_all()
+
     # load project metadata
     project = json.load(open(args.project))
-
-    # from scimodom.database.database import get_session
-    # ProjectService(get_session(), project).create_project()
-    # ?
+    # add project
+    msg = f"Adding project ({args.project}) to {args.database}..."
+    if not confirm(msg):
+        return
     ProjectService(Session(), project).create_project()
-
-    print("continue")
 
 
 if __name__ == "__main__":

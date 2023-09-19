@@ -21,13 +21,9 @@ class SetupService:
             self._config.taxonomy_tbl,
             self._config.ncbi_taxa_tbl,
             self._config.assembly_tbl,
+            self._config.method_tbl,
         ]
-        self._models = [
-            "Modomics",
-            "Taxonomy",
-            "Taxa",
-            "Assembly",
-        ]
+        self._models = ["Modomics", "Taxonomy", "Taxa", "Assembly", "DetectionMethod"]
 
     # to importer class...
 

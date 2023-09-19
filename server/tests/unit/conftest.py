@@ -24,7 +24,13 @@ def Session():
 
 @pytest.fixture()
 def setup():
-    from scimodom.database.models import Modomics, Taxonomy, Taxa, Assembly
+    from scimodom.database.models import (
+        Modomics,
+        Taxonomy,
+        Taxa,
+        Assembly,
+        DetectionMethod,
+    )
 
     modomics = [
         Modomics(
@@ -81,10 +87,28 @@ def setup():
         Assembly(name="GRCm38", taxa_id=10090),
     ]
 
+    method = [
+        DetectionMethod(cls="Quantification", meth="2D-TLC"),
+        DetectionMethod(cls="Quantification", meth="LC–MS"),
+        DetectionMethod(cls="Locus-specific", meth="Primer extension"),
+        DetectionMethod(cls="Locus-specific", meth="RNase H-based"),
+        DetectionMethod(cls="Locus-specific", meth="ESI-MS"),
+        DetectionMethod(cls="Locus-specific", meth="qPCR-based"),
+        DetectionMethod(cls="NGS 2nd generation", meth="Direct sequencing"),
+        DetectionMethod(cls="NGS 2nd generation", meth="Chemical-assisted sequencing"),
+        DetectionMethod(cls="NGS 2nd generation", meth="Antibody-based sequencing"),
+        DetectionMethod(
+            cls="NGS 2nd generation", meth="Enzyme/protein-assisted sequencing"
+        ),
+        DetectionMethod(cls="NGS 3rd generation", meth="Native RNA sequencing"),
+        DetectionMethod(cls="NGS 3rd generation", meth="cDNA sequencing"),
+    ]
+
     add = []
     add.extend(modomics)
     add.extend(taxonomy)
     add.extend(taxa)
     add.extend(assembly)
+    add.extend(method)
 
     return add
