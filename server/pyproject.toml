@@ -32,7 +32,10 @@ dependencies = [
   "Flask-Cors",
   "mysqlclient",
   "SQLAlchemy",
-  "pandas"
+  "numpy",
+  "pandas",
+  "python-dotenv",
+  "shortuuid"
 ]
 
 [project.scripts]
