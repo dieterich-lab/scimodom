@@ -19,6 +19,7 @@ class Config:
         self.taxonomy_tbl = Path(import_dir, "taxonomy.csv")
         self.ncbi_taxa_tbl = Path(import_dir, "ncbi_taxa.csv")
         self.assembly_tbl = Path(import_dir, "assembly.csv")
+        self.assembly_version_tbl = Path(import_dir, "assembly_version.csv")
         self.method_tbl = Path(import_dir, "method.csv")
 
     # move .env files to parent directory?

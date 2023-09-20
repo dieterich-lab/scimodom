@@ -29,6 +29,7 @@ def setup():
         Taxonomy,
         Taxa,
         Assembly,
+        AssemblyVersion,
         DetectionMethod,
     )
 
@@ -83,8 +84,12 @@ def setup():
     ]
 
     assembly = [
-        Assembly(name="GRCh38", taxa_id=9696),
-        Assembly(name="GRCm38", taxa_id=10090),
+        Assembly(name="GRCh38", taxa_id=9606, version="GcatSmFcytpU"),
+        Assembly(name="GRCm38", taxa_id=10090, version="GcatSmFcytpU"),
+    ]
+
+    assembly_version = [
+        AssemblyVersion(version_num="GcatSmFcytpU"),
     ]
 
     method = [
@@ -109,6 +114,7 @@ def setup():
     add.extend(taxonomy)
     add.extend(taxa)
     add.extend(assembly)
+    add.extend(assembly_version)
     add.extend(method)
 
     return add

@@ -21,9 +21,17 @@ class SetupService:
             self._config.taxonomy_tbl,
             self._config.ncbi_taxa_tbl,
             self._config.assembly_tbl,
+            self._config.assembly_version_tbl,
             self._config.method_tbl,
         ]
-        self._models = ["Modomics", "Taxonomy", "Taxa", "Assembly", "DetectionMethod"]
+        self._models = [
+            "Modomics",
+            "Taxonomy",
+            "Taxa",
+            "Assembly",
+            "AssemblyVersion",
+            "DetectionMethod",
+        ]
 
     # to importer class...
 
@@ -35,14 +43,15 @@ class SetupService:
 
     def validate_table(self, model, table):
         cols = table.columns.tolist()
-        if table.shape[1] == 1:
+        name = model.__name__
+        if table.shape[1] == 1 and not name == "AssemblyVersion":
             msg = (
                 f"Only {cols[0]} found in TABLE. At least id "
                 f"and one other column are required. Terminating!"
             )
             raise Exception(msg)
         msg = (
-            f"Updating {model.__name__} (table {model.__table__.name}) using "
+            f"Updating {name} (table {model.__table__.name}) using "
             f"the following columns: {cols}."
         )
         logger.debug(msg)

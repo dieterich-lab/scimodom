@@ -159,9 +159,9 @@ def test_project_add_selection(Session, setup):
     from sqlalchemy import select
 
     from scimodom.database.models import (
-        Modification,
-        DetectionTechnology,
-        Organism,
+        # Modification,
+        # DetectionTechnology,
+        # Organism,
         Selection,
     )
 
@@ -170,19 +170,19 @@ def test_project_add_selection(Session, setup):
     with Session() as session, session.begin():
         session.add_all(setup)
 
-        modification = Modification(rna="mRNA", modomics_id="6A")
-        technology = DetectionTechnology(tech="Technology 1", method_id=1)
-        organism = Organism(cto="Cell Type 1", taxa_id=9606)
-        session.add_all([modification, technology, organism])
-        session.flush()
-        # add (1, 1, 1, 1)
-        selection = Selection(
-            modification_id=modification.id,
-            technology_id=technology.id,
-            organism_id=organism.id,
-        )
-        session.add(selection)
-        session.commit()
+        # modification = Modification(rna="mRNA", modomics_id="6A")
+        # technology = DetectionTechnology(tech="Technology 1", method_id=1)
+        # organism = Organism(cto="Cell Type 1", taxa_id=9606)
+        # session.add_all([modification, technology, organism])
+        # session.flush()
+        ## add (1, 1, 1, 1)
+        # selection = Selection(
+        # modification_id=modification.id,
+        # technology_id=technology.id,
+        # organism_id=organism.id,
+        # )
+        # session.add(selection)
+        # session.commit()
 
     project = _get_project(
         external_sources_fmt="list", metadata_fmt="list", missing_key=None
@@ -271,16 +271,17 @@ def test_project_create_project(Session, setup):
     from scimodom.services.project import ProjectService
     from scimodom.database.models import Project, ProjectSource
 
+    with Session() as session, session.begin():
+        session.add_all(setup)
+
     stamp = datetime.now(timezone.utc).replace(microsecond=0)  # .isoformat()
 
     project = _get_project(
         external_sources_fmt="list", metadata_fmt="list", missing_key=None
     )
-
     ProjectService(Session(), project).create_project()
 
     with Session() as session, session.begin():
-        session.add_all(setup)
         records = session.execute(select(Project)).scalar()
         assert records.title == "Title"
         assert records.summary == "Summary"

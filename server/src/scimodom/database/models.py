@@ -67,9 +67,20 @@ class Assembly(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(128), nullable=False)
     taxa_id: Mapped[int] = mapped_column(ForeignKey("ncbi_taxa.id"))
+    version: Mapped[str] = mapped_column(
+        String(12), nullable=False
+    )  # current is assembly_version.version_num
 
     inst_taxa: Mapped["Taxa"] = relationship(back_populates="assemblies")
     datasets: Mapped[List["Dataset"]] = relationship(back_populates="inst_assembly")
+
+
+class AssemblyVersion(Base):
+    """Data upload"""
+
+    __tablename__ = "assembly_version"
+
+    version_num: Mapped[str] = mapped_column(String(12), primary_key=True)
 
 
 class Taxonomy(Base):

@@ -20,6 +20,10 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# to some config...
+SMID_LENGTH = 8
+ASSEMBLY_NUM_LENGTH = 12
+
 
 class DuplicateProjectError(Exception):
     pass
@@ -29,6 +33,16 @@ class ProjectService:
     def __init__(self, session, project):
         self._session = session
         self._project = project
+
+    def _gen_short_uuid(self, LENGTH, suuids):
+        import uuid
+        import shortuuid
+
+        u = uuid.uuid4()
+        suuid = shortuuid.encode(u)[:LENGTH]
+        while suuid in suuids:
+            suuid = shortuuid.encode(u)[:LENGTH]
+        return suuid
 
     def _validate_keys(self):
         from itertools import chain
@@ -137,13 +151,21 @@ class ProjectService:
                 organism_id = organism.id
 
             # assembly
-            # TODO: query DB assembly version for organism
-            # TODO: liftover (nothing to do here, unless download files, etc. ready for upload)
+            # TODO: liftover (here or at data upload)
             name = d_organism["assembly"]
             query = queries.assembly(name, taxa_id)
             assembly_id = self._session.execute(query).scalar()
+            print(f"ASSEMBLY ID {name}, {taxa_id}, {assembly_id}")
             if not assembly_id:
-                assembly = Assembly(name=name, taxa_id=taxa_id)
+                # add new version for new entry, presumably a lower assembly
+                # that will not be used (i.e. data must be lifted)
+                query = select(Assembly.version)
+                version_nums = self._session.execute(query).scalars().all()
+                print(
+                    f"??????????????????? {ASSEMBLY_NUM_LENGTH}, {type(version_nums)}, {len(version_nums)}, {version_nums}"
+                )
+                version_num = self._gen_short_uuid(ASSEMBLY_NUM_LENGTH, version_nums)
+                assembly = Assembly(name=name, taxa_id=taxa_id, version=version_num)
                 self._session.add(assembly)
                 self._session.commit()
 
@@ -161,20 +183,11 @@ class ProjectService:
                 selection_id = selection.id
 
     def _create_smid(self):
-        import uuid
-        import shortuuid
-
         from datetime import datetime, timezone
-
-        SMID_LENGTH = 8
 
         query = select(Project.id)
         smids = self._session.execute(query).scalars().all()
-
-        u = uuid.uuid4()
-        smid = shortuuid.encode(u)[:SMID_LENGTH]
-        while smid in smids:
-            smid = shortuuid.encode(u)[:SMID_LENGTH]
+        smid = self._gen_short_uuid(SMID_LENGTH, smids)
 
         stamp = datetime.now(timezone.utc).replace(microsecond=0)  # .isoformat()
 
