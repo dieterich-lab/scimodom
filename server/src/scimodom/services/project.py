@@ -5,6 +5,7 @@ import scimodom.utils.utils as utils
 from scimodom.database.models import (
     Project,
     ProjectSource,
+    ProjectContact,
     Modification,
     DetectionTechnology,
     Organism,
@@ -47,7 +48,10 @@ class ProjectService:
     def _validate_keys(self):
         from itertools import chain
 
-        cols = utils.get_table_columns("Project", remove=["id", "date_added"])
+        cols = utils.get_table_columns(
+            "Project", remove=["id", "date_added", "contact_id"]
+        )
+        cols.extend(utils.get_table_columns("ProjectContact", remove=["id"]))
         cols.extend(["external_sources", "metadata"])
         utils.check_keys_exist(self._project.keys(), cols)
 
@@ -155,15 +159,11 @@ class ProjectService:
             name = d_organism["assembly"]
             query = queries.assembly(name, taxa_id)
             assembly_id = self._session.execute(query).scalar()
-            print(f"ASSEMBLY ID {name}, {taxa_id}, {assembly_id}")
             if not assembly_id:
                 # add new version for new entry, presumably a lower assembly
                 # that will not be used (i.e. data must be lifted)
                 query = select(Assembly.version)
                 version_nums = self._session.execute(query).scalars().all()
-                print(
-                    f"??????????????????? {ASSEMBLY_NUM_LENGTH}, {type(version_nums)}, {len(version_nums)}, {version_nums}"
-                )
                 version_num = self._gen_short_uuid(ASSEMBLY_NUM_LENGTH, version_nums)
                 assembly = Assembly(name=name, taxa_id=taxa_id, version=version_num)
                 self._session.add(assembly)
@@ -182,6 +182,23 @@ class ProjectService:
                 self._session.commit()
                 selection_id = selection.id
 
+    def _add_contact(self):
+        contact_name = self._project["contact_name"]
+        contact_institution = self._project["contact_institution"]
+        contact_email = self._project["contact_email"]
+        query = queries.contact(contact_name, contact_institution, contact_email)
+        contact_id = self._session.execute(query).scalar()
+        if not contact_id:
+            contact = ProjectContact(
+                contact_name=contact_name,
+                contact_institution=contact_institution,
+                contact_email=contact_email,
+            )
+            self._session.add(contact)
+            self._session.commit()
+            contact_id = contact.id
+        return contact_id
+
     def _create_smid(self):
         from datetime import datetime, timezone
 
@@ -189,15 +206,15 @@ class ProjectService:
         smids = self._session.execute(query).scalars().all()
         smid = self._gen_short_uuid(SMID_LENGTH, smids)
 
+        contact_id = self._add_contact()
+
         stamp = datetime.now(timezone.utc).replace(microsecond=0)  # .isoformat()
 
         project = Project(
             id=smid,
             title=self._project["title"],
             summary=self._project["summary"],
-            contact_name=self._project["contact_name"],
-            contact_institution=self._project["contact_institution"],
-            contact_email=self._project["contact_email"],
+            contact_id=contact_id,
             date_published=datetime.fromisoformat(self._project["date_published"]),
             date_added=stamp,
         )

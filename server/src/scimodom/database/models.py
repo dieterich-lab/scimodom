@@ -158,19 +158,27 @@ class Project(Base):
     )  # SMID - NOT INCREMENT, BUT WHAT?
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     summary: Mapped[str] = mapped_column(Text)  # TEXT ?
-    contact_name: Mapped[str] = mapped_column(String(128), nullable=False)
-    contact_institution: Mapped[str] = mapped_column(String(255), nullable=False)
-    contact_email: Mapped[str] = mapped_column(String(320), nullable=False)
+    contact_id: Mapped[int] = mapped_column(ForeignKey("project_contact.id"))
     date_published: Mapped[datetime] = mapped_column(
         DateTime, nullable=False
     )  # datetime declaration/default format ?  YYYY-MM-DD ISO 8601
     date_added: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
-    inst_project_source: Mapped["ProjectSource"] = relationship(
-        back_populates="projects"
-    )
+    inst_contact: Mapped["ProjectContact"] = relationship(back_populates="projects")
 
+    sources: Mapped["ProjectSource"] = relationship(back_populates="inst_project")
     datasets: Mapped[List["Dataset"]] = relationship(back_populates="inst_project")
+
+
+class ProjectContact(Base):
+    __tablename__ = "project_contact"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    contact_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    contact_institution: Mapped[str] = mapped_column(String(255), nullable=False)
+    contact_email: Mapped[str] = mapped_column(String(320), nullable=False)
+
+    projects: Mapped[List["Project"]] = relationship(back_populates="inst_contact")
 
 
 class ProjectSource(Base):
@@ -181,9 +189,7 @@ class ProjectSource(Base):
     doi: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)  # NVARCHAR ?
     pmid: Mapped[Optional[int]] = mapped_column(nullable=True)
 
-    projects: Mapped[List["Project"]] = relationship(
-        back_populates="inst_project_source"
-    )
+    inst_project: Mapped[List["Project"]] = relationship(back_populates="sources")
 
 
 # bedRMod metadata - redundant taxid, assembly at upload, lifted is None (==assembly) or final assembly

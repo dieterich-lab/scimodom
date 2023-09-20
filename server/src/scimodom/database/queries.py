@@ -6,6 +6,7 @@ from scimodom.database.models import (
     Organism,
     Selection,
     Assembly,
+    ProjectContact,
 )
 
 from sqlalchemy import select
@@ -44,5 +45,14 @@ def selection(modification_id, technology_id, organism_id):
         Selection.modification_id == modification_id,
         Selection.technology_id == technology_id,
         Selection.organism_id == organism_id,
+    )
+    return query
+
+
+def contact(name, institution, email):
+    query = select(ProjectContact.id).where(
+        ProjectContact.contact_name == name,
+        ProjectContact.contact_institution == institution,
+        ProjectContact.contact_email == email,
     )
     return query

@@ -110,6 +110,8 @@ def _get_project(external_sources_fmt="list", metadata_fmt="list", missing_key=N
     return project
 
 
+# be careful, this will not pick "new" KeyErrors...
+# but test_project_create_project will
 @pytest.mark.parametrize(
     "project,external_sources_fmt,metadata_fmt,missing_key",
     [
@@ -213,7 +215,7 @@ def test_project_validate_existing_entry(
 ):
     from scimodom.services.project import ProjectService, DuplicateProjectError
 
-    from scimodom.database.models import Project, ProjectSource
+    from scimodom.database.models import Project, ProjectSource, ProjectContact
 
     import uuid
     import shortuuid
@@ -229,13 +231,19 @@ def test_project_validate_existing_entry(
     with Session() as session, session.begin():
         session.add_all(setup)
 
+        contact = ProjectContact(
+            contact_name="Contact Name",
+            contact_institution="Contact Institution",
+            contact_email="Contact Email",
+        )
+        session.add(contact)
+        session.flush()
+
         project = Project(
             id=smid,
             title="Title",
             summary="Summary",
-            contact_name="Contact Name",
-            contact_institution="Contact Institution",
-            contact_email="Contact Email",
+            contact_id=contact.id,
             date_published=datetime.fromisoformat("2024-01-01"),
             date_added=stamp,
         )
@@ -269,7 +277,7 @@ def test_project_create_project(Session, setup):
 
     from sqlalchemy import select
     from scimodom.services.project import ProjectService
-    from scimodom.database.models import Project, ProjectSource
+    from scimodom.database.models import Project, ProjectSource, ProjectContact
 
     with Session() as session, session.begin():
         session.add_all(setup)
@@ -285,14 +293,17 @@ def test_project_create_project(Session, setup):
         records = session.execute(select(Project)).scalar()
         assert records.title == "Title"
         assert records.summary == "Summary"
-        assert records.contact_name == "Contact Name"
-        assert records.contact_institution == "Contact Institution"
-        assert records.contact_email == "Contact Email"
         assert records.date_published == datetime.fromisoformat("2024-01-01")
         assert records.date_added.year == stamp.year
         assert records.date_added.month == stamp.month
         assert records.date_added.day == stamp.day
         smid = records.id
+        contact_id = records.contact_id
+        records = session.execute(select(ProjectContact)).scalar()
+        assert records.contact_name == "Contact Name"
+        assert records.contact_institution == "Contact Institution"
+        assert records.contact_email == "Contact Email"
+        assert records.id == contact_id
         records = session.execute(select(ProjectSource)).scalars().all()
         sources = [("DOI1", None), ("DOI2", 22222222)]
         for record, source in zip(records, sources):
