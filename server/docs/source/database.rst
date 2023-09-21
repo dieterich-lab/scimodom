@@ -307,13 +307,24 @@ At lauchtime, the app uses tables defined in ``config.py`` to perform an ``INSER
     setup = SetupService(app.session)
     setup.upsert_all()
 
-For any given database, the upsert can be done for one table at a time, or all tables (via ``config.py``)
+These tables (``modomics``, ``method``, ``taxonomy``, ``ncbi_taxa``, ``assembly``, and ``assembly_version``) allow to define base options for project creation, and establish a standard terminology for the application. The import format is *CSV*, and the header must match the column names (including *id*) from the corresponding database table, *e.g. ncbi_taxa.csv*
+
+.. code-block:: bash
+
+    id,name,short_name,taxonomy_id
+    9606,Homo sapiens,H. sapiens,1
+    10090,Mus musculus,M. musculus,1
+
+*Note:* These tables should only change with database version. We can skip the upsert at production.
+
+For any given database, the upsert can also be done for one table at a time, or all tables (via ``config.py``), without launching the app
 
 .. code-block:: bash
 
     upsert -db DATABASE [--model MODEL] [--table TABLE] [--all]
 
-Projects are added with
+
+Projects are added (currently only without launching the app) with
 
 .. code-block:: bash
 

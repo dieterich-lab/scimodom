@@ -3,7 +3,7 @@ Data Specification​
 ==================
 
 Current version v1.6. Does not match `bedRMod <https://github.com/anmabu/bedRMod/tree/main>`_...
-
+The file extension is ".bed" or ".bedrmod".
 
 Notes
 -----
@@ -48,14 +48,8 @@ It was suggested that "#fileformat", "#organism", "#modification_type", "#assemb
 This should be explicit in the specs.
 
 
-File extension
---------------
-
-".bed", or ".bedrmod"
-
-
 General remarks
----------------
+^^^^^^^^^^^^^^^
 
 One bedRMod = one organism ("#organism", "#assembly", "#annotation_source", "#annotation_version").
 This should be explicit in the specs.
