@@ -3,15 +3,46 @@
 from scimodom.database.models import (
     Modification,
     DetectionTechnology,
+    Taxa,
     Organism,
     Selection,
     Assembly,
+    AssemblyVersion,
+    Project,
     ProjectContact,
+    Dataset,
+    Data,
 )
 
 from sqlalchemy import select
 
+# special queries
+
+
+def get_assembly_version():
+    return select(AssemblyVersion.version_num)
+
+
 # simple row queries for id
+
+
+# TODO: generalise the simple one element queries
+# input dict column_name: value
+#
+
+
+def taxa(target, filters=dict()):
+    query = select(getattr(Taxa, target))
+    for name, value in filters.items():
+        query = query.where(getattr(Taxa, name) == value)
+    return query
+
+
+def assembly_(target, filters=dict()):
+    query = select(getattr(Assembly, target))
+    for name, value in filters.items():
+        query = query.where(getattr(Assembly, name) == value)
+    return query
 
 
 def modification(rna, modomics_id):
@@ -56,3 +87,65 @@ def contact(name, institution, email):
         ProjectContact.contact_email == email,
     )
     return query
+
+
+def dataset(target, filters=dict()):
+    query = select(getattr(Taxa, target))
+    for name, value in filters.items():
+        query = query.where(getattr(Taxa, name) == value)
+    return query
+
+
+# def taxa(target, filters=dict()):
+# query = select(getattr(Taxa, target))
+# for name, value in filters.items():
+# query = query.where(getattr(Taxa, name) == value)
+# return query
+
+
+# def assembly(target, filters=dict()):
+# query = select(getattr(Assembly, target))
+# for name, value in filters.items():
+# query = query.where(getattr(Assembly, name) == value)
+# return query
+
+
+# def modification(target, filters=dict()):
+# query = select(getattr(Modification, target))
+# for name, value in filters.items():
+# query = query.where(getattr(Modification, name) == value)
+# return query
+
+
+# def technology(target, filters=dict()):
+# query = select(getattr(DetectionTechnology, target))
+# for name, value in filters.items():
+# query = query.where(getattr(DetectionTechnology, name) == value)
+# return query
+
+
+# def organism(target, filters=dict()):
+# query = select(getattr(Organism, target))
+# for name, value in filters.items():
+# query = query.where(getattr(Organism, name) == value)
+# return query
+
+
+# def selection(target, filters=dict()):
+# query = select(getattr(Selection, target))
+# for name, value in filters.items():
+# query = query.where(getattr(Selection, name) == value)
+# return query
+
+# def contact(target, filters=dict()):
+# query = select(getattr(ProjectContact, target))
+# for name, value in filters.items():
+# query = query.where(getattr(ProjectContact, name) == value)
+# return query
+
+
+# def dataset(target, filters=dict()):
+# query = select(getattr(Dataset, target))
+# for name, value in filters.items():
+# query = query.where(getattr(Dataset, name) == value)
+# return query

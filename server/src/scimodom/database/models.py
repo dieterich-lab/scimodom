@@ -262,7 +262,7 @@ class Data(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     dataset_id: Mapped[int] = mapped_column(ForeignKey("dataset.id"))  # EUFID
-    # bedRMod fields
+    # bedRMod fields - order must match bedRMod columns?
     chrom: Mapped[str] = mapped_column(String(128), nullable=False)
     start: Mapped[int] = mapped_column(nullable=False)
     end: Mapped[int] = mapped_column(nullable=False)

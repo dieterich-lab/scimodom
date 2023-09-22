@@ -181,10 +181,35 @@ def get_table_columns(model, remove=[]):
     List of columns.
     """
 
-    Model = get_model(model)
-    return [
-        column.key for column in Model.__table__.columns if column.key not in remove
-    ]
+    try:
+        cols = model.__table__.columns
+    except:
+        cols = get_model(model).__table__.columns
+    return [c.key for c in cols if c.key not in remove]
+
+
+def get_table_column_python_types(model, remove=[]):
+    """
+    Get column python types from model table, optionally
+    removing a subset of them.
+
+    Parameters
+    ----------
+    model
+        Name of class.
+    remove
+        List of column names
+
+    Returns
+    -------
+    List of column python types.
+    """
+
+    try:
+        cols = model.__table__.columns
+    except:
+        cols = get_model(model).__table__.columns
+    return [c.type.python_type for c in cols if c.key not in remove]
 
 
 def to_list(i):
@@ -199,3 +224,14 @@ def to_list(i):
         if i is None
         else [i]
     )
+
+
+def gen_short_uuid(LENGTH, suuids):
+    import uuid
+    import shortuuid
+
+    u = uuid.uuid4()
+    suuid = shortuuid.encode(u)[:LENGTH]
+    while suuid in suuids:
+        suuid = shortuuid.encode(u)[:LENGTH]
+    return suuid

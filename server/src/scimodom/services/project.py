@@ -35,16 +35,6 @@ class ProjectService:
         self._session = session
         self._project = project
 
-    def _gen_short_uuid(self, LENGTH, suuids):
-        import uuid
-        import shortuuid
-
-        u = uuid.uuid4()
-        suuid = shortuuid.encode(u)[:LENGTH]
-        while suuid in suuids:
-            suuid = shortuuid.encode(u)[:LENGTH]
-        return suuid
-
     def _validate_keys(self):
         from itertools import chain
 
@@ -124,6 +114,7 @@ class ProjectService:
             rna = d["rna"]
             modomics_id = d["modomics_id"]
             query = queries.modification(rna, modomics_id)
+            # query = queries.modification("id", filters={"rna": rna, "modomics_id": modomics_id})
             modification_id = self._session.execute(query).scalar()
             if not modification_id:
                 modification = Modification(rna=rna, modomics_id=modomics_id)
@@ -135,6 +126,7 @@ class ProjectService:
             tech = d["tech"]
             method_id = d["method_id"]
             query = queries.technology(tech, method_id)
+            # query = queries.technology("id", filters={"method_id": method_id})
             technology_id = self._session.execute(query).scalar()
             if not technology_id:
                 technology = DetectionTechnology(tech=tech, method_id=method_id)
@@ -147,6 +139,7 @@ class ProjectService:
             cto = d_organism["cto"]
             taxa_id = d_organism["taxa_id"]
             query = queries.organism(cto, taxa_id)
+            # query = queries.organism("id", filters={"cto": cto, "taxa_id": taxa_id})
             organism_id = self._session.execute(query).scalar()
             if not organism_id:
                 organism = Organism(cto=cto, taxa_id=taxa_id)
@@ -158,19 +151,24 @@ class ProjectService:
             # TODO: liftover (here or at data upload)
             name = d_organism["assembly"]
             query = queries.assembly(name, taxa_id)
+            # query = queries.assembly("id", filters={"name": name, "taxa_id": taxa_id})
             assembly_id = self._session.execute(query).scalar()
             if not assembly_id:
                 # add new version for new entry, presumably a lower assembly
                 # that will not be used (i.e. data must be lifted)
                 query = select(Assembly.version)
                 version_nums = self._session.execute(query).scalars().all()
-                version_num = self._gen_short_uuid(ASSEMBLY_NUM_LENGTH, version_nums)
+                version_num = utils.gen_short_uuid(ASSEMBLY_NUM_LENGTH, version_nums)
                 assembly = Assembly(name=name, taxa_id=taxa_id, version=version_num)
                 self._session.add(assembly)
                 self._session.commit()
 
             # selection
             query = queries.selection(modification_id, technology_id, organism_id)
+            # query = queries.selection("id",
+            # filters={"modification_id": modification_id,
+            # "technology_id": technology_id,
+            # "organism_id": organism_id})
             selection_id = self._session.execute(query).scalar()
             if not selection_id:
                 selection = Selection(
@@ -187,6 +185,10 @@ class ProjectService:
         contact_institution = self._project["contact_institution"]
         contact_email = self._project["contact_email"]
         query = queries.contact(contact_name, contact_institution, contact_email)
+        # query = queries.contact("id", filters={
+        # "contact_name": contact_name,
+        # "contact_institution": contact_institution,
+        # "contact_email": contact_email})
         contact_id = self._session.execute(query).scalar()
         if not contact_id:
             contact = ProjectContact(
@@ -204,7 +206,7 @@ class ProjectService:
 
         query = select(Project.id)
         smids = self._session.execute(query).scalars().all()
-        smid = self._gen_short_uuid(SMID_LENGTH, smids)
+        smid = utils.gen_short_uuid(SMID_LENGTH, smids)
 
         contact_id = self._add_contact()
 

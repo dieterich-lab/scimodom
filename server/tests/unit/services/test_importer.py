@@ -27,11 +27,11 @@ def _get_header(variant=False):
         ("_get_header", True),
     ],
 )
-def test_base_importer_readEUF_header(project, variant):
+def test_base_importer_readEUF_header(Session, project, variant):
     # scratch - test only reading format
     # but now we read remaining headers...
 
-    from scimodom.services.importer.importer import BaseImporter
+    from scimodom.services.importer.importer import EUFImporter
 
-    importer = BaseImporter("csvStringIO", _get_header(variant))
+    importer = EUFImporter(Session(), "csvStringIO", _get_header(variant))
     importer._read_version()
