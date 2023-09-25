@@ -3,21 +3,19 @@ import pytest
 
 def _get_header(variant=False):
     from io import StringIO
-
     from scimodom.services.importer.importer import specsEUF
 
     specs = specsEUF.copy()
-
     fmt = specs.pop("format")
     _ = specs.pop("header")
     _ = specs.pop("delimiter")
     version = next(iter(specs))
+    expected_version = f"{fmt}v{version}"
     if variant:
         fmt = fmt.lower()
-
     csvString = f"#fileformat={fmt}v{version}"
     csvStringIO = StringIO(csvString)
-    return csvStringIO
+    return expected_version, csvStringIO
 
 
 @pytest.mark.parametrize(
@@ -27,11 +25,10 @@ def _get_header(variant=False):
         ("_get_header", True),
     ],
 )
-def test_base_importer_readEUF_header(Session, project, variant):
-    # scratch - test only reading format
-    # but now we read remaining headers...
-
+def test_importer_read_version(Session, project, variant):
     from scimodom.services.importer.importer import EUFImporter
 
-    importer = EUFImporter(Session(), "csvStringIO", _get_header(variant))
+    version, handle = _get_header(variant)
+    importer = EUFImporter(Session(), "csvStringIO", handle)
     importer._read_version()
+    assert version == importer._version

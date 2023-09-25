@@ -17,6 +17,9 @@ def create_app():
     CORS(app)
     app.config.from_object("scimodom.config.Config")
 
+    # to logger
+    print(f"USING {app.config['DATABASE_URI']}")
+
     engine, session = make_session(app.config["DATABASE_URI"])
     app.session = scoped_session(session)
     init(engine, lambda: app.session)

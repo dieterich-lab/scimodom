@@ -113,8 +113,9 @@ class ProjectService:
             # modification
             rna = d["rna"]
             modomics_id = d["modomics_id"]
-            query = queries.modification(rna, modomics_id)
-            # query = queries.modification("id", filters={"rna": rna, "modomics_id": modomics_id})
+            query = queries.query_column_where(
+                Modification, "id", filters={"rna": rna, "modomics_id": modomics_id}
+            )
             modification_id = self._session.execute(query).scalar()
             if not modification_id:
                 modification = Modification(rna=rna, modomics_id=modomics_id)
@@ -125,8 +126,11 @@ class ProjectService:
             # technology
             tech = d["tech"]
             method_id = d["method_id"]
-            query = queries.technology(tech, method_id)
-            # query = queries.technology("id", filters={"method_id": method_id})
+            query = queries.query_column_where(
+                DetectionTechnology,
+                "id",
+                filters={"tech": tech, "method_id": method_id},
+            )
             technology_id = self._session.execute(query).scalar()
             if not technology_id:
                 technology = DetectionTechnology(tech=tech, method_id=method_id)
@@ -138,8 +142,9 @@ class ProjectService:
             d_organism = d["organism"]
             cto = d_organism["cto"]
             taxa_id = d_organism["taxa_id"]
-            query = queries.organism(cto, taxa_id)
-            # query = queries.organism("id", filters={"cto": cto, "taxa_id": taxa_id})
+            query = queries.query_column_where(
+                Organism, "id", filters={"cto": cto, "taxa_id": taxa_id}
+            )
             organism_id = self._session.execute(query).scalar()
             if not organism_id:
                 organism = Organism(cto=cto, taxa_id=taxa_id)
@@ -150,8 +155,9 @@ class ProjectService:
             # assembly
             # TODO: liftover (here or at data upload)
             name = d_organism["assembly"]
-            query = queries.assembly(name, taxa_id)
-            # query = queries.assembly("id", filters={"name": name, "taxa_id": taxa_id})
+            query = queries.query_column_where(
+                Assembly, "id", filters={"name": name, "taxa_id": taxa_id}
+            )
             assembly_id = self._session.execute(query).scalar()
             if not assembly_id:
                 # add new version for new entry, presumably a lower assembly
@@ -164,11 +170,15 @@ class ProjectService:
                 self._session.commit()
 
             # selection
-            query = queries.selection(modification_id, technology_id, organism_id)
-            # query = queries.selection("id",
-            # filters={"modification_id": modification_id,
-            # "technology_id": technology_id,
-            # "organism_id": organism_id})
+            query = queries.query_column_where(
+                Selection,
+                "id",
+                filters={
+                    "modification_id": modification_id,
+                    "technology_id": technology_id,
+                    "organism_id": organism_id,
+                },
+            )
             selection_id = self._session.execute(query).scalar()
             if not selection_id:
                 selection = Selection(
@@ -184,11 +194,15 @@ class ProjectService:
         contact_name = self._project["contact_name"]
         contact_institution = self._project["contact_institution"]
         contact_email = self._project["contact_email"]
-        query = queries.contact(contact_name, contact_institution, contact_email)
-        # query = queries.contact("id", filters={
-        # "contact_name": contact_name,
-        # "contact_institution": contact_institution,
-        # "contact_email": contact_email})
+        query = queries.query_column_where(
+            ProjectContact,
+            "id",
+            filters={
+                "contact_name": contact_name,
+                "contact_institution": contact_institution,
+                "contact_email": contact_email,
+            },
+        )
         contact_id = self._session.execute(query).scalar()
         if not contact_id:
             contact = ProjectContact(

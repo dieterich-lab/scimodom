@@ -199,7 +199,7 @@ class ProjectSource(Base):
 class Dataset(Base):
     __tablename__ = "dataset"
 
-    id: Mapped[int] = mapped_column(primary_key=True)  # EUFID
+    id: Mapped[str] = mapped_column(String(12), primary_key=True)  # EUFID
     project_id: Mapped[str] = mapped_column(ForeignKey("project.id"))  # SMID
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     # header information - bedRMod
@@ -248,7 +248,7 @@ class Association(Base):
     __tablename__ = "association"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    dataset_id: Mapped[int] = mapped_column(ForeignKey("dataset.id"))
+    dataset_id: Mapped[str] = mapped_column(ForeignKey("dataset.id"))
     selection_id: Mapped[int] = mapped_column(ForeignKey("selection.id"))
 
     __table_args__ = (UniqueConstraint(dataset_id, selection_id),)
@@ -261,7 +261,7 @@ class Data(Base):
     __tablename__ = "data"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    dataset_id: Mapped[int] = mapped_column(ForeignKey("dataset.id"))  # EUFID
+    dataset_id: Mapped[str] = mapped_column(ForeignKey("dataset.id"))  # EUFID
     # bedRMod fields - order must match bedRMod columns?
     chrom: Mapped[str] = mapped_column(String(128), nullable=False)
     start: Mapped[int] = mapped_column(nullable=False)

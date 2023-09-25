@@ -24,6 +24,8 @@ class Config:
 
     # move .env files to parent directory?
     # class is not instantiated by app
+    print(f"LOCAL = {os.getenv('LOCAL_APP')}")
+
     if os.getenv("LOCAL_APP"):
         env_file = ".env.local"
     else:

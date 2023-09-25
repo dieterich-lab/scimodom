@@ -251,15 +251,15 @@ A standard template is required:
             },
             {
                 "rna": "mRNA",
-                "modification": "m6A",
-                "technology": "m6A-SAC-seq",
+                "modomics_id": "6A",
+                "tech": "m6A-SAC-seq",
                 "method_id": 8,
-                "organism": {"taxid": 9606, "cto": "HEK293", "assembly": "GRCh38"}
+                "organism": {"taxa_id": 9606, "cto": "HEK293", "assembly": "GRCh38"}
             }
         ]
     }
 
-``"external_sources": null`` is allowed, ``"doi": null`` or ``"pmid": null`` are allowed, but not both simultaneously. ``"external_sources"`` can be a list of entries, or a single entry (as above). ``"metadata"`` can be a list of entries (as above), or a single entry (at least one entry is required, and all keys are required). Each ``"metadata"`` entry corresponds to a given dataset (bedRMod files to be uploaded, EUFID) that will be associated with the project, *i.e.* a given SMID can have one or more dataset or EUFID.
+``"external_sources": null`` is allowed, ``"doi": null`` or ``"pmid": null`` are allowed, but not both simultaneously. ``"external_sources"`` can be a list of entries, or a single entry (as above). ``"metadata"`` can be a list of entries (as above), or a single entry (at least one entry is required, and all keys are required). Each ``"metadata"`` entry corresponds to a given dataset (bedRMod files to be uploaded, EUFID) that will be associated with the project, *i.e.* a given SMID can have one or more dataset or EUFID. But a given dataset may also require two or more entries for ``metadata``, *e.g.* if two or more modifications are given in the same bedRMod file.
 
 Once a SMID is created, the necesary fields are set, and data upload is enabled via the FE (TODO), via the API (TODO), or via maintenance scripts (TODO). At upload, fields are selected to describe the dataset in a standardized manner. These fields should be consistent with the information from the bedRMod header, but they are standardized (*Note:* We cannot validate all fields from the header, *i.e.* compare if the selected fields match the header, because not all information is recorded in the bedRMod format specs, the information may not be standardized, or the information may not always be easily recoverable. Precedence is given to the field selection.).
 

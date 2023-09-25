@@ -6,6 +6,8 @@ import scimodom.utils.utils as utils
 import scimodom.database.queries as queries
 from scimodom.database.models import Data, Dataset
 
+from sqlalchemy import select
+
 import logging
 
 logger = logging.getLogger(__name__)
@@ -18,12 +20,13 @@ logger = logging.getLogger(__name__)
 # then define given importer e.g. MyImporter(BaseImporter)
 
 
+# define EUF specs
+
 specsEUF = {
-    "format": "bedRMod",  # unused
+    "format": "bedRMod",
     "header": {"comment": "#", "delimiter": "="},
-    "delimiter": "\t",  # no regex, i.e. we want only one tab between fields, and no extra tab at the end
+    "delimiter": "\t",
     "1.6": {
-        # specs: mapped columns - silently replace with mapped columns
         "headers": {
             "fileformat": "file_format",
             "organism": "taxa_id",
@@ -64,106 +67,76 @@ class EUFImporter:
     Reads data from bedRMod file and writes to database tables.
     """
 
-    def __init__(self, session, filen, handle):
-        self._session = session
-        self._filen = filen
-        self._handle = handle
+    EUFID_LENGTH = 12
 
-        self.MAX_BUFFER = 1000
-        self.EUFID_LENGTH = 12
+    class _Buffer:
+        MAX_BUFFER = 1000
 
-        self._fmt = specsEUF["format"]
+        def __init__(self, session, model):
+            self._session = session
+            self._model = model
+            self._buffer = []
+
+        def buffer_data(self, d):
+            self._buffer.append(d)
+            if len(self._buffer) >= self.MAX_BUFFER:
+                self.flush()
+
+        def flush(self):
+            if not self._buffer:
+                return
+            self._session.execute(insert(self._model), self._buffer)
+            self._buffer = []
+
+    def __init__(
+        self, session, filen, handle, smid, eufid, title, taxa_id, assembly_id
+    ):
         self._sep = specsEUF["delimiter"]
         self._htag = specsEUF["header"]["comment"]
         self._hsep = specsEUF["header"]["delimiter"]
         self._version = None
         self._specs = None
 
+        self._session = session
+        self._filen = filen
+        self._handle = handle
+
         self._lino = None
-        self._buffer = []
+        self._header = None
+        self._buffers = dict()
         self._dtypes = dict()
-
-    # TODO: we also need a method to assign assocaition table from input
-    # so we need to have selection.id (or query from modification, technology, organism)
-    # these fields are presumably filled at upload on the FE form (after being available
-    # via SMID/projetc creation).
-    # if via API/maintenance, we need to provide these as args, to get selection.id
-    # and make sure they are valid choices.
-
-    def create_dataset(
-        self,
-        smid=None,  # str
-        title=None,  # str
-        taxa_id=None,  # int
-        assembly_id=None,  # int
-    ):
-        # TODO: type hints/define instead
-        if None in {smid, title, taxa_id, assembly_id}:
-            raise TypeError("Calling 'create_dataset' require defined arguments!")
 
         # presumably, SMID, title, taxa_id, assembly_id all come from the FE upload form
         # or from arguments to the API/maintenance -> TODO: data upload service
         # there we should check if SMID, taxa_id, and assembly_id are valid choices
         # here, we assume they are already checked
+        self._eufid = eufid
         self._smid = smid
         self._title = title
         self._taxa_id = taxa_id
         self._assembly_id = assembly_id
         self._lifted = False
 
-        query = queries.assembly("version", filters={"id": self._assembly_id})
-        assembly_version = self._session.execute(query).scalar()
-
-        query = queries.get_assembly_version()
-        db_assembly_version = self._session.execute(query).scalar()
-
-        if not assembly_version == db_assembly_version:
-            self._lifted = True
-            print("Some message...")
-
-        query = queries.dataset("id")
-        eufids = self._session.execute(query).scalars().all()
-        self._eufid = utils.gen_short_uuid(self.EUFID_LENGTH, eufids)
-
-    def _buffer_data(self, d):
-        self._buffer.append(d)
-        if len(self._buffer) >= self.MAX_BUFFER:
-            self._flush()
-
-    def _flush(self):
-        if not self._buffer:
-            return
-        self._session.execute(insert(Data), self._buffer)
-        self._buffer = []
-
     def _close(self):
         self._handle.close()
-        self._flush()
+        for _buffer in self._buffers.values():
+            _buffer.flush()
         self._session.commit()
 
     def parseEUF(self):
-        self._lino = 1
-        self._read_version()
-
         self._validate_attributes(Dataset, self._specs["headers"].values())
         self._validate_attributes(Data, self._specs["columns"].values())
 
+        self._lino = 1
+        self._read_version()
+
+        self._buffers["Dataset"] = EUFImporter._Buffer(
+            session=self._session, model=Dataset
+        )
         self._read_header()
 
+        self._buffers["Data"] = EUFImporter._Buffer(session=self._session, model=Data)
         self._validate_columns()
-
-        # maybe we don;'t need to lino?
-        # after header, we could use readlines, instead of line by line?
-
-        # TODO
-        # header type formatting, e.g. taxid
-        # read actual data - type formattign again
-        # make sure we have 12 fields all the time
-        # store in column/field header: value - check
-        # buffering, table update
-
-        # TODO: how to assembly management?
-
         for line in self._handle:
             self._lino += 1
             self._read_line(line)
@@ -174,16 +147,12 @@ class EUFImporter:
             line = next(self._handle)
         except StopIteration:
             raise EOFError(f" {self._filen}")
-        self._version = ".".join(re.findall(r"\d+", line))
+        version = ".".join(re.findall(r"\d+", line))
         try:
-            self._specs = specsEUF[self._version]
+            self._version = f"{specsEUF['format']}v{version}"
+            self._specs = specsEUF[version]
         except KeyError:
-            raise SpecsError(f" Unknown version: {self._fmt}v{self._version}.")
-        # try:
-        #   idx = line.lower().rindex(self._fmt.lower()) + len(self._fmt)
-        # except ValueError:
-        #   raise SpecsError(f" Supported file format: {self._fmt}.")
-        # self._version = line[idx:].strip()
+            raise SpecsError(f" Unknown version: {self._version}.")
 
     def _validate_attributes(self, model, specs):
         # assume order of __table__.columns is consistent...
@@ -202,41 +171,51 @@ class EUFImporter:
             _dtypes[c] = mapped_types[idx]
         self._dtypes[model.__name__] = _dtypes
 
-    # def _munge_header(self, lines, header):
-    # h = f"{self._htag}{header}{self._hsep}"
-    # s = [l.replace(h, "").strip() for l in lines if re.search(h, l)]
-    # if s != []:
-    ## (lines.index(s[0]), s[0]) if we need the index, do not replace/strip
-    # return s[0]
-    # return -1
-
-    # def _munge_header(self, lines, headers):
-    # header_dict = dict()
-    # for header in headers:
-    # h = f"{self._htag}{header}{self._hsep}"
-    # s = [l.replace(h, "").strip() for l in lines if re.search(h, l)]
-    # if not s:
-    # raise SpecsError(f" Missing or misformatted header: {h}.")
-
-    ## (lines.index(s[0]), s[0]) if we need the index, do not replace/strip
-    # return s[0]
-    # return -1
+    def _add_missing_header_fields(self, assembly):
+        self._header["id"] = self._eufid
+        self._header["project_id"] = self._smid
+        self._header["title"] = self._title
+        self._header["file_format"] = self._version
+        if not self._header["taxa_id"] == self._taxa_id:
+            msg = (
+                f"Organism={self._header['taxa_id']} from {self._filen} differs "
+                f"from {self._taxa_id} given at upload. Overwriting header."
+                f"Data import will continue with {self._taxa_id}..."
+            )
+            print(msg)
+            logger.warning(msg)
+            self._header["taxa_id"] = self._taxa_id
+        query = queries.query_column_where(
+            "Assembly", "name", filters={"id": self._assembly_id}
+        )
+        assembly_name = self._session.execute(query).scalar()
+        msg = (
+            f"Overwriting header: assembly={assembly} from {self._filen} "
+            f"with {assembly_name} given at upload. Data import will continue..."
+        )
+        print(msg)
+        logger.warning(msg)
+        # assign id now
+        self._header["assembly_id"] = self._assembly_id
+        self._header["lifted"] = self._lifted
 
     def _munge_header(self, lines):
-        header_dict = self._parse_header_from_file(lines)
-
-    def _parse_header_from_file(self, lines):
-        def _get_header(header, mapped_header):
+        def _get_header(header):
             h = f"{self._htag}{header}{self._hsep}"
             s = [l.replace(h, "").strip() for l in lines if re.search(h, l)]
             if not s:
                 raise SpecsError(f" Missing or misformatted header: {h}.")
-            return self._dtypes["Dataset"][mapped_header].__call__(s[0])
+            return s[0]
 
-        return {
-            mapped_header: _get_header(header, mapped_header)
+        skip_header = ["fileformat", "assembly"]
+        self._header = {
+            mapped_header: self._dtypes["Dataset"][mapped_header].__call__(
+                _get_header(header)
+            )
             for (header, mapped_header) in self._specs["headers"].items()
+            if header not in skip_header
         }
+        return _get_header("assembly")
 
     def _read_header(self):
         # or do reverse search, line by line ...?
@@ -244,43 +223,11 @@ class EUFImporter:
         while self._lino < len(self._specs["headers"]):
             lines.append(next(self._handle))
             self._lino += 1
-
-        header_dict = self._munge_header(lines)
-
-        # TODO HERE:
-        # 1 - mapped_headers and not headers must be assigned to dict
-        # project_id (SMID), title
-        # - assign EUFID (now auto int, but should be str)
-        # 2 - neeed to assign file format
-        # 3 - taxa_id and assembly_id must match ncbi_taxa.id and assembly.id (check taxa, but assmbly?)
-        # 4 - lifted, annotation_source and annotation_version?
-        # external_source may or may not match that of SMID, but we don't bother checking now
-
-        # to delete
-        # for header in headers[1:]:
-        # value = self._munge_header(lines, header)
-        # if value == -1:
-        # raise SpecsError(
-        # f" Missing or misformatted header: {self._htag}{header}{self._hsep}."
-        # )
-        # self._headers[header] = value
-
-    # assign header
-
-    # taxa_id and assembly_id must match ncbi_taxa.id and assembly.id
-    # i.e. not from header, but from input (pass to class from FE or via API/script)
-    # but we can still validate at least taxa, for assembly this is more tricky...
-
-    # lifted?
-
-    # annotation_source and annotation_version?
-
-    # external_source may or maynot match that of SMID, but we don't bother checking now
-
-    # TODO:
-    # - check types
-    # - assign EUFID (now auto int, but should be str) - keep it for later
-    # - commit
+        assembly = self._munge_header(lines)
+        self._add_missing_header_fields(assembly)
+        _buffer = self._buffers["Dataset"]
+        _buffer.buffer_data(self._header)
+        _buffer.flush()
 
     def _validate_columns(self):
         num_cols = len(self._specs["columns"])
@@ -298,13 +245,13 @@ class EUFImporter:
             if not col_read.lower() == col_specs.lower():
                 msg = (
                     f"Column name '{col_read}' from {self._filen} differs from the required {col_specs}."
-                    f"Data import will continue, assuming conformity to {self._fmt}v{self._version}."
+                    f"Data import will continue, assuming conformity to {self._version}."
                     f"If you suspect misformatting, or data corruption, check {self._filen} and start again!"
                 )
                 logger.warning(msg)
                 print(msg)
 
-    def _validate_values(self, values):
+    def _munge_values(self, values):
         num_values = len(values)
         num_cols = len(self._specs["columns"])
         if num_values != num_cols:
@@ -319,8 +266,8 @@ class EUFImporter:
     def _read_line(self, line):
         values = [l.strip() for l in line.split(self._sep)]
         try:
-            validated_values = self._validate_values(values)
-            self._buffer_data(validated_values)
+            validated_values = self._munge_values(values)
+            self._buffers["Data"].buffer_data(validated_values)
         except ValueError as error:
             msg = f"Warning: Failed to parse {self._filen} at row {self._lino}: {error} - skipping!"
             logger.warning(msg)
