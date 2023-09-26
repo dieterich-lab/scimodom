@@ -67,8 +67,6 @@ class EUFImporter:
     Reads data from bedRMod file and writes to database tables.
     """
 
-    EUFID_LENGTH = 12
-
     class _Buffer:
         MAX_BUFFER = 1000
 
@@ -89,7 +87,16 @@ class EUFImporter:
             self._buffer = []
 
     def __init__(
-        self, session, filen, handle, smid, eufid, title, taxa_id, assembly_id
+        self,
+        session,
+        filen,
+        handle,
+        smid,
+        eufid,
+        title,
+        taxa_id,
+        assembly_id,
+        lifted,
     ):
         self._sep = specsEUF["delimiter"]
         self._htag = specsEUF["header"]["comment"]
@@ -105,6 +112,7 @@ class EUFImporter:
         self._header = None
         self._buffers = dict()
         self._dtypes = dict()
+        self._modifications_from_file = set()
 
         # presumably, SMID, title, taxa_id, assembly_id all come from the FE upload form
         # or from arguments to the API/maintenance -> TODO: data upload service
@@ -115,20 +123,20 @@ class EUFImporter:
         self._title = title
         self._taxa_id = taxa_id
         self._assembly_id = assembly_id
-        self._lifted = False
+        self._lifted = lifted
 
-    def _close(self):
+    def close(self):
         self._handle.close()
         for _buffer in self._buffers.values():
             _buffer.flush()
         self._session.commit()
 
     def parseEUF(self):
-        self._validate_attributes(Dataset, self._specs["headers"].values())
-        self._validate_attributes(Data, self._specs["columns"].values())
-
         self._lino = 1
         self._read_version()
+
+        self._validate_attributes(Dataset, self._specs["headers"].values())
+        self._validate_attributes(Data, self._specs["columns"].values())
 
         self._buffers["Dataset"] = EUFImporter._Buffer(
             session=self._session, model=Dataset
@@ -140,7 +148,6 @@ class EUFImporter:
         for line in self._handle:
             self._lino += 1
             self._read_line(line)
-        self._close()
 
     def _read_version(self):
         try:
@@ -258,17 +265,23 @@ class EUFImporter:
             raise ValueError(
                 f"Column count doesn't match value count at row {self._lino}"
             )
-        return {
-            c: self._dtypes[c].__call__(values[i])
+        data = {
+            c: self._dtypes["Data"][c].__call__(values[i])
             for i, c in enumerate(self._specs["columns"].values())
         }
+        data["dataset_id"] = self._eufid
+        return data
 
     def _read_line(self, line):
         values = [l.strip() for l in line.split(self._sep)]
         try:
             validated_values = self._munge_values(values)
+            self._modifications_from_file.add(validated_values["name"])
             self._buffers["Data"].buffer_data(validated_values)
         except ValueError as error:
             msg = f"Warning: Failed to parse {self._filen} at row {self._lino}: {error} - skipping!"
             logger.warning(msg)
             print(msg)
+
+    def get_modifications_from_file(self):
+        return self._modifications_from_file

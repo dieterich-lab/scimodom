@@ -96,7 +96,7 @@ class ProjectService:
             .where(Project.title == self._project["title"])
         )
         query = query.where(self._get_prj_src())
-        smid = self._session.execute(query).scalar()
+        smid = self._session.execute(query).scalar()  # most likely none or one?
         if smid:
             msg = (
                 f"A similar record with SMID = {smid} already exists. "

@@ -3,7 +3,7 @@ import pytest
 
 def _get_header(variant=False):
     from io import StringIO
-    from scimodom.services.importer.importer import specsEUF
+    from scimodom.services.importer import specsEUF
 
     specs = specsEUF.copy()
     fmt = specs.pop("format")
@@ -26,9 +26,20 @@ def _get_header(variant=False):
     ],
 )
 def test_importer_read_version(Session, project, variant):
-    from scimodom.services.importer.importer import EUFImporter
+    from scimodom.services.importer import EUFImporter
 
     version, handle = _get_header(variant)
-    importer = EUFImporter(Session(), "csvStringIO", handle)
+    # temporarily...
+    importer = EUFImporter(
+        Session(),
+        "csvStringIO",
+        handle,
+        "ABCDEFGH",
+        "123456789ABC",
+        "Title",
+        9606,
+        1,
+        False,
+    )
     importer._read_version()
     assert version == importer._version
