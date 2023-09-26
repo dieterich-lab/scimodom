@@ -21,16 +21,15 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# to some config...
-SMID_LENGTH = 8
-ASSEMBLY_NUM_LENGTH = 12
-
 
 class DuplicateProjectError(Exception):
     pass
 
 
 class ProjectService:
+    SMID_LENGTH = 8
+    ASSEMBLY_NUM_LENGTH = 12
+
     def __init__(self, session, project):
         self._session = session
         self._project = project
@@ -164,7 +163,9 @@ class ProjectService:
                 # that will not be used (i.e. data must be lifted)
                 query = select(Assembly.version)
                 version_nums = self._session.execute(query).scalars().all()
-                version_num = utils.gen_short_uuid(ASSEMBLY_NUM_LENGTH, version_nums)
+                version_num = utils.gen_short_uuid(
+                    self.ASSEMBLY_NUM_LENGTH, version_nums
+                )
                 assembly = Assembly(name=name, taxa_id=taxa_id, version=version_num)
                 self._session.add(assembly)
                 self._session.commit()
@@ -220,7 +221,7 @@ class ProjectService:
 
         query = select(Project.id)
         smids = self._session.execute(query).scalars().all()
-        smid = utils.gen_short_uuid(SMID_LENGTH, smids)
+        smid = utils.gen_short_uuid(self.SMID_LENGTH, smids)
 
         contact_id = self._add_contact()
 

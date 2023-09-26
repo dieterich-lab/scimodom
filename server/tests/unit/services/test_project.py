@@ -3,7 +3,9 @@ import pytest
 import scimodom.utils.utils as utils
 
 
-def _get_project(external_sources_fmt="list", metadata_fmt="list", missing_key=None):
+def _get_project(
+    project_template, external_sources_fmt="list", metadata_fmt="list", missing_key=None
+):
     """\
     2023-08-25 Project template (JSON format).
 
@@ -27,17 +29,9 @@ def _get_project(external_sources_fmt="list", metadata_fmt="list", missing_key=N
     """
     from itertools import chain
 
-    project = dict()
-    project["title"] = "Title"
-    project["summary"] = "Summary"
-    project["contact_name"] = "Contact Name"
-    project["contact_institution"] = "Contact Institution"
-    project["contact_email"] = "Contact Email"
-    project["date_published"] = "2024-01-01"
-    external_sources = [
-        {"doi": "DOI1", "pmid": None},
-        {"doi": "DOI2", "pmid": 22222222},
-    ]
+    project = project_template.copy()
+
+    external_sources = project["external_sources"]
     if external_sources_fmt == "list":
         pass
     elif external_sources_fmt == "dict":
@@ -46,29 +40,8 @@ def _get_project(external_sources_fmt="list", metadata_fmt="list", missing_key=N
         external_sources = None
     else:
         raise ValueError
-    metadata = [
-        {
-            "rna": "mRNA",
-            "modomics_id": "6A",
-            "tech": "Technology 1",
-            "method_id": 1,
-            "organism": {"taxa_id": 9606, "cto": "Cell Type 1", "assembly": "GRCh38"},
-        },
-        {
-            "rna": "mRNA",
-            "modomics_id": "6A",
-            "tech": "Technology 1",
-            "method_id": 1,
-            "organism": {"taxa_id": 9606, "cto": "Cell Type 2", "assembly": "GRCh38"},
-        },
-        {
-            "rna": "mRNA",
-            "modomics_id": "5C",
-            "tech": "Technology 2",
-            "method_id": 1,
-            "organism": {"taxa_id": 9606, "cto": "Organ 1", "assembly": "GRCh38"},
-        },
-    ]
+
+    metadata = project["metadata"]
     if metadata_fmt == "list":
         pass
     elif metadata_fmt == "dict":
@@ -113,42 +86,43 @@ def _get_project(external_sources_fmt="list", metadata_fmt="list", missing_key=N
 # be careful, this will not pick "new" KeyErrors...
 # but test_project_create_project will
 @pytest.mark.parametrize(
-    "project,external_sources_fmt,metadata_fmt,missing_key",
+    "external_sources_fmt,metadata_fmt,missing_key",
     [
         # first level keys w/ or w/o external_sources
-        ("_get_project", "list", "list", "title"),
-        ("_get_project", None, "list", "title"),
-        ("_get_project", "list", "list", "summary"),
-        ("_get_project", "list", "list", "contact_name"),
-        ("_get_project", "list", "list", "contact_institution"),
-        ("_get_project", "list", "list", "contact_email"),
-        ("_get_project", "list", "list", "date_published"),
-        ("_get_project", "list", "list", "external_sources"),
-        ("_get_project", "list", "list", "metadata"),
+        ("list", "list", "title"),
+        (None, "list", "title"),
+        ("list", "list", "summary"),
+        ("list", "list", "contact_name"),
+        ("list", "list", "contact_institution"),
+        ("list", "list", "contact_email"),
+        ("list", "list", "date_published"),
+        ("list", "list", "external_sources"),
+        ("list", "list", "metadata"),
         # second level keys w/ list or dict
-        ("_get_project", "list", "list", "doi"),
-        ("_get_project", "dict", "list", "doi"),
-        # ("_get_project", None, "list", "doi"), does not raise KeyError!
-        ("_get_project", "list", "list", "pmid"),
-        ("_get_project", "list", "list", "rna"),
-        ("_get_project", "list", "dict", "rna"),
-        ("_get_project", "list", "list", "modomics_id"),
-        ("_get_project", "list", "list", "tech"),
-        ("_get_project", "list", "list", "method_id"),
-        ("_get_project", "list", "list", "organism"),
+        ("list", "list", "doi"),
+        ("dict", "list", "doi"),
+        # (None, "list", "doi"), does not raise KeyError!
+        ("list", "list", "pmid"),
+        ("list", "list", "rna"),
+        ("list", "dict", "rna"),
+        ("list", "list", "modomics_id"),
+        ("list", "list", "tech"),
+        ("list", "list", "method_id"),
+        ("list", "list", "organism"),
         # third level keys w/ list or dict
-        ("_get_project", "list", "list", "taxa_id"),
-        ("_get_project", "list", "dict", "taxa_id"),
-        ("_get_project", "list", "list", "cto"),
-        ("_get_project", "list", "list", "assembly"),
+        ("list", "list", "taxa_id"),
+        ("list", "dict", "taxa_id"),
+        ("list", "list", "cto"),
+        ("list", "list", "assembly"),
     ],
 )
 def test_project_validate_keys_error(
-    project, external_sources_fmt, metadata_fmt, missing_key, Session
+    external_sources_fmt, metadata_fmt, missing_key, Session, project_template
 ):
     from scimodom.services.project import ProjectService
 
     project = _get_project(
+        project_template,
         external_sources_fmt=external_sources_fmt,
         metadata_fmt=metadata_fmt,
         missing_key=missing_key,
@@ -157,43 +131,23 @@ def test_project_validate_keys_error(
         ProjectService(Session(), project)._validate_keys()
 
 
-def test_project_add_selection(Session, setup):
+def test_project_add_selection(Session, setup, project_template):
     from sqlalchemy import select
-
-    from scimodom.database.models import (
-        # Modification,
-        # DetectionTechnology,
-        # Organism,
-        Selection,
-    )
-
+    from scimodom.database.models import Selection
     from scimodom.services.project import ProjectService
 
     with Session() as session, session.begin():
         session.add_all(setup)
 
-        # modification = Modification(rna="mRNA", modomics_id="6A")
-        # technology = DetectionTechnology(tech="Technology 1", method_id=1)
-        # organism = Organism(cto="Cell Type 1", taxa_id=9606)
-        # session.add_all([modification, technology, organism])
-        # session.flush()
-        ## add (1, 1, 1, 1)
-        # selection = Selection(
-        # modification_id=modification.id,
-        # technology_id=technology.id,
-        # organism_id=organism.id,
-        # )
-        # session.add(selection)
-        # session.commit()
-
     project = _get_project(
-        external_sources_fmt="list", metadata_fmt="list", missing_key=None
+        project_template,
+        external_sources_fmt="list",
+        metadata_fmt="list",
+        missing_key=None,
     )
-    # add selection if not exists
     ProjectService(Session(), project)._add_selection()
 
     expected_records = [(1, 1, 1, 1), (2, 1, 1, 2), (3, 2, 2, 3)]
-
     with Session() as session, session.begin():
         records = session.execute(select(Selection)).scalars().all()
         records = [
@@ -203,18 +157,17 @@ def test_project_add_selection(Session, setup):
 
 
 @pytest.mark.parametrize(
-    "project,external_sources_fmt,metadata_fmt,missing_key",
+    "external_sources_fmt,metadata_fmt,missing_key",
     [
-        ("_get_project", "list", "list", None),
-        ("_get_project", "dict", "list", None),
-        ("_get_project", None, "list", None),
+        ("list", "list", None),
+        ("dict", "list", None),
+        (None, "list", None),
     ],
 )
 def test_project_validate_existing_entry(
-    project, external_sources_fmt, metadata_fmt, missing_key, Session, setup
+    external_sources_fmt, metadata_fmt, missing_key, Session, setup, project_template
 ):
     from scimodom.services.project import ProjectService, DuplicateProjectError
-
     from scimodom.database.models import Project, ProjectSource, ProjectContact
 
     import uuid
@@ -222,10 +175,8 @@ def test_project_validate_existing_entry(
 
     from datetime import datetime, timezone
 
-    SMID_LENGTH = 8
     u = uuid.uuid4()
-    smid = shortuuid.encode(u)[:SMID_LENGTH]
-
+    smid = shortuuid.encode(u)[: ProjectService.SMID_LENGTH]
     stamp = datetime.now(timezone.utc).replace(microsecond=0)
 
     with Session() as session, session.begin():
@@ -253,6 +204,7 @@ def test_project_validate_existing_entry(
         session.commit()
 
     project = _get_project(
+        project_template,
         external_sources_fmt=external_sources_fmt,
         metadata_fmt=metadata_fmt,
         missing_key=missing_key,
@@ -263,16 +215,19 @@ def test_project_validate_existing_entry(
         ProjectService(Session(), project)._validate_entry()
 
 
-def test_project_validate_entry(Session):
+def test_project_validate_entry(Session, project_template):
     from scimodom.services.project import ProjectService
 
     project = _get_project(
-        external_sources_fmt="list", metadata_fmt="list", missing_key=None
+        project_template,
+        external_sources_fmt="list",
+        metadata_fmt="list",
+        missing_key=None,
     )
     assert ProjectService(Session(), project)._validate_entry() is None
 
 
-def test_project_create_project(Session, setup):
+def test_project_create_project(Session, setup, project_template):
     from datetime import date, datetime, timezone
 
     from sqlalchemy import select
@@ -283,9 +238,11 @@ def test_project_create_project(Session, setup):
         session.add_all(setup)
 
     stamp = datetime.now(timezone.utc).replace(microsecond=0)  # .isoformat()
-
     project = _get_project(
-        external_sources_fmt="list", metadata_fmt="list", missing_key=None
+        project_template,
+        external_sources_fmt="list",
+        metadata_fmt="list",
+        missing_key=None,
     )
     ProjectService(Session(), project).create_project()
 

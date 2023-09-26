@@ -118,3 +118,65 @@ def setup():
     add.extend(method)
 
     return add
+
+
+@pytest.fixture()
+def project_template():
+    """\
+    2023-08-25 Project template (JSON format).
+
+    All keys are required.
+    "external_sources" can be None (null in yml).
+    "external_sources" and "metadata" can be list of dict, or dict.
+
+    Parameters
+    ----------
+    external_sources_fmt: str or None
+        "external_sources" format (list, dict, or None)
+    metadata_fmt: str
+        "metadata" format (list or dict)
+    missing_key: str or None
+        missing_key
+
+    Returns
+    -------
+    dict
+        Project template
+    """
+
+    project = dict()
+    project["title"] = "Title"
+    project["summary"] = "Summary"
+    project["contact_name"] = "Contact Name"
+    project["contact_institution"] = "Contact Institution"
+    project["contact_email"] = "Contact Email"
+    project["date_published"] = "2024-01-01"
+    project["external_sources"] = [
+        {"doi": "DOI1", "pmid": None},
+        {"doi": "DOI2", "pmid": 22222222},
+    ]
+    project["metadata"] = [
+        {
+            "rna": "mRNA",
+            "modomics_id": "6A",
+            "tech": "Technology 1",
+            "method_id": 1,
+            "organism": {"taxa_id": 9606, "cto": "Cell Type 1", "assembly": "GRCh38"},
+        },
+        {
+            "rna": "mRNA",
+            "modomics_id": "6A",
+            "tech": "Technology 1",
+            "method_id": 1,
+            "organism": {"taxa_id": 9606, "cto": "Cell Type 2", "assembly": "GRCh38"},
+        },
+        {
+            "rna": "mRNA",
+            "modomics_id": "5C",
+            "tech": "Technology 2",
+            "method_id": 1,
+            "organism": {"taxa_id": 9606, "cto": "Organ 1", "assembly": "GRCh38"},
+        },
+    ]
+
+    return project
