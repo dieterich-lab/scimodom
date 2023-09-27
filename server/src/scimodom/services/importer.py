@@ -211,7 +211,7 @@ class EUFImporter:
             h = f"{self._htag}{header}{self._hsep}"
             s = [l.replace(h, "").strip() for l in lines if re.search(h, l)]
             if not s:
-                raise SpecsError(f" Missing or misformatted header: {h}.")
+                raise SpecsError(f" Missing or misformatted header: {h} ")
             return s[0]
 
         skip_header = ["fileformat", "assembly"]
@@ -247,12 +247,15 @@ class EUFImporter:
             logger.warning(msg)
             print(msg)
         cols = cols[:num_cols]
+        if len(cols) != num_cols:
+            msg = f"Column count doesn't match required count at row {self._lino} for {self._version}."
+            raise SpecsError(msg)
         # Is it safe? How to overwrite if this happens (EUFID assignment, etc.)?
         for col_read, col_specs in zip(cols, self._specs["columns"].keys()):
             if not col_read.lower() == col_specs.lower():
                 msg = (
-                    f"Column name '{col_read}' from {self._filen} differs from the required {col_specs}."
-                    f"Data import will continue, assuming conformity to {self._version}."
+                    f"Column name '{col_read}' from {self._filen} differs from the required {col_specs}. "
+                    f"Data import will continue, assuming conformity to {self._version}. "
                     f"If you suspect misformatting, or data corruption, check {self._filen} and start again!"
                 )
                 logger.warning(msg)
