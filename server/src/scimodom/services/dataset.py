@@ -129,7 +129,8 @@ class DataService:
                     f"Selection for {short_name} ({rna}), {technology}, "
                     f"and {organism} not found! This is likely due to database corruption or a bug."
                 )
-                logger.error(msg)
+                # logger.error(msg) # if logging before raising, pytest cannot see the Exception...
+                print(msg)
                 raise Exception(msg)
             self._selection_ids[selection_id] = selection
 
@@ -195,7 +196,8 @@ class DataService:
                 f"Selection for modification and modifications read from {self._filen} "
                 f"differ: {symdiff}. Aborting transaction!"
             )
-            logger.error(msg)
+            # logger.error(msg) # if logging before raising, pytest cannot see the Exception...
+            print(msg)
             raise Exception(msg)
 
         selection_str = " and ".join(
