@@ -11,8 +11,8 @@ Data model
 Schema
 ^^^^^^
 
-Schema V3 20.09.2023.
-Alembic version ``be9340f7ff6e``.
+Schema V4 28.09.2023.
+Alembic version ``a2107e9c03fc``.
 
 .. code-block:: bash
 
@@ -63,7 +63,7 @@ Alembic version ``be9340f7ff6e``.
 
     CREATE TABLE `association` (
     `id` int(11) NOT NULL AUTO_INCREMENT,
-    `dataset_id` int(11) NOT NULL,
+    `dataset_id` varchar(12) NOT NULL,
     `selection_id` int(11) NOT NULL,
     PRIMARY KEY (`id`),
     UNIQUE KEY `dataset_id` (`dataset_id`,`selection_id`),
@@ -74,7 +74,7 @@ Alembic version ``be9340f7ff6e``.
 
     CREATE TABLE `data` (
     `id` int(11) NOT NULL AUTO_INCREMENT,
-    `dataset_id` int(11) NOT NULL,
+    `dataset_id` varchar(12) NOT NULL,
     `chrom` varchar(128) NOT NULL,
     `start` int(11) NOT NULL,
     `end` int(11) NOT NULL,
@@ -93,7 +93,7 @@ Alembic version ``be9340f7ff6e``.
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
     CREATE TABLE `dataset` (
-    `id` int(11) NOT NULL AUTO_INCREMENT,
+    `id` varchar(12) NOT NULL,
     `project_id` varchar(8) NOT NULL,
     `title` varchar(255) NOT NULL,
     `file_format` varchar(32) NOT NULL,
@@ -225,7 +225,7 @@ Alembic version ``be9340f7ff6e``.
 Model description
 ^^^^^^^^^^^^^^^^^
 
-SMID/project creation is handled by maintainers *e.g.* via requests. This is currently only available via maintenance scripts (TODO via API).
+SMID/project creation is handled by maintainers *e.g.* via request. This is currently only available via maintenance scripts (TODO via API).
 A standard template is required:
 
 .. code-block:: json
@@ -261,7 +261,11 @@ A standard template is required:
 
 ``"external_sources": null`` is allowed, ``"doi": null`` or ``"pmid": null`` are allowed, but not both simultaneously. ``"external_sources"`` can be a list of entries, or a single entry (as above). ``"metadata"`` can be a list of entries (as above), or a single entry (at least one entry is required, and all keys are required). Each ``"metadata"`` entry corresponds to a given dataset (bedRMod files to be uploaded, EUFID) that will be associated with the project, *i.e.* a given SMID can have one or more dataset or EUFID. But a given dataset may also require two or more entries for ``metadata``, *e.g.* if two or more modifications are given in the same bedRMod file.
 
-Once a SMID is created, the necesary fields are set, and data upload is enabled via the FE (TODO), via the API (TODO), or via maintenance scripts (TODO). At upload, fields are selected to describe the dataset in a standardized manner. These fields should be consistent with the information from the bedRMod header, but they are standardized (*Note:* We cannot validate all fields from the header, *i.e.* compare if the selected fields match the header, because not all information is recorded in the bedRMod format specs, the information may not be standardized, or the information may not always be easily recoverable. Precedence is given to the field selection.).
+Once a SMID is created, the necessary fields are set (modifications, incl. RNA type, technology/method, organism, incl. cell/tissue/organ, and assembly), and data upload is enabled via the FE (TODO), via the API (TODO), or via maintenance scripts. At upload, these fields are selected to match a given bedRMod file, and should thus be consistent with the information from the bedRMod header.
+
+.. attention::
+
+    We cannot validate all fields from the header, *i.e.* compare if selected fields match those from the header, because not all information is recorded in the bedRMod format specs, the information may not be standardized, or the information may not always be easily recoverable. Currently only ``organism`` and ``assembly`` are checked. ``organism`` (``taxa_id``) is easy to validate, but ``assembly`` is not. In **Sci-ModoM**, we define a standardized assembly nomenclature (via SMID/project creation, as defined above), but the ``assembly`` from the bedRMod header is "free". Modifications selected at upload are loosely checked against those present in the bedRMod file (column 4). ``external_source`` is never checked against project sources. Handling of these cases is not yet fixed (TODO).
 
 
 Nomenclature
@@ -277,12 +281,12 @@ Dates should be formatted by the following format: YYYY-MM-DD (ISO 8601).
 Assembly
 ^^^^^^^^
 
-Available assemblies for different organisms are grouped into an ``assembly_version``, which defines the assemblies used in **SciModoM**. This version is recorded in a table of the same name. Assemblies are *tagged* by version numbers, in case more than one is available per organism. The current ``assembly_version`` prevails.
+Available assemblies for different organisms are grouped into an ``assembly_version``, which defines the assemblies used in **Sci-ModoM**. This version is recorded in a table of the same name. Assemblies are *tagged* by version numbers, in case more than one is available per organism. The current ``assembly_version`` prevails.
 
 How does it work?
 
-* When a new project is added, assembly information is required. If the assembly is already available, nothing is done. If not, a new assembly is added, with a random version number (unused, unless the assembly is a new assembly, in which case this may be part of a next version, but in general this should not happen because project creation is handled by maintainers, *i.e.* if this happens, a version upgrade may be performed beforehand).
-* When data is added to a project, assembly is selected, and if this assembly does not match the current ``assembly_version``, then a liftover is performed. The dataset is marked as lifted.
+* When a new project is added, assembly information is required. If the assembly is already available, nothing is done. If not, a new assembly is added, with a random version number (unused, unless the assembly is a new assembly, in which case this may be part of a next version, but in general this should not happen because project creation is handled by maintainers, *e.g.* if this happens, a version upgrade may be performed beforehand).
+* When data is added to a project, assembly is selected, and if this assembly does not match the current ``assembly_version``, then a liftover is performed. The dataset is marked as lifted, but the assembly version remains the one given at upload (presumably matching that from the bedRMod header), for reference.
 * ``assembly_version`` can be *auto-generated* for maintenance (liftover selected datasets *e.g.* human, but not mouse; upgrade version number; tag assemblies with new version, incl. those that were not lifted but that are still valid, *i.e.* mouse)
 
 
@@ -293,6 +297,14 @@ How to handle annotations? *e.g.* a given dataset has ``annotation_source`` and 
 How important it is to "stick" to that? Can we have *e.g.* a given Ensembl annotation/version for a given organism, and use this?
 With the current model, we only need annotations to classify the data into regions, and assign gene names.
 How do we do this? We could use Ensembl tables, add genomic information at upload, to avoid performing operations in queries, ... ?
+
+
+Download
+^^^^^^^^
+
+The data can be download back to bedRMod format, but it is unclear how to handle header information when *e.g.* query results include records from different studies, incl. different organisms/assemblies/annotations, *etc.*.
+
+If downloading a single dataset *e.g.* corresponding to one original bedRMod file, the data is converted back to bedRMod format. The header is re-written using standad nomenclature if available. If the data is marked as lifted, the lifted data is written to file (we do not keep the orginal data), but a note is added to the header. The rationale is the following: data downloaded from the DB is that from the DB, and not that from the publication, *etc.*. If the DB is usign a certain assembly version, the the data downloaded will be of that assembly.
 
 
 .. _data_setup:
@@ -331,6 +343,17 @@ Projects are added (currently only without launching the app) with
     add-project -db DATABASE -p PROJECT
 
 where PROJECT is a (path to a) json file, as described above.
+
+
+After project creation, dataset can be added (currently only without launching the app) with
+
+.. code-block:: bash
+
+    add-dataset -db DATABASE -smid PROJECT_ID --title TITLE --file FILE [-o ORGANISM] [-a ASSEMBLY] [-m MODIFICATION [MODIFICATION ...]]
+    [-rna {mRNA,rRNA,tRNA} [{mRNA,rRNA,tRNA} ...]] [-t TECHNOLOGY] [-cto CELL_TYPE] [--assembly-id ASSEMBLY_ID]
+    [--modification-id MODIFICATION_ID [MODIFICATION_ID ...]] [--technology-id TECHNOLOGY_ID] [--cto-id CTO_ID]
+
+where FILE is a valid bedRMod file.
 
 
 Local setup
