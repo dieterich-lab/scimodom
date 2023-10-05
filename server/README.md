@@ -36,3 +36,18 @@ An empty database is created. This will be used to connect via SQLAlchemy.
 SHOW DATABASES;
 USE scimodom;
 ```
+
+### Run the app
+
+Create a file _.env.development_ with at least the following
+
+```bash
+DATABASE_URI=
+SECRET_KEY=
+```
+
+then
+
+```bash
+flask run
+```

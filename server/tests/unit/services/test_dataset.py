@@ -1,6 +1,6 @@
 import pytest
 
-# NOTE: ultimetaly relies on ProjectService(Session(), project).create_project()
+# NOTE: ultimately relies on ProjectService(Session(), project).create_project()
 # to avoid using ProjectService, we force/add project directly - skip checks
 
 
