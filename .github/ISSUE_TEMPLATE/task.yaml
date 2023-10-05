@@ -17,7 +17,6 @@ body:
     id: tasks
     attributes:
       label: A clear and concise description of todo items.
-      description: Describe what is to be done. 
+      description: Describe what is to be done.
     validations:
       required: true
-      

@@ -1,45 +1,41 @@
-*.swp
-*.pyc
-*aux
-*swp
-*bak
-*.egg-info
-.coverage
-cover/*
+# emacs -*- mode: gitignore; -*-
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# emacs projectiles files
+.projectile
+
+# backup
+*.bak
+*.gho
+*.ori
+*.orig
+*.tmp
+
+# Swap
+.*.kate-swp
+.swp.*
+
+# Swap - Vim
+[._]*.s[a-v][a-z]
+# !*.svg
+[._]*.sw[a-p]
+[._]s[a-rt-v][a-z]
+[._]ss[a-gi-z]
+[._]sw[a-p]
+# Session
+Session.vim
+Sessionx.vim
+
+# redis binary dump (dump.rdb) files
+*.rdb
+
+# Projetc specific
 local/
-scimodom/client/jsons/
-data/
-.idea/
-__pycache__/
-!/scimodom/server/src/static/js/dorina.js
-dump.rdb
-
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
-node_modules
-.DS_Store
-dist
-dist-ssr
-coverage
-*.local
-
-/cypress/videos/
-/cypress/screenshots/
-
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-
+logs/

@@ -1,0 +1,73 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "scimodom"
+description = "Sci-ModoM: The database of transcriptome-wide high-throughput RNA modification sites. Backend."
+readme = "README.md"
+license = { text = "GNU AGPL" }
+authors = [{ name = "Etienne Boileau" }]
+maintainers = [
+  { name = "Etienne Boileau", email = "boileau@uni-heidelberg.de" }
+]
+keywords = [
+  "RNA modification",
+]
+# See https://pypi.python.org/pypi?%3Aaction=list_classifiers
+classifiers = [
+  "Development Status :: 1 - Planning",
+  "Framework :: Flask",
+  "Intended Audience :: Science/Research",
+  "Topic :: Scientific/Engineering :: Bio-Informatics",
+  "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3 :: Only",
+]
+dynamic = ["version"]
+requires-python = ">=3.7,<3.11"
+dependencies = [
+  "alembic",
+  "Flask",
+  "Flask-Cors",
+  "mysqlclient",
+  "SQLAlchemy",
+  "numpy",
+  "pandas",
+  "python-dotenv",
+  "shortuuid"
+]
+
+[project.scripts]
+upsert = "scimodom.database.maintenance.upsert:main"
+add-project = "scimodom.database.maintenance.add_project:main"
+add-dataset = "scimodom.database.maintenance.add_dataset:main"
+
+[project.urls]
+Github = "https://github.com/dieterich-lab/scimodom"
+Issues = "https://github.com/dieterich-lab/scimodom/issues"
+
+[project.optional-dependencies]
+tests = ["pytest", "pytest-cov", "pytest-depends"] # do we need pytest-depends?
+docs = [
+  "ipykernel",
+  "matplotlib",
+  "nbsphinx",
+  "pandoc",
+  "sphinx>=4.5.0",
+  "sphinx_rtd_theme>=1.0.0",
+  "furo",
+  "sphinx-argparse",
+  "sphinx-copybutton"
+]
+
+[tool.setuptools.dynamic]
+version = { attr = "scimodom.__version__" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+log_cli = true
+log_cli_level = "INFO"
