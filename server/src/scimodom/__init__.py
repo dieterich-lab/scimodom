@@ -15,10 +15,10 @@ def create_app():
 
     app = Flask(__name__)
     CORS(app)
+    # does not instantiate the class object...
     app.config.from_object("scimodom.config.Config")
 
-    # to logger
-    print(f"USING {app.config['DATABASE_URI']}")
+    print(f" * Local environment: {'on' if app.config['LOCAL_APP'] else 'off'}")
 
     engine, session = make_session(app.config["DATABASE_URI"])
     app.session = scoped_session(session)
