@@ -172,7 +172,6 @@ class EUFImporter:
                     f"Column name {c} doesn't match any of the ORM mapped attribute names "
                     f"for {model.__name__}. This is likely due to a change in model declaration."
                 )
-                logger.error(msg)
                 raise Exception(msg)
             idx = mapped_columns.index(c)
             _dtypes[c] = mapped_types[idx]
@@ -189,7 +188,6 @@ class EUFImporter:
                 f"from {self._taxa_id} given at upload. Overwriting header."
                 f"Data import will continue with {self._taxa_id}..."
             )
-            print(msg)
             logger.warning(msg)
             self._header["taxa_id"] = self._taxa_id
         query = queries.query_column_where(
@@ -200,7 +198,6 @@ class EUFImporter:
             f"Overwriting header: assembly={assembly} from {self._filen} "
             f"with {assembly_name} given at upload. Data import will continue..."
         )
-        print(msg)
         logger.warning(msg)
         # assign id now
         self._header["assembly_id"] = self._assembly_id
@@ -245,7 +242,6 @@ class EUFImporter:
         for col in extra_cols:
             msg = f"Extra column '{col}' from {self._filen} will be ignored."
             logger.warning(msg)
-            print(msg)
         cols = cols[:num_cols]
         if len(cols) != num_cols:
             msg = f"Column count doesn't match required count at row {self._lino} for {self._version}."
@@ -259,7 +255,6 @@ class EUFImporter:
                     f"If you suspect misformatting, or data corruption, check {self._filen} and start again!"
                 )
                 logger.warning(msg)
-                print(msg)
 
     def _munge_values(self, values):
         num_values = len(values)
@@ -284,7 +279,6 @@ class EUFImporter:
         except ValueError as error:
             msg = f"Warning: Failed to parse {self._filen} at row {self._lino}: {error} - skipping!"
             logger.warning(msg)
-            print(msg)
 
     def get_modifications_from_file(self):
         return self._modifications_from_file

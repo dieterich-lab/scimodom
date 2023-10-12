@@ -148,7 +148,7 @@ def _mock_project_service(session, project):
         ("none"),
     ],
 )
-def test_dataset_get_selection(selection, Session, setup, project_template):
+def test_dataset_get_selection(selection, Session, setup, project_template, caplog):
     from io import StringIO
     from scimodom.services.dataset import DataService
 
@@ -184,6 +184,7 @@ def test_dataset_get_selection(selection, Session, setup, project_template):
     if selection == "none":
         with pytest.raises(Exception) as excinfo:
             service._get_selection()
+        # assert caplog.record_tuples == [('scimodom.services.dataset', 40, 'Selection for m5C (mRNA), Technology 1, and Cell Type 1 not found! This is likely due to database corruption or a bug.')]
     else:
         service._get_selection()
 
@@ -311,7 +312,7 @@ def test_dataset_validate_assembly(Session, setup, project_template):
         ("two"),
     ],
 )
-def test_dataset_create_eufid(selection, Session, setup, project_template):
+def test_dataset_create_eufid(selection, Session, setup, project_template, caplog):
     from scimodom.services.dataset import DataService
 
     # two modifications for the same dataset, same technology, same organism
@@ -346,6 +347,7 @@ def test_dataset_create_eufid(selection, Session, setup, project_template):
     if selection == "one":
         with pytest.raises(Exception) as excinfo:
             service._create_eufid()
+        # assert caplog.record_tuples == [('scimodom.services.importer', 30, 'Overwriting header: assembly=GRCh38 from filename with GRCh38 given at upload. Data import will continue...'), ('scimodom.services.dataset', 40, "Selection for modification and modifications read from filename differ: {'m5c'}. Aborting transaction!")]
     else:
         service._create_eufid()
 

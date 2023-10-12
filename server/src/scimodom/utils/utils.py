@@ -1,9 +1,3 @@
-import sys
-import logging
-
-logger = logging.getLogger(__name__)
-
-
 # logging_utils
 
 
@@ -72,6 +66,8 @@ def update_logging(
     -------
     None
     """
+    import sys
+    import logging
 
     # get root logger
     if logger is None:

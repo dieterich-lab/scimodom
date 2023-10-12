@@ -4,6 +4,7 @@ __version__ = ".".join(__version_info__)
 
 def create_app():
     import uuid
+    from logging.config import dictConfig
 
     from flask import Flask
     from flask_cors import CORS
@@ -13,10 +14,12 @@ def create_app():
 
     from scimodom.services.setup import SetupService
 
-    app = Flask(__name__)
+    app = Flask("scimodom")
     CORS(app)
     # does not instantiate the class object...
     app.config.from_object("scimodom.config.Config")
+    # since we haven't called app.logger there shouldn't be any default handlers...
+    dictConfig(app.config["LOGGING"])
 
     print(f" * Local environment: {'on' if app.config['LOCAL_APP'] else 'off'}")
 
