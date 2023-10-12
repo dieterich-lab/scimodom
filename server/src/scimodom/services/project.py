@@ -1,7 +1,12 @@
 #! /usr/bin/env python3
 
-import scimodom.utils.utils as utils
+import logging
 
+import scimodom.utils.utils as utils
+import scimodom.database.queries as queries
+
+from sqlalchemy.orm import Session
+from sqlalchemy import select, func
 from scimodom.database.models import (
     Project,
     ProjectSource,
@@ -13,28 +18,38 @@ from scimodom.database.models import (
     Assembly,
 )
 
-import scimodom.database.queries as queries
-
-from sqlalchemy import select, func
-
-import logging
-
 logger = logging.getLogger(__name__)
 
 
 class DuplicateProjectError(Exception):
+    """Exception handling for duplicate projects."""
+
     pass
 
 
 class ProjectService:
+    """Utility class to create a project.
+
+    :param session: SQLAlchemy ORM session
+    :type session: Session
+    :param project: Project description
+    :type project: dict
+    :param SMID_LENGTH: Length of Sci-ModoM ID (SMID)
+    :type: int
+    :param ASSEMBLY_NUM_LENGTH: Length of assembly ID
+    :type: int
+    """
+
     SMID_LENGTH = 8
     ASSEMBLY_NUM_LENGTH = 12
 
-    def __init__(self, session, project):
+    def __init__(self, session: Session, project: dict) -> None:
+        """Constructor method."""
         self._session = session
         self._project = project
 
-    def _validate_keys(self):
+    def _validate_keys(self) -> None:
+        """Validate keys from project description (dictionary)."""
         from itertools import chain
 
         cols = utils.get_table_columns(
@@ -58,7 +73,8 @@ class ProjectService:
             utils.check_keys_exist(d.keys(), m_cols)
             utils.check_keys_exist(d["organism"].keys(), o_cols)
 
-    def _get_prj_src(self):
+    def _get_prj_src(self) -> None:
+        """Construct query from project "external_sources" """
         from sqlalchemy import tuple_, and_, or_
 
         ors = or_(False)
@@ -88,7 +104,8 @@ class ProjectService:
             ors = ands  # if no sources
         return ors
 
-    def _validate_entry(self):
+    def _validate_entry(self) -> None:
+        """Validate project using title and sources."""
         query = (
             select(func.distinct(Project.id))
             .outerjoin(ProjectSource, Project.id == ProjectSource.project_id)
@@ -104,10 +121,10 @@ class ProjectService:
             )
             raise DuplicateProjectError(msg)
 
-    def _add_selection(self):
-        # no upsert, add only if
-        # on_conflict_do_nothing?
+    def _add_selection(self) -> None:
+        """Add new selection."""
 
+        # no upsert, add only if on_conflict_do_nothing?
         for d in utils.to_list(self._project["metadata"]):
             # modification
             rna = d["rna"]
@@ -191,7 +208,8 @@ class ProjectService:
                 self._session.commit()
                 selection_id = selection.id
 
-    def _add_contact(self):
+    def _add_contact(self) -> None:
+        """Add new contact."""
         contact_name = self._project["contact_name"]
         contact_institution = self._project["contact_institution"]
         contact_email = self._project["contact_email"]
@@ -216,7 +234,8 @@ class ProjectService:
             contact_id = contact.id
         return contact_id
 
-    def _create_smid(self):
+    def _create_smid(self) -> None:
+        """Add project."""
         from datetime import datetime, timezone
 
         query = select(Project.id)
@@ -244,7 +263,8 @@ class ProjectService:
         self._session.add_all(sources)
         self._session.commit()
 
-    def create_project(self):
+    def create_project(self) -> None:
+        """Project constructor."""
         self._validate_keys()
         self._validate_entry()
         self._add_selection()

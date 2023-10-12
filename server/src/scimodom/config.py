@@ -53,9 +53,12 @@ class Config:
             import_dir = Path(parent_dir, "import")
         self.import_dir = import_dir
 
-        self.modomics_tbl = Path(import_dir, "modomics.csv")
-        self.taxonomy_tbl = Path(import_dir, "taxonomy.csv")
-        self.ncbi_taxa_tbl = Path(import_dir, "ncbi_taxa.csv")
-        self.assembly_tbl = Path(import_dir, "assembly.csv")
-        self.assembly_version_tbl = Path(import_dir, "assembly_version.csv")
-        self.method_tbl = Path(import_dir, "method.csv")
+        self.modomics_tbl = ("Modomics", Path(import_dir, "modomics.csv"))
+        self.taxonomy_tbl = ("Taxonomy", Path(import_dir, "taxonomy.csv"))
+        self.ncbi_taxa_tbl = ("Taxa", Path(import_dir, "ncbi_taxa.csv"))
+        self.assembly_tbl = ("Assembly", Path(import_dir, "assembly.csv"))
+        self.assembly_version_tbl = (
+            "AssemblyVersion",
+            Path(import_dir, "assembly_version.csv"),
+        )
+        self.method_tbl = ("DetectionMethod", Path(import_dir, "method.csv"))

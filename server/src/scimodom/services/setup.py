@@ -1,22 +1,30 @@
 #! /usr/bin/env python3
 
+import logging
 
 import pandas as pd
 
-import logging
+import scimodom.utils.utils as utils
+
+from sqlalchemy.orm import Session
+from scimodom.config import Config
+from scimodom.database.database import Base
 
 logger = logging.getLogger(__name__)
 
-import scimodom.utils.utils as utils
-from scimodom.config import Config
-
 
 class SetupService:
-    def __init__(self, session):
+    """Utility class to perform INSERT... ON DUPLICATE KEY UPDATE.
+
+    :param session: SQLAlchemy ORM session
+    :type session: Session
+    """
+
+    def __init__(self, session: Session) -> None:
+        """Constructor method."""
         self._session = session
         self._config = Config()
-        # the order matters!
-        self._tables = [
+        self._models_tables = [
             self._config.modomics_tbl,
             self._config.taxonomy_tbl,
             self._config.ncbi_taxa_tbl,
@@ -24,24 +32,32 @@ class SetupService:
             self._config.assembly_version_tbl,
             self._config.method_tbl,
         ]
-        self._models = [
-            "Modomics",
-            "Taxonomy",
-            "Taxa",
-            "Assembly",
-            "AssemblyVersion",
-            "DetectionMethod",
-        ]
 
-    # to importer class...
+    @staticmethod
+    def get_table(model: Base, table: str) -> pd.DataFrame:
+        """Read table, keeping only relevant columns.
 
-    def get_table(self, model, table):
+        :param model: SQLAlchemy model
+        :type model: Base
+        :param table: Path to data table
+        :type table: str
+        :returns: Data table
+        :rtype: pd.DataFrame
+        """
         cols = set([column.key for column in model.__table__.columns])
         table = pd.read_csv(table)
         table = table.loc[:, table.columns.isin(cols)]
         return table
 
-    def validate_table(self, model, table):
+    @staticmethod
+    def validate_table(model: Base, table: pd.DataFrame) -> None:
+        """Validate data table.
+
+        :param model: SQLAlchemy model
+        :type model: Base
+        :param table: Path to data table
+        :type table: pd.DataFrame
+        """
         cols = table.columns.tolist()
         name = model.__name__
         if table.shape[1] == 1 and not name == "AssemblyVersion":
@@ -56,7 +72,14 @@ class SetupService:
         )
         logger.debug(msg)
 
-    def bulk_upsert(self, model, table):
+    def bulk_upsert(self, model: Base, table: pd.DataFrame) -> None:
+        """Perform bulk INSERT... ON DUPLICATE KEY UPDATE.
+
+        :param model: SQLAlchemy model
+        :type model: Base
+        :param table: Path to data table
+        :type table: pd.DataFrame
+        """
         from sqlalchemy.dialects.mysql import insert
 
         # Nan to None - check docs
@@ -69,11 +92,10 @@ class SetupService:
         self._session.execute(stmt)
         self._session.commit()
 
-    def upsert_all(self):
-        for m, t in zip(self._models, self._tables):
+    def upsert_all(self) -> None:
+        """Upsert all tables in the configuration file."""
+        for m, t in self._models_tables:
             model = utils.get_model(m)
             table = self.get_table(model, t)
             self.validate_table(model, table)
             self.bulk_upsert(model, table)
-
-    # TODO: upsert selected tables from DB (version) dump
