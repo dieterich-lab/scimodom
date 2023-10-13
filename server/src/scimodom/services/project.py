@@ -3,8 +3,10 @@
 import logging
 
 import scimodom.utils.utils as utils
+import scimodom.utils.specifications as specs
 import scimodom.database.queries as queries
 
+from typing import ClassVar
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func
 from scimodom.database.models import (
@@ -35,13 +37,13 @@ class ProjectService:
     :param project: Project description
     :type project: dict
     :param SMID_LENGTH: Length of Sci-ModoM ID (SMID)
-    :type: int
+    :type SMID_LENGTH: int
     :param ASSEMBLY_NUM_LENGTH: Length of assembly ID
-    :type: int
+    :type ASSEMBLY_NUM_LENGTH: int
     """
 
-    SMID_LENGTH = 8
-    ASSEMBLY_NUM_LENGTH = 12
+    SMID_LENGTH: ClassVar[int] = specs.SMID_LENGTH
+    ASSEMBLY_NUM_LENGTH: ClassVar[int] = specs.ASSEMBLY_NUM_LENGTH
 
     def __init__(self, session: Session, project: dict) -> None:
         """Constructor method."""

@@ -1,8 +1,15 @@
 #! /usr/bin/env python3
 
+import logging
+
 import scimodom.utils.utils as utils
+import scimodom.utils.specifications as specs
+import scimodom.database.queries as queries
 
-
+from typing import TextIO, ClassVar
+from sqlalchemy import select, func
+from sqlalchemy.orm import Session
+from scimodom.services.importer import EUFImporter
 from scimodom.database.models import (
     Data,
     Dataset,
@@ -15,37 +22,57 @@ from scimodom.database.models import (
     Assembly,
 )
 
-from scimodom.services.importer import EUFImporter
-
-import scimodom.database.queries as queries
-
-from sqlalchemy import select, func
-
-import logging
-
 logger = logging.getLogger(__name__)
 
 
 class DuplicateDatasetError(Exception):
+    """Exception handling for duplicate dataset."""
+
     pass
 
 
 class DataService:
-    EUFID_LENGTH = 12
+    """Utility class to create a dataset.
+
+    :param session: SQLAlchemy ORM session
+    :type session: Session
+    :param smid: SMID
+    :type smid: str
+    :param title: Title associated with EUF/bedRMod file/dataset
+    :type title: str
+    :param filen: EUF/bedRMod file path/name
+    :type filen: str
+    :param handle: EUF/bedRMod file handle
+    :type handle: TextIO
+    :param taxa_id: Taxonomy ID (organism) for file/dataset
+    :type taxa_id: int
+    :param assembly_id: Assembly ID for file/dataset (given at upload, not from file header)
+    :type assembly_id: int
+    :param modification_ids: Modification(s) associated with file/dataset (from upload)
+    :type modification_ids: list[int]
+    :param technology_id: Technology ID associated with file/dataset (from upload)
+    :type technology_id: int
+    :param organism_id: Organism ID associated with file/dataset (from upload)
+    :type organism_id: int
+    :param EUFID_LENGTH: Length of dataset ID (EUFID)
+    :type EUFID_LENGTH: int
+    """
+
+    EUFID_LENGTH: ClassVar[int] = specs.EUFID_LENGTH
 
     def __init__(
         self,
-        session,
-        smid,
-        title,
-        filen,
-        handle,
-        taxa_id,
-        assembly_id,
-        modification_ids,
-        technology_id,
-        organism_id,
-    ):
+        session: Session,
+        smid: str,
+        title: str,
+        filen: str,
+        handle: TextIO,
+        taxa_id: int,
+        assembly_id: int,
+        modification_ids: list[int],
+        technology_id: int,
+        organism_id: int,
+    ) -> None:
         self._session = session
 
         self._smid = smid
@@ -67,7 +94,11 @@ class DataService:
 
         self._lifted = False
 
-    def _get_selection(self):
+    def _get_selection(self) -> None:
+        """Get selection IDs associated with dataset.
+
+        Note: A selection is made up of modification_id, technology_id, and organism_id.
+        """
         for modification_id in self._modification_ids:
             query = queries.query_column_where(
                 Selection,
@@ -132,7 +163,8 @@ class DataService:
                 raise Exception(msg)
             self._selection_ids[selection_id] = selection
 
-    def _validate_entry(self):
+    def _validate_entry(self) -> None:
+        """Validate new dataset using SMID, title, assembly, and selection."""
         for selection_id, selection in self._selection_ids.items():
             query = (
                 select(func.distinct(Dataset.id))
@@ -153,7 +185,8 @@ class DataService:
                 )
                 raise DuplicateDatasetError(msg)
 
-    def _validate_assembly(self):
+    def _validate_assembly(self) -> None:
+        """Validate assembly and mark dataset for liftover"""
         query = queries.get_assembly_version()
         db_assembly_version = self._session.execute(query).scalar()
 
@@ -166,7 +199,8 @@ class DataService:
             self._lifted = True
             print("Some message... do something when?")
 
-    def _create_eufid(self):
+    def _create_eufid(self) -> None:
+        """Create new dataset using EUFimporter class."""
         query = select(Dataset.id)
         eufids = self._session.execute(query).scalars().all()
         self._eufid = utils.gen_short_uuid(self.EUFID_LENGTH, eufids)
@@ -207,13 +241,18 @@ class DataService:
         # confirm ?
         importer.close()
 
-    def _add_association(self):
+    def _add_association(self) -> None:
+        """Create new association entry for dataset.
+
+        Note: An association is made up of dataset_id and selection_id
+        """
         for selection_id in self._selection_ids.keys():
             association = Association(dataset_id=self._eufid, selection_id=selection_id)
             self._session.add(association)
             self._session.commit()
 
-    def create_dataset(self):
+    def create_dataset(self) -> None:
+        """Dataset constructor."""
         self._get_selection()
         self._validate_entry()
         self._validate_assembly()

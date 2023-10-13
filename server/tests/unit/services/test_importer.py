@@ -3,7 +3,7 @@ import pytest
 
 def _get_header(fmt=None):
     from io import StringIO
-    from scimodom.services.importer import specsEUF
+    from scimodom.utils.specifications import specsEUF
 
     specs = specsEUF.copy()
     specs_format = specs.pop("format")

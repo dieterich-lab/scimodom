@@ -1,14 +1,17 @@
-import re
+#! /usr/bin/env python3
 
-from sqlalchemy import insert
+import re
+import logging
 
 import scimodom.utils.utils as utils
 import scimodom.database.queries as queries
+
+from typing import Union, TextIO, Iterable, ClassVar
+from sqlalchemy import insert, select
+from sqlalchemy.orm import Session
 from scimodom.database.models import Data, Dataset
-
-from sqlalchemy import select
-
-import logging
+from scimodom.database.database import Base
+from scimodom.utils.specifications import specsEUF
 
 logger = logging.getLogger(__name__)
 
@@ -20,67 +23,61 @@ logger = logging.getLogger(__name__)
 # then define given importer e.g. MyImporter(BaseImporter)
 
 
-# define EUF specs
-
-specsEUF = {
-    "format": "bedRMod",
-    "header": {"comment": "#", "delimiter": "="},
-    "delimiter": "\t",
-    "1.6": {
-        "headers": {
-            "fileformat": "file_format",
-            "organism": "taxa_id",
-            "modification_type": "modification_type",
-            "assembly": "assembly_id",
-            "annotation_source": "annotation_source",
-            "annotation_version": "annotation_version",
-            "sequencing_platform": "sequencing_platform",
-            "basecalling": "basecalling",
-            "bioinformatics_workflow": "bioinformatics_workflow",
-            "experiment": "experiment",
-            "external_source": "external_source",
-        },
-        "columns": {
-            "chrom": "chrom",
-            "chromStart": "start",
-            "chromEnd": "end",
-            "name": "name",
-            "score": "score",
-            "strand": "strand",
-            "thickStart": "thick_start",
-            "thickEnd": "thick_end",
-            "itemRgb": "item_rgb",
-            "coverage": "coverage",
-            "frequency": "frequency",
-            "refBase": "ref_base",
-        },
-    },
-}
-
-
 class SpecsError(Exception):
+    """Exception handling for specification errors."""
+
     pass
 
 
 class EUFImporter:
-    """
-    Reads data from bedRMod file and writes to database tables.
+    """Utility class to read data from bedRMod format
+    and write to database tables.
+
+    :param session: SQLAlchemy ORM session
+    :type session: Session
+    :param filen: EUF/bedRMod file path/name
+    :type filen: str
+    :param handle: EUF/bedRMod file handle
+    :type handle: TextIO
+    :param smid: SMID
+    :type smid: str
+    :param eufid: EUFID
+    :type eufid: str
+    :param title: Title associated with EUF/bedRMod file/dataset
+    :type title: str
+    :param taxa_id: Taxonomy ID (organism) for file/dataset
+    :type taxa_id: int
+    :param assembly_id: Assembly ID for file/dataset (given at upload, not from file header)
+    :type assembly_id: int
+    :param lifted: Is Assembly ID (version) different from DB assembly version? (dataset marked for liftover)
+    :type lifted: bool
     """
 
     class _Buffer:
-        MAX_BUFFER = 1000
+        """Utility class to insert data to selected model tables.
 
-        def __init__(self, session, model):
+        :param session: SQLAlchemy ORM session
+        :type session: Session
+        :param model: SQLAlchemy model
+        :type model: Base
+        """
+
+        MAX_BUFFER: ClassVar[int] = 1000
+
+        def __init__(self, session: Session, model: Base) -> None:
+            """Constructor method."""
             self._session = session
             self._model = model
             self._buffer = []
 
-        def buffer_data(self, d):
+        def buffer_data(self, d: dict) -> None:
+            """Buffers data and flush."""
             self._buffer.append(d)
             if len(self._buffer) >= self.MAX_BUFFER:
                 self.flush()
 
-        def flush(self):
+        def flush(self) -> None:
+            """Insert and reset buffer."""
             if not self._buffer:
                 return
             self._session.execute(insert(self._model), self._buffer)
@@ -88,16 +85,17 @@ class EUFImporter:
 
     def __init__(
         self,
-        session,
-        filen,
-        handle,
-        smid,
-        eufid,
-        title,
-        taxa_id,
-        assembly_id,
-        lifted,
-    ):
+        session: Session,
+        filen: str,
+        handle: TextIO,
+        smid: str,
+        eufid: str,
+        title: str,
+        taxa_id: int,
+        assembly_id: int,
+        lifted: bool,
+    ) -> None:
+        """Constructor method."""
         self._sep = specsEUF["delimiter"]
         self._htag = specsEUF["header"]["comment"]
         self._hsep = specsEUF["header"]["delimiter"]
@@ -125,13 +123,15 @@ class EUFImporter:
         self._assembly_id = assembly_id
         self._lifted = lifted
 
-    def close(self):
+    def close(self) -> None:
+        """Close handle, flush all buffers, commit."""
         self._handle.close()
         for _buffer in self._buffers.values():
             _buffer.flush()
         self._session.commit()
 
-    def parseEUF(self):
+    def parseEUF(self) -> None:
+        """File parser."""
         self._lino = 1
         self._read_version()
 
@@ -149,7 +149,8 @@ class EUFImporter:
             self._lino += 1
             self._read_line(line)
 
-    def _read_version(self):
+    def _read_version(self) -> None:
+        """Read and validate EUF/bedRMod version."""
         try:
             line = next(self._handle)
         except StopIteration:
@@ -161,7 +162,16 @@ class EUFImporter:
         except KeyError:
             raise SpecsError(f" Unknown version: {self._version}.")
 
-    def _validate_attributes(self, model, specs):
+    def _validate_attributes(
+        self, model: Union[Base, str], specs: Iterable[str]
+    ) -> None:
+        """Validate specifications against model attributes.
+
+        :param model: SQLAlchemy model or name of model
+        :type model: Base | str
+        :param specs: Header specifications (column names)
+        :type specs: Iterable
+        """
         # assume order of __table__.columns is consistent...
         mapped_columns = utils.get_table_columns(model)
         mapped_types = utils.get_table_column_python_types(model)
@@ -177,7 +187,12 @@ class EUFImporter:
             _dtypes[c] = mapped_types[idx]
         self._dtypes[model.__name__] = _dtypes
 
-    def _add_missing_header_fields(self, assembly):
+    def _add_missing_header_fields(self, assembly: str) -> None:
+        """Add all fields required to update model.
+
+        :param assembly: Assembly header information
+        "type assembly: str
+        """
         self._header["id"] = self._eufid
         self._header["project_id"] = self._smid
         self._header["title"] = self._title
@@ -203,8 +218,23 @@ class EUFImporter:
         self._header["assembly_id"] = self._assembly_id
         self._header["lifted"] = self._lifted
 
-    def _munge_header(self, lines):
-        def _get_header(header):
+    def _munge_header(self, lines: list[str]) -> str:
+        """Read header into dictionary, cast types to those required by the model.
+
+        :param lines: Header lines
+        :type lines: list
+        :returns: Assembly header information
+        :rtype: str
+        """
+
+        def _get_header(header: str) -> str:
+            """Get and validate header tag.
+
+            :param header: Header line
+            :type header: str
+            :returns: Header value for given header tag
+            :rtype: str
+            """
             h = f"{self._htag}{header}{self._hsep}"
             s = [l.replace(h, "").strip() for l in lines if re.search(h, l)]
             if not s:
@@ -221,7 +251,8 @@ class EUFImporter:
         }
         return _get_header("assembly")
 
-    def _read_header(self):
+    def _read_header(self) -> None:
+        """Read header."""
         # or do reverse search, line by line ...?
         lines = []
         while self._lino < len(self._specs["headers"]):
@@ -233,7 +264,11 @@ class EUFImporter:
         _buffer.buffer_data(self._header)
         _buffer.flush()
 
-    def _validate_columns(self):
+    def _validate_columns(self) -> None:
+        """Validate bedRMod/EUF columns
+
+        Note: This function forces standard column names!
+        """
         num_cols = len(self._specs["columns"])
         line = next(self._handle).replace(self._htag, "")
         self._lino += 1
@@ -256,7 +291,14 @@ class EUFImporter:
                 )
                 logger.warning(msg)
 
-    def _munge_values(self, values):
+    def _munge_values(self, values: list[str]) -> dict[str, Union[str, int]]:
+        """Read data records into dictionary, cast types to those required by the model.
+
+        :param values: Records for one line
+        :type lines: list
+        :returns: Records as a dict
+        :rtype: dict
+        """
         num_values = len(values)
         num_cols = len(self._specs["columns"])
         if num_values != num_cols:
@@ -270,7 +312,8 @@ class EUFImporter:
         data["dataset_id"] = self._eufid
         return data
 
-    def _read_line(self, line):
+    def _read_line(self, line: str) -> None:
+        """Read a line, buffer data for insert."""
         values = [l.strip() for l in line.split(self._sep)]
         try:
             validated_values = self._munge_values(values)
@@ -280,5 +323,10 @@ class EUFImporter:
             msg = f"Warning: Failed to parse {self._filen} at row {self._lino}: {error} - skipping!"
             logger.warning(msg)
 
-    def get_modifications_from_file(self):
+    def get_modifications_from_file(self) -> set[str]:
+        """Store all modifications found in a EUF/bedRMod file (column "name")
+
+        :returns: Modifications as recorded in file
+        :rtype: set
+        """
         return self._modifications_from_file

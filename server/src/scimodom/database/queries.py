@@ -1,5 +1,6 @@
 # template queries
 
+from sqlalchemy import select
 from scimodom.database.models import (
     Modification,
     DetectionTechnology,
@@ -14,7 +15,6 @@ from scimodom.database.models import (
     Data,
 )
 
-from sqlalchemy import select
 
 # -- special queries
 
