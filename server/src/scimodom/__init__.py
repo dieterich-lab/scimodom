@@ -3,6 +3,7 @@ __version__ = ".".join(__version_info__)
 
 
 def create_app():
+    """Function factory to create Flask app."""
     import uuid
     from logging.config import dictConfig
 

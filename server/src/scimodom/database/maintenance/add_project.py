@@ -1,40 +1,22 @@
 #! /usr/bin/env python3
 
+"""Maintenance script for the ProjectService utility.
+This script allows to create a new project from an existing
+configuration json file. It calls the SetupService by default
+and upsert all DB tables.
+"""
+
 import json
-
-from argparse import ArgumentParser, SUPPRESS
 import logging
-
-from scimodom.database.database import make_session, init
 
 import scimodom.utils.utils as utils
 
+from argparse import ArgumentParser, SUPPRESS
+from scimodom.database.database import make_session, init
 from scimodom.services.project import ProjectService
 from scimodom.services.setup import SetupService
 
 logger = logging.getLogger(__name__)
-
-
-def confirm(msg):
-    """
-    Prompt confirmation (case-insensitive).
-
-    Parameters
-    ----------
-    msg
-        Prompt message.
-
-    Returns
-    -------
-    Bool
-        True if the answer is Y/y.
-    """
-
-    answer = ""
-    while answer not in ["y", "n"]:
-        prompt = f"{msg}\nConfirm to continue [Y/N]? "
-        answer = input(prompt).lower()
-    return answer == "y"
 
 
 def main():
@@ -81,7 +63,7 @@ def main():
     project = json.load(open(args.project))
     # add project
     msg = f"Adding project ({args.project}) to {args.database}..."
-    if not confirm(msg):
+    if not utils.confirm(msg):
         return
     ProjectService(Session(), project).create_project()
 

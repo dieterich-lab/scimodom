@@ -1,11 +1,19 @@
 import os
 import logging
+
+from typing import Union
 from pathlib import Path
 from dotenv import load_dotenv
 
 
 class Config:
-    """Set Flask and logging variables"""
+    """Set Flask and logging variables.
+
+    :param parent_dir: Parent directory (package)
+    :type parent_dir: Path | str
+    :param import_dir: Import directory (package)
+    :type import_dir: Path | str
+    """
 
     CWD = Path(__file__).absolute()
     if os.getenv("LOCAL_APP"):
@@ -45,7 +53,13 @@ class Config:
         },
     )
 
-    def __init__(self, parent_dir=None, import_dir=None):
+    def __init__(
+        self, parent_dir: Union[Path, str] = None, import_dir: Union[Path, str] = None
+    ) -> None:
+        """Constructor method.
+
+        Note: Default tables from import directory, no check.
+        """
         if parent_dir is None:
             parent_dir = self.CWD.parent.parent.parent
 

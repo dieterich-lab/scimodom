@@ -1,13 +1,20 @@
 #! /usr/bin/env python3
 
-from pathlib import Path
+"""Maintenance script for the DataService utility.
+This script allows to create a new dataset for an existing
+project.
+"""
 
-from sqlalchemy import select
-from argparse import ArgumentParser, SUPPRESS
 import logging
 
-from scimodom.database.database import make_session, init
+import scimodom.utils.utils as utils
+import scimodom.database.queries as queries
 
+from pathlib import Path
+from sqlalchemy import select
+from argparse import ArgumentParser, SUPPRESS
+from scimodom.database.database import make_session, init
+from scimodom.services.dataset import DataService
 from scimodom.database.models import (
     Project,
     Taxa,
@@ -19,34 +26,7 @@ from scimodom.database.models import (
     Selection,
 )
 
-import scimodom.utils.utils as utils
-import scimodom.database.queries as queries
-
-from scimodom.services.dataset import DataService
-
 logger = logging.getLogger(__name__)
-
-
-def confirm(msg):
-    """
-    Prompt confirmation (case-insensitive).
-
-    Parameters
-    ----------
-    msg
-        Prompt message.
-
-    Returns
-    -------
-    Bool
-        True if the answer is Y/y.
-    """
-
-    answer = ""
-    while answer not in ["y", "n"]:
-        prompt = f"{msg}\nConfirm to continue [Y/N]? "
-        answer = input(prompt).lower()
-    return answer == "y"
 
 
 def main():
@@ -376,7 +356,7 @@ def main():
         f"Adding dataset for Taxa ID={organism}; Assembly={assembly}; Modifications={', '.join(modifications)}; "
         f"Technology={technology}; and Cell/Tissue/Organ={cto} to project {smid} from {args.file}..."
     )
-    if not confirm(msg):
+    if not utils.confirm(msg):
         return
     service.create_dataset()
 

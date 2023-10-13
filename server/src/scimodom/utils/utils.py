@@ -1,23 +1,21 @@
 # logging_utils
 
+from typing import Union, Iterable
+from argparse import ArgumentParser, Namespace
+from logging import Logger
+from scimodom.database.database import Base
 
-def add_log_opts(parser, logf=""):
+
+def add_log_opts(parser: ArgumentParser, logf: str = "") -> None:
+    """Add options for logging.
+
+    Note: Statements are always written to stderr.
+
+    :param parser: Argument parser
+    :type parser: argparse.ArgumentParser
+    :param logf: Log file
+    :type logf: str
     """
-    Add options for logging.
-    Statements are always written to stderr.
-
-    Parameters
-    ----------
-    parser
-        argparse.ArgumentParser
-    logf
-        Log file
-
-    Returns
-    -------
-    None
-    """
-
     logging_levels = ["NOTSET", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
 
     logging_options = parser.add_argument_group("logging options")
@@ -46,25 +44,18 @@ def add_log_opts(parser, logf=""):
 
 
 def update_logging(
-    args, logger=None, format_str="%(levelname)-8s %(name)-8s %(asctime)s : %(message)s"
-):
-    """
-    Configure loggers/handlers.
+    args: Namespace,
+    logger: Union[None, Logger] = None,
+    format_str: str = "%(levelname)-8s %(name)-8s %(asctime)s : %(message)s",
+) -> None:
+    """Configure loggers/handlers.
 
-    Parameters
-    ----------
-    args
-        argparse.Namespace
-
-    logger
-        logging.Logger or None. If None, default logger is updated.
-
-    format_str
-        Logging format string.
-
-    Returns
-    -------
-    None
+    :param args: Argument Namespace object
+    :type args: argparse.Namespace
+    :param logger: Logger
+    :type logger: logging.Logger | None
+    :param format_str: Format string
+    :type format_str: str
     """
     import sys
     import logging
@@ -100,25 +91,20 @@ def update_logging(
 # NOTE: location of these may change, e.g. to service.utils
 
 
-def check_keys_exist(d, keys):
-    """
-    Check if keys are present in the dictionary, w/o
+def check_keys_exist(
+    d: Iterable[Union[str, int]], keys: Iterable[Union[str, int]]
+) -> list[Union[str, int]]:
+    """Check if keys are present in the dictionary, w/o
     type, value, etc. validation.
 
-    Parameters
-    ----------
-    d (dict)
-        A dictionary.
-    keys (list)
-        A list of keys to check.
+    Note: Returned value unused.
 
-    Returns
-    -------
-    list of keys that are not found
-
-    Raises
-    ------
-    KeyError
+    :param d: A list of keys from a dictionary
+    :type d: Iterable
+    :param keys: A list of keys to check.
+    :type keys: Iterable
+    :returns: missing_keys
+    :rtype: list
     """
 
     missing_keys = [k for k in keys if k not in d]
@@ -131,19 +117,13 @@ def check_keys_exist(d, keys):
     return missing_keys
 
 
-def get_model(model):
-    """
-    Get model class by name.
+def get_model(model: str) -> Base:
+    """Get model class by name.
 
-    Parameters
-    ----------
-    model
-        Name of class.
-
-    Returns
-    -------
-    Class
-        The model class.
+    :param model: Name of class
+    :type model: str
+    :returns: The model class
+    :rtype: Base
     """
 
     import inspect
@@ -160,21 +140,16 @@ def get_model(model):
         raise KeyError(msg)
 
 
-def get_table_columns(model, remove=[]):
-    """
-    Get columns from model table, optionally
+def get_table_columns(model: Union[str, Base], remove: list[str] = []) -> list[str]:
+    """Get columns from model table, optionally
     removing a subset of them.
 
-    Parameters
-    ----------
-    model
-        Name of class.
-    remove
-        List of column names
-
-    Returns
-    -------
-    List of columns.
+    :param model: Name of class or SQLAlchemy model
+    :type model: Base | str
+    :param remove: List of column names
+    :type remove: list
+    :returns: List of columns
+    :rtype: list
     """
 
     try:
@@ -184,21 +159,20 @@ def get_table_columns(model, remove=[]):
     return [c.key for c in cols if c.key not in remove]
 
 
-def get_table_column_python_types(model, remove=[]):
-    """
-    Get column python types from model table, optionally
+def get_table_column_python_types(
+    model: Union[str, Base], remove: list[str] = []
+) -> list[Union[int, str, bool]]:
+    """Get column python types from model table, optionally
     removing a subset of them.
 
-    Parameters
-    ----------
-    model
-        Name of class.
-    remove
-        List of column names
+    Note: Python types str, int, bool
 
-    Returns
-    -------
-    List of column python types.
+    :param model: Name of class or SQLAlchemy model
+    :type model: Base | str
+    :param remove: List of column names
+    :type remove: str
+    :returns: List of column (Python) types
+    :rtype: list
     """
 
     try:
@@ -208,9 +182,15 @@ def get_table_column_python_types(model, remove=[]):
     return [c.type.python_type for c in cols if c.key not in remove]
 
 
-def to_list(i):
-    # converts string, list, set, and None to list
-    # does not unpack tuple or dict
+def to_list(i: Union[str, list, set, None]) -> list[Union[str, int, bool, tuple, dict]]:
+    """Converts string, list, set, and None to list,
+    but does not unpack tuple or dict.
+
+    :param i: String, list, set, or None
+    :type i: str | list | set | None
+    :returns: Input as a list
+    :rtype: list
+    """
     return (
         i
         if isinstance(i, list)
@@ -222,12 +202,40 @@ def to_list(i):
     )
 
 
-def gen_short_uuid(LENGTH, suuids):
+def gen_short_uuid(length: int, suuids: list[str]) -> str:
+    """Generate a short UUID.
+
+    :param length: Length of ID
+    :type length: int
+    :param suuids: List of existing IDs
+    :type suuids: list
+    :returns: Newly created ID
+    :rtype: str
+    """
     import uuid
     import shortuuid
 
     u = uuid.uuid4()
-    suuid = shortuuid.encode(u)[:LENGTH]
+    suuid = shortuuid.encode(u)[:length]
     while suuid in suuids:
-        suuid = shortuuid.encode(u)[:LENGTH]
+        suuid = shortuuid.encode(u)[:length]
     return suuid
+
+
+# script-related utilities
+
+
+def confirm(msg: str) -> bool:
+    """Prompt confirmation (case-insensitive).
+
+    :param msg: Prompt message
+    :type msg: str
+    :returns: True if the answer is Y/y
+    :rtype: bool
+    """
+
+    answer = ""
+    while answer not in ["y", "n"]:
+        prompt = f"{msg}\nConfirm to continue [Y/N]? "
+        answer = input(prompt).lower()
+    return answer == "y"

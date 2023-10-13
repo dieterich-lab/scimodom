@@ -27,7 +27,7 @@ def make_session(database_uri: str) -> tuple[Engine, Session]:
 
 
 def get_session():
-    """Get current session"""
+    """Get current session."""
     if _session is None:
         raise Exception("Session not initialized!")
     else:
@@ -35,13 +35,21 @@ def get_session():
 
 
 def get_engine():
+    """Get engine."""
     if _engine is None:
         raise Exception("DB engine not created!")
     else:
         return _engine
 
 
-def init(engine, session):
+def init(engine: Engine, session: Session) -> None:
+    """Set engine and session, sreate all tables.
+
+    :param engine: Engine
+    :type engine: Engine
+    :param session: Session
+    :type session: Session
+    """
     global _engine, _session
     _engine = engine
     _session = session

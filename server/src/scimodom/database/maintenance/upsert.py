@@ -1,38 +1,19 @@
 #! /usr/bin/env python3
 
+"""Maintenance script for the SetupService utility.
+This script allows to upsert selected or all DB tables.
+"""
 
 import sys
-from argparse import ArgumentParser, SUPPRESS
 import logging
 
-from scimodom.database.database import make_session, init
-from scimodom.services.setup import SetupService
 import scimodom.utils.utils as utils
 
+from argparse import ArgumentParser, SUPPRESS
+from scimodom.database.database import make_session, init
+from scimodom.services.setup import SetupService
 
 logger = logging.getLogger(__name__)
-
-
-def confirm(msg):
-    """
-    Prompt confirmation (case-insensitive).
-
-    Parameters
-    ----------
-    msg
-        Prompt message.
-
-    Returns
-    -------
-    Bool
-        True if the answer is Y/y.
-    """
-
-    answer = ""
-    while answer not in ["y", "n"]:
-        prompt = f"{msg}\nConfirm to continue [Y/N]? "
-        answer = input(prompt).lower()
-    return answer == "y"
 
 
 def main():
@@ -101,7 +82,7 @@ def main():
             f"Updating {model.__name__} (table {model.__table__.name}) using "
             f"the following columns: {table.columns.tolist()}."
         )
-        if not confirm(msg):
+        if not utils.confirm(msg):
             return
         setup.bulk_upsert(model, table)
     else:
