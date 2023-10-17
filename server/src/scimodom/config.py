@@ -54,7 +54,9 @@ class Config:
     )
 
     def __init__(
-        self, parent_dir: Union[Path, str] = None, import_dir: Union[Path, str] = None
+        self,
+        parent_dir: Union[Path, str, None] = None,
+        import_dir: Union[Path, str, None] = None,
     ) -> None:
         """Constructor method.
 
@@ -64,15 +66,30 @@ class Config:
             parent_dir = self.CWD.parent.parent.parent
 
         if import_dir is None:
-            import_dir = Path(parent_dir, "import")
-        self.import_dir = import_dir
+            import_dir = "import"
+        self.import_dir: Path = Path(parent_dir, import_dir)
 
-        self.modomics_tbl = ("Modomics", Path(import_dir, "modomics.csv"))
-        self.taxonomy_tbl = ("Taxonomy", Path(import_dir, "taxonomy.csv"))
-        self.ncbi_taxa_tbl = ("Taxa", Path(import_dir, "ncbi_taxa.csv"))
-        self.assembly_tbl = ("Assembly", Path(import_dir, "assembly.csv"))
-        self.assembly_version_tbl = (
-            "AssemblyVersion",
-            Path(import_dir, "assembly_version.csv"),
+        self.modomics_tbl: tuple[str, Path] = (
+            "Modomics",
+            Path(self.import_dir, "modomics.csv"),
         )
-        self.method_tbl = ("DetectionMethod", Path(import_dir, "method.csv"))
+        self.taxonomy_tbl: tuple[str, Path] = (
+            "Taxonomy",
+            Path(self.import_dir, "taxonomy.csv"),
+        )
+        self.ncbi_taxa_tbl: tuple[str, Path] = (
+            "Taxa",
+            Path(self.import_dir, "ncbi_taxa.csv"),
+        )
+        self.assembly_tbl: tuple[str, Path] = (
+            "Assembly",
+            Path(self.import_dir, "assembly.csv"),
+        )
+        self.assembly_version_tbl: tuple[str, Path] = (
+            "AssemblyVersion",
+            Path(self.import_dir, "assembly_version.csv"),
+        )
+        self.method_tbl: tuple[str, Path] = (
+            "DetectionMethod",
+            Path(self.import_dir, "method.csv"),
+        )

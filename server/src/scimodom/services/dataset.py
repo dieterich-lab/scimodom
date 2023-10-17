@@ -6,7 +6,7 @@ import scimodom.utils.utils as utils
 import scimodom.utils.specifications as specs
 import scimodom.database.queries as queries
 
-from typing import TextIO, ClassVar
+from typing import TextIO, ClassVar, Optional
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 from scimodom.services.importer import EUFImporter
@@ -76,7 +76,7 @@ class DataService:
         self._session = session
 
         self._smid = smid
-        self._eufid = None
+        self._eufid: Optional[str] = None
         self._title = title
 
         # how are these coming from form?

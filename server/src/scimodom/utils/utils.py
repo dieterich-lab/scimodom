@@ -1,9 +1,9 @@
 # logging_utils
 
-from typing import Union, Iterable
+from collections.abc import Sequence, Iterable
+from typing import Union, Any
 from argparse import ArgumentParser, Namespace
 from logging import Logger
-from scimodom.database.database import Base
 
 
 def add_log_opts(parser: ArgumentParser, logf: str = "") -> None:
@@ -72,36 +72,34 @@ def update_logging(
 
     # check additional loggers
     if len(args.log_file) > 0:
-        h = logging.FileHandler(args.log_file)
+        fh = logging.FileHandler(args.log_file)
         formatter = logging.Formatter(format_str)
-        h.setFormatter(formatter)
+        fh.setFormatter(formatter)
         if args.file_logging_level != "NOTSET":
             l = logging.getLevelName(args.file_logging_level)
-            h.setLevel(l)
-        logger.addHandler(h)
+            fh.setLevel(l)
+        logger.addHandler(fh)
 
     if args.log_stdout:
-        h = logging.StreamHandler(sys.stdout)
+        sh = logging.StreamHandler(sys.stdout)
         formatter = logging.Formatter(format_str)
-        h.setFormatter(formatter)
-        logger.addHandler(h)
+        sh.setFormatter(formatter)
+        logger.addHandler(sh)
 
 
 # various helper functions
 # NOTE: location of these may change, e.g. to service.utils
 
 
-def check_keys_exist(
-    d: Iterable[Union[str, int]], keys: Iterable[Union[str, int]]
-) -> list[Union[str, int]]:
+def check_keys_exist(d: Iterable[Any], keys: Iterable[Any]) -> list[Any]:
     """Check if keys are present in the dictionary, w/o
     type, value, etc. validation.
 
     Note: Returned value unused.
 
-    :param d: A list of keys from a dictionary
+    :param d: An iterable e.g. keys from a dictionary
     :type d: Iterable
-    :param keys: A list of keys to check.
+    :param keys: An iterable, e.g. keys to check.
     :type keys: Iterable
     :returns: missing_keys
     :rtype: list
@@ -110,14 +108,14 @@ def check_keys_exist(
     missing_keys = [k for k in keys if k not in d]
 
     if len(missing_keys) > 0:
-        missing_keys = " ".join(missing_keys)
-        msg = f"Keys not found: {missing_keys}."
+        msg = " ".join(missing_keys)
+        msg = f"Keys not found: {msg}."
         raise KeyError(msg)
 
     return missing_keys
 
 
-def get_model(model: str) -> Base:
+def get_model(model: str):
     """Get model class by name.
 
     :param model: Name of class
@@ -140,7 +138,7 @@ def get_model(model: str) -> Base:
         raise KeyError(msg)
 
 
-def get_table_columns(model: Union[str, Base], remove: list[str] = []) -> list[str]:
+def get_table_columns(model, remove: list[str] = []) -> list[str]:
     """Get columns from model table, optionally
     removing a subset of them.
 
@@ -159,9 +157,7 @@ def get_table_columns(model: Union[str, Base], remove: list[str] = []) -> list[s
     return [c.key for c in cols if c.key not in remove]
 
 
-def get_table_column_python_types(
-    model: Union[str, Base], remove: list[str] = []
-) -> list[Union[int, str, bool]]:
+def get_table_column_python_types(model, remove: list[str] = []) -> list[Any]:
     """Get column python types from model table, optionally
     removing a subset of them.
 
@@ -182,7 +178,7 @@ def get_table_column_python_types(
     return [c.type.python_type for c in cols if c.key not in remove]
 
 
-def to_list(i: Union[str, list, set, None]) -> list[Union[str, int, bool, tuple, dict]]:
+def to_list(i: Union[str, list, set, None]):
     """Converts string, list, set, and None to list,
     but does not unpack tuple or dict.
 
@@ -202,7 +198,7 @@ def to_list(i: Union[str, list, set, None]) -> list[Union[str, int, bool, tuple,
     )
 
 
-def gen_short_uuid(length: int, suuids: list[str]) -> str:
+def gen_short_uuid(length: int, suuids: Sequence[Any]) -> str:
     """Generate a short UUID.
 
     :param length: Length of ID

@@ -6,6 +6,8 @@ import pandas as pd
 
 import scimodom.utils.utils as utils
 
+from pathlib import Path
+from typing import Union
 from sqlalchemy.orm import Session
 from scimodom.config import Config
 from scimodom.database.database import Base
@@ -34,7 +36,7 @@ class SetupService:
         ]
 
     @staticmethod
-    def get_table(model: Base, table: str) -> pd.DataFrame:
+    def get_table(model: Base, table: Union[Path, str]) -> pd.DataFrame:
         """Read table, keeping only relevant columns.
 
         :param model: SQLAlchemy model
@@ -45,9 +47,9 @@ class SetupService:
         :rtype: pd.DataFrame
         """
         cols = set([column.key for column in model.__table__.columns])
-        table = pd.read_csv(table)
-        table = table.loc[:, table.columns.isin(cols)]
-        return table
+        df = pd.read_csv(table)
+        df = df.loc[:, df.columns.isin(cols)]
+        return df
 
     @staticmethod
     def validate_table(model: Base, table: pd.DataFrame) -> None:
@@ -72,11 +74,11 @@ class SetupService:
         )
         logger.debug(msg)
 
-    def bulk_upsert(self, model: Base, table: pd.DataFrame) -> None:
+    def bulk_upsert(self, model, table: pd.DataFrame) -> None:
         """Perform bulk INSERT... ON DUPLICATE KEY UPDATE.
 
         :param model: SQLAlchemy model
-        :type model: Base
+        :type model: Union[TableClause, Join, Alias, CTE, type[Any], Inspectable[_HasClauseElement], _HasClauseElement]
         :param table: Path to data table
         :type table: pd.DataFrame
         """

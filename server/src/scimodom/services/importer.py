@@ -6,7 +6,7 @@ import logging
 import scimodom.utils.utils as utils
 import scimodom.database.queries as queries
 
-from typing import Union, TextIO, Iterable, ClassVar
+from typing import Union, TextIO, Iterable, ClassVar, Any, Optional
 from sqlalchemy import insert, select
 from sqlalchemy.orm import Session
 from scimodom.database.models import Data, Dataset
@@ -64,11 +64,11 @@ class EUFImporter:
 
         MAX_BUFFER: ClassVar[int] = 1000
 
-        def __init__(self, session: Session, model: Base) -> None:
+        def __init__(self, session: Session, model) -> None:
             """Constructor method."""
             self._session = session
             self._model = model
-            self._buffer = []
+            self._buffer: list[dict] = []
 
         def buffer_data(self, d: dict) -> None:
             """Buffers data and flush."""
@@ -96,21 +96,21 @@ class EUFImporter:
         lifted: bool,
     ) -> None:
         """Constructor method."""
-        self._sep = specsEUF["delimiter"]
-        self._htag = specsEUF["header"]["comment"]
-        self._hsep = specsEUF["header"]["delimiter"]
-        self._version = None
-        self._specs = None
+        self._sep: str = specsEUF["delimiter"]
+        self._htag: str = specsEUF["header"]["comment"]
+        self._hsep: str = specsEUF["header"]["delimiter"]
+        self._version: Optional[str] = None
+        self._specs: dict[str, dict[str, str]] = dict()
 
         self._session = session
         self._filen = filen
         self._handle = handle
 
-        self._lino = None
-        self._header = None
-        self._buffers = dict()
-        self._dtypes = dict()
-        self._modifications_from_file = set()
+        self._lino: Optional[int] = None
+        self._header: Optional[dict] = None
+        self._buffers: dict[str, EUFImporter._Buffer] = dict()
+        self._dtypes: dict[str, dict[str, Any]] = dict()
+        self._modifications_from_file: set[str] = set()
 
         # presumably, SMID, title, taxa_id, assembly_id all come from the FE upload form
         # or from arguments to the API/maintenance -> TODO: data upload service
@@ -162,9 +162,7 @@ class EUFImporter:
         except KeyError:
             raise SpecsError(f" Unknown version: {self._version}.")
 
-    def _validate_attributes(
-        self, model: Union[Base, str], specs: Iterable[str]
-    ) -> None:
+    def _validate_attributes(self, model, specs: Iterable[str]) -> None:
         """Validate specifications against model attributes.
 
         :param model: SQLAlchemy model or name of model
@@ -291,7 +289,7 @@ class EUFImporter:
                 )
                 logger.warning(msg)
 
-    def _munge_values(self, values: list[str]) -> dict[str, Union[str, int]]:
+    def _munge_values(self, values: list[str]) -> dict:
         """Read data records into dictionary, cast types to those required by the model.
 
         :param values: Records for one line

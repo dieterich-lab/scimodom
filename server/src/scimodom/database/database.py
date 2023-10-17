@@ -1,4 +1,5 @@
 import os
+from typing import Callable
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase, Session
 from sqlalchemy.engine import Engine
@@ -11,7 +12,7 @@ class Base(DeclarativeBase):
     pass
 
 
-def make_session(database_uri: str) -> tuple[Engine, Session]:
+def make_session(database_uri: str) -> tuple[Engine, sessionmaker[Session]]:
     """Wrapper for engine creation and configurable Session factory.
 
     :param database_uri: Database URI
@@ -42,7 +43,7 @@ def get_engine():
         return _engine
 
 
-def init(engine: Engine, session: Session) -> None:
+def init(engine: Engine, session: Callable[[Session], Session]) -> None:
     """Set engine and session, sreate all tables.
 
     :param engine: Engine

@@ -75,7 +75,7 @@ class ProjectService:
             utils.check_keys_exist(d.keys(), m_cols)
             utils.check_keys_exist(d["organism"].keys(), o_cols)
 
-    def _get_prj_src(self) -> None:
+    def _get_prj_src(self):
         """Construct query from project "external_sources" """
         from sqlalchemy import tuple_, and_, or_
 
@@ -210,7 +210,7 @@ class ProjectService:
                 self._session.commit()
                 selection_id = selection.id
 
-    def _add_contact(self) -> None:
+    def _add_contact(self):
         """Add new contact."""
         contact_name = self._project["contact_name"]
         contact_institution = self._project["contact_institution"]
@@ -257,11 +257,12 @@ class ProjectService:
             date_added=stamp,
         )
 
-        sources = [project]
+        sources = []
         for s in utils.to_list(self._project["external_sources"]):
             source = ProjectSource(project_id=smid, doi=s["doi"], pmid=s["pmid"])
             sources.append(source)
 
+        self._session.add(project)
         self._session.add_all(sources)
         self._session.commit()
 
