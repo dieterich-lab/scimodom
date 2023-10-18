@@ -25,6 +25,14 @@ specsEUF = {
             "experiment": "experiment",
             "external_source": "external_source",
         },
+        "required": [
+            "fileformat",
+            "organism",
+            "modification_type",
+            "assembly",
+            "annotation_source",
+            "annotation_version",
+        ],
         "columns": {
             "chrom": "chrom",
             "chromStart": "start",

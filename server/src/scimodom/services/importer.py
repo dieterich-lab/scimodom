@@ -103,8 +103,10 @@ class EUFImporter:
         self._sep: str = self.SPECS["delimiter"]
         self._htag: str = self.SPECS["header"]["comment"]
         self._hsep: str = self.SPECS["header"]["delimiter"]
+        self._hrequired: list[str]
         self._version: Optional[str] = None
-        self._specs: dict[str, dict[str, str]]
+        self._specs: dict
+        self._int_types: list
 
         self._lino: int
         self._header: dict[str, Any]
@@ -162,6 +164,7 @@ class EUFImporter:
         try:
             self._version = f"{self.SPECS['format']}v{version}"
             self._specs = self.SPECS[version]
+            self._hrequired = self._specs["required"][1:]
         except KeyError:
             raise SpecsError(f" Unknown version: {self._version}.")
 
@@ -228,6 +231,24 @@ class EUFImporter:
         :rtype: str
         """
 
+        def _is_required(header: str, s: str) -> bool:
+            """Check if required header is not empty.
+
+            Note: We cannot check content, just if string
+            is not empty. Type casting occurs later.
+
+            :param header: Header line
+            :type header: str
+            :param s: Header content
+            :type s: str
+            :returns: True if non-empty, else False
+            :rtype: bool
+            """
+            skip = False
+            if header in self._hrequired and not s:
+                skip = True
+            return skip
+
         def _get_header(header: str) -> str:
             """Get and validate header tag.
 
@@ -238,7 +259,7 @@ class EUFImporter:
             """
             h = f"{self._htag}{header}{self._hsep}"
             s = [l.replace(h, "").strip() for l in lines if re.search(h, l)]
-            if not s:
+            if not s or _is_required(header, s[0]):
                 raise SpecsError(f" Missing or misformatted header: {h} ")
             return s[0]
 
@@ -250,6 +271,8 @@ class EUFImporter:
             for (header, mapped_header) in self._specs["headers"].items()
             if header not in skip_header
         }
+        # for non-required headers, nullify empty strings
+        self._header = dict((k, None if not v else v) for k, v in self._header.items())
         return _get_header("assembly")
 
     def _read_header(self) -> None:
@@ -291,6 +314,21 @@ class EUFImporter:
                     f"If you suspect misformatting, or data corruption, check {self._filen} and start again!"
                 )
                 logger.warning(msg)
+        # for type casting
+        self._int_types = [
+            i
+            for i, v in enumerate(self._specs["columns"].values())
+            if v
+            in [
+                "start",
+                "end",
+                "score",
+                "thick_start",
+                "thick_end",
+                "coverage",
+                "frequency",
+            ]
+        ]
 
     def _munge_values(self, values: list[str]) -> dict:
         """Read data records into dictionary, cast types to those required by the model.
@@ -306,8 +344,13 @@ class EUFImporter:
             raise ValueError(
                 f"Column count doesn't match value count at row {self._lino}"
             )
+        # first cast to float all numerical types, then type cast model (int or float)
+        # NOTE: data loss may occur if e.g. coverage or frequency are wrongly assumed to be float
+        cvalues = [
+            float(v) if i in self._int_types else v for i, v in enumerate(values)
+        ]
         data = {
-            c: self._dtypes["Data"][c].__call__(values[i])
+            c: self._dtypes["Data"][c].__call__(cvalues[i])
             for i, c in enumerate(self._specs["columns"].values())
         }
         data["dataset_id"] = self._eufid

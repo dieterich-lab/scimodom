@@ -19,11 +19,20 @@ cd server
 pip --verbose install -e .[tests,docs] 2>&1 | tee install.log
 ```
 
+### Development
+
 For development,
 
 ```bash
 pip install pre-commit
 pre-commit install
+# runs on all file at commit or pre-commit run
+```
+
+```bash
+# run static type checker
+pip install sqlalchemy[mypy]
+mypy -p scimodom
 ```
 
 ### Database

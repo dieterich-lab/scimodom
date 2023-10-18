@@ -23,7 +23,7 @@ def _get_header(fmt=None):
         #modification_type=RNA
         #assembly=GRCh38
         #annotation_source=   Annotation
-        #annotation_version=
+        #annotation_version=Version
         #sequencing_platform=Sequencing platform
         #basecalling=
         #bioinformatics_workflow=Workflow
@@ -32,6 +32,18 @@ def _get_header(fmt=None):
     elif fmt == "misformatted":
         string = """#fileformat=bedRModv1.6
         #organism 9606
+        #modification_type=RNA
+        #assembly=GRCh38
+        #annotation_source=   Annotation
+        #annotation_version=Version
+        #sequencing_platform=Sequencing platform
+        #basecalling=
+        #bioinformatics_workflow=Workflow
+        #experiment=Description of experiment.
+        #external_source="""
+    elif fmt == "missing":
+        string = """#fileformat=bedRModv1.6
+        #organism=9606
         #modification_type=RNA
         #assembly=GRCh38
         #annotation_source=   Annotation
@@ -56,6 +68,9 @@ def _get_header(fmt=None):
     elif fmt == "data_type":
         string = """#fileformat=bedRModv1.6
         1\t139219\tstring\tm6A\t100\t+\t139219\t139220\t0,0,0\t50\t10\tA"""
+    elif fmt == "data_type_float":
+        string = """#fileformat=bedRModv1.6
+        1\t139219\tstring\tm6A\t100\t+\t139219\t139220\t0,0,0\t50.0\t10.1\tA"""
     else:
         string = expected_version
     return expected_version, StringIO(string)
@@ -69,7 +84,7 @@ def _get_file():
     #modification_type=RNA
     #assembly=GRCh38
     #annotation_source=Annotation
-    #annotation_version=
+    #annotation_version=Version
     #sequencing_platform=Sequencing platform
     #basecalling=
     #bioinformatics_workflow=Workflow
@@ -124,6 +139,7 @@ def test_importer_read_version(fmt, Session):
     [
         ("full"),
         ("misformatted"),
+        ("missing"),
     ],
 )
 def test_importer_read_header(fmt, Session):
@@ -161,12 +177,12 @@ def test_importer_read_header(fmt, Session):
             assert records.assembly_id == 1
             assert records.lifted is False
             assert records.annotation_source == "Annotation"
-            assert records.annotation_version == ""  # is None
+            assert records.annotation_version == "Version"
             assert records.sequencing_platform == "Sequencing platform"
-            assert records.basecalling == ""  # is None
+            assert records.basecalling is None
             assert records.bioinformatics_workflow == "Workflow"
             assert records.experiment == "Description of experiment."
-            assert records.external_source == ""  # is None
+            assert records.external_source is None
     else:
         with pytest.raises(SpecsError) as excinfo:
             importer._read_header()
@@ -209,6 +225,7 @@ def test_importer_validate_columns(fmt, Session):
         ("data"),
         ("data_short"),
         ("data_type"),
+        ("data_type_float"),
     ],
 )
 def test_importer_read_line(fmt, Session, caplog):
@@ -232,6 +249,20 @@ def test_importer_read_line(fmt, Session, caplog):
     importer._read_version()
     importer._validate_attributes(Data, importer._specs["columns"].values())
     importer._buffers["Data"] = EUFImporter._Buffer(session=Session(), model=Data)
+    importer._int_types = [
+        i
+        for i, v in enumerate(importer._specs["columns"].values())
+        if v
+        in [
+            "start",
+            "end",
+            "score",
+            "thick_start",
+            "thick_end",
+            "coverage",
+            "frequency",
+        ]
+    ]
 
     line = next(importer._handle)
     if fmt == "data":
@@ -252,7 +283,7 @@ def test_importer_read_line(fmt, Session, caplog):
             assert records.ref_base == "A"
     else:
         # currently ValueError is excepted into a warning, wrong line is skipped...
-        # this includes TypeError e.g. casting str to int, though some are implicit and nor reported e.g. int to str...
+        # but does this includes TypeError?
         importer._read_line(line)
         assert "Warning: Failed to parse fileformat at row 1:" in caplog.text
 
@@ -317,12 +348,12 @@ def test_importer(Session, setup, project_template):
         assert records.assembly_id == assembly_id
         assert records.lifted is False
         assert records.annotation_source == "Annotation"
-        assert records.annotation_version == ""  # is None
+        assert records.annotation_version == "Version"
         assert records.sequencing_platform == "Sequencing platform"
-        assert records.basecalling == ""  # is None
+        assert records.basecalling is None
         assert records.bioinformatics_workflow == "Workflow"
         assert records.experiment == "Description of experiment."
-        assert records.external_source == ""  # is None
+        assert records.external_source is None
         records = session.execute(select(Data)).scalars().all()
         df = pd.DataFrame(
             [

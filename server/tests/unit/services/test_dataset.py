@@ -12,7 +12,7 @@ def _get_file():
     #modification_type=RNA
     #assembly=GRCh38
     #annotation_source=Annotation
-    #annotation_version=
+    #annotation_version=Version
     #sequencing_platform=Sequencing platform
     #basecalling=
     #bioinformatics_workflow=Workflow
