@@ -1,7 +1,7 @@
 # logging_utils
 
 from collections.abc import Sequence, Iterable
-from typing import Union, Any
+from typing import Union, Any, Optional
 from argparse import ArgumentParser, Namespace
 from logging import Logger
 
@@ -45,7 +45,7 @@ def add_log_opts(parser: ArgumentParser, logf: str = "") -> None:
 
 def update_logging(
     args: Namespace,
-    logger: Union[None, Logger] = None,
+    logger: Optional[Logger] = None,
     format_str: str = "%(levelname)-8s %(name)-8s %(asctime)s : %(message)s",
 ) -> None:
     """Configure loggers/handlers.

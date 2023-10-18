@@ -1,5 +1,5 @@
 import os
-from typing import Callable
+from typing import Callable, Union
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase, Session
 from sqlalchemy.engine import Engine
@@ -43,7 +43,7 @@ def get_engine():
         return _engine
 
 
-def init(engine: Engine, session: Callable[[Session], Session]) -> None:
+def init(engine: Engine, session) -> None:
     """Set engine and session, sreate all tables.
 
     :param engine: Engine

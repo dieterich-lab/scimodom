@@ -5,13 +5,13 @@ import logging
 
 import scimodom.utils.utils as utils
 import scimodom.database.queries as queries
+import scimodom.utils.specifications as specs
 
 from typing import Union, TextIO, Iterable, ClassVar, Any, Optional
 from sqlalchemy import insert, select
 from sqlalchemy.orm import Session
 from scimodom.database.models import Data, Dataset
 from scimodom.database.database import Base
-from scimodom.utils.specifications import specsEUF
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +51,11 @@ class EUFImporter:
     :type assembly_id: int
     :param lifted: Is Assembly ID (version) different from DB assembly version? (dataset marked for liftover)
     :type lifted: bool
+    :param SPECS: Default specs
+    :type SPECS: dict
     """
+
+    SPECS: ClassVar[dict] = specs.specsEUF
 
     class _Buffer:
         """Utility class to insert data to selected model tables.
@@ -96,18 +100,14 @@ class EUFImporter:
         lifted: bool,
     ) -> None:
         """Constructor method."""
-        self._sep: str = specsEUF["delimiter"]
-        self._htag: str = specsEUF["header"]["comment"]
-        self._hsep: str = specsEUF["header"]["delimiter"]
+        self._sep: str = self.SPECS["delimiter"]
+        self._htag: str = self.SPECS["header"]["comment"]
+        self._hsep: str = self.SPECS["header"]["delimiter"]
         self._version: Optional[str] = None
-        self._specs: dict[str, dict[str, str]] = dict()
+        self._specs: dict[str, dict[str, str]]
 
-        self._session = session
-        self._filen = filen
-        self._handle = handle
-
-        self._lino: Optional[int] = None
-        self._header: Optional[dict] = None
+        self._lino: int
+        self._header: dict[str, Any]
         self._buffers: dict[str, EUFImporter._Buffer] = dict()
         self._dtypes: dict[str, dict[str, Any]] = dict()
         self._modifications_from_file: set[str] = set()
@@ -116,8 +116,11 @@ class EUFImporter:
         # or from arguments to the API/maintenance -> TODO: data upload service
         # there we should check if SMID, taxa_id, and assembly_id are valid choices
         # here, we assume they are already checked
-        self._eufid = eufid
+        self._session = session
+        self._filen = filen
+        self._handle = handle
         self._smid = smid
+        self._eufid = eufid
         self._title = title
         self._taxa_id = taxa_id
         self._assembly_id = assembly_id
@@ -157,8 +160,8 @@ class EUFImporter:
             raise EOFError(f" {self._filen}")
         version = ".".join(re.findall(r"\d+", line))
         try:
-            self._version = f"{specsEUF['format']}v{version}"
-            self._specs = specsEUF[version]
+            self._version = f"{self.SPECS['format']}v{version}"
+            self._specs = self.SPECS[version]
         except KeyError:
             raise SpecsError(f" Unknown version: {self._version}.")
 

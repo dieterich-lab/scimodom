@@ -6,7 +6,7 @@ import scimodom.utils.utils as utils
 import scimodom.utils.specifications as specs
 import scimodom.database.queries as queries
 
-from typing import TextIO, ClassVar, Optional
+from typing import TextIO, ClassVar, Optional, Any
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 from scimodom.services.importer import EUFImporter
@@ -73,16 +73,16 @@ class DataService:
         technology_id: int,
         organism_id: int,
     ) -> None:
-        self._session = session
-
-        self._smid = smid
         self._eufid: Optional[str] = None
-        self._title = title
+        self._selection_ids: dict = dict()
+        self._lifted: bool = False
 
+        self._session = session
+        self._smid = smid
+        self._title = title
         # how are these coming from form?
         self._filen = filen  # ?
         self._handle = handle
-
         # maybe these 2 are given as names, and not ids, we just have to query the DB then
         self._taxa_id = taxa_id
         self._assembly_id = assembly_id
@@ -90,9 +90,6 @@ class DataService:
         self._modification_ids = modification_ids  # list - selection from FE upload form - eventually check with file content?
         self._technology_id = technology_id  # for now just one
         self._organism_id = organism_id  # for now just one
-        self._selection_ids = dict()
-
-        self._lifted = False
 
     def _get_selection(self) -> None:
         """Get selection IDs associated with dataset.

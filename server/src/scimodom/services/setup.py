@@ -2,13 +2,12 @@
 
 import logging
 
-import pandas as pd
+import pandas as pd  # type: ignore # import-untyped
 
 import scimodom.utils.utils as utils
 
 from pathlib import Path
 from typing import Union
-from sqlalchemy.orm import Session
 from scimodom.config import Config
 from scimodom.database.database import Base
 
@@ -19,10 +18,10 @@ class SetupService:
     """Utility class to perform INSERT... ON DUPLICATE KEY UPDATE.
 
     :param session: SQLAlchemy ORM session
-    :type session: Session
+    :type session: Session | scoped_session
     """
 
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session) -> None:
         """Constructor method."""
         self._session = session
         self._config = Config()

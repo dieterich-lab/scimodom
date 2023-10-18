@@ -74,8 +74,8 @@ where = ["src"]
 plugins = [
   "sqlalchemy.ext.mypy.plugin"
 ]
-#show_error_codes = True
-#strict = True
+show_error_codes = "True"
+#strict = "True"
 
 
 [tool.pytest.ini_options]
