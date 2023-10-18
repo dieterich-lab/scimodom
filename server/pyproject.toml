@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -25,7 +25,7 @@ classifiers = [
   "Programming Language :: Python :: 3 :: Only",
 ]
 dynamic = ["version"]
-requires-python = ">=3.7,<3.11"
+requires-python = ">=3.10,<3.13"
 dependencies = [
   "alembic",
   "Flask",
@@ -54,8 +54,8 @@ docs = [
   "matplotlib",
   "nbsphinx",
   "pandoc",
-  "sphinx>=4.5.0",
-  "sphinx_rtd_theme>=1.0.0",
+  "sphinx",
+  "sphinx_rtd_theme",
   "furo",
   "sphinx-argparse",
   "sphinx-copybutton"

@@ -7,7 +7,6 @@ import pandas as pd  # type: ignore # import-untyped
 import scimodom.utils.utils as utils
 
 from pathlib import Path
-from typing import Union
 from scimodom.config import Config
 from scimodom.database.database import Base
 
@@ -35,13 +34,13 @@ class SetupService:
         ]
 
     @staticmethod
-    def get_table(model: Base, table: Union[Path, str]) -> pd.DataFrame:
+    def get_table(model: Base, table: str | Path) -> pd.DataFrame:
         """Read table, keeping only relevant columns.
 
         :param model: SQLAlchemy model
         :type model: Base
         :param table: Path to data table
-        :type table: str
+        :type table: str | Path
         :returns: Data table
         :rtype: pd.DataFrame
         """

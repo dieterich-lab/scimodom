@@ -1,7 +1,7 @@
 # logging_utils
 
 from collections.abc import Sequence, Iterable
-from typing import Union, Any, Optional
+from typing import Any
 from argparse import ArgumentParser, Namespace
 from logging import Logger
 
@@ -45,7 +45,7 @@ def add_log_opts(parser: ArgumentParser, logf: str = "") -> None:
 
 def update_logging(
     args: Namespace,
-    logger: Optional[Logger] = None,
+    logger: Logger | None = None,
     format_str: str = "%(levelname)-8s %(name)-8s %(asctime)s : %(message)s",
 ) -> None:
     """Configure loggers/handlers.
@@ -178,7 +178,7 @@ def get_table_column_python_types(model, remove: list[str] = []) -> list[Any]:
     return [c.type.python_type for c in cols if c.key not in remove]
 
 
-def to_list(i: Union[str, list, set, None]):
+def to_list(i: str | list | set | None):
     """Converts string, list, set, and None to list,
     but does not unpack tuple or dict.
 

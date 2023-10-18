@@ -7,7 +7,7 @@ import scimodom.utils.utils as utils
 import scimodom.database.queries as queries
 import scimodom.utils.specifications as specs
 
-from typing import Union, TextIO, Iterable, ClassVar, Any, Optional
+from typing import TextIO, Iterable, ClassVar, Any
 from sqlalchemy import insert, select
 from sqlalchemy.orm import Session
 from scimodom.database.models import Data, Dataset
@@ -104,7 +104,7 @@ class EUFImporter:
         self._htag: str = self.SPECS["header"]["comment"]
         self._hsep: str = self.SPECS["header"]["delimiter"]
         self._hrequired: list[str]
-        self._version: Optional[str] = None
+        self._version: str | None = None
         self._specs: dict
         self._int_types: list
 

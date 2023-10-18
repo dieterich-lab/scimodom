@@ -1,7 +1,6 @@
 import os
 import logging
 
-from typing import Union
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -55,8 +54,8 @@ class Config:
 
     def __init__(
         self,
-        parent_dir: Union[Path, str, None] = None,
-        import_dir: Union[Path, str, None] = None,
+        parent_dir: str | Path | None = None,
+        import_dir: str | Path | None = None,
     ) -> None:
         """Constructor method.
 

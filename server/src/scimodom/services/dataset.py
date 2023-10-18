@@ -6,7 +6,7 @@ import scimodom.utils.utils as utils
 import scimodom.utils.specifications as specs
 import scimodom.database.queries as queries
 
-from typing import TextIO, ClassVar, Optional, Any
+from typing import TextIO, ClassVar, Any
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 from scimodom.services.importer import EUFImporter
@@ -73,7 +73,7 @@ class DataService:
         technology_id: int,
         organism_id: int,
     ) -> None:
-        self._eufid: Optional[str] = None
+        self._eufid: str | None = None
         self._selection_ids: dict = dict()
         self._lifted: bool = False
 
