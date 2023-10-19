@@ -6,8 +6,10 @@ from flask_cors import cross_origin
 from scimodom.database.models import (
     Modomics,
     Modification,
+    DetectionMethod,
     DetectionTechnology,
     Data,
+    Taxonomy,
     Taxa,
     Organism,
     Association,
@@ -18,6 +20,68 @@ from scimodom.database.database import get_session
 # import scimodom.database.queries as queries
 
 from . import api
+
+
+def convert_tup_list_to_json(keys, query_list):
+    # quickly convert to dict/json
+    # we need a true solution to jsonify the query results...
+    return [dict(zip(keys, q)) for q in query_list]
+
+
+@api.route("/selection")
+@cross_origin(supports_credentials=True)
+def get_selection():
+    """Retrieve selection."""
+
+    keys = [
+        "rna",
+        "short_name",
+        "cls",
+        "meth",
+        "tech",
+        "domain",
+        "kingdom",
+        "phylum",
+        "organism",
+        "cto",
+    ]
+
+    query = (
+        select(
+            Modification.rna,
+            Modomics.short_name,
+            DetectionMethod.cls,
+            DetectionMethod.meth,
+            DetectionTechnology.tech,
+            Taxonomy.domain,
+            Taxonomy.kingdom,
+            Taxonomy.phylum,
+            Taxa.short_name,
+            Organism.cto,
+        )
+        .join_from(
+            Selection,
+            Modification,
+            Selection.modification_id == Modification.id,
+        )
+        .join_from(
+            Selection,
+            DetectionTechnology,
+            Selection.technology_id == DetectionTechnology.id,
+        )
+        .join_from(Selection, Organism, Selection.organism_id == Organism.id)
+        .join_from(Modification, Modomics, Modification.modomics_id == Modomics.id)
+        .join_from(
+            DetectionTechnology,
+            DetectionMethod,
+            DetectionTechnology.method_id == DetectionMethod.id,
+        )
+        .join_from(Organism, Taxa, Organism.taxa_id == Taxa.id)
+        .join_from(Taxa, Taxonomy, Taxa.taxonomy_id == Taxonomy.id)
+    )
+
+    selections = get_session().execute(query).all()
+    return convert_tup_list_to_json(keys, selections)
 
 
 @api.route("/modification/<string:mod>")
