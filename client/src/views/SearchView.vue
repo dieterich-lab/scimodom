@@ -18,12 +18,16 @@ const loading = ref(false)
 const totalRecords = ref(0)
 const lazyParams = ref({})
 
-function toTree(data, keys) {
+const productTable = ref()
+
+function toTree(data, keys, id) {
+  var len = keys.length - 1
   var tree = data.reduce((r, o) => {
-    keys.reduce((t, k) => {
-      var tmp = (t.children = t.children || []).find((p) => p.key === o[k])
+    keys.reduce((t, k, idx) => {
+      var jdx = idx === len ? id : k
+      var tmp = (t.children = t.children || []).find((p) => p.key === o[jdx])
       if (!tmp) {
-        t.children.push((tmp = { key: o[k], label: o[k] }))
+        t.children.push((tmp = { key: o[jdx], label: o[k] }))
       }
       return tmp
     }, r)
@@ -32,20 +36,31 @@ function toTree(data, keys) {
   return tree
 }
 
+function toIds(array) {
+  if (!(array === undefined)) {
+    return Object.keys(array)
+      .map(Number)
+      .filter((value) => !Number.isNaN(value))
+  }
+  return []
+}
+
 onMounted(() => {
   lazyParams.value = {
-    first: 0
-    // rows: dt.value.rows,
+    first: 0,
+    rows: dt.value.rows
     // sortField: null,
     // sortOrder: null,
     // filters: filters.value
   }
-  // lazyLoad()
+  lazyLoad()
   service
     .getEndpoint('/selection')
     .then(function (response) {
       selectOptions.value = response.data
-      modification.value = toTree(selectOptions.value, ['rna', 'short_name'])
+      modification.value = toTree(selectOptions.value, ['rna', 'modomics_sname'], 'modification_id')
+      // modification.value = toTree(selectOptions.value, ['rna', 'modomics_sname'])
+      console.log(modification.value)
     })
     .catch((error) => {
       console.log(error)
@@ -56,12 +71,62 @@ onMounted(() => {
 const updateTechnology = () => {
   selectedTechnology.value = undefined
   selectedSpecies.value = undefined
-  var selected = Object.keys(JSON.parse(JSON.stringify(selectedModification.value)))
+  // var selected = Object.keys(JSON.parse(JSON.stringify(selectedModification.value)))
+  // var selected = Object.keys(selectedModification.value).map(Number).filter(value => !Number.isNaN(value))
+  var selected = toIds(selectedModification.value)
+  console.log('SELECTED=', selected)
+  var options = selectOptions.value.filter((item) => selected.includes(item.modification_id))
+  technology.value = toTree(options, ['cls', 'meth', 'tech'], 'technology_id')
+  lazyLoad()
+}
+
+const updateSpecies = () => {
+  selectedSpecies.value = undefined
+  var selected1 = toIds(selectedModification.value)
+  var selected2 = toIds(selectedTechnology.value)
   var options = selectOptions.value.filter(
-    (item) => selected.includes(item.rna) || selected.includes(item.short_name)
+    (item) => selected1.includes(item.modification_id) && selected2.includes(item.technology_id)
   )
-  technology.value = toTree(options, ['cls', 'meth', 'tech'])
-  // lazyLoad()
+  species.value = toTree(
+    options,
+    ['domain', 'kingdom', 'phylum', 'taxa_sname', 'cto'],
+    'organism_id'
+  )
+  lazyLoad()
+}
+
+const updateTmp = () => {
+  lazyLoad()
+}
+
+function lazyLoad() {
+  loading.value = true
+  service
+    .get('/search', {
+      params: {
+        modification: toIds(selectedModification.value),
+        technology: toIds(selectedTechnology.value),
+        organism: toIds(selectedSpecies.value),
+        firstRecord: lazyParams.value.first,
+        maxRecords: lazyParams.value.rows
+      },
+      paramsSerializer: {
+        indexes: null
+      }
+    })
+    .then(function (response) {
+      productTable.value = response.data.records
+      totalRecords.value = response.data.totalRecords
+    })
+    .catch((error) => {
+      console.log(error)
+    })
+  loading.value = false
+}
+
+const onPage = (event) => {
+  lazyParams.value = event
+  lazyLoad()
 }
 </script>
 
@@ -88,7 +153,7 @@ const updateTechnology = () => {
             @change="updateTechnology()"
             v-model="selectedModification"
             :options="modification"
-            selectionMode="multiple"
+            selectionMode="checkbox"
             :metaKeySelection="false"
             placeholder="1. Select RNA modifications"
             class="w-full md:w-20rem"
@@ -96,9 +161,10 @@ const updateTechnology = () => {
         </div>
         <div>
           <TreeSelect
+            @change="updateSpecies()"
             v-model="selectedTechnology"
             :options="technology"
-            selectionMode="multiple"
+            selectionMode="checkbox"
             :metaKeySelection="false"
             placeholder="2. Select technologies"
             class="w-full md:w-20rem"
@@ -106,9 +172,10 @@ const updateTechnology = () => {
         </div>
         <div>
           <TreeSelect
+            @change="updateTmp()"
             v-model="selectedSpecies"
             :options="species"
-            selectionMode="multiple"
+            selectionMode="checkbox"
             :metaKeySelection="false"
             placeholder="3. Select organisms"
             class="w-full md:w-20rem"
@@ -116,6 +183,26 @@ const updateTechnology = () => {
         </div>
       </div>
       <!-- FILTER 2 -->
+    </SectionLayout>
+
+    <SectionLayout>
+      <DataTable
+        :value="productTable"
+        lazy
+        paginator
+        :rows="10"
+        ref="dt"
+        :totalRecords="totalRecords"
+        :loading="loading"
+        @page="onPage($event)"
+        tableStyle="min-width: 100rem"
+      >
+        <Column field="chrom" header="chrom"></Column>
+        <Column field="start" header="start"></Column>
+        <Column field="end" header="end"></Column>
+        <Column field="strand" header="strand"></Column>
+        <Column field="score" header="score"></Column>
+      </DataTable>
     </SectionLayout>
 
     <!-- results table -->
