@@ -145,7 +145,8 @@ const onPage = (event) => {
         Select filters and query the database
       </p>
       <!-- FILTER 1 -->
-      <Divider :pt="{ root: { class: 'bg-crmapgreen' } }" />
+      <!-- <Divider :pt="{ root: { class: 'bg-crmapgreen' } }" /> -->
+      <Divider />
       <!-- <div class="flex flex-row flex-wrap justify-start place-items-center [&>*]:mr-6"> -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div>
@@ -156,7 +157,46 @@ const onPage = (event) => {
             selectionMode="checkbox"
             :metaKeySelection="false"
             placeholder="1. Select RNA modifications"
-            class="w-full md:w-20rem"
+            :pt="{
+              root: { class: 'max-w-[30rem] md:w-full' },
+              tree: {
+                container: 'm-0 p-0 list-none -space-y-2 overflow-auto',
+                toggler: ({ context }) => ({
+                  class: [
+                    'cursor-pointer select-none inline-flex items-center justify-center overflow-hidden relative shrink-0',
+                    'mr-2 w-8 h-8 border-0 bg-transparent rounded-full transition duration-200',
+                    'hover:border-transparent focus:outline-none focus:outline-offset-0 focus:shadow-[0_0_0_0.2rem_rgba(114,191,132,1)]',
+                    {
+                      'text-gray-500 hover:bg-crmapgreen1 hover:text-gray-800': !context.selected,
+                      'text-red-600 hover:bg-crmapgreen1': context.selected
+                    },
+                    {
+                      hidden: context.leaf
+                    }
+                  ]
+                }),
+                checkbox: ({ context, props }) => ({
+                  class: [
+                    'cursor-pointer inline-flex relative select-none align-bottom',
+                    'w-6 h-6',
+                    'flex items-center justify-center',
+                    'border-2 w-6 h-6 rounded-lg transition-colors duration-200 text-white text-base',
+                    {
+                      'border-gray-300 bg-white': !context.checked,
+                      'border-crmapgreen1 text-white bg-crmapgreen1': context.checked
+                    },
+                    {
+                      'hover:border-crmapgreen1 focus:outline-none focus:outline-offset-0 focus:shadow-[0_0_0_0.2rem_rgba(114,191,132,1)]':
+                        !props.disabled,
+                      'cursor-default opacity-60': props.disabled
+                    }
+                  ]
+                }),
+                subgroup: {
+                  class: ['ml-4 list-none', 'p-0']
+                }
+              }
+            }"
           />
         </div>
         <div>

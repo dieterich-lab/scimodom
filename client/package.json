@@ -11,27 +11,27 @@
     "format": "prettier --write src/"
   },
   "dependencies": {
-    "axios": "^1.4.0",
-    "pinia": "^2.0.32",
+    "axios": "^1.5.1",
+    "pinia": "^2.1.7",
     "primeicons": "^6.0.1",
-    "primevue": "^3.29.2",
+    "primevue": "^3.37.0",
     "vite-svg-loader": "^4.0.0",
     "vue": "^3.2.47",
-    "vue-router": "^4.1.6"
+    "vue-router": "^4.2.5"
   },
   "devDependencies": {
-    "@rushstack/eslint-patch": "^1.2.0",
-    "@vitejs/plugin-vue": "^4.0.0",
+    "@rushstack/eslint-patch": "^1.5.1",
+    "@vitejs/plugin-vue": "^4.4.0",
     "@vue/eslint-config-prettier": "^7.1.0",
-    "@vue/test-utils": "^2.3.0",
-    "autoprefixer": "^10.4.14",
-    "eslint": "^8.34.0",
-    "eslint-plugin-vue": "^9.9.0",
-    "jsdom": "^21.1.0",
-    "postcss": "^8.4.22",
-    "prettier": "^2.8.4",
-    "tailwindcss": "^3.3.1",
-    "vite": "^4.1.4",
-    "vitest": "^0.29.1"
+    "@vue/test-utils": "^2.4.1",
+    "autoprefixer": "^10.4.16",
+    "eslint": "^8.52.0",
+    "eslint-plugin-vue": "^9.18.0",
+    "jsdom": "^21.1.2",
+    "postcss": "^8.4.31",
+    "prettier": "^2.8.8",
+    "tailwindcss": "^3.3.4",
+    "vite": "^4.5.0",
+    "vitest": "^0.29.8"
   }
 }

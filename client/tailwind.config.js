@@ -1,7 +1,10 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  important: true,
-  content: ['index.html', './src/**/*.vue'],
+  content: [
+    'index.html',
+    './src/**/*.{vue,js,ts,jsx,tsx}',
+    './node_modules/primevue/**/*.{vue,js,ts,jsx,tsx}'
+  ],
   theme: {
     extend: {
       colors: {

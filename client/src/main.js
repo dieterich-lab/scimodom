@@ -44,11 +44,11 @@ import Tag from 'primevue/tag'
 import Textarea from 'primevue/textarea'
 import InputNumber from 'primevue/inputnumber'
 import Dialog from 'primevue/dialog'
-
+import Tailwind from 'primevue/passthrough/tailwind'
 const app = createApp(App)
 // app.use(createPinia())
 app.use(router)
-app.use(PrimeVue)
+app.use(PrimeVue, { ripple: true, unstyled: true, pt: Tailwind, ptOptions: { mergeProps: true } })
 app.use(ToastService)
 app.component('DefaultLayout', DefaultLayout)
 app.component('SectionLayout', SectionLayout)
