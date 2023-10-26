@@ -3,22 +3,84 @@ import { ref, onMounted } from 'vue'
 import service from '@/services/index.js'
 
 const selectOptions = ref()
-
 const modification = ref()
 const selectedModification = ref()
-
 const technology = ref()
 const selectedTechnology = ref()
-
 const species = ref()
 const selectedSpecies = ref()
-
 const dt = ref()
+const records = ref()
 const loading = ref(false)
 const totalRecords = ref(0)
 const lazyParams = ref({})
 
-const productTable = ref()
+const onPage = (event) => {
+  lazyParams.value = event
+  lazyLoad()
+}
+
+const onSort = (event) => {
+  lazyParams.value = event
+  lazyLoad()
+}
+
+const onFilter = () => {
+  lazyParams.value.filters = filters.value
+  lazyLoad()
+}
+
+onMounted(() => {
+  lazyParams.value = {
+    first: dt.value.first,
+    rows: dt.value.rows,
+    sortField: null,
+    sortOrder: null
+    // filters: filters.value
+  }
+  lazyLoad()
+  service
+    .getEndpoint('/selection')
+    .then(function (response) {
+      selectOptions.value = response.data
+      modification.value = toTree(selectOptions.value, ['rna', 'modomics_sname'], 'modification_id')
+    })
+    .catch((error) => {
+      console.log(error)
+    })
+})
+
+const updateTechnology = () => {
+  selectedTechnology.value = undefined
+  selectedSpecies.value = undefined
+  var selectedModificationIds = toIds(selectedModification.value)
+  var options = selectOptions.value.filter((item) =>
+    selectedModificationIds.includes(item.modification_id)
+  )
+  technology.value = toTree(options, ['cls', 'meth', 'tech'], 'technology_id')
+  lazyLoad()
+}
+
+const updateSpecies = () => {
+  selectedSpecies.value = undefined
+  var selectedModificationIds = toIds(selectedModification.value)
+  var selectedTechnologyIds = toIds(selectedTechnology.value)
+  var options = selectOptions.value.filter(
+    (item) =>
+      selectedModificationIds.includes(item.modification_id) &&
+      selectedTechnologyIds.includes(item.technology_id)
+  )
+  species.value = toTree(
+    options,
+    ['domain', 'kingdom', 'phylum', 'taxa_sname', 'cto'],
+    'organism_id'
+  )
+  lazyLoad()
+}
+
+const updateTmp = () => {
+  lazyLoad()
+}
 
 function toTree(data, keys, id) {
   var len = keys.length - 1
@@ -45,60 +107,6 @@ function toIds(array) {
   return []
 }
 
-onMounted(() => {
-  lazyParams.value = {
-    first: 0,
-    rows: dt.value.rows
-    // sortField: null,
-    // sortOrder: null,
-    // filters: filters.value
-  }
-  lazyLoad()
-  service
-    .getEndpoint('/selection')
-    .then(function (response) {
-      selectOptions.value = response.data
-      modification.value = toTree(selectOptions.value, ['rna', 'modomics_sname'], 'modification_id')
-      // modification.value = toTree(selectOptions.value, ['rna', 'modomics_sname'])
-      console.log(modification.value)
-    })
-    .catch((error) => {
-      console.log(error)
-    })
-})
-
-// is || really working when selecting only rna or only short_name, both, or when e.g. m6A on both mRNA and tRNA?, etc.
-const updateTechnology = () => {
-  selectedTechnology.value = undefined
-  selectedSpecies.value = undefined
-  // var selected = Object.keys(JSON.parse(JSON.stringify(selectedModification.value)))
-  // var selected = Object.keys(selectedModification.value).map(Number).filter(value => !Number.isNaN(value))
-  var selected = toIds(selectedModification.value)
-  console.log('SELECTED=', selected)
-  var options = selectOptions.value.filter((item) => selected.includes(item.modification_id))
-  technology.value = toTree(options, ['cls', 'meth', 'tech'], 'technology_id')
-  lazyLoad()
-}
-
-const updateSpecies = () => {
-  selectedSpecies.value = undefined
-  var selected1 = toIds(selectedModification.value)
-  var selected2 = toIds(selectedTechnology.value)
-  var options = selectOptions.value.filter(
-    (item) => selected1.includes(item.modification_id) && selected2.includes(item.technology_id)
-  )
-  species.value = toTree(
-    options,
-    ['domain', 'kingdom', 'phylum', 'taxa_sname', 'cto'],
-    'organism_id'
-  )
-  lazyLoad()
-}
-
-const updateTmp = () => {
-  lazyLoad()
-}
-
 function lazyLoad() {
   loading.value = true
   service
@@ -115,7 +123,7 @@ function lazyLoad() {
       }
     })
     .then(function (response) {
-      productTable.value = response.data.records
+      records.value = response.data.records
       totalRecords.value = response.data.totalRecords
     })
     .catch((error) => {
@@ -123,15 +131,11 @@ function lazyLoad() {
     })
   loading.value = false
 }
-
-const onPage = (event) => {
-  lazyParams.value = event
-  lazyLoad()
-}
 </script>
 
 <template>
   <DefaultLayout>
+    <!-- SECTION -->
     <SectionLayout>
       <h1 class="font-ham mb-4 text-3xl font-extrabold text-gray-900 md:text-5xl lg:text-6xl">
         <span
@@ -145,7 +149,6 @@ const onPage = (event) => {
         Select filters and query the database
       </p>
       <!-- FILTER 1 -->
-      <!-- <Divider :pt="{ root: { class: 'bg-crmapgreen' } }" /> -->
       <Divider />
       <!-- <div class="flex flex-row flex-wrap justify-start place-items-center [&>*]:mr-6"> -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -157,46 +160,6 @@ const onPage = (event) => {
             selectionMode="checkbox"
             :metaKeySelection="false"
             placeholder="1. Select RNA modifications"
-            :pt="{
-              root: { class: 'max-w-[30rem] md:w-full' },
-              tree: {
-                container: 'm-0 p-0 list-none -space-y-2 overflow-auto',
-                toggler: ({ context }) => ({
-                  class: [
-                    'cursor-pointer select-none inline-flex items-center justify-center overflow-hidden relative shrink-0',
-                    'mr-2 w-8 h-8 border-0 bg-transparent rounded-full transition duration-200',
-                    'hover:border-transparent focus:outline-none focus:outline-offset-0 focus:shadow-[0_0_0_0.2rem_rgba(114,191,132,1)]',
-                    {
-                      'text-gray-500 hover:bg-crmapgreen1 hover:text-gray-800': !context.selected,
-                      'text-red-600 hover:bg-crmapgreen1': context.selected
-                    },
-                    {
-                      hidden: context.leaf
-                    }
-                  ]
-                }),
-                checkbox: ({ context, props }) => ({
-                  class: [
-                    'cursor-pointer inline-flex relative select-none align-bottom',
-                    'w-6 h-6',
-                    'flex items-center justify-center',
-                    'border-2 w-6 h-6 rounded-lg transition-colors duration-200 text-white text-base',
-                    {
-                      'border-gray-300 bg-white': !context.checked,
-                      'border-crmapgreen1 text-white bg-crmapgreen1': context.checked
-                    },
-                    {
-                      'hover:border-crmapgreen1 focus:outline-none focus:outline-offset-0 focus:shadow-[0_0_0_0.2rem_rgba(114,191,132,1)]':
-                        !props.disabled,
-                      'cursor-default opacity-60': props.disabled
-                    }
-                  ]
-                }),
-                subgroup: {
-                  class: ['ml-4 list-none', 'p-0']
-                }
-              }
-            }"
           />
         </div>
         <div>
@@ -207,7 +170,6 @@ const onPage = (event) => {
             selectionMode="checkbox"
             :metaKeySelection="false"
             placeholder="2. Select technologies"
-            class="w-full md:w-20rem"
           />
         </div>
         <div>
@@ -218,34 +180,49 @@ const onPage = (event) => {
             selectionMode="checkbox"
             :metaKeySelection="false"
             placeholder="3. Select organisms"
-            class="w-full md:w-20rem"
           />
         </div>
       </div>
       <!-- FILTER 2 -->
     </SectionLayout>
-
+    <!-- SECTION -->
     <SectionLayout>
-      <DataTable
-        :value="productTable"
-        lazy
-        paginator
-        :rows="10"
-        ref="dt"
-        :totalRecords="totalRecords"
-        :loading="loading"
-        @page="onPage($event)"
-        tableStyle="min-width: 100rem"
-      >
-        <Column field="chrom" header="chrom"></Column>
-        <Column field="start" header="start"></Column>
-        <Column field="end" header="end"></Column>
-        <Column field="strand" header="strand"></Column>
-        <Column field="score" header="score"></Column>
-      </DataTable>
+      <!-- TABLE -->
+      <div>
+        <DataTable
+          :value="records"
+          lazy
+          paginator
+          :first="0"
+          :rows="10"
+          ref="dt"
+          :totalRecords="totalRecords"
+          :loading="loading"
+          @page="onPage($event)"
+          @sort="onSort($event)"
+          @filter="onFilter($event)"
+          removableSort
+          sortMode="multiple"
+          :multiSortMeta="[
+            { field: 'chrom', order: 1 },
+            { field: 'start', order: 1 }
+          ]"
+          stripedRows
+        >
+          <Column
+            field="chrom"
+            header="Chrom"
+            sortable
+            exportHeader="Chromosome"
+            style="width: 20%"
+          ></Column>
+          <Column field="start" header="start"></Column>
+          <Column field="end" header="end"></Column>
+          <Column field="strand" header="strand"></Column>
+          <Column field="score" header="score"></Column>
+        </DataTable>
+      </div>
     </SectionLayout>
-
-    <!-- results table -->
   </DefaultLayout>
 </template>
 
