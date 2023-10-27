@@ -106,17 +106,32 @@ def get_search():
     first_record = request.args.get("firstRecord", type=int)
     max_records = request.args.get("maxRecords", type=int)
 
-    keys = ["chrom", "start", "end", "strand", "score", "coverage", "frequency"]
+    multi_sort = request.args.getlist("multiSort")
+    print(f"MULTIE SORT {multi_sort}")
+
+    keys = [
+        "chrom",
+        "start",
+        "end",
+        "name",
+        "strand",
+        "score",
+        "coverage",
+        "frequency",
+        "ref_base",
+    ]
 
     query = (
         select(
             Data.chrom,
             Data.start,
             Data.end,
+            Data.name,
             Data.strand,
             Data.score,
             Data.coverage,
             Data.frequency,
+            Data.ref_base,
         )
         .join_from(Association, Data, Association.dataset_id == Data.dataset_id)
         .join_from(Association, Selection, Association.selection_id == Selection.id)
@@ -128,6 +143,10 @@ def get_search():
         query = query.where(Selection.technology_id.in_(technology_ids))
     if organism_ids:
         query = query.where(Selection.organism_id.in_(organism_ids))
+    for sort in multi_sort:
+        col, order = sort.split(".")
+        expr = eval(f"Data.{col}.{order}()")
+        query = query.order_by(expr)
 
     # TODO: so far this hasn't hit the DB
     # TODO: caching (how/when?)

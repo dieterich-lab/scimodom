@@ -25,18 +25,10 @@ const onSort = (event) => {
   lazyLoad()
 }
 
-const onFilter = () => {
-  lazyParams.value.filters = filters.value
-  lazyLoad()
-}
-
 onMounted(() => {
   lazyParams.value = {
     first: dt.value.first,
-    rows: dt.value.rows,
-    sortField: null,
-    sortOrder: null
-    // filters: filters.value
+    rows: dt.value.rows
   }
   lazyLoad()
   service
@@ -107,6 +99,24 @@ function toIds(array) {
   return []
 }
 
+function setOrder(o) {
+  if (!Number.isInteger(o)) {
+    return o
+  }
+  return o === 1 ? 'asc' : 'desc'
+}
+
+function fmtOrder(array) {
+  if (!(array === undefined)) {
+    return array.map((d) =>
+      Object.entries(d)
+        .map(([k, v]) => setOrder(v))
+        .join('.')
+    )
+  }
+  return []
+}
+
 function lazyLoad() {
   loading.value = true
   service
@@ -116,7 +126,8 @@ function lazyLoad() {
         technology: toIds(selectedTechnology.value),
         organism: toIds(selectedSpecies.value),
         firstRecord: lazyParams.value.first,
-        maxRecords: lazyParams.value.rows
+        maxRecords: lazyParams.value.rows,
+        multiSort: fmtOrder(lazyParams.value.multiSortMeta)
       },
       paramsSerializer: {
         indexes: null
@@ -200,26 +211,18 @@ function lazyLoad() {
           :loading="loading"
           @page="onPage($event)"
           @sort="onSort($event)"
-          @filter="onFilter($event)"
           removableSort
           sortMode="multiple"
-          :multiSortMeta="[
-            { field: 'chrom', order: 1 },
-            { field: 'start', order: 1 }
-          ]"
           stripedRows
         >
-          <Column
-            field="chrom"
-            header="Chrom"
-            sortable
-            exportHeader="Chromosome"
-            style="width: 20%"
-          ></Column>
-          <Column field="start" header="start"></Column>
-          <Column field="end" header="end"></Column>
-          <Column field="strand" header="strand"></Column>
-          <Column field="score" header="score"></Column>
+          <Column field="chrom" header="Chrom" sortable exportHeader="chrom"></Column>
+          <Column field="start" header="Start" sortable exportHeader="chromStart"></Column>
+          <Column field="end" header="End" exportHeader="chromEnd"></Column>
+          <Column field="name" header="Name" exportHeader="name"></Column>
+          <Column field="score" header="Score" sortable exportHeader="score"></Column>
+          <Column field="strand" header="Strand" exportHeader="strand"></Column>
+          <Column field="coverage" header="Coverage" sortable exportHeader="coverage"></Column>
+          <Column field="frequency" header="Frequency" sortable exportHeader="frequency"></Column>
         </DataTable>
       </div>
     </SectionLayout>
