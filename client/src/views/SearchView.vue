@@ -25,6 +25,10 @@ const onSort = (event) => {
   lazyLoad()
 }
 
+const onExport = () => {
+  dt.value.exportCSV()
+}
+
 onMounted(() => {
   lazyParams.value = {
     first: dt.value.first,
@@ -215,6 +219,22 @@ function lazyLoad() {
           sortMode="multiple"
           stripedRows
         >
+          <template #header>
+            <div style="text-align: right">
+              <Button
+                icon="pi pi-external-link"
+                size="small"
+                label="Export"
+                @click="onExport($event)"
+                :pt="{
+                  root: {
+                    class:
+                      'bg-crmapblue border-crmapblue hover:bg-crmapblue2 hover:border-crmapblue2 focus:ring-crmapblue2 focus:outline-none'
+                  }
+                }"
+              />
+            </div>
+          </template>
           <Column field="chrom" header="Chrom" sortable exportHeader="chrom"></Column>
           <Column field="start" header="Start" sortable exportHeader="chromStart"></Column>
           <Column field="end" header="End" exportHeader="chromEnd"></Column>

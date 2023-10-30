@@ -100,7 +100,12 @@ const tailoredTailwind = usePassThrough(
   }
 )
 
-app.use(PrimeVue, { ripple: true, unstyled: true, pt: tailoredTailwind })
+app.use(PrimeVue, {
+  ripple: true,
+  unstyled: true,
+  pt: tailoredTailwind,
+  ptOptions: { mergeProps: true, mergeSections: true }
+})
 app.use(ToastService)
 app.use(router)
 

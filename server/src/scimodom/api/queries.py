@@ -105,17 +105,15 @@ def get_search():
     organism_ids = request.args.getlist("organism", type=int)
     first_record = request.args.get("firstRecord", type=int)
     max_records = request.args.get("maxRecords", type=int)
-
-    multi_sort = request.args.getlist("multiSort")
-    print(f"MULTIE SORT {multi_sort}")
+    multi_sort = request.args.getlist("multiSort", type=str)
 
     keys = [
         "chrom",
         "start",
         "end",
         "name",
-        "strand",
         "score",
+        "strand",
         "coverage",
         "frequency",
         "ref_base",
@@ -127,8 +125,8 @@ def get_search():
             Data.start,
             Data.end,
             Data.name,
-            Data.strand,
             Data.score,
+            Data.strand,
             Data.coverage,
             Data.frequency,
             Data.ref_base,
