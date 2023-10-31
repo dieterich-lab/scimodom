@@ -9,6 +9,9 @@ from scimodom.database.models import (
     DetectionMethod,
     DetectionTechnology,
     Data,
+    Dataset,
+    Project,
+    ProjectSource,
     Taxonomy,
     Taxa,
     Organism,
@@ -155,6 +158,84 @@ def get_search():
     response_object["records"] = convert_tup_list_to_json(keys, records)
 
     return response_object
+
+
+@api.route("/browse", methods=["GET"])
+@cross_origin(supports_credentials=True)
+def get_dataset():
+    """Retrieve all dataset/projects."""
+
+    # 11.2023 no lazy loading, all data is returned
+    # filtering is done in Vue.js
+
+    keys = [
+        "project_id",
+        "dataset_id",
+        "dataset_title",
+        "sequencing_platform",
+        "basecalling",
+        "bioinformatics_workflow",
+        "experiment",
+        "project_title",
+        "project_summary",
+        "date_published",
+        "date_added",
+        "doi",
+        "pmid",
+        "rna",
+        "modomics_sname",
+        "tech",
+        "taxa_sname",
+        "cto",
+    ]
+
+    query = (
+        select(
+            Dataset.project_id,
+            Dataset.id,
+            Dataset.title,
+            Dataset.sequencing_platform,
+            Dataset.basecalling,
+            Dataset.bioinformatics_workflow,
+            Dataset.experiment,
+            Project.title,
+            Project.summary,
+            Project.date_published,
+            Project.date_added,
+            func.group_concat(ProjectSource.doi.distinct()),
+            func.group_concat(ProjectSource.pmid.distinct()),
+            Modification.rna,
+            Modomics.short_name,
+            DetectionTechnology.tech,
+            Taxa.short_name,
+            Organism.cto,
+        )
+        .join_from(
+            Dataset,
+            Project,
+            Dataset.project_id == Project.id,
+        )
+        .join_from(
+            Project, ProjectSource, Project.id == ProjectSource.project_id, isouter=True
+        )
+        .join_from(Dataset, Association, Dataset.id == Association.dataset_id)
+        .join_from(Association, Selection, Association.selection_id == Selection.id)
+        .join_from(
+            Selection, Modification, Selection.modification_id == Modification.id
+        )
+        .join_from(
+            Selection,
+            DetectionTechnology,
+            Selection.technology_id == DetectionTechnology.id,
+        )
+        .join_from(Selection, Organism, Selection.organism_id == Organism.id)
+        .join_from(Modification, Modomics, Modification.modomics_id == Modomics.id)
+        .join_from(Organism, Taxa, Organism.taxa_id == Taxa.id)
+        .group_by(Dataset.project_id, Dataset.id)
+    )
+
+    dataset = get_session().execute(query).all()
+    return convert_tup_list_to_json(keys, dataset)
 
 
 @api.route("/modification/<string:mod>")
