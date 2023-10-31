@@ -281,22 +281,24 @@ Dates should be formatted by the following format: YYYY-MM-DD (ISO 8601).
 Assembly
 ^^^^^^^^
 
-Available assemblies for different organisms are grouped into an ``assembly_version``, which defines the assemblies used in **Sci-ModoM**. This version is recorded in a table of the same name. Assemblies are *tagged* by version numbers, in case more than one is available per organism. The current ``assembly_version`` prevails.
+Available assemblies for different organisms are grouped into an ``assembly_version``, which defines the assemblies used in **Sci-ModoM** (w/o patch number/minor release). This version is recorded in a table of the same name. Assemblies are *tagged* by version numbers, in case more than one is available per organism. The current ``assembly_version`` prevails.
 
 How does it work?
 
-* When a new project is added, assembly information is required. If the assembly is already available, nothing is done. If not, a new assembly is added, with a random version number (unused, unless the assembly is a new assembly, in which case this may be part of a next version, but in general this should not happen because project creation is handled by maintainers, *e.g.* if this happens, a version upgrade may be performed beforehand).
-* When data is added to a project, assembly is selected, and if this assembly does not match the current ``assembly_version``, then a liftover is performed. The dataset is marked as lifted, but the assembly version remains the one given at upload (presumably matching that from the bedRMod header), for reference.
+* When a new project is added, assembly information is required. If the assembly is already available, nothing is done. If not, a new assembly is added. If this assembly is a newer version, a database version upgrade may be required.
+
+* During data upload:
+    * records from contigs/scaffolds, *etc.* are discarded (only records from chromosomes are kept);
+    * assembly is selected, and if this assembly does not match the current ``assembly_version``, then a liftover is performed (Dataset marked as lifted);
+    * currently, the Dataset ``assembly_id`` is the one given at upload (presumably matching that from the bedRMod header).
+
 * ``assembly_version`` can be *auto-generated* for maintenance (liftover selected datasets *e.g.* human, but not mouse; upgrade version number; tag assemblies with new version, incl. those that were not lifted but that are still valid, *i.e.* mouse)
 
 
 Annotation
 ^^^^^^^^^^
 
-How to handle annotations? *e.g.* a given dataset has ``annotation_source`` and ``annotation_version`` (not standardized).
-How important it is to "stick" to that? Can we have *e.g.* a given Ensembl annotation/version for a given organism, and use this?
-With the current model, we only need annotations to classify the data into regions, and assign gene names.
-How do we do this? We could use Ensembl tables, add genomic information at upload, to avoid performing operations in queries, ... ?
+We need annotations to add genomic regions (CDS, UTRs, *etc*), gene names, and biotypes to records.
 
 
 Download
