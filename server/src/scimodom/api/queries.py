@@ -205,7 +205,7 @@ def get_dataset():
             func.group_concat(ProjectSource.doi.distinct()),
             func.group_concat(ProjectSource.pmid.distinct()),
             Modification.rna,
-            Modomics.short_name,
+            func.group_concat(Modomics.short_name.distinct()),
             DetectionTechnology.tech,
             Taxa.short_name,
             Organism.cto,

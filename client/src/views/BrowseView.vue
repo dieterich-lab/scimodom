@@ -2,62 +2,39 @@
 import { ref, onMounted } from 'vue'
 import service from '@/services/index.js'
 import { FilterMatchMode, FilterOperator } from 'primevue/api'
-import { useToast } from 'primevue/usetoast'
 
-const toast = useToast()
+const records = ref()
 const dt = ref()
-
+const recordsOverlay = ref(false)
+const thisRecord = ref({})
+const filters = ref()
+// todo
+const status = ref(['public', 'restricted'])
 const columns = [
+  { field: 'project_title', header: 'Project' },
+  { field: 'project_summary', header: 'Summary' },
   { field: 'date_added', header: 'Added' },
   { field: 'date_published', header: 'Published' },
   { field: 'doi', header: 'DOI' },
-  { field: 'pmid', header: 'PMID' },
-  { field: 'assembly', header: 'Assembly' },
-  { field: 'annotation_src', header: 'Annotation' },
-  { field: 'annotation_ver', header: 'Version' },
-  { field: 'seq_platform', header: 'Seq. Platform' },
-  { field: 'basecalling', header: 'Basecalling' }
+  { field: 'pmid', header: 'PMID' }
 ]
 
-const endpoints = ['/dataset']
-const products = ref()
-onMounted(() => {
-  service
-    .getConcurrent(endpoints)
-    .then(function (response) {
-      products.value = response[0].data
-    })
-    .catch((error) => {
-      console.log(error)
-    })
-})
-
-const productDialog = ref(false)
-const deleteProductDialog = ref(false)
-const deleteProductsDialog = ref(false)
-const product = ref({})
-const selectedProducts = ref()
-const filters = ref()
 const initFilters = () => {
   filters.value = {
     global: { value: null, matchMode: FilterMatchMode.CONTAINS },
-    name: {
-      operator: FilterOperator.AND,
-      constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }]
-    },
-    rna_type: {
+    rna: {
       operator: FilterOperator.AND,
       constraints: [{ value: null, matchMode: FilterMatchMode.EQUALS }]
     },
-    modification: {
+    modomics_sname: {
       operator: FilterOperator.AND,
       constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }]
     },
-    technology: {
+    tech: {
       operator: FilterOperator.AND,
       constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }]
     },
-    taxid: {
+    taxa_sname: {
       operator: FilterOperator.AND,
       constraints: [{ value: null, matchMode: FilterMatchMode.EQUALS }]
     },
@@ -72,101 +49,32 @@ const initFilters = () => {
     }
   }
 }
+
 initFilters()
+
 const clearFilter = () => {
   initFilters()
 }
-const submitted = ref(false)
-const statuses = ref(['public', 'restricted'])
-const openNew = () => {
-  product.value = {}
-  submitted.value = false
-  productDialog.value = true
-}
-const hideDialog = () => {
-  productDialog.value = false
-  submitted.value = false
-}
-const saveProduct = () => {
-  submitted.value = true
 
-  if (product.value.name.trim()) {
-    if (product.value.id) {
-      product.value.inventoryStatus = product.value.inventoryStatus.value
-        ? product.value.inventoryStatus.value
-        : product.value.inventoryStatus
-      products.value[findIndexById(product.value.id)] = product.value
-      toast.add({
-        severity: 'success',
-        summary: 'Successful',
-        detail: 'Product Updated',
-        life: 3000
-      })
-    } else {
-      product.value.id = createId()
-      product.value.code = createId()
-      product.value.image = 'product-placeholder.svg'
-      product.value.inventoryStatus = product.value.inventoryStatus
-        ? product.value.inventoryStatus.value
-        : 'INSTOCK'
-      products.value.push(product.value)
-      toast.add({
-        severity: 'success',
-        summary: 'Successful',
-        detail: 'Product Created',
-        life: 3000
-      })
-    }
-
-    productDialog.value = false
-    product.value = {}
-  }
-}
-const editProduct = (prod) => {
-  product.value = { ...prod }
-  productDialog.value = true
-}
-const confirmDeleteProduct = (prod) => {
-  product.value = prod
-  deleteProductDialog.value = true
-}
-const deleteProduct = () => {
-  products.value = products.value.filter((val) => val.id !== product.value.id)
-  deleteProductDialog.value = false
-  product.value = {}
-  toast.add({ severity: 'success', summary: 'Successful', detail: 'Product Deleted', life: 3000 })
-}
-const findIndexById = (id) => {
-  let index = -1
-  for (let i = 0; i < products.value.length; i++) {
-    if (products.value[i].id === id) {
-      index = i
-      break
-    }
-  }
-
-  return index
-}
-const createId = () => {
-  let id = ''
-  var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-  for (var i = 0; i < 5; i++) {
-    id += chars.charAt(Math.floor(Math.random() * chars.length))
-  }
-  return id
-}
-const exportCSV = () => {
+const onExport = () => {
   dt.value.exportCSV()
 }
-const confirmDeleteSelected = () => {
-  deleteProductsDialog.value = true
+
+const onOverlay = (record) => {
+  thisRecord.value = { ...record }
+  recordsOverlay.value = true
 }
-const deleteSelectedProducts = () => {
-  products.value = products.value.filter((val) => !selectedProducts.value.includes(val))
-  deleteProductsDialog.value = false
-  selectedProducts.value = null
-  toast.add({ severity: 'success', summary: 'Successful', detail: 'Products Deleted', life: 3000 })
-}
+
+onMounted(() => {
+  service
+    .getEndpoint('/browse')
+    .then(function (response) {
+      records.value = response.data
+    })
+    .catch((error) => {
+      console.log(error)
+    })
+})
 </script>
 
 <template>
@@ -185,94 +93,84 @@ const deleteSelectedProducts = () => {
       </p>
       <Divider :pt="{ root: { class: 'bg-crmapgreen' } }" />
       <div>
-        <div class="card">
-          <Toolbar class="mb-4">
-            <template #start>
-              <Button
-                label="New"
-                icon="pi pi-plus"
-                severity="success"
-                class="mr-2"
-                @click="openNew"
-                disabled
-              />
-            </template>
-            <template #end>
-              <FileUpload
-                mode="basic"
-                accept="image/*"
-                :maxFileSize="1000000"
-                label="Import"
-                chooseLabel="Import"
-                class="mr-2 inline-block"
-                disabled
-              />
-              <Button
-                label="Export"
-                icon="pi pi-upload"
-                severity="help"
-                @click="exportCSV($event)"
-              />
-            </template>
-          </Toolbar>
-
+        <div>
           <DataTable
             ref="dt"
-            :value="products"
-            v-model:selection="selectedProducts"
-            dataKey="smid"
+            :value="records"
+            dataKey="dataset_id"
             :paginator="true"
-            :rows="10"
+            :rows="5"
             v-model:filters="filters"
             filterDisplay="menu"
             :globalFilterFields="[
-              'smid',
-              'name',
-              'rna_type',
-              'modification',
-              'technology',
-              'taxid',
+              'project_id',
+              'dataset_id',
+              'dataset_title',
+              'project_title',
+              'project_summary',
+              'date_published',
+              'date_added',
+              'doi',
+              'pmid',
+              'rna',
+              'modomics_sname',
+              'tech',
+              'taxa_sname',
               'cto',
               'access'
             ]"
             paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
             :rowsPerPageOptions="[5, 10, 25]"
-            currentPageReportTemplate="Showing {first} to {last} of {totalRecords} products"
+            currentPageReportTemplate="Showing {first} to {last} of {totalRecords} records"
           >
             <template #header>
-              <div class="flex justify-between">
-                <Button
-                  type="button"
-                  icon="pi pi-filter-slash"
-                  label="Clear"
-                  outlined
-                  @click="clearFilter()"
-                />
-                <span class="p-input-icon-left">
-                  <i class="pi pi-search" />
-                  <InputText v-model="filters['global'].value" placeholder="Search..." />
-                </span>
+              <div class="grid grid-cols-3 gap-4">
+                <div class="col-span-2 space-x-2">
+                  <span class="p-input-icon-left">
+                    <!-- <i class="pi pi-search text-sm text-crmapblue" /> -->
+                    <InputText
+                      size="small"
+                      v-model="filters['global'].value"
+                      placeholder="Search"
+                    />
+                  </span>
+                  <Button
+                    icon="pi pi-filter-slash"
+                    size="small"
+                    label="Clear"
+                    outlined
+                    @click="clearFilter()"
+                    :pt="{
+                      root: {
+                        class:
+                          'text-crmapblue border-crmapblue hover:border-crmapblue2 focus:ring-crmapblue2 focus:outline-none'
+                      }
+                    }"
+                  />
+                </div>
+                <div class="text-right">
+                  <Button
+                    icon="pi pi-external-link"
+                    size="small"
+                    label="Export"
+                    @click="onExport($event)"
+                    :pt="{
+                      root: {
+                        class:
+                          'bg-crmapblue border-crmapblue hover:bg-crmapblue2 hover:border-crmapblue2 focus:ring-crmapblue2 focus:outline-none'
+                      }
+                    }"
+                  />
+                </div>
               </div>
             </template>
             <template #empty> No results found. </template>
-            <Column selectionMode="multiple" style="width: 3rem" :exportable="false"></Column>
-            <Column field="smid" header="SMID" sortable style="width: 5%"></Column>
-            <Column field="name" header="Name" filterField="name" style="width: 25%">
+            <Column field="project_id" header="SMID" style="width: 5%"></Column>
+            <Column field="dataset_id" header="EUFID" style="width: 5%"></Column>
+            <Column field="dataset_title" header="Title" style="width: 5%"></Column>
+            <Column field="rna" header="RNA" filterField="rna" style="width: 10%">
               <template #body="{ data }">
-                {{ data.name }}
-              </template>
-              <template #filter="{ filterModel }">
-                <InputText
-                  v-model="filterModel.value"
-                  type="text"
-                  class="p-column-filter"
-                  placeholder="Search by name"
-                />
-              </template>
-            </Column>
-            <Column field="rna_type" header="RNA" filterField="rna_type" style="width: 10%">
-              <template #body="{ data }">
-                {{ data.rna_type }}
+                {{ data.rna }}
               </template>
               <template #filter="{ filterModel }">
                 <InputText
@@ -284,13 +182,13 @@ const deleteSelectedProducts = () => {
               </template>
             </Column>
             <Column
-              field="modification"
+              field="modomics_sname"
               header="Modification"
-              filterField="modification"
-              style="width: 10%"
+              filterField="modomics_sname"
+              style="width: 25%"
             >
               <template #body="{ data }">
-                {{ data.modification }}
+                {{ data.modomics_sname }}
               </template>
               <template #filter="{ filterModel }">
                 <InputText
@@ -301,14 +199,9 @@ const deleteSelectedProducts = () => {
                 />
               </template>
             </Column>
-            <Column
-              field="technology"
-              header="Technology"
-              filterField="technology"
-              style="width: 20%"
-            >
+            <Column field="tech" header="Technology" filterField="tech" style="width: 20%">
               <template #body="{ data }">
-                {{ data.technology }}
+                {{ data.tech }}
               </template>
               <template #filter="{ filterModel }">
                 <InputText
@@ -319,9 +212,14 @@ const deleteSelectedProducts = () => {
                 />
               </template>
             </Column>
-            <Column field="taxid" header="Organism" filterField="taxid" style="width: 10%">
+            <Column
+              field="taxa_sname"
+              header="Organism"
+              filterField="taxa_sname"
+              style="width: 10%"
+            >
               <template #body="{ data }">
-                {{ data.taxid }}
+                {{ data.taxa_sname }}
               </template>
               <template #filter="{ filterModel }">
                 <InputText
@@ -332,8 +230,7 @@ const deleteSelectedProducts = () => {
                 />
               </template>
             </Column>
-
-            <Column field="cto" header="Cell-Organ" filterField="cto" style="width: 10%">
+            <Column field="cto" header="Cell/Tissue" filterField="cto" style="width: 10%">
               <template #body="{ data }">
                 {{ data.cto }}
               </template>
@@ -342,11 +239,10 @@ const deleteSelectedProducts = () => {
                   v-model="filterModel.value"
                   type="text"
                   class="p-column-filter"
-                  placeholder="Search by organism"
+                  placeholder="Search by cell, tissue, organ"
                 />
               </template>
             </Column>
-
             <Column
               field="access"
               header="Access"
@@ -360,7 +256,7 @@ const deleteSelectedProducts = () => {
               <template #filter="{ filterModel }">
                 <Dropdown
                   v-model="filterModel.value"
-                  :options="statuses"
+                  :options="status"
                   placeholder="Select access..."
                 >
                 </Dropdown>
@@ -368,16 +264,12 @@ const deleteSelectedProducts = () => {
             </Column>
 
             <!-- export columns shown in dialog -->
+            <Column field="project_title" header="Project" style="display: none"></Column>
+            <Column field="project_summary" header="Summary" style="display: none"></Column>
             <Column field="date_added" header="Added" style="display: none"></Column>
             <Column field="date_published" header="Published" style="display: none"></Column>
             <Column field="doi" header="DOI" style="display: none"></Column>
             <Column field="pmid" header="PMID" style="display: none"></Column>
-            <Column field="assembly" header="Assembly" style="display: none"></Column>
-            <Column field="annotation_src" header="Annotation" style="display: none"></Column>
-            <Column field="annotation_ver" header="Version" style="display: none"></Column>
-            <Column field="seq_platform" header="Seq. Platform" style="display: none"></Column>
-            <Column field="basecalling" header="Basecalling" style="display: none"></Column>
-            <Column field="description" header="Description" style="display: none"></Column>
 
             <Column :exportable="false" style="width: 5%">
               <template #body="slotProps">
@@ -386,7 +278,7 @@ const deleteSelectedProducts = () => {
                   outlined
                   rounded
                   class="mr-2"
-                  @click="editProduct(slotProps.data)"
+                  @click="onOverlay(slotProps.data)"
                 />
               </template>
             </Column>
@@ -394,16 +286,16 @@ const deleteSelectedProducts = () => {
         </div>
 
         <Dialog
-          v-model:visible="productDialog"
+          v-model:visible="recordsOverlay"
           header="Additional information"
           :modal="true"
           class="p-fluid"
         >
           <div>
-            <h2>{{ product.name }}</h2>
-            <p>{{ product.description }}</p>
+            <h2>{{ thisRecord.dataset_id }}</h2>
+            <p>{{ thisRecord.sequencing_platform }}</p>
             <DataTable
-              :value="products.filter((val) => val.smid == product.smid)"
+              :value="records.filter((val) => val.dataset_id == thisRecord.dataset_id)"
               tableStyle="min-width: 50rem"
             >
               <Column

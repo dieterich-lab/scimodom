@@ -27,13 +27,22 @@ import TreeSelect from 'primevue/treeselect'
 import DefaultLayout from '@/components/layout/DefaultLayout.vue'
 import SectionLayout from '@/components/layout/SectionLayout.vue'
 
-import Toast from 'primevue/toast'
-import ToastService from 'primevue/toastservice'
-
 const app = createApp(App)
 const tailoredTailwind = usePassThrough(
   Tailwind,
   {
+    inputtext: {
+      root: (context) => ({
+        class: [
+          'text-gray-600 border border-crmapblue',
+          {
+            'hover:border-crmapblue2 focus:outline-none focus:outline-offset-0 focus:shadow-[0_0_0_0.2rem_rgba(2,176,237,1)]':
+              !context.disabled,
+            'opacity-60 select-none pointer-events-none cursor-default': context.disabled
+          }
+        ]
+      })
+    },
     treeselect: {
       root: { class: 'max-w-[30rem] md:w-full bg-transparent border-cborder' },
       tree: {
@@ -106,7 +115,6 @@ app.use(PrimeVue, {
   pt: tailoredTailwind,
   ptOptions: { mergeProps: true, mergeSections: true }
 })
-app.use(ToastService)
 app.use(router)
 
 app.component('Accordion', Accordion)
