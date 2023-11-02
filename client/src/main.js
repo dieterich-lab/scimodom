@@ -5,6 +5,8 @@ import { usePassThrough } from 'primevue/passthrough'
 import Tailwind from 'primevue/passthrough/tailwind'
 import router from './router'
 
+import ToastService from 'primevue/toastservice'
+
 // global styles
 import '@/assets/style/index.css'
 // UI components
@@ -12,6 +14,7 @@ import 'primeicons/primeicons.css'
 import Accordion from 'primevue/accordion'
 import AccordionTab from 'primevue/accordiontab'
 import Button from 'primevue/button'
+import Card from 'primevue/card'
 import Column from 'primevue/column'
 import DataTable from 'primevue/datatable'
 import Dialog from 'primevue/dialog'
@@ -21,6 +24,7 @@ import FileUpload from 'primevue/fileupload'
 import InputText from 'primevue/inputtext'
 import MultiSelect from 'primevue/multiselect'
 import SelectButton from 'primevue/selectbutton'
+import Steps from 'primevue/steps'
 import Toolbar from 'primevue/toolbar'
 import TreeSelect from 'primevue/treeselect'
 // layout components
@@ -115,11 +119,14 @@ app.use(PrimeVue, {
   pt: tailoredTailwind,
   ptOptions: { mergeProps: true, mergeSections: true }
 })
+
+app.use(ToastService)
 app.use(router)
 
 app.component('Accordion', Accordion)
 app.component('AccordionTab', AccordionTab)
 app.component('Button', Button)
+app.component('Card', Card)
 app.component('Column', Column)
 app.component('DataTable', DataTable)
 app.component('Dialog', Dialog)
@@ -129,6 +136,7 @@ app.component('FileUpload', FileUpload)
 app.component('InputText', InputText)
 app.component('MultiSelect', MultiSelect)
 app.component('SelectButton', SelectButton)
+app.component('Steps', Steps)
 app.component('Toolbar', Toolbar)
 app.component('TreeSelect', TreeSelect)
 
