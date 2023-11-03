@@ -10,7 +10,7 @@
         selected dataset
       </h1>
       <p class="text-lg font-normal text-gray-500 lg:text-xl">Database dump or EUF files</p>
-      <Divider :pt="{ root: { class: 'bg-crmapgreen' } }" />
+      <Divider :pt="{ root: { class: 'bg-crmapgreen0' } }" />
     </SectionLayout>
   </DefaultLayout>
 </template>

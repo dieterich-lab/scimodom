@@ -15,13 +15,13 @@ import ButtonIcon from '@/components/ui/ButtonIcon.vue'
       <div class="flex flex-wrap 2xl:w-1/5 xl:w-auto 2xl:pl-8 xl:pl-0">
         <ButtonIcon
           icon="pi pi-user"
-          class="text-white bg-crmapgreen hover:bg-crmapgreen2 focus:ring-crmapgreen1"
+          class="text-white bg-crmapgreen0 hover:bg-crmapgreen2 focus:ring-crmapgreen1"
         >
           Login
         </ButtonIcon>
         <ButtonIcon
           icon="pi pi-user-plus"
-          class="text-white bg-crmapblue hover:bg-crmapblue2 focus:ring-crmapblue1"
+          class="text-white bg-crmapblue0 hover:bg-crmapblue2 focus:ring-crmapblue1"
         >
           Sign Up
         </ButtonIcon>

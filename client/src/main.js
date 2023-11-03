@@ -38,7 +38,7 @@ const tailoredTailwind = usePassThrough(
     inputtext: {
       root: (context) => ({
         class: [
-          'text-gray-600 border border-crmapblue',
+          'text-gray-600 border border-crmapblue0',
           {
             'hover:border-crmapblue2 focus:outline-none focus:outline-offset-0 focus:shadow-[0_0_0_0.2rem_rgba(2,176,237,1)]':
               !context.disabled,
@@ -91,14 +91,14 @@ const tailoredTailwind = usePassThrough(
     datatable: {
       bodyrow: ({ context }) => ({
         class: [
-          context.selected ? 'bg-crmapblue text-crmapblue' : 'bg-white text-gray-600',
+          context.selected ? 'bg-crmapblue0 text-crmapblue0' : 'bg-white text-gray-600',
           context.stripedRows
             ? context.index % 2 === 0
               ? 'bg-white text-gray-600'
-              : 'bg-crmapblue/20 text-gray-600'
+              : 'bg-crmapblue0/20 text-gray-600'
             : '',
           'transition duration-200',
-          'focus:outline focus:outline-[0.15rem] focus:outline-crmapblue focus:outline-offset-[-0.15rem]', // Focus
+          'focus:outline focus:outline-[0.15rem] focus:outline-crmapblue0 focus:outline-offset-[-0.15rem]', // Focus
           {
             'cursor-pointer': context.selectable,
             'hover:bg-gray-300/20 hover:text-gray-600': context.selectable && !context.selected // Hover

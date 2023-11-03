@@ -91,7 +91,7 @@ onMounted(() => {
       <p class="text-lg font-normal text-gray-500 lg:text-xl">
         Use filters to find available dataset
       </p>
-      <Divider :pt="{ root: { class: 'bg-crmapgreen' } }" />
+      <Divider :pt="{ root: { class: 'bg-crmapgreen0' } }" />
       <div>
         <div>
           <DataTable
@@ -143,7 +143,7 @@ onMounted(() => {
                     :pt="{
                       root: {
                         class:
-                          'text-crmapblue border-crmapblue hover:border-crmapblue2 focus:ring-crmapblue2 focus:outline-none'
+                          'text-crmapblue0 border-crmapblue0 hover:border-crmapblue2 focus:ring-crmapblue2 focus:outline-none'
                       }
                     }"
                   />
@@ -157,7 +157,7 @@ onMounted(() => {
                     :pt="{
                       root: {
                         class:
-                          'bg-crmapblue border-crmapblue hover:bg-crmapblue2 hover:border-crmapblue2 focus:ring-crmapblue2 focus:outline-none'
+                          'bg-crmapblue0 border-crmapblue0 hover:bg-crmapblue2 hover:border-crmapblue2 focus:ring-crmapblue2 focus:outline-none'
                       }
                     }"
                   />

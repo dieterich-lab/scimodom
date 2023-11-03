@@ -12,8 +12,8 @@ module.exports = {
         cselect: 'rgb(2 176 237 / <alpha-value>)',
         cborder: 'rgb(226 236 236 / <alpha-value>)',
 
-        crmapgreen: 'rgb(0 176 81 / <alpha-value>)', // #00b051ff
-        crmapblue: 'rgb(2 176 237 / <alpha-value>)', // #02b0edff
+        crmapgreen0: 'rgb(0 176 81 / <alpha-value>)', // #00b051ff
+        crmapblue0: 'rgb(2 176 237 / <alpha-value>)', // #02b0edff
 
         crmapgreen1: 'rgb(114 191 132 / <alpha-value>)', // #72bf84ff
         crmapgreen2: 'rgb(94 156 108 / <alpha-value>)', // #5e9c6cff

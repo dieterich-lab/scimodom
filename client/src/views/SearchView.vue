@@ -229,7 +229,7 @@ function lazyLoad() {
                 :pt="{
                   root: {
                     class:
-                      'bg-crmapblue border-crmapblue hover:bg-crmapblue2 hover:border-crmapblue2 focus:ring-crmapblue2 focus:outline-none'
+                      'bg-crmapblue0 border-crmapblue0 hover:bg-crmapblue2 hover:border-crmapblue2 focus:ring-crmapblue2 focus:outline-none'
                   }
                 }"
               />

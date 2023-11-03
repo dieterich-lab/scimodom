@@ -20,7 +20,7 @@ defineProps({
     <p class="mb-3 font-normal text-gray-500">
       <slot name="content"></slot>
     </p>
-    <a :href="route" class="inline-flex items-center text-crmapblue hover:underline">
+    <a :href="route" class="inline-flex items-center text-crmapblue0 hover:underline">
       <slot name="link"></slot>
       <i class="pi pi-arrow-up-right ml-2" />
     </a>
