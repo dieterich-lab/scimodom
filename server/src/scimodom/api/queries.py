@@ -238,9 +238,9 @@ def get_dataset():
     return convert_tup_list_to_json(keys, dataset)
 
 
-@api.route("/compare", methods=["GET"])
+@api.route("/compare/<step>", methods=["GET"])
 @cross_origin(supports_credentials=True)
-def get_comparison():
+def get_comparison(step):
     """Retrieve ..."""
 
     # API call in compare, then pass as params to SPA components
@@ -248,35 +248,67 @@ def get_comparison():
     # final call after dataset selection + query
     # + lazy loading of results?
 
-    query = (
-        select(Taxa.short_name.distinct(), Taxonomy.kingdom)
-        .join_from(Taxa, Taxonomy, Taxa.taxonomy_id == Taxonomy.id)
-        .join_from(Taxa, Organism, Taxa.id == Organism.taxa_id)
-    )
+    if step == "dataset":
+        keys = [
+            "dataset_id",
+            "dataset_title",
+            "modification_id",
+            "technology_id",
+            "organism_id",
+        ]
 
-    # so far no order
-    # [('H. sapiens', 'Animalia'), ('M. musculus', 'Animalia')]
-    # we need to reformat to fit the "grouped dropdown component"
-    # we also probably need to add ids to retrieve the final selection
-    # i.e. taxa, modification, and technology ids
-    # same below
+        query = (
+            select(
+                Dataset.id,
+                Dataset.title,
+                Modification.id,
+                DetectionTechnology.id,
+                Organism.id,
+            )
+            .join_from(Dataset, Association, Dataset.id == Association.dataset_id)
+            .join_from(Association, Selection, Association.selection_id == Selection.id)
+            .join_from(
+                Selection, Modification, Selection.modification_id == Modification.id
+            )
+            .join_from(
+                Selection,
+                DetectionTechnology,
+                Selection.technology_id == DetectionTechnology.id,
+            )
+            .join_from(Selection, Organism, Selection.organism_id == Organism.id)
+        )
 
-    query = select(
-        Modification.rna.distinct(),
-        Modomics.short_name,
-    ).join_from(Modification, Modomics, Modification.modomics_id == Modomics.id)
+        dataset = get_session().execute(query).all()
 
-    # [('mRNA', 'm6A'), ('mRNA', 'm5C'), ('rRNA', 'm6A'), ('mRNA', 'Y'), ('tRNA', 'Y')]
+    # query = (
+    # select(Taxa.short_name.distinct(), Taxonomy.kingdom)
+    # .join_from(Taxa, Taxonomy, Taxa.taxonomy_id == Taxonomy.id)
+    # .join_from(Taxa, Organism, Taxa.id == Organism.taxa_id)
+    # )
 
-    query = select(DetectionMethod.meth.distinct(), DetectionTechnology.tech).join_from(
-        DetectionMethod,
-        DetectionTechnology,
-        DetectionMethod.id == DetectionTechnology.method_id,
-    )
+    ## so far no order
+    ## [('H. sapiens', 'Animalia'), ('M. musculus', 'Animalia')]
+    ## we need to reformat to fit the "grouped dropdown component"
+    ## we also probably need to add ids to retrieve the final selection
+    ## i.e. taxa, modification, and technology ids
+    ## same below
 
-    # [('Chemical-assisted sequencing', 'm6A-SAC-seq'), ('Native RNA sequencing', 'Nanopore'), ('Chemical-assisted sequencing', 'GLORI'), ('Enzyme/protein-assisted sequencing', 'm5C-miCLIP'), ('Enzyme/protein-assisted sequencing', 'm6ACE-seq'), ('Chemical-assisted sequencing', 'BID-seq'), ('Antibody-based sequencing', 'm6A-seq/MeRIP'), ('Enzyme/protein-assisted sequencing', 'eTAM-seq')]
+    # query = select(
+    # Modification.rna.distinct(),
+    # Modomics.short_name,
+    # ).join_from(Modification, Modomics, Modification.modomics_id == Modomics.id)
 
-    return "200"
+    ## [('mRNA', 'm6A'), ('mRNA', 'm5C'), ('rRNA', 'm6A'), ('mRNA', 'Y'), ('tRNA', 'Y')]
+
+    # query = select(DetectionMethod.meth.distinct(), DetectionTechnology.tech).join_from(
+    # DetectionMethod,
+    # DetectionTechnology,
+    # DetectionMethod.id == DetectionTechnology.method_id,
+    # )
+
+    ## [('Chemical-assisted sequencing', 'm6A-SAC-seq'), ('Native RNA sequencing', 'Nanopore'), ('Chemical-assisted sequencing', 'GLORI'), ('Enzyme/protein-assisted sequencing', 'm5C-miCLIP'), ('Enzyme/protein-assisted sequencing', 'm6ACE-seq'), ('Chemical-assisted sequencing', 'BID-seq'), ('Antibody-based sequencing', 'm6A-seq/MeRIP'), ('Enzyme/protein-assisted sequencing', 'eTAM-seq')]
+
+    return convert_tup_list_to_json(keys, dataset)
 
 
 @api.route("/modification/<string:mod>")

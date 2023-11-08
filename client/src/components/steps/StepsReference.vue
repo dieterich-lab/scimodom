@@ -9,57 +9,96 @@ const technology = ref()
 const selectedTechnology = ref()
 const species = ref()
 const selectedSpecies = ref()
+const cto = ref()
+const selectedCto = ref()
+const referenceDataset = ref()
+const dataset = ref()
+const selectedDataset = ref()
 
 onMounted(() => {
   service
     .getEndpoint('/selection')
     .then(function (response) {
       selectOptions.value = response.data
-      species.value = toTree(
-        selectOptions.value,
-        ['domain', 'kingdom', 'phylum', 'taxa_sname', 'cto'],
-        'organism_id'
-      )
+      species.value = toTree(selectOptions.value, ['domain', 'taxa_sname'], 'taxa_sname')
+    })
+    .catch((error) => {
+      console.log(error)
+    })
+  service
+    .getEndpoint('/compare/dataset')
+    .then(function (response) {
+      referenceDataset.value = response.data
     })
     .catch((error) => {
       console.log(error)
     })
 })
 
+const updateCto = () => {
+  selectedCto.value = undefined
+  selectedModification.value = undefined
+  selectedTechnology.value = undefined
+  selectedDataset.value = undefined
+  var options = selectOptions.value.filter(
+    (item) => item.taxa_sname === selectedSpecies.value.label
+  )
+  cto.value = toTree(options, ['cto'], 'organism_id')
+  updateDataset()
+}
+
 const updateModification = () => {
   selectedModification.value = undefined
   selectedTechnology.value = undefined
-  var selectedSpeciesIds = toIds(selectedSpecies.value)
-  console.log('VALUES', selectedSpecies.value)
-  console.log('IDS', selectedSpeciesIds)
-  var options = selectOptions.value.filter((item) => selectedSpeciesIds.includes(item.taxa_sname))
-  console.log('OPTIONS', options)
+  selectedDataset.value = undefined
+  var selectedCtoIds = selectedCto.value.map((item) => item.key)
+  var options = selectOptions.value.filter((item) => selectedCtoIds.includes(item.organism_id))
   modification.value = toTree(options, ['rna', 'modomics_sname'], 'modification_id')
+  updateDataset()
 }
 
 const updateTechnology = () => {
   selectedTechnology.value = undefined
-  selectedSpecies.value = undefined
-  var selectedModificationIds = toIds(selectedModification.value)
-  var options = selectOptions.value.filter((item) =>
-    selectedModificationIds.includes(item.modification_id)
+  selectedDataset.value = undefined
+  var selectedModificationIds = toIds(
+    selectedModification.value,
+    Array.from(new Set(selectOptions.value.map((item) => item.modification_id)))
   )
-  technology.value = toTree(options, ['cls', 'meth', 'tech'], 'technology_id')
-}
-
-const updateSpecies = () => {
-  selectedSpecies.value = undefined
-  var selectedModificationIds = toIds(selectedModification.value)
-  var selectedTechnologyIds = toIds(selectedTechnology.value)
+  var selectedCtoIds = selectedCto.value.map((item) => item.key)
   var options = selectOptions.value.filter(
     (item) =>
       selectedModificationIds.includes(item.modification_id) &&
-      selectedTechnologyIds.includes(item.technology_id)
+      selectedCtoIds.includes(item.organism_id)
   )
-  species.value = toTree(
-    options,
-    ['domain', 'kingdom', 'phylum', 'taxa_sname', 'cto'],
-    'organism_id'
+  technology.value = toTree(options, ['cls', 'meth', 'tech'], 'technology_id')
+  updateDataset()
+}
+
+function updateDataset() {
+  selectedDataset.value = undefined
+  var selectedModificationIds = toIds(
+    selectedModification.value,
+    Array.from(new Set(selectOptions.value.map((item) => item.modification_id)))
+  )
+  var selectedTechnologyIds = toIds(
+    selectedTechnology.value,
+    Array.from(new Set(selectOptions.value.map((item) => item.technology_id)))
+  )
+  // var selectedCtoIds = selectedCto.value.map((item) => item.key)
+  var selectedCtoIds =
+    Object.is(selectedCto.value, undefined) || selectedCto.value.length === 0
+      ? cto.value.map((item) => item.key)
+      : selectedCto.value.map((item) => item.key)
+  var options = referenceDataset.value.filter(
+    (item) =>
+      selectedModificationIds.includes(item.modification_id) &&
+      selectedTechnologyIds.includes(item.technology_id) &&
+      selectedCtoIds.includes(item.organism_id)
+  )
+  dataset.value = [...new Map(options.map((item) => [item['dataset_id'], item])).values()].map(
+    (item) => {
+      return { dataset_id: item.dataset_id, dataset_title: item.dataset_title }
+    }
   )
 }
 
@@ -81,44 +120,101 @@ function toTree(data, keys, id) {
   return tree
 }
 
-function toIds(array) {
-  if (!(array === undefined)) {
+function toIds(array, defaultArray) {
+  if (!(array === undefined || Object.keys(array).length === 0)) {
     return Object.keys(array)
       .map(Number)
       .filter((value) => !Number.isNaN(value))
   }
-  return []
+  return defaultArray
 }
 </script>
 
 <template>
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-    <div>
-      <TreeSelect
-        @change="updateModification()"
-        v-model="selectedSpecies"
-        :options="species"
-        placeholder="1. Select one organism"
-      />
-    </div>
-    <div>
-      <TreeSelect
-        @change="updateTechnology()"
-        v-model="selectedModification"
-        :options="modification"
-        selectionMode="checkbox"
-        :metaKeySelection="false"
-        placeholder="1. Select RNA modifications"
-      />
-    </div>
-    <div>
-      <TreeSelect
-        v-model="selectedTechnology"
-        :options="technology"
-        selectionMode="checkbox"
-        :metaKeySelection="false"
-        placeholder="2. Select technologies"
-      />
-    </div>
+  <div>
+    <Card>
+      <template v-slot:title> Select a reference dataset </template>
+      <template v-slot:subtitle> Choose your seat </template>
+      <template v-slot:content>
+        <div class="grid grid-flow-row-dense grid-cols-6 grid-row-2 gap-6">
+          <Dropdown
+            @change="updateCto"
+            v-model="selectedSpecies"
+            filter
+            :options="species"
+            optionLabel="label"
+            optionGroupLabel="label"
+            optionGroupChildren="children"
+            placeholder="1. Select one organism"
+          />
+          <MultiSelect
+            @change="updateModification"
+            v-model="selectedCto"
+            :options="cto"
+            optionLabel="label"
+            placeholder="2. Select cell/tissue"
+            :maxSelectedLabels="3"
+          />
+          <div class="col-span-2">
+            <TreeSelect
+              @change="updateTechnology"
+              v-model="selectedModification"
+              :options="modification"
+              selectionMode="checkbox"
+              :metaKeySelection="false"
+              placeholder="3. Select RNA modifications"
+            />
+          </div>
+          <div class="cold-span-2">
+            <TreeSelect
+              @change="updateDataset"
+              v-model="selectedTechnology"
+              :options="technology"
+              selectionMode="checkbox"
+              :metaKeySelection="false"
+              placeholder="4. Select technologies"
+            />
+          </div>
+          <div class="col-span-6 w-full">
+            <MultiSelect
+              v-model="selectedDataset"
+              :options="dataset"
+              filter
+              optionLabel="dataset_title"
+              placeholder="5. Select dataset"
+              :maxSelectedLabels="3"
+              :pt="{
+                root: { class: 'md:w-full' },
+                item: ({ props, state, context }) => ({
+                  class: context.selected
+                    ? 'bg-blue-300'
+                    : context.focused
+                    ? 'bg-blue-100'
+                    : undefined
+                })
+              }"
+            />
+          </div>
+        </div>
+      </template>
+      <template v-slot:footer>
+        <div class="grid grid-flow-col auto-cols-max justify-between">
+          <div />
+          <Button
+            @click="nextPage()"
+            icon="pi pi-angle-right"
+            iconPos="right"
+            label="Next"
+            size="small"
+            :pt="{
+              root: {
+                class:
+                  'bg-crmapblue0 border-crmapblue0 hover:bg-crmapblue2 hover:border-crmapblue2 focus:ring-crmapblue2 focus:outline-none'
+              }
+            }"
+          />
+        </div>
+      </template>
+    </Card>
   </div>
 </template>
