@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import service from '@/services/index.js'
 
-const selectOptions = ref()
+// const selectOptions = ref()
 const modification = ref()
 const selectedModification = ref()
 const technology = ref()
@@ -11,36 +11,49 @@ const species = ref()
 const selectedSpecies = ref()
 const cto = ref()
 const selectedCto = ref()
-const referenceDataset = ref()
+// const referenceDataset = ref()
 const dataset = ref()
 const selectedDataset = ref()
 
-onMounted(() => {
-  service
-    .getEndpoint('/selection')
-    .then(function (response) {
-      selectOptions.value = response.data
-      species.value = toTree(selectOptions.value, ['domain', 'taxa_sname'], 'taxa_sname')
-    })
-    .catch((error) => {
-      console.log(error)
-    })
-  service
-    .getEndpoint('/compare/dataset')
-    .then(function (response) {
-      referenceDataset.value = response.data
-    })
-    .catch((error) => {
-      console.log(error)
-    })
+const props = defineProps({
+  selectOptions: {
+    type: Array,
+    required: true
+  },
+  referenceDataset: {
+    type: Array,
+    required: true
+  }
 })
+
+species.value = toTree(props.selectOptions, ['domain', 'taxa_sname'], 'taxa_sname')
+
+// onMounted(() => {
+//   service
+//     .getEndpoint('/selection')
+//     .then(function (response) {
+//       selectOptions.value = response.data
+//       species.value = toTree(selectOptions.value, ['domain', 'taxa_sname'], 'taxa_sname')
+//     })
+//     .catch((error) => {
+//       console.log(error)
+//     })
+//   service
+//     .getEndpoint('/compare/dataset')
+//     .then(function (response) {
+//       referenceDataset.value = response.data
+//     })
+//     .catch((error) => {
+//       console.log(error)
+//     })
+// })
 
 const updateCto = () => {
   selectedCto.value = undefined
   selectedModification.value = undefined
   selectedTechnology.value = undefined
   selectedDataset.value = undefined
-  var options = selectOptions.value.filter(
+  var options = props.selectOptions.filter(
     (item) => item.taxa_sname === selectedSpecies.value.label
   )
   cto.value = toTree(options, ['cto'], 'organism_id')
@@ -52,7 +65,7 @@ const updateModification = () => {
   selectedTechnology.value = undefined
   selectedDataset.value = undefined
   var selectedCtoIds = selectedCto.value.map((item) => item.key)
-  var options = selectOptions.value.filter((item) => selectedCtoIds.includes(item.organism_id))
+  var options = props.selectOptions.filter((item) => selectedCtoIds.includes(item.organism_id))
   modification.value = toTree(options, ['rna', 'modomics_sname'], 'modification_id')
   updateDataset()
 }
@@ -62,10 +75,10 @@ const updateTechnology = () => {
   selectedDataset.value = undefined
   var selectedModificationIds = toIds(
     selectedModification.value,
-    Array.from(new Set(selectOptions.value.map((item) => item.modification_id)))
+    Array.from(new Set(props.selectOptions.map((item) => item.modification_id)))
   )
   var selectedCtoIds = selectedCto.value.map((item) => item.key)
-  var options = selectOptions.value.filter(
+  var options = props.selectOptions.filter(
     (item) =>
       selectedModificationIds.includes(item.modification_id) &&
       selectedCtoIds.includes(item.organism_id)
@@ -78,18 +91,18 @@ function updateDataset() {
   selectedDataset.value = undefined
   var selectedModificationIds = toIds(
     selectedModification.value,
-    Array.from(new Set(selectOptions.value.map((item) => item.modification_id)))
+    Array.from(new Set(props.selectOptions.map((item) => item.modification_id)))
   )
   var selectedTechnologyIds = toIds(
     selectedTechnology.value,
-    Array.from(new Set(selectOptions.value.map((item) => item.technology_id)))
+    Array.from(new Set(props.selectOptions.map((item) => item.technology_id)))
   )
   // var selectedCtoIds = selectedCto.value.map((item) => item.key)
   var selectedCtoIds =
     Object.is(selectedCto.value, undefined) || selectedCto.value.length === 0
       ? cto.value.map((item) => item.key)
       : selectedCto.value.map((item) => item.key)
-  var options = referenceDataset.value.filter(
+  var options = props.referenceDataset.filter(
     (item) =>
       selectedModificationIds.includes(item.modification_id) &&
       selectedTechnologyIds.includes(item.technology_id) &&
