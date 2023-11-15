@@ -115,6 +115,14 @@ function updateDataset() {
   )
 }
 
+// const emit = defineEmits(['selected-dataset'])
+// const emitSelectedDataset = (event) => {
+//   let datasetIds = event.value.map((item) => item.dataset_id)
+//   console.log("EMIT", datasetIds)
+//   console.log("EVENT", event.value)
+//   emit('selected-dataset', datasetIds)
+// }
+
 const updateTmp = () => {}
 
 function toTree(data, keys, id) {
@@ -190,6 +198,12 @@ function toIds(array, defaultArray) {
           </div>
           <div class="col-span-6 w-full">
             <MultiSelect
+              @change="
+                $emit(
+                  'selectedDataset',
+                  selectedDataset.map((item) => item.dataset_id)
+                )
+              "
               v-model="selectedDataset"
               :options="dataset"
               filter

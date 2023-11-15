@@ -106,6 +106,7 @@ def get_search():
     modification_ids = request.args.getlist("modification", type=int)
     technology_ids = request.args.getlist("technology", type=int)
     organism_ids = request.args.getlist("organism", type=int)
+    dataset_ids = request.args.getlist("data", type=str)
     first_record = request.args.get("firstRecord", type=int)
     max_records = request.args.get("maxRecords", type=int)
     multi_sort = request.args.getlist("multiSort", type=str)
@@ -144,6 +145,8 @@ def get_search():
         query = query.where(Selection.technology_id.in_(technology_ids))
     if organism_ids:
         query = query.where(Selection.organism_id.in_(organism_ids))
+    if dataset_ids:
+        query = query.where(Data.dataset_id.in_(dataset_ids))
     for sort in multi_sort:
         col, order = sort.split(".")
         expr = eval(f"Data.{col}.{order}()")
@@ -309,6 +312,34 @@ def get_comparison(step):
     ## [('Chemical-assisted sequencing', 'm6A-SAC-seq'), ('Native RNA sequencing', 'Nanopore'), ('Chemical-assisted sequencing', 'GLORI'), ('Enzyme/protein-assisted sequencing', 'm5C-miCLIP'), ('Enzyme/protein-assisted sequencing', 'm6ACE-seq'), ('Chemical-assisted sequencing', 'BID-seq'), ('Antibody-based sequencing', 'm6A-seq/MeRIP'), ('Enzyme/protein-assisted sequencing', 'eTAM-seq')]
 
     return convert_tup_list_to_json(keys, dataset)
+
+
+@api.route("/upload", methods=["POST"])
+@cross_origin(supports_credentials=True)
+def upload_file():
+    """Upload ..."""
+
+    # TODO: define app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+    # ALLOWED_EXTENSIONS are dealt with PrimeVue FileUpload
+
+    from pathlib import Path
+    from werkzeug.utils import secure_filename
+
+    print(f"UPLOAD: {request.files}")
+    if "file" not in request.files:
+        # this shouldn't happen, but ...
+        pass
+    # or empty file without a filename should not happen
+    rfile = request.files["file"]
+    filename = secure_filename(rfile.filename)
+    rfile.save(
+        Path(
+            "/home/eboileau/prj/RMapDFGTRR319/repositories/scimodom/local/TMP", filename
+        )
+    )
+
+    # what to return?
+    return "200"
 
 
 @api.route("/modification/<string:mod>")

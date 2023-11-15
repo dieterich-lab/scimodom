@@ -25,6 +25,8 @@ import InputText from 'primevue/inputtext'
 import MultiSelect from 'primevue/multiselect'
 import SelectButton from 'primevue/selectbutton'
 import Steps from 'primevue/steps'
+import TabPanel from 'primevue/tabpanel'
+import TabView from 'primevue/tabview'
 import Toolbar from 'primevue/toolbar'
 import TreeSelect from 'primevue/treeselect'
 // layout components
@@ -48,7 +50,7 @@ const tailoredTailwind = usePassThrough(
       })
     },
     treeselect: {
-      root: { class: 'max-w-[30rem] md:w-full bg-transparent border-cborder' },
+      root: { class: 'bg-transparent border-cborder' },
       tree: {
         container: 'm-0 p-0 list-none -space-y-2 overflow-auto',
         root: { class: 'border-none' },
@@ -137,6 +139,8 @@ app.component('InputText', InputText)
 app.component('MultiSelect', MultiSelect)
 app.component('SelectButton', SelectButton)
 app.component('Steps', Steps)
+app.component('TabPanel', TabPanel)
+app.component('TabView', TabView)
 app.component('Toolbar', Toolbar)
 app.component('TreeSelect', TreeSelect)
 
