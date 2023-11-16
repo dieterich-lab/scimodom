@@ -325,7 +325,6 @@ def upload_file():
     from pathlib import Path
     from werkzeug.utils import secure_filename
 
-    print(f"UPLOAD: {request.files}")
     if "file" not in request.files:
         # this shouldn't happen, but ...
         pass

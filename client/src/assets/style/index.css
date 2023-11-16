@@ -19,4 +19,5 @@
 @layer tailwind-utilities {
   @tailwind components;
   @tailwind utilities;
+  /*   @tailwind variants; */
 }

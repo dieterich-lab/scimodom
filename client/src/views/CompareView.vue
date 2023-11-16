@@ -5,7 +5,7 @@ import CompareStepI from '@/components/compare/CompareStepI.vue'
 import CompareStepII from '@/components/compare/CompareStepII.vue'
 
 const selectOptions = ref()
-const referenceDataset = ref()
+const selectDataset = ref()
 
 const selectedRefDataset = ref()
 const selectedCompDataset = ref()
@@ -50,7 +50,7 @@ onMounted(() => {
   service
     .getEndpoint('/compare/dataset')
     .then(function (response) {
-      referenceDataset.value = response.data
+      selectDataset.value = response.data
     })
     .catch((error) => {
       console.log(error)
@@ -58,19 +58,20 @@ onMounted(() => {
 })
 
 const setSpecies = (value) => {
-  console.log('SPECIES', value)
+  // console.log('SPECIES', value)
   selectedSpecies.value = value
 }
 
 const setDataset = (array) => {
   selectedRefDataset.value = array
+  // console.log('REF DATASET', array)
   lazyLoad()
 }
 
 const setDatasetII = (array) => {
-  // selectedRefDataset.value = array
-  // lazyLoad()
-  console.log('STEP2', array)
+  selectedCompDataset.value = array
+  lazyLoad()
+  // console.log('COMP DATASET', array)
 }
 
 function lazyLoad() {
@@ -221,9 +222,9 @@ function fmtOrder(array) {
             }"
           >
             <CompareStepI
-              v-if="selectOptions && referenceDataset"
+              v-if="selectOptions && selectDataset"
               :select-options="selectOptions"
-              :reference-dataset="referenceDataset"
+              :select-dataset="selectDataset"
               @selected-species="setSpecies"
               @selected-dataset="setDataset"
             />
@@ -245,10 +246,11 @@ function fmtOrder(array) {
             }"
           >
             <CompareStepII
-              v-if="selectOptions && referenceDataset && selectedSpecies"
+              v-if="selectOptions && selectDataset && selectedSpecies && selectedRefDataset"
               :selected-species="selectedSpecies"
               :select-options="selectOptions"
-              :reference-dataset="referenceDataset"
+              :select-dataset="selectDataset"
+              :reference-dataset="selectedRefDataset"
               @selected-dataset="setDatasetII"
             />
           </TabPanel>

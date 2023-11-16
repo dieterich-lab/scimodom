@@ -175,6 +175,9 @@ function lazyLoad() {
             selectionMode="checkbox"
             :metaKeySelection="false"
             placeholder="1. Select RNA modifications"
+            :pt="{
+              root: { class: 'w-full md:w-full' }
+            }"
           />
         </div>
         <div>
@@ -185,6 +188,9 @@ function lazyLoad() {
             selectionMode="checkbox"
             :metaKeySelection="false"
             placeholder="2. Select technologies"
+            :pt="{
+              root: { class: 'w-full md:w-full' }
+            }"
           />
         </div>
         <div>
@@ -195,6 +201,9 @@ function lazyLoad() {
             selectionMode="checkbox"
             :metaKeySelection="false"
             placeholder="3. Select organisms"
+            :pt="{
+              root: { class: 'w-full md:w-full' }
+            }"
           />
         </div>
       </div>

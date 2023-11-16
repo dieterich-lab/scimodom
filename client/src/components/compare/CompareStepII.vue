@@ -15,11 +15,15 @@ const props = defineProps({
     type: String,
     required: true
   },
+  referenceDataset: {
+    type: Array,
+    required: true
+  },
   selectOptions: {
     type: Array,
     required: true
   },
-  referenceDataset: {
+  selectDataset: {
     type: Array,
     required: true
   }
@@ -40,37 +44,18 @@ watch(
   { immediate: true }
 )
 
-// watch(selectedSpecies, () => {
-//   var options = props.selectOptions.filter(
-//     (item) => item.taxa_sname === props.selectedSpecies
-//   )
-//   organism.value = toTree(options, ['cto'], 'organism_id')
-//   updateDataset()
-//   selectedOrganism.value = undefined
-//   selectedModification.value = undefined
-//   selectedTechnology.value = undefined
-//   // selectedDataset.value = undefined
-//   console.log('prop value changed', props.selectedSpecies)
-//   modification.value = undefined
-//   technology.value = undefined
-// })
-
-// watchEffect(() => {
-//   var options = props.selectOptions.filter(
-//     (item) => item.taxa_sname === props.selectedSpecies
-//   )
-//   organism.value = toTree(options, ['cto'], 'organism_id')
-//   updateDataset()
-//   selectedOrganism.value = undefined
-//   selectedModification.value = undefined
-//   selectedTechnology.value = undefined
-//   // selectedDataset.value = undefined
-//   console.log('prop value changed', props.selectedSpecies)
-//   modification.value = undefined
-//   technology.value = undefined
-//   // updateDataset()
-// }
-// )
+watch(
+  () => props.referenceDataset,
+  () => {
+    modification.value = undefined
+    technology.value = undefined
+    selectedOrganism.value = undefined
+    selectedModification.value = undefined
+    selectedTechnology.value = undefined
+    updateDataset()
+  },
+  { immediate: true }
+)
 
 const emit = defineEmits(['selectedDataset'])
 
@@ -78,14 +63,6 @@ const emitSelectedDataset = (event) => {
   let datasetIds = event.value.map((item) => item.dataset_id)
   emit('selectedDataset', datasetIds)
 }
-
-// const updateOrganism = () => {
-//   var options = props.selectOptions.filter(
-//     (item) => item.taxa_sname === props.selectedSpecies
-//   )
-//   organism.value = toTree(options, ['cto'], 'organism_id')
-// }
-// updateOrganism()
 
 const updateModification = () => {
   selectedModification.value = undefined
@@ -128,11 +105,16 @@ function updateDataset() {
     Object.is(selectedOrganism.value, undefined) || selectedOrganism.value.length === 0
       ? organism.value.map((item) => item.key)
       : selectedOrganism.value.map((item) => item.key)
-  var options = props.referenceDataset.filter(
+  var selectedRefDatasetIds =
+    Object.is(props.referenceDataset, undefined) || props.referenceDataset.length === 0
+      ? props.selectDataset.map((item) => item.dataset_id)
+      : props.referenceDataset
+  var options = props.selectDataset.filter(
     (item) =>
       selectedModificationIds.includes(item.modification_id) &&
       selectedTechnologyIds.includes(item.technology_id) &&
-      selectedOrganismIds.includes(item.organism_id)
+      selectedOrganismIds.includes(item.organism_id) &&
+      !selectedRefDatasetIds.includes(item.dataset_id)
   )
   dataset.value = [...new Map(options.map((item) => [item['dataset_id'], item])).values()].map(
     (item) => {
@@ -168,20 +150,26 @@ function toIds(array, defaultArray) {
 </script>
 
 <template>
-  <div class="grid grid-flow-row-dense grid-cols-6 grid-row-2 gap-6">
+  <div class="grid grid-flow-row-dense grid-cols-4 gap-6">
     <FileUpload
+      mode="basic"
       name="file"
       url="http://127.0.0.1:5000/api/v0/upload"
-      :multiple="false"
       accept="text/plain,.bed,.bedrmod"
       :maxFileSize="1000000"
+      :auto="true"
+      chooseLabel="Upload modifications (bedRMod)"
       :pt="{
-        content: { class: 'surface-ground' }
+        root: { class: 'flex flex-wrap w-full md:w-full' },
+        chooseButton: {
+          class: [
+            'text-white text-bold bg-crmapgreen0 border border-crmapgreen0 p-3 px-5 rounded-md text-base',
+            'overflow-hidden relative'
+          ]
+        },
+        uploadicon: 'mr-4 inline-block'
       }"
     >
-      <template #empty>
-        <p>Drag and drop files to here to upload.</p>
-      </template>
     </FileUpload>
     <MultiSelect
       @change="updateModification"
@@ -190,43 +178,107 @@ function toIds(array, defaultArray) {
       optionLabel="label"
       placeholder="1. Select cell/tissue"
       :maxSelectedLabels="3"
+      :pt="{
+        root: { class: 'w-full md:w-full' },
+        item: ({ props, state, context }) => ({
+          class: [
+            {
+              'text-gray-700 hover:text-gray-700 hover:bg-[#72bf84]':
+                !context.focused && !context.selected,
+              'bg-[#ffffff] text-gray-700 hover:text-gray-700 hover:bg-[#00b051]':
+                context.focused && !context.selected,
+              'bg-[#fffffe] text-gray-800': context.focused && context.selected,
+              'bg-[#ffffff] text-gray-800': !context.focused && context.selected
+            }
+          ]
+        }),
+        headerCheckbox: ({ context }) => ({
+          class: [
+            'hover:border-crmapgreen1 focus:outline-none focus:outline-offset-0 focus:shadow-[0_0_0_0.2rem_rgba(114,191,132,1)]',
+            {
+              'border-gray-300 bg-white': !context?.selected,
+              'border-crmapgreen1 bg-crmapgreen1': context?.selected
+            }
+          ]
+        }),
+        checkbox: ({ context }) => ({
+          class: [
+            'hover:border-crmapgreen1 focus:outline-none focus:outline-offset-0 focus:shadow-[0_0_0_0.2rem_rgba(114,191,132,1)]',
+            {
+              'border-gray-300 bg-white': !context?.selected,
+              'border-crmapgreen1 bg-crmapgreen1': context?.selected
+            }
+          ]
+        })
+      }"
     />
-    <div class="col-span-2">
-      <TreeSelect
-        @change="updateTechnology"
-        v-model="selectedModification"
-        :options="modification"
-        selectionMode="checkbox"
-        :metaKeySelection="false"
-        placeholder="2. Select RNA modifications"
-      />
-    </div>
-    <div class="cold-span-2">
-      <TreeSelect
-        @change="updateDataset"
-        v-model="selectedTechnology"
-        :options="technology"
-        selectionMode="checkbox"
-        :metaKeySelection="false"
-        placeholder="3. Select technologies"
-      />
-    </div>
-    <div class="col-span-6 w-full">
-      <MultiSelect
-        @change="emitSelectedDataset"
-        v-model="selectedDataset"
-        :options="dataset"
-        filter
-        optionLabel="dataset_title"
-        placeholder="4. Select dataset"
-        :maxSelectedLabels="3"
-        :pt="{
-          root: { class: 'md:w-full' },
-          item: ({ props, state, context }) => ({
-            class: context.selected ? 'bg-blue-300' : context.focused ? 'bg-blue-100' : undefined
-          })
-        }"
-      />
-    </div>
+    <TreeSelect
+      @change="updateTechnology"
+      v-model="selectedModification"
+      :options="modification"
+      selectionMode="checkbox"
+      :metaKeySelection="false"
+      placeholder="2. Select RNA modifications"
+      :pt="{
+        root: { class: 'w-full md:w-full' }
+      }"
+    />
+    <TreeSelect
+      @change="updateDataset"
+      v-model="selectedTechnology"
+      :options="technology"
+      selectionMode="checkbox"
+      :metaKeySelection="false"
+      placeholder="3. Select technologies"
+      :pt="{
+        root: { class: 'w-full md:w-full' }
+      }"
+    />
+    <MultiSelect
+      @change="emitSelectedDataset"
+      v-model="selectedDataset"
+      :options="dataset"
+      filter
+      optionLabel="dataset_title"
+      placeholder="4. Select dataset"
+      :maxSelectedLabels="3"
+      :pt="{
+        root: { class: 'col-span-4 md:w-full' },
+        item: ({ props, state, context }) => ({
+          class: [
+            {
+              'text-gray-700 hover:text-gray-700 hover:bg-[#72bf84]':
+                !context.focused && !context.selected,
+              'bg-[#ffffff] text-gray-700 hover:text-gray-700 hover:bg-[#00b051]':
+                context.focused && !context.selected,
+              'bg-[#fffffe] text-gray-800': context.focused && context.selected,
+              'bg-[#ffffff] text-gray-800': !context.focused && context.selected
+            }
+          ]
+        }),
+        headerCheckbox: ({ context }) => ({
+          class: [
+            'hover:border-crmapgreen1 focus:outline-none focus:outline-offset-0 focus:shadow-[0_0_0_0.2rem_rgba(114,191,132,1)]',
+            {
+              'border-gray-300 bg-white': !context?.selected,
+              'border-crmapgreen1 bg-crmapgreen1': context?.selected
+            }
+          ]
+        }),
+        checkbox: ({ context }) => ({
+          class: [
+            'hover:border-crmapgreen1 focus:outline-none focus:outline-offset-0 focus:shadow-[0_0_0_0.2rem_rgba(114,191,132,1)]',
+            {
+              'border-gray-300 bg-white': !context?.selected,
+              'border-crmapgreen1 bg-crmapgreen1': context?.selected
+            }
+          ]
+        }),
+        filtercontainer: { class: 'md:w-full' },
+        filtericon: {
+          class: 'relative float-right mt-[1.15rem] mr-2'
+        }
+      }"
+    />
   </div>
 </template>

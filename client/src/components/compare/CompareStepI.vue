@@ -17,7 +17,7 @@ const props = defineProps({
     type: Array,
     required: true
   },
-  referenceDataset: {
+  selectDataset: {
     type: Array,
     required: true
   }
@@ -90,7 +90,7 @@ function updateDataset() {
     Object.is(selectedOrganism.value, undefined) || selectedOrganism.value.length === 0
       ? organism.value.map((item) => item.key)
       : selectedOrganism.value.map((item) => item.key)
-  var options = props.referenceDataset.filter(
+  var options = props.selectDataset.filter(
     (item) =>
       selectedModificationIds.includes(item.modification_id) &&
       selectedTechnologyIds.includes(item.technology_id) &&
@@ -130,18 +130,17 @@ function toIds(array, defaultArray) {
 </script>
 
 <template>
-  <div class="grid grid-flow-row-dense grid-cols-4 gap-4">
+  <div class="grid grid-flow-row-dense grid-cols-4 gap-6">
     <Dropdown
       @change="updateOrganism"
       v-model="selectedSpecies"
-      filter
       :options="species"
       optionLabel="label"
       optionGroupLabel="label"
       optionGroupChildren="children"
       placeholder="1. Select one organism"
       :pt="{
-        root: { class: 'w-full md:w-80' },
+        root: { class: 'w-full md:w-full' },
         item: ({ context }) => ({
           class: [
             {
@@ -164,6 +163,7 @@ function toIds(array, defaultArray) {
       placeholder="2. Select cell/tissue"
       :maxSelectedLabels="3"
       :pt="{
+        root: { class: 'w-full md:w-full' },
         item: ({ props, state, context }) => ({
           class: [
             {
@@ -203,6 +203,9 @@ function toIds(array, defaultArray) {
       selectionMode="checkbox"
       :metaKeySelection="false"
       placeholder="3. Select RNA modifications"
+      :pt="{
+        root: { class: 'w-full md:w-full' }
+      }"
     />
     <TreeSelect
       @change="updateDataset"
@@ -211,6 +214,9 @@ function toIds(array, defaultArray) {
       selectionMode="checkbox"
       :metaKeySelection="false"
       placeholder="4. Select technologies"
+      :pt="{
+        root: { class: 'w-full md:w-full' }
+      }"
     />
     <MultiSelect
       @change="emitSelectedDataset"
@@ -251,7 +257,11 @@ function toIds(array, defaultArray) {
               'border-crmapgreen1 bg-crmapgreen1': context?.selected
             }
           ]
-        })
+        }),
+        filtercontainer: { class: 'md:w-full' },
+        filtericon: {
+          class: 'relative float-right mt-[1.15rem] mr-2'
+        }
       }"
     />
   </div>
