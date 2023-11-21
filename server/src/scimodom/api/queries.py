@@ -192,6 +192,8 @@ def get_dataset():
 def get_comparison(step):
     """Retrieve ..."""
 
+    import scimodom.utils.operations as ops
+
     # API call in compare, then pass as params to SPA components
     # but sending all datasets may be too large?
     # final call after dataset selection + query
@@ -248,6 +250,44 @@ def get_comparison(step):
     # )
 
     ## [('Chemical-assisted sequencing', 'm6A-SAC-seq'), ('Native RNA sequencing', 'Nanopore'), ('Chemical-assisted sequencing', 'GLORI'), ('Enzyme/protein-assisted sequencing', 'm5C-miCLIP'), ('Enzyme/protein-assisted sequencing', 'm6ACE-seq'), ('Chemical-assisted sequencing', 'BID-seq'), ('Antibody-based sequencing', 'm6A-seq/MeRIP'), ('Enzyme/protein-assisted sequencing', 'eTAM-seq')]
+
+    elif step == "ops":
+        dataset_ids_a = request.args.getlist("datasetIdsA", type=str)
+        dataset_ids_b = request.args.getlist("datasetIdsB", type=str)
+
+        query = (
+            select(
+                Data.chrom,
+                Data.start,
+                Data.end,
+                Data.name,
+                Data.score,
+                Data.strand,
+                Data.dataset_id,
+                Data.coverage,
+                Data.frequency,
+            ).where(Data.dataset_id.in_(dataset_ids_a))
+            # .order_by(Data.chrom.asc(), Data.start.asc())
+        )
+        a_records = get_session().execute(query).all()
+
+        b_records = []
+        for idx in dataset_ids_b:
+            query = select(
+                Data.chrom,
+                Data.start,
+                Data.end,
+                Data.name,
+                Data.score,
+                Data.strand,
+                Data.dataset_id,
+                Data.coverage,
+                Data.frequency,
+            ).where(Data.dataset_id == idx)
+            b_records.append(get_session().execute(query).all())
+
+        c_records = ops.get_intersection(a_records, b_records)
+        dataset = c_records[:5]
 
     return dataset
 
