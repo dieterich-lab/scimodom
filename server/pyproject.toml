@@ -76,6 +76,9 @@ plugins = [
 ]
 show_error_codes = "True"
 #strict = "True"
+exclude = [
+    "scimodom.api.models.py"
+]
 
 
 [tool.pytest.ini_options]

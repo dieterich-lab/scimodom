@@ -193,6 +193,7 @@ def get_comparison(step):
     """Retrieve ..."""
 
     import scimodom.utils.operations as ops
+    from scimodom.api.models import TypedIntxRecords
 
     # API call in compare, then pass as params to SPA components
     # but sending all datasets may be too large?
@@ -221,7 +222,7 @@ def get_comparison(step):
             .join_from(Selection, Organism, Selection.organism_id == Organism.id)
         )
 
-        dataset = _dump(query)
+        records = _dump(query)
 
     # query = (
     # select(Taxa.short_name.distinct(), Taxonomy.kingdom)
@@ -287,9 +288,9 @@ def get_comparison(step):
             b_records.append(get_session().execute(query).all())
 
         c_records = ops.get_intersection(a_records, b_records)
-        dataset = c_records[:5]
+        records = [TypedIntxRecords(*r)._asdict() for r in c_records]
 
-    return dataset
+    return records
 
 
 @api.route("/upload", methods=["POST"])
