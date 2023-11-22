@@ -1,8 +1,31 @@
 <script setup>
 import { ref, onMounted } from 'vue'
+
 import service from '@/services/index.js'
 import CompareStepI from '@/components/compare/CompareStepI.vue'
 import CompareStepII from '@/components/compare/CompareStepII.vue'
+
+import { useToast } from 'primevue/usetoast'
+import { useField, useForm } from 'vee-validate'
+
+const { handleSubmit, resetForm } = useForm()
+const { value: queryCriteria, errorMessage } = useField('value', (value) => !!value)
+const toast = useToast()
+
+// function validateField(value) {
+//   if (!value) {
+//     return 'Value is required.'
+//   }
+//   return true
+// }
+
+const onSubmit = handleSubmit((submitted) => {
+  if (submitted.value && submitted.value.length > 0) {
+    toast.add({ severity: 'info', summary: 'Form Submitted', detail: submitted.value, life: 3000 })
+    console.log('SUBMITTED', submitted.value)
+    resetForm()
+  }
+})
 
 const selectOptions = ref()
 const selectDataset = ref()
@@ -19,8 +42,6 @@ const records = ref()
 // const lazyParams = ref({})
 
 const active = ref(0)
-
-const ingredient = ref('')
 
 // const onPage = (event) => {
 //   lazyParams.value = event
@@ -273,36 +294,40 @@ const setDatasetII = (array) => {
             }"
           >
             <div class="flex flex-col gap-4">
-              <div>
-                <RadioButton
-                  v-model="ingredient"
-                  inputId="criteria1"
-                  name="step3"
-                  value="Intersection"
-                />
-                <label for="criteria1" class="ml-2">
-                  <span class="inline text-lg font-bold">Intersection</span>
-                </label>
-                <p class="mt-2 ml-8">
-                  Search for overlaps between modifications in any of the reference dataset and
-                  those from the other dataset.
-                </p>
-              </div>
-              <div>
-                <RadioButton
-                  v-model="ingredient"
-                  inputId="criteria2"
-                  name="step3"
-                  value="Difference"
-                />
-                <label for="criteria2" class="ml-2">
-                  <span class="inline text-lg font-bold">Difference</span>
-                </label>
-                <p class="mt-2 ml-8">
-                  Difference - Search for modifications in any of the reference dataset that are not
-                  found in the other dataset.
-                </p>
-              </div>
+              <form @submit="onSubmit" class="flex flex-column gap-2">
+                <div>
+                  <RadioButton
+                    v-model="queryCriteria"
+                    inputId="criteria1"
+                    name="step3"
+                    value="Intersection"
+                  />
+                  <label for="criteria1" class="ml-2">
+                    <span class="inline text-lg font-bold">Intersection</span>
+                  </label>
+                  <p class="mt-2 ml-8">
+                    Search for overlaps between modifications in any of the reference dataset and
+                    those from the other dataset.
+                  </p>
+                </div>
+                <div>
+                  <RadioButton
+                    v-model="queryCriteria"
+                    inputId="criteria2"
+                    name="step3"
+                    value="Difference"
+                  />
+                  <label for="criteria2" class="ml-2">
+                    <span class="inline text-lg font-bold">Difference</span>
+                  </label>
+                  <p class="mt-2 ml-8">
+                    Difference - Search for modifications in any of the reference dataset that are
+                    not found in the other dataset.
+                  </p>
+                </div>
+                <small id="text-error" class="p-error">{{ errorMessage || '&nbsp;' }}</small>
+                <Button type="submit" label="Submit" />
+              </form>
             </div>
           </TabPanel>
         </TabView>
