@@ -14,31 +14,33 @@ const selectedSpecies = ref()
 
 const dt = ref()
 const records = ref()
-const loading = ref(false)
-const totalRecords = ref(0)
-const lazyParams = ref({})
+// const loading = ref(false)
+// const totalRecords = ref(0)
+// const lazyParams = ref({})
 
 const active = ref(0)
 
-const onPage = (event) => {
-  lazyParams.value = event
-  lazyLoad()
-}
+const ingredient = ref('')
 
-const onSort = (event) => {
-  lazyParams.value = event
-  lazyLoad()
-}
+// const onPage = (event) => {
+//   lazyParams.value = event
+//   lazyLoad()
+// }
+//
+// const onSort = (event) => {
+//   lazyParams.value = event
+//   lazyLoad()
+// }
 
 const onExport = () => {
   dt.value.exportCSV()
 }
 onMounted(() => {
-  lazyParams.value = {
-    first: dt.value.first,
-    rows: dt.value.rows
-  }
-  lazyLoad()
+  // lazyParams.value = {
+  //   first: dt.value.first,
+  //   rows: dt.value.rows
+  // }
+  // lazyLoad()
   service
     .getEndpoint('/selection')
     .then(function (response) {
@@ -65,56 +67,56 @@ const setSpecies = (value) => {
 const setDataset = (array) => {
   selectedRefDataset.value = array
   // console.log('REF DATASET', array)
-  lazyLoad()
+  // lazyLoad()
 }
 
 const setDatasetII = (array) => {
   selectedCompDataset.value = array
-  lazyLoad()
+  // lazyLoad()
   // console.log('COMP DATASET', array)
 }
 
-function lazyLoad() {
-  loading.value = true
-  service
-    .get('/search', {
-      params: {
-        data: selectedRefDataset.value,
-        firstRecord: lazyParams.value.first,
-        maxRecords: lazyParams.value.rows,
-        multiSort: fmtOrder(lazyParams.value.multiSortMeta)
-      },
-      paramsSerializer: {
-        indexes: null
-      }
-    })
-    .then(function (response) {
-      records.value = response.data.records
-      totalRecords.value = response.data.totalRecords
-    })
-    .catch((error) => {
-      console.log(error)
-    })
-  loading.value = false
-}
+// function lazyLoad() {
+//   loading.value = true
+//   service
+//     .get('/search', {
+//       params: {
+//         data: selectedRefDataset.value,
+//         firstRecord: lazyParams.value.first,
+//         maxRecords: lazyParams.value.rows,
+//         multiSort: fmtOrder(lazyParams.value.multiSortMeta)
+//       },
+//       paramsSerializer: {
+//         indexes: null
+//       }
+//     })
+//     .then(function (response) {
+//       records.value = response.data.records
+//       totalRecords.value = response.data.totalRecords
+//     })
+//     .catch((error) => {
+//       console.log(error)
+//     })
+//   loading.value = false
+// }
 
-function setOrder(o) {
-  if (!Number.isInteger(o)) {
-    return o
-  }
-  return o === 1 ? 'asc' : 'desc'
-}
-
-function fmtOrder(array) {
-  if (!(array === undefined)) {
-    return array.map((d) =>
-      Object.entries(d)
-        .map(([k, v]) => setOrder(v))
-        .join('.')
-    )
-  }
-  return []
-}
+// function setOrder(o) {
+//   if (!Number.isInteger(o)) {
+//     return o
+//   }
+//   return o === 1 ? 'asc' : 'desc'
+// }
+//
+// function fmtOrder(array) {
+//   if (!(array === undefined)) {
+//     return array.map((d) =>
+//       Object.entries(d)
+//         .map(([k, v]) => setOrder(v))
+//         .join('.')
+//     )
+//   }
+//   return []
+// }
 </script>
 
 <template>
@@ -270,14 +272,38 @@ function fmtOrder(array) {
               })
             }"
           >
-            <p class="m-0">
-              At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium
-              voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint
-              occaecati cupiditate non provident, similique sunt in culpa qui officia deserunt
-              mollitia animi, id est laborum et dolorum fuga. Et harum quidem rerum facilis est et
-              expedita distinctio. Nam libero tempore, cum soluta nobis est eligendi optio cumque
-              nihil impedit quo minus.
-            </p>
+            <div class="flex flex-col gap-4">
+              <div>
+                <RadioButton
+                  v-model="ingredient"
+                  inputId="criteria1"
+                  name="step3"
+                  value="Intersection"
+                />
+                <label for="criteria1" class="ml-2">
+                  <span class="inline text-lg font-bold">Intersection</span>
+                </label>
+                <p class="mt-2 ml-8">
+                  Search for overlaps between modifications in any of the reference dataset and
+                  those from the other dataset.
+                </p>
+              </div>
+              <div>
+                <RadioButton
+                  v-model="ingredient"
+                  inputId="criteria2"
+                  name="step3"
+                  value="Difference"
+                />
+                <label for="criteria2" class="ml-2">
+                  <span class="inline text-lg font-bold">Difference</span>
+                </label>
+                <p class="mt-2 ml-8">
+                  Difference - Search for modifications in any of the reference dataset that are not
+                  found in the other dataset.
+                </p>
+              </div>
+            </div>
           </TabPanel>
         </TabView>
       </div>
@@ -286,13 +312,10 @@ function fmtOrder(array) {
       <div>
         <DataTable
           :value="records"
-          lazy
           paginator
           :first="0"
           :rows="10"
           ref="dt"
-          :totalRecords="totalRecords"
-          :loading="loading"
           @page="onPage($event)"
           @sort="onSort($event)"
           removableSort

@@ -23,6 +23,7 @@ import Dropdown from 'primevue/dropdown'
 import FileUpload from 'primevue/fileupload'
 import InputText from 'primevue/inputtext'
 import MultiSelect from 'primevue/multiselect'
+import RadioButton from 'primevue/radiobutton'
 import SelectButton from 'primevue/selectbutton'
 import Steps from 'primevue/steps'
 import TabPanel from 'primevue/tabpanel'
@@ -137,6 +138,7 @@ app.component('Dropdown', Dropdown)
 app.component('FileUpload', FileUpload)
 app.component('InputText', InputText)
 app.component('MultiSelect', MultiSelect)
+app.component('RadioButton', RadioButton)
 app.component('SelectButton', SelectButton)
 app.component('Steps', Steps)
 app.component('TabPanel', TabPanel)
