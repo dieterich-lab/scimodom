@@ -82,7 +82,7 @@ onMounted(() => {
     <SectionLayout>
       <h1 class="font-ham mb-4 text-3xl font-extrabold text-gray-900 md:text-5xl lg:text-6xl">
         <span
-          class="text-transparent bg-clip-text bg-gradient-to-r from-crmapgreen2 from-10% via-crmapgreen1 via-40% via-crmapblue2 via-60% to-crmapblue4 to-100"
+          class="text-transparent bg-clip-text bg-gradient-to-r from-crmgs-50 from-10% via-crmgs-25 via-40% via-crmbs-50 via-60% to-crmbs-100 to-100"
         >
           Browse
         </span>
@@ -91,7 +91,7 @@ onMounted(() => {
       <p class="text-lg font-normal text-gray-500 lg:text-xl">
         Use filters to find available dataset
       </p>
-      <Divider :pt="{ root: { class: 'bg-crmapgreen0' } }" />
+      <Divider :pt="{ root: { class: 'bg-crmg' } }" />
       <div>
         <div>
           <DataTable
@@ -127,7 +127,7 @@ onMounted(() => {
               <div class="grid grid-cols-3 gap-4">
                 <div class="col-span-2 space-x-2">
                   <span class="p-input-icon-left">
-                    <!-- <i class="pi pi-search text-sm text-crmapblue" /> -->
+                    <!-- <i class="pi pi-search text-sm text-crmb" /> -->
                     <InputText
                       size="small"
                       v-model="filters['global'].value"
@@ -143,7 +143,7 @@ onMounted(() => {
                     :pt="{
                       root: {
                         class:
-                          'text-crmapblue0 border-crmapblue0 hover:border-crmapblue2 focus:ring-crmapblue2 focus:outline-none'
+                          'text-crmb border-crmb hover:border-crmbs-50 focus:ring-crmbs-50 focus:outline-none'
                       }
                     }"
                   />
@@ -157,7 +157,7 @@ onMounted(() => {
                     :pt="{
                       root: {
                         class:
-                          'bg-crmapblue0 border-crmapblue0 hover:bg-crmapblue2 hover:border-crmapblue2 focus:ring-crmapblue2 focus:outline-none'
+                          'bg-crmb border-crmb hover:bg-crmbs-50 hover:border-crmbs-50 focus:ring-crmbs-50 focus:outline-none'
                       }
                     }"
                   />

@@ -4,7 +4,6 @@ import PrimeVue from 'primevue/config'
 import { usePassThrough } from 'primevue/passthrough'
 import Tailwind from 'primevue/passthrough/tailwind'
 import router from './router'
-
 import ToastService from 'primevue/toastservice'
 
 // global styles
@@ -25,6 +24,7 @@ import InputText from 'primevue/inputtext'
 import MultiSelect from 'primevue/multiselect'
 import RadioButton from 'primevue/radiobutton'
 import SelectButton from 'primevue/selectbutton'
+import Skeleton from 'primevue/skeleton'
 import Steps from 'primevue/steps'
 import TabPanel from 'primevue/tabpanel'
 import TabView from 'primevue/tabview'
@@ -41,28 +41,76 @@ const tailoredTailwind = usePassThrough(
     inputtext: {
       root: (context) => ({
         class: [
-          'text-gray-600 border border-crmapblue0',
+          'text-gray-600 border border-crmb',
           {
-            'hover:border-crmapblue2 focus:outline-none focus:outline-offset-0 focus:shadow-[0_0_0_0.2rem_rgba(2,176,237,1)]':
+            'hover:border-crmbs-50 focus:outline-none focus:outline-offset-0 focus:shadow-[0_0_0_0.2rem_rgba(2,176,237,1)]':
               !context.disabled,
             'opacity-60 select-none pointer-events-none cursor-default': context.disabled
           }
         ]
       })
     },
+    dropdown: {
+      root: {
+        class: 'hover:border-gray-400 focus:outline-none focus:outline-offset-0 focus:shadow-none'
+      },
+      item: ({ context }) => ({
+        class: [
+          {
+            'text-gray-700 hover:text-gray-700 hover:!bg-crmg/25':
+              !context.focused && !context.selected,
+            '!bg-crmg text-gray-700 hover:text-gray-700 hover:bg-crmg':
+              context.focused && !context.selected,
+            'bg-crmg text-gray-50': context.focused && context.selected,
+            'bg-transparent text-gray-800': !context.focused && context.selected
+          }
+        ]
+      })
+    },
+    multiselect: {
+      item: ({ context }) => ({
+        class: [
+          {
+            'text-gray-700 hover:text-gray-700 hover:!bg-crmg/25':
+              !context.focused && !context.selected,
+            '!bg-crmg/25 text-gray-700 hover:text-gray-700 hover:bg-crmg/25':
+              context.focused && !context.selected,
+            'bg-transparent !text-gray-700': context.focused && context.selected,
+            'bg-transparent !text-gray-800': !context.focused && context.selected
+          }
+        ]
+      }),
+      headerCheckbox: ({ context }) => ({
+        class: [
+          'hover:border-crmg/25 focus:outline-none focus:outline-offset-0 focus:shadow-crmg/25',
+          {
+            'border-gray-300 bg-white': !context?.selected,
+            'border-crmg/25 bg-crmg/25': context?.selected
+          }
+        ]
+      }),
+      checkbox: ({ context }) => ({
+        class: [
+          'hover:border-crmg/25 focus:outline-none focus:outline-offset-0 focus:shadow-crmg/25',
+          {
+            'border-gray-300 bg-white': !context?.selected,
+            'border-crmg/25 bg-crmg/25': context?.selected
+          }
+        ]
+      }),
+      checkboxicon: {
+        class: '!text-crmg'
+      }
+    },
     treeselect: {
-      root: { class: 'bg-transparent border-cborder' },
       tree: {
-        container: 'm-0 p-0 list-none -space-y-2 overflow-auto',
         root: { class: 'border-none' },
+        container: { class: '-space-y-4' },
         toggler: ({ context }) => ({
           class: [
-            'cursor-pointer select-none inline-flex items-center justify-center overflow-hidden relative shrink-0',
-            'mr-2 w-8 h-8 border-0 bg-transparent rounded-full transition duration-200',
-            'hover:border-transparent focus:outline-none focus:outline-offset-0 focus:shadow-[0_0_0_0.2rem_rgba(114,191,132,1)]',
+            'focus:shadow-crmg/25',
             {
-              'text-gray-500 hover:bg-crmapgreen1 hover:text-gray-800': !context.selected,
-              'text-red-600 hover:bg-crmapgreen1': context.selected
+              'text-gray-500 hover:bg-crmg/25 hover:!text-crmg': !context.selected
             },
             {
               hidden: context.leaf
@@ -71,37 +119,29 @@ const tailoredTailwind = usePassThrough(
         }),
         checkbox: ({ context, props }) => ({
           class: [
-            'cursor-pointer inline-flex relative select-none align-bottom',
-            'w-6 h-6',
-            'flex items-center justify-center',
-            'border-2 w-6 h-6 rounded-lg transition-colors duration-200 text-white text-base',
             {
-              'border-gray-300 bg-white': !context.checked,
-              'border-crmapgreen1 text-white bg-crmapgreen1': context.checked
+              'border-gray-300 bg-transparent': !context.checked,
+              'border-crmg/25 bg-crmg/25 !text-crmg': context.checked
             },
             {
-              'hover:border-crmapgreen1 focus:outline-none focus:outline-offset-0 focus:shadow-[0_0_0_0.2rem_rgba(114,191,132,1)]':
-                !props.disabled,
-              'cursor-default opacity-60': props.disabled
+              'hover:border-crmg/25 focus:shadow-crmg/25': !props.disabled
             }
           ]
         }),
-        subgroup: {
-          class: ['ml-4 list-none', 'p-0 pl-4']
-        }
+        subgroup: { class: 'ml-4' }
       }
     },
     datatable: {
       bodyrow: ({ context }) => ({
         class: [
-          context.selected ? 'bg-crmapblue0 text-crmapblue0' : 'bg-white text-gray-600',
+          context.selected ? 'bg-crmb text-crmb' : 'bg-white text-gray-600',
           context.stripedRows
             ? context.index % 2 === 0
               ? 'bg-white text-gray-600'
-              : 'bg-crmapblue0/20 text-gray-600'
+              : 'bg-crmb/10 text-gray-600'
             : '',
           'transition duration-200',
-          'focus:outline focus:outline-[0.15rem] focus:outline-crmapblue0 focus:outline-offset-[-0.15rem]', // Focus
+          'focus:outline focus:outline-[0.15rem] focus:outline-crmb focus:outline-offset-[-0.15rem]', // Focus
           {
             'cursor-pointer': context.selectable,
             'hover:bg-gray-300/20 hover:text-gray-600': context.selectable && !context.selected // Hover
@@ -118,9 +158,9 @@ const tailoredTailwind = usePassThrough(
 
 app.use(PrimeVue, {
   ripple: true,
-  unstyled: true,
+  //   unstyled: true,
   pt: tailoredTailwind,
-  ptOptions: { mergeProps: true, mergeSections: true }
+  ptOptions: { mergeProps: true, mergeSections: true } // twice!
 })
 
 app.use(ToastService)
@@ -140,6 +180,7 @@ app.component('InputText', InputText)
 app.component('MultiSelect', MultiSelect)
 app.component('RadioButton', RadioButton)
 app.component('SelectButton', SelectButton)
+app.component('Skeleton', Skeleton)
 app.component('Steps', Steps)
 app.component('TabPanel', TabPanel)
 app.component('TabView', TabView)

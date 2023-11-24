@@ -236,7 +236,7 @@ function toIds(array, defaultArray) {
             :pt="{
               root: {
                 class:
-                  'bg-crmapblue0 border-crmapblue0 hover:bg-crmapblue2 hover:border-crmapblue2 focus:ring-crmapblue2 focus:outline-none'
+                  'bg-crmb border-crmb hover:bg-crmbs-50 hover:border-crmbs-50 focus:ring-crmbs-50 focus:outline-none'
               }
             }"
           />

@@ -3,7 +3,7 @@ import Logo from '@/assets/images/rmap-logo.svg'
 </script>
 
 <template>
-  <footer class="bg-ctransparent opacity-90">
+  <footer class="bg-transparent opacity-90">
     <div class="mx-auto w-full max-w-screen-2xl p-2 py-6 lg:py-8">
       <div class="md:flex md:justify-between">
         <div class="mb-6 md:mb-0">

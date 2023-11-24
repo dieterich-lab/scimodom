@@ -56,8 +56,8 @@ function sectionClassInner() {
 }
 .section--secondary {
   background-color: #f7f9f8;
-  border-top: 1px solid cborder;
-  border-bottom: 1px solid cborder;
+  border-top: 1px solid #e2ecec;
+  border-bottom: 1px solid #e2ecec;
 }
 .section--secondary + .section--secondary {
   border-top-color: transparent;

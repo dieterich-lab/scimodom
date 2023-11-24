@@ -3,6 +3,18 @@
 @layer tailwind-base {
   @tailwind base;
   @layer base {
+    :root {
+      --color-crmg: 0 176 81; /* #00b051 */
+      --color-crmg-one: 114 191 132; /* #72bf84 */
+      --color-crmg-two: 94 156 108; /* #5e9c6c */
+      --color-crmg-three: 73 122 84; /* #497a54 */
+      --color-crmg-four: 42 69 48; /* #2a4530 */
+      --color-crmb: 2 176 237; /* #02b0ed */
+      --color-crmb-one: 139 201 242; /* #8bc9f2 */
+      --color-crmb-two: 90 167 231; /* #5aa7e7 */
+      --color-crmb-three: 36 135 219; /* #2487db */
+      --color-crmb-four: 0 81 158; /* #00519e */
+    }
     @font-face {
       font-family: 'ham';
       font-weight: 400;

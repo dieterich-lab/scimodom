@@ -163,7 +163,7 @@ function toIds(array, defaultArray) {
         root: { class: 'flex flex-wrap w-full md:w-full' },
         chooseButton: {
           class: [
-            'text-white text-bold bg-crmapgreen0 border border-crmapgreen0 p-3 px-5 rounded-md text-base',
+            'text-white text-bold bg-crmg border border-crmg p-3 px-5 rounded-md text-base',
             'overflow-hidden relative'
           ]
         },
@@ -179,37 +179,7 @@ function toIds(array, defaultArray) {
       placeholder="1. Select cell/tissue"
       :maxSelectedLabels="3"
       :pt="{
-        root: { class: 'w-full md:w-full' },
-        item: ({ props, state, context }) => ({
-          class: [
-            {
-              'text-gray-700 hover:text-gray-700 hover:bg-[#72bf84]':
-                !context.focused && !context.selected,
-              'bg-[#ffffff] text-gray-700 hover:text-gray-700 hover:bg-[#00b051]':
-                context.focused && !context.selected,
-              'bg-[#fffffe] text-gray-800': context.focused && context.selected,
-              'bg-[#ffffff] text-gray-800': !context.focused && context.selected
-            }
-          ]
-        }),
-        headerCheckbox: ({ context }) => ({
-          class: [
-            'hover:border-crmapgreen1 focus:outline-none focus:outline-offset-0 focus:shadow-[0_0_0_0.2rem_rgba(114,191,132,1)]',
-            {
-              'border-gray-300 bg-white': !context?.selected,
-              'border-crmapgreen1 bg-crmapgreen1': context?.selected
-            }
-          ]
-        }),
-        checkbox: ({ context }) => ({
-          class: [
-            'hover:border-crmapgreen1 focus:outline-none focus:outline-offset-0 focus:shadow-[0_0_0_0.2rem_rgba(114,191,132,1)]',
-            {
-              'border-gray-300 bg-white': !context?.selected,
-              'border-crmapgreen1 bg-crmapgreen1': context?.selected
-            }
-          ]
-        })
+        root: { class: 'w-full md:w-full' }
       }"
     />
     <TreeSelect
@@ -243,41 +213,7 @@ function toIds(array, defaultArray) {
       placeholder="4. Select dataset"
       :maxSelectedLabels="3"
       :pt="{
-        root: { class: 'col-span-4 md:w-full' },
-        item: ({ props, state, context }) => ({
-          class: [
-            {
-              'text-gray-700 hover:text-gray-700 hover:bg-[#72bf84]':
-                !context.focused && !context.selected,
-              'bg-[#ffffff] text-gray-700 hover:text-gray-700 hover:bg-[#00b051]':
-                context.focused && !context.selected,
-              'bg-[#fffffe] text-gray-800': context.focused && context.selected,
-              'bg-[#ffffff] text-gray-800': !context.focused && context.selected
-            }
-          ]
-        }),
-        headerCheckbox: ({ context }) => ({
-          class: [
-            'hover:border-crmapgreen1 focus:outline-none focus:outline-offset-0 focus:shadow-[0_0_0_0.2rem_rgba(114,191,132,1)]',
-            {
-              'border-gray-300 bg-white': !context?.selected,
-              'border-crmapgreen1 bg-crmapgreen1': context?.selected
-            }
-          ]
-        }),
-        checkbox: ({ context }) => ({
-          class: [
-            'hover:border-crmapgreen1 focus:outline-none focus:outline-offset-0 focus:shadow-[0_0_0_0.2rem_rgba(114,191,132,1)]',
-            {
-              'border-gray-300 bg-white': !context?.selected,
-              'border-crmapgreen1 bg-crmapgreen1': context?.selected
-            }
-          ]
-        }),
-        filtercontainer: { class: 'md:w-full' },
-        filtericon: {
-          class: 'relative float-right mt-[1.15rem] mr-2'
-        }
+        root: { class: 'col-span-4 md:w-full' }
       }"
     />
   </div>

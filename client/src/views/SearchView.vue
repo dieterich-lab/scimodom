@@ -154,7 +154,7 @@ function lazyLoad() {
     <SectionLayout>
       <h1 class="font-ham mb-4 text-3xl font-extrabold text-gray-900 md:text-5xl lg:text-6xl">
         <span
-          class="text-transparent bg-clip-text bg-gradient-to-r from-crmapgreen2 from-10% via-crmapgreen1 via-40% via-crmapblue2 via-60% to-crmapblue4 to-100"
+          class="text-transparent bg-clip-text bg-gradient-to-r from-crmgs-50 from-10% via-crmgs-25 via-40% via-crmbs-50 via-60% to-crmbs-100 to-100"
         >
           Search
         </span>
@@ -238,7 +238,7 @@ function lazyLoad() {
                 :pt="{
                   root: {
                     class:
-                      'bg-crmapblue0 border-crmapblue0 hover:bg-crmapblue2 hover:border-crmapblue2 focus:ring-crmapblue2 focus:outline-none'
+                      'bg-crmb border-crmb hover:bg-crmbs-50 hover:border-crmbs-50 focus:ring-crmbs-50 focus:outline-none'
                   }
                 }"
               />
