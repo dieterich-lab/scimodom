@@ -12,14 +12,6 @@ const { handleSubmit, resetForm } = useForm()
 const { value: queryCriteria, errorMessage } = useField('value', (value) => !!value)
 const toast = useToast()
 
-import { CarService } from '@/services/CarService.js'
-
-const cars = ref()
-
-onMounted(() => {
-  cars.value = Array.from({ length: 100000 }).map((_, i) => CarService.generateCar(i + 1))
-  console.log('MOUNTED', cars.value.slice(0, 10))
-})
 // function validateField(value) {
 //   if (!value) {
 //     return 'Value is required.'
@@ -30,7 +22,7 @@ onMounted(() => {
 const onSubmit = handleSubmit((submitted) => {
   if (submitted.value && submitted.value.length > 0) {
     toast.add({ severity: 'info', summary: 'Form Submitted', detail: submitted.value, life: 3000 })
-    console.log('SUBMITTED', submitted.value)
+    operation.value = submitted.value
     load()
     resetForm()
   }
@@ -46,31 +38,15 @@ const selectedSpecies = ref()
 
 const dt = ref()
 const records = ref()
-// const loading = ref(false)
-const totalRecords = ref(0)
-// const lazyParams = ref({})
+
+const operation = ref()
 
 const active = ref(0)
-
-// const onPage = (event) => {
-//   lazyParams.value = event
-//   lazyLoad()
-// }
-//
-// const onSort = (event) => {
-//   lazyParams.value = event
-//   lazyLoad()
-// }
 
 const onExport = () => {
   dt.value.exportCSV()
 }
 onMounted(() => {
-  // lazyParams.value = {
-  //   first: dt.value.first,
-  //   rows: dt.value.rows
-  // }
-  // lazyLoad()
   service
     .getEndpoint('/selection')
     .then(function (response) {
@@ -108,11 +84,11 @@ const setDatasetII = (array) => {
 
 function load() {
   service
-    .get('/search', {
+    .get('/compare/ops', {
       params: {
-        data: selectedRefDataset.value,
-        firstRecord: 0,
-        maxRecords: 100
+        datasetIdsA: selectedRefDataset.value,
+        datasetIdsB: selectedCompDataset.value,
+        operation: operation.value
       },
       paramsSerializer: {
         indexes: null
@@ -120,7 +96,6 @@ function load() {
     })
     .then(function (response) {
       records.value = response.data.records
-      totalRecords.value = response.data.totalRecords
     })
     .catch((error) => {
       console.log(error)
@@ -172,7 +147,7 @@ function load() {
                 class: [
                   'h-12 w-12 p-0 shadow',
                   {
-                    'text-white bg-crmb border border-crmb hover:bg-crmbs-50 hover:border-crmbs-50':
+                    'text-white bg-crmb border border-crmb hover:bg-crmb/75 hover:border-crmb/75 focus:shadow-[0_0_0_2px_rgba(255,255,255,1),0_0_0_4px_rgba(2,176,237,1),0_1px_2px_0_rgba(0,0,0,1)]':
                       !props.link &&
                       props.severity === null &&
                       !props.text &&
@@ -195,7 +170,7 @@ function load() {
                 class: [
                   'h-12 w-12 p-0 shadow',
                   {
-                    'text-white bg-crmb border border-crmb hover:bg-crmbs-50 hover:border-crmbs-50':
+                    'text-white bg-crmb border border-crmb hover:bg-crmb/75 hover:border-crmb/75 focus:shadow-[0_0_0_2px_rgba(255,255,255,1),0_0_0_4px_rgba(2,176,237,1),0_1px_2px_0_rgba(0,0,0,1)]':
                       !props.link &&
                       props.severity === null &&
                       !props.text &&
@@ -218,7 +193,7 @@ function load() {
                 class: [
                   'h-12 w-12 p-0 shadow',
                   {
-                    'text-white bg-crmb border border-crmb hover:bg-crmbs-50 hover:border-crmbs-50':
+                    'text-white bg-crmb border border-crmb hover:bg-crmb/75 hover:border-crmb/75 focus:shadow-[0_0_0_2px_rgba(255,255,255,1),0_0_0_4px_rgba(2,176,237,1),0_1px_2px_0_rgba(0,0,0,1)]':
                       !props.link &&
                       props.severity === null &&
                       !props.text &&
@@ -304,22 +279,7 @@ function load() {
                       v-model="queryCriteria"
                       inputId="criteria1"
                       name="step3"
-                      value="intersectsTrue"
-                      :pt="{
-                        input: ({ props }) => ({
-                          class: [
-                            {
-                              'border-gray-300 bg-white': props.value !== props.modelValue,
-                              'border-crmgs-25 bg-crmgs-25': props.value == props.modelValue
-                            },
-                            {
-                              'hover:border-crmgs-25 focus:outline-none focus:outline-offset-0 focus:shadow-[0_0_0_0.2rem_rgba(194,191,132,1)]':
-                                !props.disabled,
-                              'cursor-default opacity-60': props.disabled
-                            }
-                          ]
-                        })
-                      }"
+                      value="intersectSTrue"
                     />
                     <label for="criteria1" class="ml-2">
                       <span class="inline font-bold">Intersection</span>
@@ -333,22 +293,7 @@ function load() {
                       v-model="queryCriteria"
                       inputId="criteria2"
                       name="step3"
-                      value="IntersectionsFalse"
-                      :pt="{
-                        input: ({ props }) => ({
-                          class: [
-                            {
-                              'border-gray-300 bg-white': props.value !== props.modelValue,
-                              'border-crmgs-25 bg-crmgs-25': props.value == props.modelValue
-                            },
-                            {
-                              'hover:border-crmgs-25 focus:outline-none focus:outline-offset-0 focus:shadow-[0_0_0_0.2rem_rgba(194,191,132,1)]':
-                                !props.disabled,
-                              'cursor-default opacity-60': props.disabled
-                            }
-                          ]
-                        })
-                      }"
+                      value="intersectSFalse"
                     />
                     <label for="criteria3" class="ml-2">
                       <span class="inline font-bold">Intersection (strand-unaware)</span>
@@ -364,22 +309,7 @@ function load() {
                       v-model="queryCriteria"
                       inputId="criteria3"
                       name="step3"
-                      value="closetsTrue"
-                      :pt="{
-                        input: ({ props }) => ({
-                          class: [
-                            {
-                              'border-gray-300 bg-white': props.value !== props.modelValue,
-                              'border-crmgs-25 bg-crmgs-25': props.value == props.modelValue
-                            },
-                            {
-                              'hover:border-crmgs-25 focus:outline-none focus:outline-offset-0 focus:shadow-[0_0_0_0.2rem_rgba(194,191,132,1)]':
-                                !props.disabled,
-                              'cursor-default opacity-60': props.disabled
-                            }
-                          ]
-                        })
-                      }"
+                      value="closestSTrue"
                     />
                     <label for="criteria3" class="ml-2">
                       <span class="inline font-bold">Closest</span>
@@ -393,22 +323,7 @@ function load() {
                       v-model="queryCriteria"
                       inputId="criteria4"
                       name="step3"
-                      value="closetsFalse"
-                      :pt="{
-                        input: ({ props }) => ({
-                          class: [
-                            {
-                              'border-gray-300 bg-white': props.value !== props.modelValue,
-                              'border-crmgs-25 bg-crmgs-25': props.value == props.modelValue
-                            },
-                            {
-                              'hover:border-crmgs-25 focus:outline-none focus:outline-offset-0 focus:shadow-[0_0_0_0.2rem_rgba(194,191,132,1)]':
-                                !props.disabled,
-                              'cursor-default opacity-60': props.disabled
-                            }
-                          ]
-                        })
-                      }"
+                      value="closestSFalse"
                     />
                     <label for="criteria3" class="ml-2">
                       <span class="inline font-bold">Closest (strand-unaware)</span>
@@ -424,22 +339,7 @@ function load() {
                       v-model="queryCriteria"
                       inputId="criteria5"
                       name="step3"
-                      value="subtractsTrue"
-                      :pt="{
-                        input: ({ props }) => ({
-                          class: [
-                            {
-                              'border-gray-300 bg-white': props.value !== props.modelValue,
-                              'border-crmgs-25 bg-crmgs-25': props.value == props.modelValue
-                            },
-                            {
-                              'hover:border-crmgs-25 focus:outline-none focus:outline-offset-0 focus:shadow-[0_0_0_0.2rem_rgba(194,191,132,1)]':
-                                !props.disabled,
-                              'cursor-default opacity-60': props.disabled
-                            }
-                          ]
-                        })
-                      }"
+                      value="subtractSTrue"
                     />
                     <label for="criteria5" class="ml-2">
                       <span class="inline font-bold">Difference</span>
@@ -454,22 +354,7 @@ function load() {
                       v-model="queryCriteria"
                       inputId="criteria6"
                       name="step3"
-                      value="subtractsFalse"
-                      :pt="{
-                        input: ({ props }) => ({
-                          class: [
-                            {
-                              'border-gray-300 bg-white': props.value !== props.modelValue,
-                              'border-crmgs-25 bg-crmgs-25': props.value == props.modelValue
-                            },
-                            {
-                              'hover:border-crmgs-25 focus:outline-none focus:outline-offset-0 focus:shadow-[0_0_0_0.2rem_rgba(194,191,132,1)]':
-                                !props.disabled,
-                              'cursor-default opacity-60': props.disabled
-                            }
-                          ]
-                        })
-                      }"
+                      value="subtractSFalse"
                     />
                     <label for="criteria6" class="ml-2">
                       <span class="inline font-bold">Difference (strand-unaware)</span>
@@ -489,7 +374,7 @@ function load() {
                     :pt="{
                       root: {
                         class:
-                          'bg-crmg border-crmg hover:bg-crmgs-25 hover:border-crmgs-25 focus:ring-crmgs-25 focus:outline-none'
+                          'bg-crmg border-crmg hover:bg-crmg/75 hover:border-crmg/75 focus:ring-crmg/75 focus:outline-none focus:shadow-[0_0_0_2px_rgba(255,255,255,1),0_0_0_4px_rgba(0,176,81,1),0_1px_2px_0_rgba(0,0,0,1)]'
                       }
                     }"
                   />
@@ -504,29 +389,44 @@ function load() {
       <Divider :pt="{ root: { class: 'bg-crmg' } }" />
       <div>
         <DataTable
-          :value="cars"
+          :value="records"
           scrollable
           scrollHeight="400px"
           :virtualScrollerOptions="{ itemSize: 46 }"
           tableStyle="min-w-{50rem}"
         >
-          <Column field="id" header="Id" style="w-1/5"></Column>
-          <Column field="vin" header="Vin" style="w-1/5"></Column>
-          <Column field="year" header="Year" style="w-1/5"></Column>
-          <Column field="brand" header="Brand" style="w-1/5"></Column>
-          <Column field="color" header="Color" style="w-1/5"></Column>
-          <!-- <Column field="chrom" header="Chrom" style="width: 12.5%" exportHeader="chrom">
-               <template #loading>
-               <Skeleton width="5rem" class="mb-2"/>
-               </template>
-               </Column>
-               <Column field="start" header="Start" style="width: 12.5%" exportHeader="chromStart"></Column>
-               <Column field="end" header="End" style="width: 12.5%" exportHeader="chromEnd"></Column>
-               <Column field="name" header="Name" style="width: 12.5%" exportHeader="name"></Column>
-               <Column field="score" header="Score" style="width: 12.5%" exportHeader="score"></Column>
-               <Column field="strand" header="Strand" style="width: 12.5%" exportHeader="strand"></Column>
-               <Column field="coverage" header="Coverage" style="width: 12.5%" exportHeader="coverage"></Column>
-               <Column field="frequency" header="Frequency" style="width: 12.5%" exportHeader="frequency"></Column> -->
+          <Column field="chrom" header="Chrom" style="width: 12.5%" exportHeader="chrom">
+            <!-- <template #loading>
+                 <Skeleton width="5rem" class="mb-2"/>
+                 </template> -->
+          </Column>
+          <Column
+            field="start"
+            header="Start"
+            style="width: 12.5%"
+            exportHeader="chromStart"
+          ></Column>
+          <Column field="end" header="End" style="width: 12.5%" exportHeader="chromEnd"></Column>
+          <Column field="name" header="Name" style="width: 12.5%" exportHeader="name"></Column>
+          <Column field="score" header="Score" style="width: 12.5%" exportHeader="score"></Column>
+          <Column
+            field="strand"
+            header="Strand"
+            style="width: 12.5%"
+            exportHeader="strand"
+          ></Column>
+          <Column
+            field="coverage"
+            header="Coverage"
+            style="width: 12.5%"
+            exportHeader="coverage"
+          ></Column>
+          <Column
+            field="frequency"
+            header="Frequency"
+            style="width: 12.5%"
+            exportHeader="frequency"
+          ></Column>
         </DataTable>
       </div>
     </SectionLayout>

@@ -163,7 +163,7 @@ function toIds(array, defaultArray) {
         root: { class: 'flex flex-wrap w-full md:w-full' },
         chooseButton: {
           class: [
-            'text-white text-bold bg-crmg border border-crmg p-3 px-5 rounded-md text-base',
+            'text-white text-bold bg-crmg border border-crmg hover:bg-crmg/75 hover:border-crmg/75 focus:ring-crmg/75 focus:outline-none p-3 px-5 rounded-md text-base',
             'overflow-hidden relative'
           ]
         },

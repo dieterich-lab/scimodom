@@ -1,9 +1,12 @@
 import { createApp } from 'vue'
 import App from './App.vue'
+
 import PrimeVue from 'primevue/config'
-import { usePassThrough } from 'primevue/passthrough'
 import Tailwind from 'primevue/passthrough/tailwind'
+import { usePassThrough } from 'primevue/passthrough'
+
 import router from './router'
+
 import ToastService from 'primevue/toastservice'
 
 // global styles
@@ -50,6 +53,30 @@ const tailoredTailwind = usePassThrough(
         ]
       })
     },
+    dialog: {
+      closeButton: {
+        class: [
+          '!text-crmb',
+          'hover:text-gray-700 hover:border-transparent hover:bg-crmb/25',
+          'focus:outline-none focus:outline-offset-0 focus:shadow-crmb/25' // focus
+        ]
+      }
+    },
+    radiobutton: {
+      input: ({ props }) => ({
+        class: [
+          {
+            'border-gray-300 bg-white': props.value !== props.modelValue,
+            'border-crmg bg-crmg': props.value == props.modelValue
+          },
+          {
+            'hover:border-crmg/25 focus:outline-none focus:outline-offset-0 focus:shadow-crmg/25':
+              !props.disabled,
+            'cursor-default opacity-60': props.disabled
+          }
+        ]
+      })
+    },
     dropdown: {
       root: {
         class: 'hover:border-gray-400 focus:outline-none focus:outline-offset-0 focus:shadow-none'
@@ -85,7 +112,7 @@ const tailoredTailwind = usePassThrough(
           'hover:border-crmg/25 focus:outline-none focus:outline-offset-0 focus:shadow-crmg/25',
           {
             'border-gray-300 bg-white': !context?.selected,
-            'border-crmg/25 bg-crmg/25': context?.selected
+            '!border-crmg/25 !bg-crmg/25': context?.selected
           }
         ]
       }),
@@ -94,7 +121,7 @@ const tailoredTailwind = usePassThrough(
           'hover:border-crmg/25 focus:outline-none focus:outline-offset-0 focus:shadow-crmg/25',
           {
             'border-gray-300 bg-white': !context?.selected,
-            'border-crmg/25 bg-crmg/25': context?.selected
+            '!border-crmg/25 !bg-crmg/25': context?.selected
           }
         ]
       }),
@@ -138,14 +165,10 @@ const tailoredTailwind = usePassThrough(
           context.stripedRows
             ? context.index % 2 === 0
               ? 'bg-white text-gray-600'
-              : 'bg-crmb/10 text-gray-600'
+              : '!bg-crmb/10 text-gray-600'
             : '',
           'transition duration-200',
-          'focus:outline focus:outline-[0.15rem] focus:outline-crmb focus:outline-offset-[-0.15rem]', // Focus
-          {
-            'cursor-pointer': context.selectable,
-            'hover:bg-gray-300/20 hover:text-gray-600': context.selectable && !context.selected // Hover
-          }
+          'focus:outline focus:outline-[0.15rem] focus:!outline-crmb focus:outline-offset-[-0.15rem]' // Focus
         ]
       })
     }

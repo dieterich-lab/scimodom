@@ -193,7 +193,9 @@ def get_comparison(step):
     """Retrieve ..."""
 
     import scimodom.utils.operations as ops
+
     from scimodom.api.models import TypedIntxRecords
+    from scimodom.utils.utils import flatten_list
 
     # API call in compare, then pass as params to SPA components
     # but sending all datasets may be too large?
@@ -255,6 +257,7 @@ def get_comparison(step):
     elif step == "ops":
         dataset_ids_a = request.args.getlist("datasetIdsA", type=str)
         dataset_ids_b = request.args.getlist("datasetIdsB", type=str)
+        operation = request.args.get("operation", type=str)
 
         query = (
             select(
@@ -287,8 +290,21 @@ def get_comparison(step):
             ).where(Data.dataset_id == idx)
             b_records.append(get_session().execute(query).all())
 
-        c_records = ops.get_intersection(a_records, b_records)
-        records = [TypedIntxRecords(*r)._asdict() for r in c_records]
+        op, strand = operation.split("S")
+        if op == "intersect":
+            c_records = ops.get_intersection(a_records, b_records, s=eval(strand))
+            records = [TypedIntxRecords(*r)._asdict() for r in c_records]
+        elif op == "closest":
+            c_records = ops.get_closest(a_records, b_records, s=eval(strand))
+            # records = [TypedIntxRecords(*r)._asdict() for r in c_records]
+        elif op == "subtract":
+            b_records = flatten_list(b_records)
+            c_records = ops.get_subtract(a_records, b_records, s=eval(strand))
+            # records = [TypedIntxRecords(*r)._asdict() for r in c_records]
+
+        print(
+            f"SELECTION: A={dataset_ids_a}, B={dataset_ids_b}, op={op}, strand={eval(strand)}"
+        )
 
     return records
 

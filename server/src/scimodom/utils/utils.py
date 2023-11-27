@@ -198,6 +198,19 @@ def to_list(i: str | list | set | None):
     )
 
 
+def flatten_list(l: list) -> list:
+    """Flatten list.
+
+    :param l: list
+    :type l: list
+    :returns: flattened list
+    :rtype: list
+    """
+    from itertools import chain
+
+    return list(chain.from_iterable(l))
+
+
 def gen_short_uuid(length: int, suuids: Sequence[Any]) -> str:
     """Generate a short UUID.
 

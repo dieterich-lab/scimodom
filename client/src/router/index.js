@@ -5,9 +5,6 @@ import BrowseView from '@/views/BrowseView.vue'
 import CompareView from '@/views/CompareView.vue'
 import DownloadView from '@/views/DownloadView.vue'
 import DocumentationView from '@/views/DocumentationView.vue'
-import StepsReference from '@/components/steps/StepsReference.vue'
-import StepsComparison from '@/components/steps/StepsComparison.vue'
-import StepsQuery from '@/components/steps/StepsQuery.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -30,24 +27,7 @@ const router = createRouter({
     {
       path: '/compare',
       name: 'compare',
-      component: CompareView,
-      children: [
-        {
-          path: 'reference',
-          name: 'reference',
-          component: StepsReference
-        },
-        {
-          path: 'comparison',
-          name: 'comparison',
-          component: StepsComparison
-        },
-        {
-          path: 'query',
-          name: 'query',
-          component: StepsQuery
-        }
-      ]
+      component: CompareView
     },
     {
       path: '/download',
