@@ -192,10 +192,8 @@ def get_dataset():
 def get_comparison(step):
     """Retrieve ..."""
 
-    import scimodom.utils.operations as ops
-
-    from scimodom.api.models import TypedIntxRecords
-    from scimodom.utils.utils import flatten_list
+    from scimodom.utils.operations import get_op
+    from scimodom.api.models import records_factory
 
     # API call in compare, then pass as params to SPA components
     # but sending all datasets may be too large?
@@ -291,20 +289,8 @@ def get_comparison(step):
             b_records.append(get_session().execute(query).all())
 
         op, strand = operation.split("S")
-        if op == "intersect":
-            c_records = ops.get_intersection(a_records, b_records, s=eval(strand))
-            records = [TypedIntxRecords(*r)._asdict() for r in c_records]
-        elif op == "closest":
-            c_records = ops.get_closest(a_records, b_records, s=eval(strand))
-            # records = [TypedIntxRecords(*r)._asdict() for r in c_records]
-        elif op == "subtract":
-            b_records = flatten_list(b_records)
-            c_records = ops.get_subtract(a_records, b_records, s=eval(strand))
-            # records = [TypedIntxRecords(*r)._asdict() for r in c_records]
-
-        print(
-            f"SELECTION: A={dataset_ids_a}, B={dataset_ids_b}, op={op}, strand={eval(strand)}"
-        )
+        c_records = get_op(op)(a_records, b_records, s=eval(strand))
+        records = [records_factory(op, r)._asdict() for r in c_records]
 
     return records
 

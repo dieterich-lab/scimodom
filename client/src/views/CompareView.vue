@@ -12,21 +12,34 @@ const { handleSubmit, resetForm } = useForm()
 const { value: queryCriteria, errorMessage } = useField('value', (value) => !!value)
 const toast = useToast()
 
+const columns = [
+  { field: 'chrom', header: 'Chrom A' },
+  { field: 'start', header: 'Start A' },
+  { field: 'end', header: 'End A' },
+  { field: 'name', header: 'Name A' },
+  { field: 'score', header: 'Score A' },
+  { field: 'strand', header: 'Strand A' },
+  { field: 'dataset_id', header: 'EUFID A' },
+  { field: 'coverage', header: 'Coverage A' },
+  { field: 'frequency', header: 'Frequency A' },
+  { field: 'chrom_b', header: 'Chrom B' },
+  { field: 'start_b', header: 'Start B' },
+  { field: 'end_b', header: 'End B' },
+  { field: 'name_b', header: 'Name B' },
+  { field: 'score_b', header: 'Score B' },
+  { field: 'strand_b', header: 'Strand B' },
+  { field: 'dataset_id_b', header: 'EUFID B' },
+  { field: 'coverage_b', header: 'Coverage B' },
+  { field: 'frequency_b', header: 'Frequency B' },
+  { field: 'distance', header: 'Distance' }
+]
+
 // function validateField(value) {
 //   if (!value) {
 //     return 'Value is required.'
 //   }
 //   return true
 // }
-
-const onSubmit = handleSubmit((submitted) => {
-  if (submitted.value && submitted.value.length > 0) {
-    toast.add({ severity: 'info', summary: 'Form Submitted', detail: submitted.value, life: 3000 })
-    operation.value = submitted.value
-    load()
-    resetForm()
-  }
-})
 
 const selectOptions = ref()
 const selectDataset = ref()
@@ -43,6 +56,14 @@ const operation = ref()
 
 const active = ref(0)
 
+const onSubmit = handleSubmit((submitted) => {
+  if (submitted.value && submitted.value.length > 0) {
+    toast.add({ severity: 'info', summary: 'Form Submitted', detail: submitted.value, life: 3000 })
+    operation.value = submitted.value
+    load()
+    resetForm()
+  }
+})
 const onExport = () => {
   dt.value.exportCSV()
 }
@@ -95,7 +116,7 @@ function load() {
       }
     })
     .then(function (response) {
-      records.value = response.data.records
+      records.value = response.data
     })
     .catch((error) => {
       console.log(error)
@@ -395,38 +416,46 @@ function load() {
           :virtualScrollerOptions="{ itemSize: 46 }"
           tableStyle="min-w-{50rem}"
         >
-          <Column field="chrom" header="Chrom" style="width: 12.5%" exportHeader="chrom">
-            <!-- <template #loading>
-                 <Skeleton width="5rem" class="mb-2"/>
-                 </template> -->
-          </Column>
           <Column
-            field="start"
-            header="Start"
-            style="width: 12.5%"
-            exportHeader="chromStart"
+            v-for="col of columns"
+            :key="col.field"
+            :field="col.field"
+            :header="col.header"
+            style="w-{1/18}"
           ></Column>
-          <Column field="end" header="End" style="width: 12.5%" exportHeader="chromEnd"></Column>
-          <Column field="name" header="Name" style="width: 12.5%" exportHeader="name"></Column>
-          <Column field="score" header="Score" style="width: 12.5%" exportHeader="score"></Column>
-          <Column
-            field="strand"
-            header="Strand"
-            style="width: 12.5%"
-            exportHeader="strand"
-          ></Column>
-          <Column
-            field="coverage"
-            header="Coverage"
-            style="width: 12.5%"
-            exportHeader="coverage"
-          ></Column>
-          <Column
-            field="frequency"
-            header="Frequency"
-            style="width: 12.5%"
-            exportHeader="frequency"
-          ></Column>
+
+          <!-- <Column field="chrom" header="Chrom" style="width: 12.5%" exportHeader="chrom">
+               <template #loading>
+               <Skeleton width="5rem" class="mb-2"/>
+               </template>
+               </Column>
+               <Column
+               field="start"
+               header="Start"
+               style="width: 12.5%"
+               exportHeader="chromStart"
+               ></Column>
+               <Column field="end" header="End" style="width: 12.5%" exportHeader="chromEnd"></Column>
+               <Column field="name" header="Name" style="width: 12.5%" exportHeader="name"></Column>
+               <Column field="score" header="Score" style="width: 12.5%" exportHeader="score"></Column>
+               <Column
+               field="strand"
+               header="Strand"
+               style="width: 12.5%"
+               exportHeader="strand"
+               ></Column>
+               <Column
+               field="coverage"
+               header="Coverage"
+               style="width: 12.5%"
+               exportHeader="coverage"
+               ></Column>
+               <Column
+               field="frequency"
+               header="Frequency"
+               style="width: 12.5%"
+               exportHeader="frequency"
+               ></Column> -->
         </DataTable>
       </div>
     </SectionLayout>

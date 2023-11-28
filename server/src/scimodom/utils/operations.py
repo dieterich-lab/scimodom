@@ -1,21 +1,23 @@
 """pybedtools
 """
 
-from collections.abc import Sequence, Iterable
+from collections.abc import Sequence
 from typing import Any
+
+from scimodom.utils.utils import flatten_list
 
 import pybedtools  # type: ignore
 
 
 def _to_bedtool(
-    a_records: Iterable[Any], b_records: Iterable[Any], append: bool = True
+    a_records: Sequence[Any], b_records: Sequence[Any], append: bool = True
 ):
     """Convert records to BedTool and sort
 
     :param a_records: DB records (A features)
-    :type a_records: Iterable (list of tuples)
+    :type a_records: Sequence (list of tuples)
     :param b_records: DB records (B features)
-    :type b_records: Iterable (list of tuples)
+    :type b_records: Sequence (list of tuples)
     :returns: a_bedtool, b_bedtool
     :rtype: BedTool or list of BedTool
     """
@@ -29,9 +31,25 @@ def _to_bedtool(
     return a_bedtool, b_bedtool
 
 
+def get_op(op: str):
+    """Function selection
+
+    :param op: operation
+    :type op: str
+    :returns: selected function
+    :rtype: function
+    """
+    if op == "intersect":
+        return get_intersection
+    elif op == "closest":
+        return get_closest
+    elif op == "subtract":
+        return get_subtract
+
+
 def get_intersection(
-    a_records: Iterable[Any],
-    b_records: Iterable[Any],
+    a_records: Sequence[Any],
+    b_records: Sequence[Any],
     s: bool = True,
     sorted: bool = True,
     n_fields: int = 3,
@@ -43,9 +61,9 @@ def get_intersection(
     from which the overlap came.
 
     :param a_records: DB records (A features)
-    :type a_records: Iterable (list of tuples)
+    :type a_records: Sequence (list of tuples)
     :param b_records: DB records (B features)
-    :type b_records: Iterable (list of tuples)
+    :type b_records: Sequence (list of tuples)
     :param s: Force strandedness
     :type s: bool
     :param sorted: Invoked sweeping algorithm
@@ -64,6 +82,9 @@ def get_intersection(
 
     # file number index
     offset = 6 + n_fields
+    filnum_idx = 1
+    if len(b_records) == 1:
+        filnum_idx = 0
 
     a_bedtool, b_bedtool = _to_bedtool(a_records, b_records)
     c_bedtool = a_bedtool.intersect(
@@ -75,7 +96,7 @@ def get_intersection(
                 (
                     [i.chrom, i.start, i.end, i.name, i.score, i.strand],
                     i.fields[6:offset],
-                    i.fields[(offset + 1) :],
+                    i.fields[(offset + filnum_idx) :],
                 ),
                 [],
             )
@@ -86,8 +107,8 @@ def get_intersection(
 
 
 def get_closest(
-    a_records: Iterable[Any],
-    b_records: Iterable[Any],
+    a_records: Sequence[Any],
+    b_records: Sequence[Any],
     s: bool = True,
     sorted: bool = True,
     n_fields: int = 3,
@@ -99,9 +120,9 @@ def get_closest(
     from which the closest interval came.
 
     :param a_records: DB records (A features)
-    :type a_records: Iterable (list of tuples)
+    :type a_records: Sequence (list of tuples)
     :param b_records: DB records (B features)
-    :type b_records: Iterable (list of tuples)
+    :type b_records: Sequence (list of tuples)
     :param s: Force strandedness
     :type s: bool
     :param sorted: Invoked sweeping algorithm
@@ -124,18 +145,26 @@ def get_closest(
 
     # file number index
     offset = 6 + n_fields
+    filnum_idx = 1
+    if len(b_records) == 1:
+        filnum_idx = 0
 
     a_bedtool, b_bedtool = _to_bedtool(a_records, b_records)
     c_bedtool = a_bedtool.closest(
         b=[b.fn for b in b_bedtool], io=io, t=t, mdb=mdb, D=D, s=s, sorted=sorted
     )
+
+    # Reports “none” for chrom (?) and “-1” for all other fields (?) when a feature
+    # is not found in B on the same chromosome as the feature in A.
+    # Note that "start" (fields) is a string!
+    c_bedtool = c_bedtool.filter(lambda c: c.fields[(offset + filnum_idx + 1)] != "-1")
     c_records = [
         tuple(
             sum(
                 (
                     [i.chrom, i.start, i.end, i.name, i.score, i.strand],
                     i.fields[6:offset],
-                    i.fields[(offset + 1) :],
+                    i.fields[(offset + filnum_idx) :],
                 ),
                 [],
             )
@@ -146,28 +175,32 @@ def get_closest(
 
 
 def get_subtract(
-    a_records: Iterable[Any],
-    b_records: Iterable[Any],
+    a_records: Sequence[Any],
+    b_records: Sequence[Any],
     s: bool = True,
     sorted: bool = True,
+    n_fields: int = 3,
 ) -> list[Any]:
     """Wrapper for pybedtools.bedtool.BedTool.subtract
 
     :param a_records: DB records (A features)
-    :type a_records: Iterable (list of tuples)
+    :type a_records: Sequence (list of tuples)
     :param b_records: DB records (B features)
-    :type b_records: Iterable (list of tuples)
+    :type b_records: Sequence (list of tuples)
     :param s: Force strandedness
     :type s: bool
     :param sorted: Invoked sweeping algorithm
     :type sorted: bool
+    :param n_fields: Number of other fields attribute in addition to BED6
+    :type n_fields: int
     :returns: c_records
     :rtype: list of tuples
     """
 
-    a_bedtool, b_bedtool = _to_bedtool(a_records, b_records)
+    # file number index
+    offset = 6 + n_fields
+
+    a_bedtool, b_bedtool = _to_bedtool(a_records, flatten_list(b_records), append=False)
     c_bedtool = a_bedtool.subtract(b_bedtool, s=s, sorted=sorted)
-    c_records = [
-        (i.chrom, i.start, i.end, i.name, i.score, i.strand) for i in c_bedtool
-    ]
+    c_records = [(i.fields[:offset]) for i in c_bedtool]
     return c_records

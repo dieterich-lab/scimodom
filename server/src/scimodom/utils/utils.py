@@ -198,7 +198,7 @@ def to_list(i: str | list | set | None):
     )
 
 
-def flatten_list(l: list) -> list:
+def flatten_list(l: list | Sequence | Iterable) -> list:
     """Flatten list.
 
     :param l: list
