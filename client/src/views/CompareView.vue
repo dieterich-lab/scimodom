@@ -13,25 +13,25 @@ const { value: queryCriteria, errorMessage } = useField('value', (value) => !!va
 const toast = useToast()
 
 const columns = [
-  { field: 'chrom', header: 'Chrom A' },
-  { field: 'start', header: 'Start A' },
-  { field: 'end', header: 'End A' },
-  { field: 'name', header: 'Name A' },
-  { field: 'score', header: 'Score A' },
-  { field: 'strand', header: 'Strand A' },
-  { field: 'dataset_id', header: 'EUFID A' },
-  { field: 'coverage', header: 'Coverage A' },
-  { field: 'frequency', header: 'Frequency A' },
-  { field: 'chrom_b', header: 'Chrom B' },
-  { field: 'start_b', header: 'Start B' },
-  { field: 'end_b', header: 'End B' },
-  { field: 'name_b', header: 'Name B' },
-  { field: 'score_b', header: 'Score B' },
-  { field: 'strand_b', header: 'Strand B' },
-  { field: 'dataset_id_b', header: 'EUFID B' },
-  { field: 'coverage_b', header: 'Coverage B' },
-  { field: 'frequency_b', header: 'Frequency B' },
-  { field: 'distance', header: 'Distance' }
+  { field: 'chrom', header: 'Chrom', sortable: true },
+  { field: 'start', header: 'Start', sortable: true },
+  { field: 'end', header: 'End', sortable: false },
+  { field: 'name', header: 'Name', sortable: false },
+  { field: 'score', header: 'Score', sortable: true },
+  { field: 'strand', header: 'Strand', sortable: false },
+  { field: 'dataset_id', header: 'EUFID', sortable: false },
+  { field: 'coverage', header: 'Coverage', sortable: true },
+  { field: 'frequency', header: 'Frequency', sortable: true },
+  { field: 'chrom_b', header: 'Chrom', sortable: true },
+  { field: 'start_b', header: 'Start', sortable: true },
+  { field: 'end_b', header: 'End', sortable: false },
+  { field: 'name_b', header: 'Name', sortable: false },
+  { field: 'score_b', header: 'Score', sortable: true },
+  { field: 'strand_b', header: 'Strand', sortable: false },
+  { field: 'dataset_id_b', header: 'EUFID', sortable: false },
+  { field: 'coverage_b', header: 'Coverage', sortable: true },
+  { field: 'frequency_b', header: 'Frequency', sortable: true },
+  { field: 'distance', header: 'Distance', sortable: false }
 ]
 
 // function validateField(value) {
@@ -40,6 +40,10 @@ const columns = [
 //   }
 //   return true
 // }
+
+const onSort = (event) => {
+  console.log('SORT', event)
+}
 
 const selectOptions = ref()
 const selectDataset = ref()
@@ -411,51 +415,51 @@ function load() {
       <div>
         <DataTable
           :value="records"
+          ref="dt"
+          @sort="onSort($event)"
+          sortMode="multiple"
           scrollable
           scrollHeight="400px"
           :virtualScrollerOptions="{ itemSize: 46 }"
           tableStyle="min-w-{50rem}"
+          stripedRows
         >
+          <template #header>
+            <div style="text-align: right">
+              <Button
+                icon="pi pi-external-link"
+                size="small"
+                label="Export"
+                @click="onExport($event)"
+                :pt="{
+                  root: {
+                    class:
+                      'bg-crmb border-crmb hover:bg-crmb/75 hover:border-crmb/75 focus:ring-crmb/75 focus:outline-none focus:shadow-[0_0_0_2px_rgba(255,255,255,1),0_0_0_4px_rgba(2,176,237,1),0_1px_2px_0_rgba(0,0,0,1)]'
+                  }
+                }"
+              />
+            </div>
+          </template>
+          <ColumnGroup type="header">
+            <Row>
+              <Column header="Reference dataset A" :colspan="9" />
+              <Column header="Comparison dataset B" :colspan="10" />
+            </Row>
+            <Row>
+              <Column
+                v-for="col of columns"
+                :key="col.field"
+                :header="col.header"
+                :sortable="col.sortable"
+              ></Column>
+            </Row>
+          </ColumnGroup>
           <Column
             v-for="col of columns"
             :key="col.field"
             :field="col.field"
-            :header="col.header"
-            style="w-{1/18}"
+            :sortable="col.sortable"
           ></Column>
-
-          <!-- <Column field="chrom" header="Chrom" style="width: 12.5%" exportHeader="chrom">
-               <template #loading>
-               <Skeleton width="5rem" class="mb-2"/>
-               </template>
-               </Column>
-               <Column
-               field="start"
-               header="Start"
-               style="width: 12.5%"
-               exportHeader="chromStart"
-               ></Column>
-               <Column field="end" header="End" style="width: 12.5%" exportHeader="chromEnd"></Column>
-               <Column field="name" header="Name" style="width: 12.5%" exportHeader="name"></Column>
-               <Column field="score" header="Score" style="width: 12.5%" exportHeader="score"></Column>
-               <Column
-               field="strand"
-               header="Strand"
-               style="width: 12.5%"
-               exportHeader="strand"
-               ></Column>
-               <Column
-               field="coverage"
-               header="Coverage"
-               style="width: 12.5%"
-               exportHeader="coverage"
-               ></Column>
-               <Column
-               field="frequency"
-               header="Frequency"
-               style="width: 12.5%"
-               exportHeader="frequency"
-               ></Column> -->
         </DataTable>
       </div>
     </SectionLayout>

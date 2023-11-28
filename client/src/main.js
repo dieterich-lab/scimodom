@@ -18,6 +18,7 @@ import AccordionTab from 'primevue/accordiontab'
 import Button from 'primevue/button'
 import Card from 'primevue/card'
 import Column from 'primevue/column'
+import ColumnGroup from 'primevue/columngroup'
 import DataTable from 'primevue/datatable'
 import Dialog from 'primevue/dialog'
 import Divider from 'primevue/divider'
@@ -26,6 +27,7 @@ import FileUpload from 'primevue/fileupload'
 import InputText from 'primevue/inputtext'
 import MultiSelect from 'primevue/multiselect'
 import RadioButton from 'primevue/radiobutton'
+import Row from 'primevue/row'
 import SelectButton from 'primevue/selectbutton'
 import Skeleton from 'primevue/skeleton'
 import Steps from 'primevue/steps'
@@ -194,6 +196,7 @@ app.component('AccordionTab', AccordionTab)
 app.component('Button', Button)
 app.component('Card', Card)
 app.component('Column', Column)
+app.component('ColumnGroup', ColumnGroup)
 app.component('DataTable', DataTable)
 app.component('Dialog', Dialog)
 app.component('Divider', Divider)
@@ -202,6 +205,7 @@ app.component('FileUpload', FileUpload)
 app.component('InputText', InputText)
 app.component('MultiSelect', MultiSelect)
 app.component('RadioButton', RadioButton)
+app.component('Row', Row)
 app.component('SelectButton', SelectButton)
 app.component('Skeleton', Skeleton)
 app.component('Steps', Steps)
