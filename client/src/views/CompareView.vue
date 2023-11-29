@@ -13,25 +13,25 @@ const { value: queryCriteria, errorMessage } = useField('value', (value) => !!va
 const toast = useToast()
 
 const columns = [
-  { field: 'chrom', header: 'Chrom', sortable: true },
-  { field: 'start', header: 'Start', sortable: true },
-  { field: 'end', header: 'End', sortable: false },
-  { field: 'name', header: 'Name', sortable: false },
-  { field: 'score', header: 'Score', sortable: true },
-  { field: 'strand', header: 'Strand', sortable: false },
-  { field: 'dataset_id', header: 'EUFID', sortable: false },
-  { field: 'coverage', header: 'Coverage', sortable: true },
-  { field: 'frequency', header: 'Frequency', sortable: true },
-  { field: 'chrom_b', header: 'Chrom', sortable: true },
-  { field: 'start_b', header: 'Start', sortable: true },
-  { field: 'end_b', header: 'End', sortable: false },
-  { field: 'name_b', header: 'Name', sortable: false },
-  { field: 'score_b', header: 'Score', sortable: true },
-  { field: 'strand_b', header: 'Strand', sortable: false },
-  { field: 'dataset_id_b', header: 'EUFID', sortable: false },
-  { field: 'coverage_b', header: 'Coverage', sortable: true },
-  { field: 'frequency_b', header: 'Frequency', sortable: true },
-  { field: 'distance', header: 'Distance', sortable: false }
+  { field: 'chrom', header: 'Chrom', exportHeader: 'chrom', sortable: true },
+  { field: 'start', header: 'Start', exportHeader: 'chromStart', sortable: true },
+  { field: 'end', header: 'End', exportHeader: 'chromEnd', sortable: false },
+  { field: 'name', header: 'Name', exportHeader: 'name', sortable: false },
+  { field: 'score', header: 'Score', exportHeader: 'score', sortable: true },
+  { field: 'strand', header: 'Strand', exportHeader: 'strand', sortable: false },
+  { field: 'dataset_id', header: 'EUFID', exportHeader: 'eufid', sortable: false },
+  { field: 'coverage', header: 'Coverage', exportHeader: 'coverage', sortable: true },
+  { field: 'frequency', header: 'Frequency', exportHeader: 'frequency', sortable: true },
+  { field: 'chrom_b', header: 'Chrom', exportHeader: 'chromB', sortable: true },
+  { field: 'start_b', header: 'Start', exportHeader: 'chromStartB', sortable: true },
+  { field: 'end_b', header: 'End', exportHeader: 'chromEndB', sortable: false },
+  { field: 'name_b', header: 'Name', exportHeader: 'nameB', sortable: false },
+  { field: 'score_b', header: 'Score', exportHeader: 'scoreB', sortable: true },
+  { field: 'strand_b', header: 'Strand', exportHeader: 'strandB', sortable: false },
+  { field: 'dataset_id_b', header: 'EUFID', exportHeader: 'eufidB', sortable: false },
+  { field: 'coverage_b', header: 'Coverage', exportHeader: 'coverageB', sortable: true },
+  { field: 'frequency_b', header: 'Frequency', exportHeader: 'frequencyB', sortable: true },
+  { field: 'distance', header: 'Distance', exportHeader: 'distance', sortable: false }
 ]
 
 // function validateField(value) {
@@ -443,43 +443,33 @@ function load() {
             </Row>
             <Row>
               <!-- pre-loaded, sort automatic, explicit columns required -->
-              <Column field="chrom" header="Chrom" sortable exportHeader="chrom"></Column>
-              <Column field="start" header="Start" sortable exportHeader="chromStart"></Column>
-              <Column field="end" header="End" exportHeader="chromEnd"></Column>
-              <Column field="name" header="Name" exportHeader="name"></Column>
-              <Column field="score" header="Score" sortable exportHeader="score"></Column>
-              <Column field="strand" header="Strand" exportHeader="strand"></Column>
-              <Column field="dataset_id" header="EUFID" exportHeader="EUFID"></Column>
-              <Column field="coverage" header="Coverage" sortable exportHeader="coverage"></Column>
-              <Column
-                field="frequency"
-                header="Frequency"
-                sortable
-                exportHeader="frequency"
-              ></Column>
-              <Column field="chrom_b" header="Chrom" sortable exportHeader="chrom"></Column>
-              <Column field="start_b" header="Start" sortable exportHeader="chromStart"></Column>
-              <Column field="end_b" header="End" exportHeader="chromEnd"></Column>
-              <Column field="name_b" header="Name" exportHeader="name"></Column>
-              <Column field="score_b" header="Score" sortable exportHeader="score"></Column>
-              <Column field="strand_b" header="Strand" exportHeader="strand"></Column>
-              <Column field="dataset_id_b" header="EUFID" exportHeader="EUFID"></Column>
-              <Column
-                field="coverage_b"
-                header="Coverage"
-                sortable
-                exportHeader="coverage"
-              ></Column>
-              <Column
-                field="frequency_b"
-                header="Frequency"
-                sortable
-                exportHeader="frequency"
-              ></Column>
-              <Column field="distance" header="Distance" exportHeader="distance"></Column>
+              <Column field="chrom" header="Chrom" sortable></Column>
+              <Column field="start" header="Start" sortable></Column>
+              <Column field="end" header="End"></Column>
+              <Column field="name" header="Name"></Column>
+              <Column field="score" header="Score" sortable></Column>
+              <Column field="strand" header="Strand"></Column>
+              <Column field="dataset_id" header="EUFID"></Column>
+              <Column field="coverage" header="Coverage" sortable></Column>
+              <Column field="frequency" header="Frequency" sortable></Column>
+              <Column field="chrom_b" header="Chrom" sortable></Column>
+              <Column field="start_b" header="Start" sortable></Column>
+              <Column field="end_b" header="End"></Column>
+              <Column field="name_b" header="Name"></Column>
+              <Column field="score_b" header="Score" sortable></Column>
+              <Column field="strand_b" header="Strand"></Column>
+              <Column field="dataset_id_b" header="EUFID"></Column>
+              <Column field="coverage_b" header="Coverage" sortable></Column>
+              <Column field="frequency_b" header="Frequency" sortable></Column>
+              <Column field="distance" header="Distance"></Column>
             </Row>
           </ColumnGroup>
-          <Column v-for="col of columns" :key="col.field" :field="col.field"></Column>
+          <Column
+            v-for="col of columns"
+            :key="col.field"
+            :field="col.field"
+            :exportHeader="col.exportHeader"
+          ></Column>
         </DataTable>
       </div>
     </SectionLayout>
