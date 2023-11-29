@@ -2,6 +2,7 @@
 
 import re
 import logging
+import itertools
 
 import scimodom.utils.utils as utils
 import scimodom.database.queries as queries
@@ -374,3 +375,207 @@ class EUFImporter:
         :rtype: set
         """
         return self._modifications_from_file
+
+
+class BEDImporter:
+    """Utility class to read data from BED format
+    and return as records.
+
+    NOTE: WIP only BED6 or BED11, ignore header.
+
+    :param session: SQLAlchemy ORM session
+    :type session: Session
+    :param filen: EUF/bedRMod file path/name
+    :type filen: str
+    :param handle: EUF/bedRMod file handle
+    :type handle: TextIO
+    :param smid: SMID
+    :type smid: str
+    :param eufid: EUFID
+    :type eufid: str
+    :param title: Title associated with EUF/bedRMod file/dataset
+    :type title: str
+    :param taxa_id: Taxonomy ID (organism) for file/dataset
+    :type taxa_id: int
+    :param assembly_id: Assembly ID for file/dataset (given at upload, not from file header)
+    :type assembly_id: int
+    :param lifted: Is Assembly ID (version) different from DB assembly version? (dataset marked for liftover)
+    :type lifted: bool
+    :param SPECS: Default specs
+    :type SPECS: dict
+    """
+
+    SPECS: ClassVar[dict] = specs.specsEUF
+    QORDER: list[str] = [
+        "chrom",
+        "start",
+        "end",
+        "name",
+        "score",
+        "strand",
+        "dataset_id",
+        "coverage",
+        "frequency",
+    ]
+
+    def __init__(
+        self,
+        filen: str,
+        handle: TextIO,
+        dataset_id: str,
+        version: str,
+    ) -> None:
+        """Constructor method."""
+        self._sep: str = self.SPECS["delimiter"]
+        self._htag: str = self.SPECS["header"]["comment"]
+        self._specs: dict
+        self._int_types: list
+        self._num_col: int
+        self._lino: int
+        self._dtypes: dict[str, dict[str, Any]] = dict()
+        self._records: list = []
+
+        self._filen = filen
+        self._handle = handle
+        self._dataset_id = dataset_id
+        self._version = version
+
+    def get_records(self) -> list:
+        """Validate, parse, and return "as records"
+
+        :returns: records
+        :rtype: list
+        """
+        self.parseBED()
+        self.close()
+        return [tuple(d.values()) for d in self._records]
+
+    def close(self) -> None:
+        """Close handle"""
+        self._handle.close()
+
+    def parseBED(self) -> None:
+        """File parser"""
+
+        self._lino = 1
+        self._read_version()
+
+        self._validate_attributes(Data, self._specs["columns"].values())
+
+        self._read_header()
+
+        for line in itertools.islice(self._handle, self._lino, None):
+            self._read_line(line)
+
+    def _read_version(self) -> None:
+        """Read and validate EUF/bedRMod version."""
+        try:
+            self._specs = self.SPECS[self._version]
+        except KeyError:
+            raise SpecsError(f" Unknown version: {self._version}.")
+
+    def _validate_attributes(self, model, specs: Iterable[str]) -> None:
+        """Validate specifications against model attributes.
+
+        :param model: SQLAlchemy model or name of model
+        :type model: Base | str
+        :param specs: Header specifications (column names)
+        :type specs: Iterable
+        """
+        # assume order of __table__.columns is consistent...
+        mapped_columns = utils.get_table_columns(model)
+        mapped_types = utils.get_table_column_python_types(model)
+        _dtypes = dict()
+        for c in specs:
+            if c not in mapped_columns:
+                msg = (
+                    f"Column name {c} doesn't match any of the ORM mapped attribute names "
+                    f"for {model.__name__}. This is likely due to a change in model declaration."
+                )
+                raise Exception(msg)
+            idx = mapped_columns.index(c)
+            _dtypes[c] = mapped_types[idx]
+        self._dtypes[model.__name__] = _dtypes
+
+    def _read_header(self) -> None:
+        """Read header."""
+        for line in self._handle:
+            self._lino += 1
+            if not line.startswith(self._htag):
+                self._validate_columns(line)
+                self._lino -= 1
+                break
+        self._handle.seek(0)
+
+    def _validate_columns(self, line) -> None:
+        """Validate BED columns
+
+        Note: This function forces standard column names!
+        """
+        num_cols = len(self._specs["columns"])
+        cols = [l.strip() for l in line.split(self._sep)]
+        # silently ignore extra cols
+        cols = cols[:num_cols]
+        # allow BED6, BED11, and BED12 (w/ refBase, but not standard BED12)
+        # HARD CODED!
+        self._num_col = len(cols)
+        if self._num_col not in [6, 11, 12]:
+            msg = "Invalid format! Only BED6 or bedRMod/EUF (11 or 12 columns)."
+            raise SpecsError(msg)
+        int_cols = [
+            "start",
+            "end",
+            "score",
+            "thick_start",
+            "thick_end",
+            "coverage",
+            "frequency",
+        ]
+        if self._num_col == 6:
+            int_cols = int_cols[:3]
+        # for type casting
+        self._int_types = [
+            i
+            for i, v in enumerate(
+                itertools.islice(self._specs["columns"].keys(), self._num_col)
+            )
+            if v in int_cols
+        ]
+
+    def _munge_values(self, values: list[str]) -> dict:
+        """Read data records into dictionary, cast types to those required by the model.
+
+        :param values: Records for one line
+        :type lines: list
+        :returns: Records as a dict
+        :rtype: dict
+        """
+        num_values = len(values)
+        if num_values != self._num_col:
+            raise ValueError("Column count doesn't match value count!")
+        # first cast to float all numerical types, then type cast model (int or float)
+        # NOTE: data loss may occur if e.g. coverage or frequency are wrongly assumed to be float
+        cvalues = [
+            float(v) if i in self._int_types else v for i, v in enumerate(values)
+        ]
+        data = {
+            c: self._dtypes["Data"][c].__call__(cvalues[i])
+            for i, c in enumerate(
+                itertools.islice(self._specs["columns"].values(), self._num_col)
+            )
+        }
+        data["dataset_id"] = self._dataset_id
+        # AD HOC * fill remaining columns based on query order *
+        # ignore columns that are not queried!
+        if self._num_col < 11:
+            data["coverage"] = 0
+            data["frequency"] = 0
+        data = {k: data[k] for k in self.QORDER}
+        return data
+
+    def _read_line(self, line: str) -> None:
+        """Read a line, buffer data for insert."""
+        values = [l.strip() for l in line.split(self._sep)]
+        # error handling...
+        validated_values = self._munge_values(values)
+        self._records.append(validated_values)

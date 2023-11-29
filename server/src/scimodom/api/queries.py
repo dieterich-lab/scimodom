@@ -1,4 +1,6 @@
 import json
+
+from pathlib import Path
 from sqlalchemy import select, func
 from flask import request
 from flask_cors import cross_origin
@@ -192,6 +194,7 @@ def get_dataset():
 def get_comparison(step):
     """Retrieve ..."""
 
+    from scimodom.services.importer import BEDImporter
     from scimodom.utils.operations import get_op
     from scimodom.api.models import records_factory
 
@@ -255,6 +258,7 @@ def get_comparison(step):
     elif step == "ops":
         dataset_ids_a = request.args.getlist("datasetIdsA", type=str)
         dataset_ids_b = request.args.getlist("datasetIdsB", type=str)
+        dataset_upload = request.args.get("datasetUpload", type=str)
         operation = request.args.get("operation", type=str)
 
         query = (
@@ -273,20 +277,29 @@ def get_comparison(step):
         )
         a_records = get_session().execute(query).all()
 
-        b_records = []
-        for idx in dataset_ids_b:
-            query = select(
-                Data.chrom,
-                Data.start,
-                Data.end,
-                Data.name,
-                Data.score,
-                Data.strand,
-                Data.dataset_id,
-                Data.coverage,
-                Data.frequency,
-            ).where(Data.dataset_id == idx)
-            b_records.append(get_session().execute(query).all())
+        # AD HOC
+        if dataset_upload:
+            filen = Path(dataset_upload).stem
+            b_records = [
+                BEDImporter(
+                    filen, open(dataset_upload, "r"), filen, "1.6"
+                ).get_records()
+            ]
+        else:
+            b_records = []
+            for idx in dataset_ids_b:
+                query = select(
+                    Data.chrom,
+                    Data.start,
+                    Data.end,
+                    Data.name,
+                    Data.score,
+                    Data.strand,
+                    Data.dataset_id,
+                    Data.coverage,
+                    Data.frequency,
+                ).where(Data.dataset_id == idx)
+                b_records.append(get_session().execute(query).all())
 
         op, strand = operation.split("S")
         c_records = get_op(op)(a_records, b_records, s=eval(strand))
@@ -303,7 +316,6 @@ def upload_file():
     # TODO: define app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
     # ALLOWED_EXTENSIONS are dealt with PrimeVue FileUpload
 
-    from pathlib import Path
     from werkzeug.utils import secure_filename
 
     if "file" not in request.files:

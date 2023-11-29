@@ -46,6 +46,7 @@ const selectDataset = ref()
 
 const selectedRefDataset = ref()
 const selectedCompDataset = ref()
+const selectedUploadDataset = ref()
 
 const selectedSpecies = ref()
 
@@ -103,12 +104,19 @@ const setDatasetII = (array) => {
   // console.log('COMP DATASET', array)
 }
 
+const setDatasetIII = (val) => {
+  selectedUploadDataset.value = val
+  // lazyLoad()
+  console.log('COMP DATASET', val)
+}
+
 function load() {
   service
     .get('/compare/ops', {
       params: {
         datasetIdsA: selectedRefDataset.value,
         datasetIdsB: selectedCompDataset.value,
+        datasetUpload: selectedUploadDataset.value,
         operation: operation.value
       },
       paramsSerializer: {
@@ -275,6 +283,7 @@ function load() {
               :select-dataset="selectDataset"
               :reference-dataset="selectedRefDataset"
               @selected-dataset="setDatasetII"
+              @uploaded-dataset="setDatasetIII"
             />
           </TabPanel>
           <TabPanel

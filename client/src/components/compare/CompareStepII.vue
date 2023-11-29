@@ -15,10 +15,6 @@ const selectedDataset = ref()
 const disabled = ref(false)
 
 const uploadURL = service.getUri() + '/upload'
-const onUpload = (event) => {
-  // console.log("EVENT", event.xhr.response)
-  disabled.value = true
-}
 
 const props = defineProps({
   selectedSpecies: {
@@ -67,11 +63,19 @@ watch(
   { immediate: true }
 )
 
-const emit = defineEmits(['selectedDataset'])
+const emit = defineEmits(['selectedDataset', 'uploadedDataset'])
 
 const emitSelectedDataset = (event) => {
   let datasetIds = event.value.map((item) => item.dataset_id)
   emit('selectedDataset', datasetIds)
+}
+
+const onUpload = (event) => {
+  // console.log("EVENT", event.xhr.response)
+  disabled.value = true
+  selectedDataset.value = undefined
+  emit('uploadedDataset', event.xhr.response)
+  emit('selectedDataset', undefined)
 }
 
 const updateModification = () => {
