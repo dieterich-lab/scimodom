@@ -18,5 +18,8 @@ export default {
   },
   get(endpoint, config) {
     return HTTP.get(endpoint, config)
+  },
+  getUri() {
+    return HTTP.getUri(HTTP.config)
   }
 }

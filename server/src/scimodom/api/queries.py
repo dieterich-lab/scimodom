@@ -312,11 +312,9 @@ def upload_file():
     # or empty file without a filename should not happen
     rfile = request.files["file"]
     filename = secure_filename(rfile.filename)
-    rfile.save(
-        Path(
-            "/home/eboileau/prj/RMapDFGTRR319/repositories/scimodom/local/TMP", filename
-        )
+    response = Path(
+        "/home/eboileau/prj/RMapDFGTRR319/repositories/scimodom/local/TMP", filename
     )
+    rfile.save(response)
 
-    # what to return?
-    return "200"
+    return response.as_posix()

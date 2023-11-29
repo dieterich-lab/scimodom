@@ -1,6 +1,8 @@
 <script setup>
 import { ref, watch, watchEffect } from 'vue'
 
+import service from '@/services/index.js'
+
 const modification = ref()
 const selectedModification = ref()
 const technology = ref()
@@ -9,6 +11,14 @@ const organism = ref()
 const selectedOrganism = ref()
 const dataset = ref()
 const selectedDataset = ref()
+
+const disabled = ref(false)
+
+const uploadURL = service.getUri() + '/upload'
+const onUpload = (event) => {
+  // console.log("EVENT", event.xhr.response)
+  disabled.value = true
+}
 
 const props = defineProps({
   selectedSpecies: {
@@ -121,6 +131,7 @@ function updateDataset() {
       return { dataset_id: item.dataset_id, dataset_title: item.dataset_title }
     }
   )
+  disabled.value = false
 }
 
 function toTree(data, keys, id) {
@@ -154,11 +165,13 @@ function toIds(array, defaultArray) {
     <FileUpload
       mode="basic"
       name="file"
-      url="http://127.0.0.1:5000/api/v0/upload"
+      :url="uploadURL"
       accept="text/plain,.bed,.bedrmod"
       :maxFileSize="1000000"
       :auto="true"
       chooseLabel="Upload modifications (bedRMod)"
+      @upload="onUpload($event)"
+      :disabled="disabled"
       :pt="{
         root: { class: 'flex flex-wrap w-full md:w-full' },
         chooseButton: {
@@ -178,6 +191,7 @@ function toIds(array, defaultArray) {
       optionLabel="label"
       placeholder="1. Select cell/tissue"
       :maxSelectedLabels="3"
+      :disabled="disabled"
       :pt="{
         root: { class: 'w-full md:w-full' }
       }"
@@ -189,6 +203,7 @@ function toIds(array, defaultArray) {
       selectionMode="checkbox"
       :metaKeySelection="false"
       placeholder="2. Select RNA modifications"
+      :disabled="disabled"
       :pt="{
         root: { class: 'w-full md:w-full' }
       }"
@@ -200,6 +215,7 @@ function toIds(array, defaultArray) {
       selectionMode="checkbox"
       :metaKeySelection="false"
       placeholder="3. Select technologies"
+      :disabled="disabled"
       :pt="{
         root: { class: 'w-full md:w-full' }
       }"
@@ -212,6 +228,7 @@ function toIds(array, defaultArray) {
       optionLabel="dataset_title"
       placeholder="4. Select dataset"
       :maxSelectedLabels="3"
+      :disabled="disabled"
       :pt="{
         root: { class: 'col-span-4 md:w-full' }
       }"

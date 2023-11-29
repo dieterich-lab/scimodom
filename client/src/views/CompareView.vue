@@ -443,25 +443,25 @@ function load() {
             </Row>
             <Row>
               <!-- pre-loaded, sort automatic, explicit columns required -->
-              <Column field="chrom" header="Chrom" sortable></Column>
-              <Column field="start" header="Start" sortable></Column>
-              <Column field="end" header="End"></Column>
-              <Column field="name" header="Name"></Column>
-              <Column field="score" header="Score" sortable></Column>
-              <Column field="strand" header="Strand"></Column>
-              <Column field="dataset_id" header="EUFID"></Column>
-              <Column field="coverage" header="Coverage" sortable></Column>
-              <Column field="frequency" header="Frequency" sortable></Column>
-              <Column field="chrom_b" header="Chrom" sortable></Column>
-              <Column field="start_b" header="Start" sortable></Column>
-              <Column field="end_b" header="End"></Column>
-              <Column field="name_b" header="Name"></Column>
-              <Column field="score_b" header="Score" sortable></Column>
-              <Column field="strand_b" header="Strand"></Column>
-              <Column field="dataset_id_b" header="EUFID"></Column>
-              <Column field="coverage_b" header="Coverage" sortable></Column>
-              <Column field="frequency_b" header="Frequency" sortable></Column>
-              <Column field="distance" header="Distance"></Column>
+              <Column field="chrom" header="Chrom" sortable style="w-{1/19}"></Column>
+              <Column field="start" header="Start" sortable style="w-{1/19}"></Column>
+              <Column field="end" header="End" style="w-{1/19}"></Column>
+              <Column field="name" header="Name" style="w-{1/19}"></Column>
+              <Column field="score" header="Score" sortable style="w-{1/19}"></Column>
+              <Column field="strand" header="Strand" style="w-{1/19}"></Column>
+              <Column field="dataset_id" header="EUFID" style="w-{1/19}"></Column>
+              <Column field="coverage" header="Coverage" style="w-{1/19}" sortable></Column>
+              <Column field="frequency" header="Frequency" sortable style="w-{1/19}"></Column>
+              <Column field="chrom_b" header="Chrom" sortable style="w-{1/19}"></Column>
+              <Column field="start_b" header="Start" sortable style="w-{1/19}"></Column>
+              <Column field="end_b" header="End" style="w-{1/19}"></Column>
+              <Column field="name_b" header="Name" style="w-{1/19}"></Column>
+              <Column field="score_b" header="Score" sortable style="w-{1/19}"></Column>
+              <Column field="strand_b" header="Strand" style="w-{1/19}"></Column>
+              <Column field="dataset_id_b" header="EUFID" style="w-{1/19}"></Column>
+              <Column field="coverage_b" header="Coverage" sortable style="w-{1/19}"></Column>
+              <Column field="frequency_b" header="Frequency" sortable style="w-{1/19}"></Column>
+              <Column field="distance" header="Distance" style="w-{1/19}"></Column>
             </Row>
           </ColumnGroup>
           <Column
@@ -469,7 +469,9 @@ function load() {
             :key="col.field"
             :field="col.field"
             :exportHeader="col.exportHeader"
-          ></Column>
+            style="w-{1/19}"
+          >
+          </Column>
         </DataTable>
       </div>
     </SectionLayout>
