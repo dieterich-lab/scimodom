@@ -41,10 +41,6 @@ const columns = [
 //   return true
 // }
 
-const onSort = (event) => {
-  console.log('SORT', event)
-}
-
 const selectOptions = ref()
 const selectDataset = ref()
 
@@ -416,8 +412,8 @@ function load() {
         <DataTable
           :value="records"
           ref="dt"
-          @sort="onSort($event)"
           sortMode="multiple"
+          removableSort
           scrollable
           scrollHeight="400px"
           :virtualScrollerOptions="{ itemSize: 46 }"
@@ -446,20 +442,44 @@ function load() {
               <Column header="Comparison dataset B" :colspan="10" />
             </Row>
             <Row>
+              <!-- pre-loaded, sort automatic, explicit columns required -->
+              <Column field="chrom" header="Chrom" sortable exportHeader="chrom"></Column>
+              <Column field="start" header="Start" sortable exportHeader="chromStart"></Column>
+              <Column field="end" header="End" exportHeader="chromEnd"></Column>
+              <Column field="name" header="Name" exportHeader="name"></Column>
+              <Column field="score" header="Score" sortable exportHeader="score"></Column>
+              <Column field="strand" header="Strand" exportHeader="strand"></Column>
+              <Column field="dataset_id" header="EUFID" exportHeader="EUFID"></Column>
+              <Column field="coverage" header="Coverage" sortable exportHeader="coverage"></Column>
               <Column
-                v-for="col of columns"
-                :key="col.field"
-                :header="col.header"
-                :sortable="col.sortable"
+                field="frequency"
+                header="Frequency"
+                sortable
+                exportHeader="frequency"
               ></Column>
+              <Column field="chrom_b" header="Chrom" sortable exportHeader="chrom"></Column>
+              <Column field="start_b" header="Start" sortable exportHeader="chromStart"></Column>
+              <Column field="end_b" header="End" exportHeader="chromEnd"></Column>
+              <Column field="name_b" header="Name" exportHeader="name"></Column>
+              <Column field="score_b" header="Score" sortable exportHeader="score"></Column>
+              <Column field="strand_b" header="Strand" exportHeader="strand"></Column>
+              <Column field="dataset_id_b" header="EUFID" exportHeader="EUFID"></Column>
+              <Column
+                field="coverage_b"
+                header="Coverage"
+                sortable
+                exportHeader="coverage"
+              ></Column>
+              <Column
+                field="frequency_b"
+                header="Frequency"
+                sortable
+                exportHeader="frequency"
+              ></Column>
+              <Column field="distance" header="Distance" exportHeader="distance"></Column>
             </Row>
           </ColumnGroup>
-          <Column
-            v-for="col of columns"
-            :key="col.field"
-            :field="col.field"
-            :sortable="col.sortable"
-          ></Column>
+          <Column v-for="col of columns" :key="col.field" :field="col.field"></Column>
         </DataTable>
       </div>
     </SectionLayout>
