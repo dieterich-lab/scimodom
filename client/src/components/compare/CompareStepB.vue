@@ -1,20 +1,7 @@
 <script setup>
-import { ref, watch, watchEffect } from 'vue'
+import { ref, watch } from 'vue'
 
 import service from '@/services/index.js'
-
-const modification = ref()
-const selectedModification = ref()
-const technology = ref()
-const selectedTechnology = ref()
-const organism = ref()
-const selectedOrganism = ref()
-const dataset = ref()
-const selectedDataset = ref()
-
-const disabled = ref(false)
-
-const uploadURL = service.getUri() + '/upload'
 
 const props = defineProps({
   selectedSpecies: {
@@ -25,27 +12,41 @@ const props = defineProps({
     type: Array,
     required: true
   },
-  selectOptions: {
+  options: {
     type: Array,
     required: true
   },
-  selectDataset: {
+  dataset: {
     type: Array,
     required: true
   }
 })
 
+const disabled = ref(false)
+const uploadURL = service.getUri() + '/upload'
+
+const modification = ref()
+const selectedModification = ref()
+const technology = ref()
+const selectedTechnology = ref()
+const organism = ref()
+const selectedOrganism = ref()
+const updDataset = ref()
+const selectedDataset = ref()
+
+const emit = defineEmits(['selectedDataset', 'uploadedDataset'])
+
 watch(
   () => props.selectedSpecies,
   () => {
-    var options = props.selectOptions.filter((item) => item.taxa_sname === props.selectedSpecies)
-    organism.value = toTree(options, ['cto'], 'organism_id')
     modification.value = undefined
     technology.value = undefined
     selectedOrganism.value = undefined
     selectedModification.value = undefined
     selectedTechnology.value = undefined
+    updateOrganism()
     updateDataset()
+    emitNone()
   },
   { immediate: true }
 )
@@ -59,19 +60,12 @@ watch(
     selectedModification.value = undefined
     selectedTechnology.value = undefined
     updateDataset()
+    emitNone()
   },
   { immediate: true }
 )
 
-const emit = defineEmits(['selectedDataset', 'uploadedDataset'])
-
-const emitSelectedDataset = (event) => {
-  let datasetIds = event.value.map((item) => item.dataset_id)
-  emit('selectedDataset', datasetIds)
-}
-
 const onUpload = (event) => {
-  // console.log("EVENT", event.xhr.response)
   disabled.value = true
   selectedDataset.value = undefined
   emit('uploadedDataset', event.xhr.response)
@@ -83,7 +77,7 @@ const updateModification = () => {
   selectedTechnology.value = undefined
   selectedDataset.value = undefined
   var selectedOrganismIds = selectedOrganism.value.map((item) => item.key)
-  var options = props.selectOptions.filter((item) => selectedOrganismIds.includes(item.organism_id))
+  var options = props.options.filter((item) => selectedOrganismIds.includes(item.organism_id))
   modification.value = toTree(options, ['rna', 'modomics_sname'], 'modification_id')
   updateDataset()
 }
@@ -93,10 +87,10 @@ const updateTechnology = () => {
   selectedDataset.value = undefined
   var selectedModificationIds = toIds(
     selectedModification.value,
-    Array.from(new Set(props.selectOptions.map((item) => item.modification_id)))
+    Array.from(new Set(props.options.map((item) => item.modification_id)))
   )
   var selectedOrganismIds = selectedOrganism.value.map((item) => item.key)
-  var options = props.selectOptions.filter(
+  var options = props.options.filter(
     (item) =>
       selectedModificationIds.includes(item.modification_id) &&
       selectedOrganismIds.includes(item.organism_id)
@@ -105,15 +99,25 @@ const updateTechnology = () => {
   updateDataset()
 }
 
+function emitNone() {
+  emit('uploadedDataset', undefined)
+  emit('selectedDataset', undefined)
+}
+
+function updateOrganism() {
+  var options = props.options.filter((item) => item.taxa_sname === props.selectedSpecies)
+  organism.value = toTree(options, ['cto'], 'organism_id')
+}
+
 function updateDataset() {
   selectedDataset.value = undefined
   var selectedModificationIds = toIds(
     selectedModification.value,
-    Array.from(new Set(props.selectOptions.map((item) => item.modification_id)))
+    Array.from(new Set(props.options.map((item) => item.modification_id)))
   )
   var selectedTechnologyIds = toIds(
     selectedTechnology.value,
-    Array.from(new Set(props.selectOptions.map((item) => item.technology_id)))
+    Array.from(new Set(props.options.map((item) => item.technology_id)))
   )
   var selectedOrganismIds =
     Object.is(selectedOrganism.value, undefined) || selectedOrganism.value.length === 0
@@ -121,21 +125,24 @@ function updateDataset() {
       : selectedOrganism.value.map((item) => item.key)
   var selectedRefDatasetIds =
     Object.is(props.referenceDataset, undefined) || props.referenceDataset.length === 0
-      ? props.selectDataset.map((item) => item.dataset_id)
+      ? props.dataset.map((item) => item.dataset_id)
       : props.referenceDataset
-  var options = props.selectDataset.filter(
+  var options = props.dataset.filter(
     (item) =>
       selectedModificationIds.includes(item.modification_id) &&
       selectedTechnologyIds.includes(item.technology_id) &&
       selectedOrganismIds.includes(item.organism_id) &&
       !selectedRefDatasetIds.includes(item.dataset_id)
   )
-  dataset.value = [...new Map(options.map((item) => [item['dataset_id'], item])).values()].map(
+  updDataset.value = [...new Map(options.map((item) => [item['dataset_id'], item])).values()].map(
     (item) => {
       return { dataset_id: item.dataset_id, dataset_title: item.dataset_title }
     }
   )
-  disabled.value = false
+  disabled.value =
+    Object.is(props.referenceDataset, undefined) || props.referenceDataset.length === 0
+      ? true
+      : false
 }
 
 function toTree(data, keys, id) {
@@ -225,9 +232,14 @@ function toIds(array, defaultArray) {
       }"
     />
     <MultiSelect
-      @change="emitSelectedDataset"
+      @change="
+        emit(
+          'selectedDataset',
+          $event.value.map((d) => d.dataset_id)
+        )
+      "
       v-model="selectedDataset"
-      :options="dataset"
+      :options="updDataset"
       filter
       optionLabel="dataset_title"
       placeholder="4. Select dataset"

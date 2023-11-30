@@ -1,3 +1,4 @@
+import os
 import json
 
 from pathlib import Path
@@ -256,10 +257,10 @@ def get_comparison(step):
     ## [('Chemical-assisted sequencing', 'm6A-SAC-seq'), ('Native RNA sequencing', 'Nanopore'), ('Chemical-assisted sequencing', 'GLORI'), ('Enzyme/protein-assisted sequencing', 'm5C-miCLIP'), ('Enzyme/protein-assisted sequencing', 'm6ACE-seq'), ('Chemical-assisted sequencing', 'BID-seq'), ('Antibody-based sequencing', 'm6A-seq/MeRIP'), ('Enzyme/protein-assisted sequencing', 'eTAM-seq')]
 
     elif step == "ops":
-        dataset_ids_a = request.args.getlist("datasetIdsA", type=str)
-        dataset_ids_b = request.args.getlist("datasetIdsB", type=str)
-        dataset_upload = request.args.get("datasetUpload", type=str)
-        operation = request.args.get("operation", type=str)
+        dataset_ids_a = request.args.getlist("DSIDSA", type=str)
+        dataset_ids_b = request.args.getlist("DSIDSB", type=str)
+        dataset_upload = request.args.get("DSU", type=str)
+        query_operation = request.args.get("QUERYOP", type=str)
 
         query = (
             select(
@@ -301,7 +302,7 @@ def get_comparison(step):
                 ).where(Data.dataset_id == idx)
                 b_records.append(get_session().execute(query).all())
 
-        op, strand = operation.split("S")
+        op, strand = query_operation.split("S")
         c_records = get_op(op)(a_records, b_records, s=eval(strand))
         records = [records_factory(op, r)._asdict() for r in c_records]
 
@@ -313,20 +314,19 @@ def get_comparison(step):
 def upload_file():
     """Upload ..."""
 
-    # TODO: define app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+    # TODO: define app.config['UPLOAD_PATH'] = UPLOAD_FOLDER
     # ALLOWED_EXTENSIONS are dealt with PrimeVue FileUpload
 
     from werkzeug.utils import secure_filename
 
+    upload = os.getenv("UPLOAD_PATH")
     if "file" not in request.files:
         # this shouldn't happen, but ...
         pass
     # or empty file without a filename should not happen
     rfile = request.files["file"]
     filename = secure_filename(rfile.filename)
-    response = Path(
-        "/home/eboileau/prj/RMapDFGTRR319/repositories/scimodom/local/TMP", filename
-    )
+    response = Path(upload, filename)
     rfile.save(response)
 
     return response.as_posix()

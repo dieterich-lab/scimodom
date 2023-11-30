@@ -1,17 +1,23 @@
 <script setup>
-import { ref, onMounted } from 'vue'
-
-import service from '@/services/index.js'
-import CompareStepI from '@/components/compare/CompareStepI.vue'
-import CompareStepII from '@/components/compare/CompareStepII.vue'
-
-import { useToast } from 'primevue/usetoast'
+import { ref, computed, onMounted } from 'vue'
 import { useField, useForm } from 'vee-validate'
 
-const { handleSubmit, resetForm } = useForm()
-const { value: queryCriteria, errorMessage } = useField('value', (value) => !!value)
-const toast = useToast()
+import service from '@/services/index.js'
+import CompareStepA from '@/components/compare/CompareStepA.vue'
+import CompareStepB from '@/components/compare/CompareStepB.vue'
 
+const active = ref(0)
+const disabled = computed(() => isAandB())
+
+const options = ref()
+const dataset = ref()
+const selectedDSA = ref()
+const selectedDSB = ref()
+const selectedDSU = ref()
+const selectedSpecies = ref()
+
+const dt = ref()
+const records = ref()
 const columns = [
   { field: 'chrom', header: 'Chrom', exportHeader: 'chrom', sortable: true },
   { field: 'start', header: 'Start', exportHeader: 'chromStart', sortable: true },
@@ -34,90 +40,27 @@ const columns = [
   { field: 'distance', header: 'Distance', exportHeader: 'distance', sortable: false }
 ]
 
-// function validateField(value) {
-//   if (!value) {
-//     return 'Value is required.'
-//   }
-//   return true
-// }
-
-const selectOptions = ref()
-const selectDataset = ref()
-
-const selectedRefDataset = ref()
-const selectedCompDataset = ref()
-const selectedUploadDataset = ref()
-
-const selectedSpecies = ref()
-
-const dt = ref()
-const records = ref()
-
-const operation = ref()
-
-const active = ref(0)
-
+const { handleSubmit, resetForm } = useForm()
+const { value: queryCriteria, errorMessage } = useField('value', validateField)
 const onSubmit = handleSubmit((submitted) => {
   if (submitted.value && submitted.value.length > 0) {
-    toast.add({ severity: 'info', summary: 'Form Submitted', detail: submitted.value, life: 3000 })
-    operation.value = submitted.value
-    load()
+    load(submitted.value)
     resetForm()
   }
 })
+
 const onExport = () => {
   dt.value.exportCSV()
 }
-onMounted(() => {
-  service
-    .getEndpoint('/selection')
-    .then(function (response) {
-      selectOptions.value = response.data
-    })
-    .catch((error) => {
-      console.log(error)
-    })
-  service
-    .getEndpoint('/compare/dataset')
-    .then(function (response) {
-      selectDataset.value = response.data
-    })
-    .catch((error) => {
-      console.log(error)
-    })
-})
 
-const setSpecies = (value) => {
-  // console.log('SPECIES', value)
-  selectedSpecies.value = value
-}
-
-const setDataset = (array) => {
-  selectedRefDataset.value = array
-  // console.log('REF DATASET', array)
-  // lazyLoad()
-}
-
-const setDatasetII = (array) => {
-  selectedCompDataset.value = array
-  // lazyLoad()
-  // console.log('COMP DATASET', array)
-}
-
-const setDatasetIII = (val) => {
-  selectedUploadDataset.value = val
-  // lazyLoad()
-  console.log('COMP DATASET', val)
-}
-
-function load() {
+function load(operation) {
   service
     .get('/compare/ops', {
       params: {
-        datasetIdsA: selectedRefDataset.value,
-        datasetIdsB: selectedCompDataset.value,
-        datasetUpload: selectedUploadDataset.value,
-        operation: operation.value
+        DSIDSA: selectedDSA.value,
+        DSIDSB: selectedDSB.value,
+        DSU: selectedDSU.value,
+        QUERYOP: operation
       },
       paramsSerializer: {
         indexes: null
@@ -131,23 +74,38 @@ function load() {
     })
 }
 
-// function setOrder(o) {
-//   if (!Number.isInteger(o)) {
-//     return o
-//   }
-//   return o === 1 ? 'asc' : 'desc'
-// }
-//
-// function fmtOrder(array) {
-//   if (!(array === undefined)) {
-//     return array.map((d) =>
-//       Object.entries(d)
-//         .map(([k, v]) => setOrder(v))
-//         .join('.')
-//     )
-//   }
-//   return []
-// }
+function validateField(value) {
+  if (!value) {
+    return 'Query criteria undefined!'
+  }
+  return true
+}
+
+function isAandB() {
+  var isA = Object.is(selectedDSA.value, undefined) || selectedDSA.value.length === 0 ? true : false
+  var isB = Object.is(selectedDSB.value, undefined) || selectedDSB.value.length === 0 ? true : false
+  var isU = Object.is(selectedDSU.value, undefined) || selectedDSU.value.length === 0 ? true : false
+  return isA || (isB && isU)
+}
+
+onMounted(() => {
+  service
+    .getEndpoint('/selection')
+    .then(function (response) {
+      options.value = response.data
+    })
+    .catch((error) => {
+      console.log(error)
+    })
+  service
+    .getEndpoint('/compare/dataset')
+    .then(function (response) {
+      dataset.value = response.data
+    })
+    .catch((error) => {
+      console.log(error)
+    })
+})
 </script>
 
 <template>
@@ -253,12 +211,12 @@ function load() {
               })
             }"
           >
-            <CompareStepI
-              v-if="selectOptions && selectDataset"
-              :select-options="selectOptions"
-              :select-dataset="selectDataset"
-              @selected-species="setSpecies"
-              @selected-dataset="setDataset"
+            <CompareStepA
+              v-if="options && dataset"
+              :options="options"
+              :dataset="dataset"
+              @selected-species="selectedSpecies = $event"
+              @selected-dataset="selectedDSA = $event"
             />
           </TabPanel>
           <TabPanel
@@ -276,14 +234,14 @@ function load() {
               })
             }"
           >
-            <CompareStepII
-              v-if="selectOptions && selectDataset && selectedSpecies && selectedRefDataset"
+            <CompareStepB
+              v-if="options && dataset && selectedSpecies && selectedDSA"
+              :options="options"
+              :dataset="dataset"
+              :reference-dataset="selectedDSA"
               :selected-species="selectedSpecies"
-              :select-options="selectOptions"
-              :select-dataset="selectDataset"
-              :reference-dataset="selectedRefDataset"
-              @selected-dataset="setDatasetII"
-              @uploaded-dataset="setDatasetIII"
+              @selected-dataset="selectedDSB = $event"
+              @uploaded-dataset="selectedDSU = $event"
             />
           </TabPanel>
           <TabPanel
@@ -401,6 +359,7 @@ function load() {
                     size="small"
                     type="submit"
                     label="Submit"
+                    :disabled="disabled"
                     :pt="{
                       root: {
                         class:
@@ -408,14 +367,17 @@ function load() {
                       }
                     }"
                   />
-                  <small id="text-error" class="p-4">{{ errorMessage || '&nbsp;' }}</small>
+                  <small
+                    id="text-error"
+                    class="p-4 select-none font-semibold text-base text-crmg"
+                    >{{ errorMessage || '&nbsp;' }}</small
+                  >
                 </div>
               </form>
             </div>
           </TabPanel>
         </TabView>
       </div>
-
       <Divider :pt="{ root: { class: 'bg-crmg' } }" />
       <div>
         <DataTable
