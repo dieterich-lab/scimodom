@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
+import { toTree, toIds, fmtOrder } from '@/utils/index.js'
 import service from '@/services/index.js'
 
 const selectOptions = ref()
@@ -49,7 +50,7 @@ onMounted(() => {
 const updateTechnology = () => {
   selectedTechnology.value = undefined
   selectedSpecies.value = undefined
-  var selectedModificationIds = toIds(selectedModification.value)
+  var selectedModificationIds = toIds(selectedModification.value, [])
   var options = selectOptions.value.filter((item) =>
     selectedModificationIds.includes(item.modification_id)
   )
@@ -59,8 +60,8 @@ const updateTechnology = () => {
 
 const updateSpecies = () => {
   selectedSpecies.value = undefined
-  var selectedModificationIds = toIds(selectedModification.value)
-  var selectedTechnologyIds = toIds(selectedTechnology.value)
+  var selectedModificationIds = toIds(selectedModification.value, [])
+  var selectedTechnologyIds = toIds(selectedTechnology.value, [])
   var options = selectOptions.value.filter(
     (item) =>
       selectedModificationIds.includes(item.modification_id) &&
@@ -78,57 +79,14 @@ const updateTmp = () => {
   lazyLoad()
 }
 
-function toTree(data, keys, id) {
-  var len = keys.length - 1
-  var tree = data.reduce((r, o) => {
-    keys.reduce((t, k, idx) => {
-      var jdx = idx === len ? id : k
-      var tmp = (t.children = t.children || []).find((p) => p.key === o[jdx])
-      if (!tmp) {
-        t.children.push((tmp = { key: o[jdx], label: o[k] }))
-      }
-      return tmp
-    }, r)
-    return r
-  }, {}).children
-  return tree
-}
-
-function toIds(array) {
-  if (!(array === undefined)) {
-    return Object.keys(array)
-      .map(Number)
-      .filter((value) => !Number.isNaN(value))
-  }
-  return []
-}
-
-function setOrder(o) {
-  if (!Number.isInteger(o)) {
-    return o
-  }
-  return o === 1 ? 'asc' : 'desc'
-}
-
-function fmtOrder(array) {
-  if (!(array === undefined)) {
-    return array.map((d) =>
-      Object.entries(d)
-        .map(([k, v]) => setOrder(v))
-        .join('.')
-    )
-  }
-  return []
-}
-
 function lazyLoad() {
   loading.value = true
   service
     .get('/search', {
       params: {
-        modification: toIds(selectedModification.value),
-        technology: toIds(selectedTechnology.value),
-        organism: toIds(selectedSpecies.value),
+        modification: toIds(selectedModification.value, []),
+        technology: toIds(selectedTechnology.value, []),
+        organism: toIds(selectedSpecies.value, []),
         firstRecord: lazyParams.value.first,
         maxRecords: lazyParams.value.rows,
         multiSort: fmtOrder(lazyParams.value.multiSortMeta)

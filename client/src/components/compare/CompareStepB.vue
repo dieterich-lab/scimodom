@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch } from 'vue'
-
+import { toTree, toIds } from '@/utils/index.js'
 import service from '@/services/index.js'
 
 const props = defineProps({
@@ -143,31 +143,6 @@ function updateDataset() {
     Object.is(props.referenceDataset, undefined) || props.referenceDataset.length === 0
       ? true
       : false
-}
-
-function toTree(data, keys, id) {
-  var len = keys.length - 1
-  var tree = data.reduce((r, o) => {
-    keys.reduce((t, k, idx) => {
-      var jdx = idx === len ? id : k
-      var tmp = (t.children = t.children || []).find((p) => p.key === o[jdx])
-      if (!tmp) {
-        t.children.push((tmp = { key: o[jdx], label: o[k] }))
-      }
-      return tmp
-    }, r)
-    return r
-  }, {}).children
-  return tree
-}
-
-function toIds(array, defaultArray) {
-  if (!(array === undefined || Object.keys(array).length === 0)) {
-    return Object.keys(array)
-      .map(Number)
-      .filter((value) => !Number.isNaN(value))
-  }
-  return defaultArray
 }
 </script>
 

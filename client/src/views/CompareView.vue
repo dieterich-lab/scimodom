@@ -57,10 +57,10 @@ function load(operation) {
   service
     .get('/compare/ops', {
       params: {
-        DSIDSA: selectedDSA.value,
-        DSIDSB: selectedDSB.value,
-        DSU: selectedDSU.value,
-        QUERYOP: operation
+        datasetIdsA: selectedDSA.value,
+        datasetIdsB: selectedDSB.value,
+        datasetUpload: selectedDSU.value,
+        queryOperation: operation
       },
       paramsSerializer: {
         indexes: null

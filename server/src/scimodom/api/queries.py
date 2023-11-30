@@ -90,7 +90,6 @@ def get_search():
     modification_ids = request.args.getlist("modification", type=int)
     technology_ids = request.args.getlist("technology", type=int)
     organism_ids = request.args.getlist("organism", type=int)
-    dataset_ids = request.args.getlist("data", type=str)
     first_record = request.args.get("firstRecord", type=int)
     max_records = request.args.get("maxRecords", type=int)
     multi_sort = request.args.getlist("multiSort", type=str)
@@ -117,8 +116,6 @@ def get_search():
         query = query.where(Selection.technology_id.in_(technology_ids))
     if organism_ids:
         query = query.where(Selection.organism_id.in_(organism_ids))
-    if dataset_ids:
-        query = query.where(Data.dataset_id.in_(dataset_ids))
     for sort in multi_sort:
         col, order = sort.split(".")
         expr = eval(f"Data.{col}.{order}()")
@@ -257,10 +254,10 @@ def get_comparison(step):
     ## [('Chemical-assisted sequencing', 'm6A-SAC-seq'), ('Native RNA sequencing', 'Nanopore'), ('Chemical-assisted sequencing', 'GLORI'), ('Enzyme/protein-assisted sequencing', 'm5C-miCLIP'), ('Enzyme/protein-assisted sequencing', 'm6ACE-seq'), ('Chemical-assisted sequencing', 'BID-seq'), ('Antibody-based sequencing', 'm6A-seq/MeRIP'), ('Enzyme/protein-assisted sequencing', 'eTAM-seq')]
 
     elif step == "ops":
-        dataset_ids_a = request.args.getlist("DSIDSA", type=str)
-        dataset_ids_b = request.args.getlist("DSIDSB", type=str)
-        dataset_upload = request.args.get("DSU", type=str)
-        query_operation = request.args.get("QUERYOP", type=str)
+        dataset_ids_a = request.args.getlist("datasetIdsA", type=str)
+        dataset_ids_b = request.args.getlist("datasetIdsB", type=str)
+        dataset_upload = request.args.get("datasetUpload", type=str)
+        query_operation = request.args.get("queryOperation", type=str)
 
         query = (
             select(
