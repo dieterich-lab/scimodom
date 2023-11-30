@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { toTree, toIds } from '@/utils/index.js'
+import { useSelection } from '@/composables/selection.js'
 
 const props = defineProps({
   options: {
@@ -13,55 +14,64 @@ const props = defineProps({
   }
 })
 
-const modification = ref()
+// const modification = ref()
 const selectedModification = ref()
-const technology = ref()
+// const technology = ref()
 const selectedTechnology = ref()
 const species = computed(() => toTree(props.options, ['domain', 'taxa_sname'], 'taxa_sname'))
 const selectedSpecies = ref()
-const organism = ref()
+
+//const organism = ref()
+//const { organism, updateOrganism } = useSelection(props.options)
+// const { organism, modification, updateOrganism, updateModification } = useSelection(props.options)
+const { organism, modification, technology, updateOrganism, updateModification, updateTechnology } =
+  useSelection(props.options)
+
 const selectedOrganism = ref()
 const updDataset = ref()
 const selectedDataset = ref()
 
 const emit = defineEmits(['selectedSpecies', 'selectedDataset'])
 
-const updateOrganism = () => {
+const updateCmptOrganism = () => {
   selectedOrganism.value = undefined
   selectedModification.value = undefined
   selectedTechnology.value = undefined
   selectedDataset.value = undefined
-  var options = props.options.filter((item) => item.taxa_sname === selectedSpecies.value.label)
-  organism.value = toTree(options, ['cto'], 'organism_id')
+  //var options = props.options.filter((item) => item.taxa_sname === selectedSpecies.value.label)
+  //organism.value = toTree(options, ['cto'], 'organism_id')
+  updateOrganism(selectedSpecies.value.label)
   updateDataset()
   emit('selectedSpecies', selectedSpecies.value.label)
   emit('selectedDataset', undefined)
 }
 
-const updateModification = () => {
+const updateCmptModification = () => {
   selectedModification.value = undefined
   selectedTechnology.value = undefined
   selectedDataset.value = undefined
-  var selectedOrganismIds = selectedOrganism.value.map((item) => item.key)
-  var options = props.options.filter((item) => selectedOrganismIds.includes(item.organism_id))
-  modification.value = toTree(options, ['rna', 'modomics_sname'], 'modification_id')
+  //var selectedOrganismIds = selectedOrganism.value.map((item) => item.key)
+  //var options = props.options.filter((item) => selectedOrganismIds.includes(item.organism_id))
+  //modification.value = toTree(options, ['rna', 'modomics_sname'], 'modification_id')
+  updateModification(selectedOrganism.value)
   updateDataset()
 }
 
-const updateTechnology = () => {
+const updateCmptTechnology = () => {
   selectedTechnology.value = undefined
   selectedDataset.value = undefined
-  var selectedModificationIds = toIds(
-    selectedModification.value,
-    Array.from(new Set(props.options.map((item) => item.modification_id)))
-  )
-  var selectedOrganismIds = selectedOrganism.value.map((item) => item.key)
-  var options = props.options.filter(
-    (item) =>
-      selectedModificationIds.includes(item.modification_id) &&
-      selectedOrganismIds.includes(item.organism_id)
-  )
-  technology.value = toTree(options, ['cls', 'meth', 'tech'], 'technology_id')
+  // var selectedModificationIds = toIds(
+  //   selectedModification.value,
+  //   Array.from(new Set(props.options.map((item) => item.modification_id)))
+  // )
+  // var selectedOrganismIds = selectedOrganism.value.map((item) => item.key)
+  // var options = props.options.filter(
+  //   (item) =>
+  //     selectedModificationIds.includes(item.modification_id) &&
+  //     selectedOrganismIds.includes(item.organism_id)
+  // )
+  // technology.value = toTree(options, ['cls', 'meth', 'tech'], 'technology_id')
+  updateTechnology(selectedOrganism.value, selectedModification.value)
   updateDataset()
 }
 
@@ -96,7 +106,7 @@ function updateDataset() {
 <template>
   <div class="grid grid-flow-row-dense grid-cols-4 gap-6">
     <Dropdown
-      @change="updateOrganism"
+      @change="updateCmptOrganism"
       v-model="selectedSpecies"
       :options="species"
       optionLabel="label"
@@ -108,7 +118,7 @@ function updateDataset() {
       }"
     />
     <MultiSelect
-      @change="updateModification"
+      @change="updateCmptModification"
       v-model="selectedOrganism"
       :options="organism"
       optionLabel="label"
@@ -119,7 +129,7 @@ function updateDataset() {
       }"
     />
     <TreeSelect
-      @change="updateTechnology"
+      @change="updateCmptTechnology"
       v-model="selectedModification"
       :options="modification"
       selectionMode="checkbox"

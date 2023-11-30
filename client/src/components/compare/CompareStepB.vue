@@ -1,6 +1,7 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { toTree, toIds } from '@/utils/index.js'
+import { useSelection } from '@/composables/selection.js'
 import service from '@/services/index.js'
 
 const props = defineProps({
@@ -25,11 +26,16 @@ const props = defineProps({
 const disabled = ref(false)
 const uploadURL = service.getUri() + '/upload'
 
-const modification = ref()
+// const modification = ref()
 const selectedModification = ref()
-const technology = ref()
+// const technology = ref()
 const selectedTechnology = ref()
-const organism = ref()
+// const organism = ref()
+// const { organism, updateOrganism } = useSelection(props.options)
+// const { organism, modification, updateOrganism, updateModification } = useSelection(props.options)
+const { organism, modification, technology, updateOrganism, updateModification, updateTechnology } =
+  useSelection(props.options)
+
 const selectedOrganism = ref()
 const updDataset = ref()
 const selectedDataset = ref()
@@ -44,7 +50,7 @@ watch(
     selectedOrganism.value = undefined
     selectedModification.value = undefined
     selectedTechnology.value = undefined
-    updateOrganism()
+    updateOrganism(props.selectedSpecies)
     updateDataset()
     emitNone()
   },
@@ -72,30 +78,32 @@ const onUpload = (event) => {
   emit('selectedDataset', undefined)
 }
 
-const updateModification = () => {
+const updateCmptModification = () => {
   selectedModification.value = undefined
   selectedTechnology.value = undefined
   selectedDataset.value = undefined
-  var selectedOrganismIds = selectedOrganism.value.map((item) => item.key)
-  var options = props.options.filter((item) => selectedOrganismIds.includes(item.organism_id))
-  modification.value = toTree(options, ['rna', 'modomics_sname'], 'modification_id')
+  // var selectedOrganismIds = selectedOrganism.value.map((item) => item.key)
+  //var options = props.options.filter((item) => selectedOrganismIds.includes(item.organism_id))
+  // modification.value = toTree(options, ['rna', 'modomics_sname'], 'modification_id')
+  updateModification(selectedOrganism.value)
   updateDataset()
 }
 
-const updateTechnology = () => {
+const updateCmptTechnology = () => {
   selectedTechnology.value = undefined
   selectedDataset.value = undefined
-  var selectedModificationIds = toIds(
-    selectedModification.value,
-    Array.from(new Set(props.options.map((item) => item.modification_id)))
-  )
-  var selectedOrganismIds = selectedOrganism.value.map((item) => item.key)
-  var options = props.options.filter(
-    (item) =>
-      selectedModificationIds.includes(item.modification_id) &&
-      selectedOrganismIds.includes(item.organism_id)
-  )
-  technology.value = toTree(options, ['cls', 'meth', 'tech'], 'technology_id')
+  // var selectedModificationIds = toIds(
+  //   selectedModification.value,
+  //   Array.from(new Set(props.options.map((item) => item.modification_id)))
+  // )
+  // var selectedOrganismIds = selectedOrganism.value.map((item) => item.key)
+  // var options = props.options.filter(
+  //   (item) =>
+  //     selectedModificationIds.includes(item.modification_id) &&
+  //     selectedOrganismIds.includes(item.organism_id)
+  // )
+  // technology.value = toTree(options, ['cls', 'meth', 'tech'], 'technology_id')
+  updateTechnology(selectedOrganism.value, selectedModification.value)
   updateDataset()
 }
 
@@ -104,10 +112,10 @@ function emitNone() {
   emit('selectedDataset', undefined)
 }
 
-function updateOrganism() {
-  var options = props.options.filter((item) => item.taxa_sname === props.selectedSpecies)
-  organism.value = toTree(options, ['cto'], 'organism_id')
-}
+// function updateOrganism() {
+//   var options = props.options.filter((item) => item.taxa_sname === props.selectedSpecies)
+//   organism.value = toTree(options, ['cto'], 'organism_id')
+// }
 
 function updateDataset() {
   selectedDataset.value = undefined
@@ -171,7 +179,7 @@ function updateDataset() {
     >
     </FileUpload>
     <MultiSelect
-      @change="updateModification"
+      @change="updateCmptModification"
       v-model="selectedOrganism"
       :options="organism"
       optionLabel="label"
@@ -183,7 +191,7 @@ function updateDataset() {
       }"
     />
     <TreeSelect
-      @change="updateTechnology"
+      @change="updateCmptTechnology"
       v-model="selectedModification"
       :options="modification"
       selectionMode="checkbox"
