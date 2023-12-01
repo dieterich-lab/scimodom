@@ -1,7 +1,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useField, useForm } from 'vee-validate'
-
 import service from '@/services/index.js'
 import CompareStepA from '@/components/compare/CompareStepA.vue'
 import CompareStepB from '@/components/compare/CompareStepB.vue'
@@ -54,6 +53,7 @@ const onExport = () => {
 }
 
 function load(operation) {
+  records.value = undefined
   service
     .get('/compare/ops', {
       params: {

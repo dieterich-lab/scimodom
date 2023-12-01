@@ -1,6 +1,11 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { toTree, toIds, fmtOrder } from '@/utils/index.js'
+import { toIds, fmtOrder } from '@/utils/index.js'
+import {
+  updModification,
+  updTechnologyFromMod,
+  updOrganismFromModAndTech
+} from '@/utils/selection.js'
 import service from '@/services/index.js'
 
 const options = ref()
@@ -10,6 +15,7 @@ const technology = ref()
 const selectedTechnology = ref()
 const organism = ref()
 const selectedOrganism = ref()
+
 const dt = ref()
 const records = ref()
 const loading = ref(false)
@@ -30,42 +36,20 @@ const onExport = () => {
   dt.value.exportCSV()
 }
 
-onMounted(() => {
-  lazyParams.value = {
-    first: dt.value.first,
-    rows: dt.value.rows
-  }
-  lazyLoad()
-  service
-    .getEndpoint('/selection')
-    .then(function (response) {
-      options.value = response.data
-      modification.value = toTree(options.value, ['rna', 'modomics_sname'], 'modification_id')
-    })
-    .catch((error) => {
-      console.log(error)
-    })
-})
-
 const updateTechnology = () => {
   selectedTechnology.value = undefined
   selectedOrganism.value = undefined
-  var selectedModificationIds = toIds(selectedModification.value, [])
-  var opts = options.value.filter((item) => selectedModificationIds.includes(item.modification_id))
-  technology.value = toTree(opts, ['cls', 'meth', 'tech'], 'technology_id')
+  technology.value = updTechnologyFromMod(options.value, selectedModification.value)
   lazyLoad()
 }
 
 const updateOrganism = () => {
   selectedOrganism.value = undefined
-  var selectedModificationIds = toIds(selectedModification.value, [])
-  var selectedTechnologyIds = toIds(selectedTechnology.value, [])
-  var opts = options.value.filter(
-    (item) =>
-      selectedModificationIds.includes(item.modification_id) &&
-      selectedTechnologyIds.includes(item.technology_id)
+  organism.value = updOrganismFromModAndTech(
+    options.value,
+    selectedModification.value,
+    selectedTechnology.value
   )
-  organism.value = toTree(opts, ['domain', 'kingdom', 'phylum', 'taxa_sname', 'cto'], 'organism_id')
   lazyLoad()
 }
 
@@ -98,6 +82,23 @@ function lazyLoad() {
     })
   loading.value = false
 }
+
+onMounted(() => {
+  lazyParams.value = {
+    first: dt.value.first,
+    rows: dt.value.rows
+  }
+  lazyLoad()
+  service
+    .getEndpoint('/selection')
+    .then(function (response) {
+      options.value = response.data
+      modification.value = updModification(options.value)
+    })
+    .catch((error) => {
+      console.log(error)
+    })
+})
 </script>
 
 <template>

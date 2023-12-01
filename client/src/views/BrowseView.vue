@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import service from '@/services/index.js'
 import { FilterMatchMode, FilterOperator } from 'primevue/api'
+import service from '@/services/index.js'
 
 const records = ref()
 const dt = ref()
