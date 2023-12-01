@@ -3,13 +3,13 @@ import { ref, onMounted } from 'vue'
 import { toTree, toIds, fmtOrder } from '@/utils/index.js'
 import service from '@/services/index.js'
 
-const selectOptions = ref()
+const options = ref()
 const modification = ref()
 const selectedModification = ref()
 const technology = ref()
 const selectedTechnology = ref()
-const species = ref()
-const selectedSpecies = ref()
+const organism = ref()
+const selectedOrganism = ref()
 const dt = ref()
 const records = ref()
 const loading = ref(false)
@@ -39,8 +39,8 @@ onMounted(() => {
   service
     .getEndpoint('/selection')
     .then(function (response) {
-      selectOptions.value = response.data
-      modification.value = toTree(selectOptions.value, ['rna', 'modomics_sname'], 'modification_id')
+      options.value = response.data
+      modification.value = toTree(options.value, ['rna', 'modomics_sname'], 'modification_id')
     })
     .catch((error) => {
       console.log(error)
@@ -49,29 +49,23 @@ onMounted(() => {
 
 const updateTechnology = () => {
   selectedTechnology.value = undefined
-  selectedSpecies.value = undefined
+  selectedOrganism.value = undefined
   var selectedModificationIds = toIds(selectedModification.value, [])
-  var options = selectOptions.value.filter((item) =>
-    selectedModificationIds.includes(item.modification_id)
-  )
-  technology.value = toTree(options, ['cls', 'meth', 'tech'], 'technology_id')
+  var opts = options.value.filter((item) => selectedModificationIds.includes(item.modification_id))
+  technology.value = toTree(opts, ['cls', 'meth', 'tech'], 'technology_id')
   lazyLoad()
 }
 
-const updateSpecies = () => {
-  selectedSpecies.value = undefined
+const updateOrganism = () => {
+  selectedOrganism.value = undefined
   var selectedModificationIds = toIds(selectedModification.value, [])
   var selectedTechnologyIds = toIds(selectedTechnology.value, [])
-  var options = selectOptions.value.filter(
+  var opts = options.value.filter(
     (item) =>
       selectedModificationIds.includes(item.modification_id) &&
       selectedTechnologyIds.includes(item.technology_id)
   )
-  species.value = toTree(
-    options,
-    ['domain', 'kingdom', 'phylum', 'taxa_sname', 'cto'],
-    'organism_id'
-  )
+  organism.value = toTree(opts, ['domain', 'kingdom', 'phylum', 'taxa_sname', 'cto'], 'organism_id')
   lazyLoad()
 }
 
@@ -86,7 +80,7 @@ function lazyLoad() {
       params: {
         modification: toIds(selectedModification.value, []),
         technology: toIds(selectedTechnology.value, []),
-        organism: toIds(selectedSpecies.value, []),
+        organism: toIds(selectedOrganism.value, []),
         firstRecord: lazyParams.value.first,
         maxRecords: lazyParams.value.rows,
         multiSort: fmtOrder(lazyParams.value.multiSortMeta)
@@ -140,7 +134,7 @@ function lazyLoad() {
         </div>
         <div>
           <TreeSelect
-            @change="updateSpecies()"
+            @change="updateOrganism()"
             v-model="selectedTechnology"
             :options="technology"
             selectionMode="checkbox"
@@ -154,8 +148,8 @@ function lazyLoad() {
         <div>
           <TreeSelect
             @change="updateTmp()"
-            v-model="selectedSpecies"
-            :options="species"
+            v-model="selectedOrganism"
+            :options="organism"
             selectionMode="checkbox"
             :metaKeySelection="false"
             placeholder="3. Select organisms"
