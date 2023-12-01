@@ -86,7 +86,7 @@ function updateDataset() {
       optionGroupChildren="children"
       placeholder="1. Select one organism"
       :pt="{
-        root: { class: 'w-full md:w-full' }
+        root: { class: 'w-full md:w-full shadow' }
       }"
     />
     <MultiSelect
@@ -97,7 +97,7 @@ function updateDataset() {
       placeholder="2. Select cell/tissue"
       :maxSelectedLabels="3"
       :pt="{
-        root: { class: 'w-full md:w-full' }
+        root: { class: 'w-full md:w-full shadow' }
       }"
     />
     <TreeSelect
@@ -108,7 +108,7 @@ function updateDataset() {
       :metaKeySelection="false"
       placeholder="3. Select RNA modifications"
       :pt="{
-        root: { class: 'w-full md:w-full' }
+        root: { class: 'w-full md:w-full shadow' }
       }"
     />
     <TreeSelect
@@ -119,7 +119,7 @@ function updateDataset() {
       :metaKeySelection="false"
       placeholder="4. Select technologies"
       :pt="{
-        root: { class: 'w-full md:w-full' }
+        root: { class: 'w-full md:w-full shadow' }
       }"
     />
     <MultiSelect
@@ -136,7 +136,7 @@ function updateDataset() {
       placeholder="5. Select dataset"
       :maxSelectedLabels="3"
       :pt="{
-        root: { class: 'col-span-4 md:w-full' }
+        root: { class: 'col-span-4 md:w-full shadow' }
       }"
     />
   </div>

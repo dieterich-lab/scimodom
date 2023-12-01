@@ -129,7 +129,7 @@ onMounted(() => {
             :metaKeySelection="false"
             placeholder="1. Select RNA modifications"
             :pt="{
-              root: { class: 'w-full md:w-full' }
+              root: { class: 'w-full md:w-full shadow' }
             }"
           />
         </div>
@@ -142,7 +142,7 @@ onMounted(() => {
             :metaKeySelection="false"
             placeholder="2. Select technologies"
             :pt="{
-              root: { class: 'w-full md:w-full' }
+              root: { class: 'w-full md:w-full shadow' }
             }"
           />
         </div>
@@ -155,7 +155,7 @@ onMounted(() => {
             :metaKeySelection="false"
             placeholder="3. Select organisms"
             :pt="{
-              root: { class: 'w-full md:w-full' }
+              root: { class: 'w-full md:w-full shadow' }
             }"
           />
         </div>
@@ -191,7 +191,7 @@ onMounted(() => {
                 :pt="{
                   root: {
                     class:
-                      'bg-crmb border-crmb hover:bg-crmb/75 hover:border-crmb/75 focus:ring-crmb/75 focus:outline-none focus:shadow-[0_0_0_2px_rgba(255,255,255,1),0_0_0_4px_rgba(2,176,237,1),0_1px_2px_0_rgba(0,0,0,1)]'
+                      'bg-crmb border-crmb shadow hover:bg-crmb/75 hover:border-crmb/75 focus:ring-crmb/75 focus:outline-none focus:!shadow-[0_0_0_2px_rgba(255,255,255,1),0_0_0_4px_rgba(2,176,237,1),0_1px_2px_0_rgba(0,0,0,1)]'
                   }
                 }"
               />

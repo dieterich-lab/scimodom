@@ -134,7 +134,7 @@ onMounted(() => {
                 class: [
                   'h-12 w-12 p-0 shadow',
                   {
-                    'text-white bg-crmb border border-crmb hover:bg-crmb/75 hover:border-crmb/75 focus:shadow-[0_0_0_2px_rgba(255,255,255,1),0_0_0_4px_rgba(2,176,237,1),0_1px_2px_0_rgba(0,0,0,1)]':
+                    'text-white bg-crmb shadow border border-crmb hover:bg-crmb/75 hover:border-crmb/75 focus:shadow-[0_0_0_2px_rgba(255,255,255,1),0_0_0_4px_rgba(2,176,237,1),0_1px_2px_0_rgba(0,0,0,1)]':
                       !props.link &&
                       props.severity === null &&
                       !props.text &&
@@ -363,7 +363,7 @@ onMounted(() => {
                     :pt="{
                       root: {
                         class:
-                          'bg-crmg border-crmg hover:bg-crmg/75 hover:border-crmg/75 focus:ring-crmg/75 focus:outline-none focus:shadow-[0_0_0_2px_rgba(255,255,255,1),0_0_0_4px_rgba(0,176,81,1),0_1px_2px_0_rgba(0,0,0,1)]'
+                          'bg-crmg border-crmg shadow hover:bg-crmg/75 hover:border-crmg/75 focus:ring-crmg/75 focus:outline-none focus:!shadow-[0_0_0_2px_rgba(255,255,255,1),0_0_0_4px_rgba(0,176,81,1),0_1px_2px_0_rgba(0,0,0,1)]'
                       }
                     }"
                   />
@@ -401,7 +401,7 @@ onMounted(() => {
                 :pt="{
                   root: {
                     class:
-                      'bg-crmb border-crmb hover:bg-crmb/75 hover:border-crmb/75 focus:ring-crmb/75 focus:outline-none focus:shadow-[0_0_0_2px_rgba(255,255,255,1),0_0_0_4px_rgba(2,176,237,1),0_1px_2px_0_rgba(0,0,0,1)]'
+                      'bg-crmb border-crmb hover:bg-crmb/75 hover:border-crmb/75 focus:ring-crmb/75 focus:outline-none focus:!shadow-[0_0_0_2px_rgba(255,255,255,1),0_0_0_4px_rgba(2,176,237,1),0_1px_2px_0_rgba(0,0,0,1)]'
                   }
                 }"
               />
