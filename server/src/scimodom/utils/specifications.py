@@ -49,3 +49,6 @@ specsEUF = {
         },
     },
 }
+
+# Annotation
+ANNOTATION_URL = "https://ftp.ensembl.org/pub"
