@@ -36,12 +36,20 @@ Proposed architecture: single-page application (SPA) to separate Flask and VueJS
 
 ## Installation
 
+Native code dependencies must be installed. On Debian-like systems something like this may be needed
+
+```bash
+sudo apt-get install python3-dev default-libmysqlclient-dev build-essential nodejs npm bedtools
+```
+
 During migration, `scimodom` remains locally installable:
 
 ```bash
 git clone https://github.com/dieterich-lab/scimodom
 cd scimodom
-pip install [-e] .
+pip install -e[tests] .
+cd ../client
+npm install
 ```
 
 Also make sure to have a Redis server running.

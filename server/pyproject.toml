@@ -35,7 +35,8 @@ dependencies = [
   "numpy",
   "pandas",
   "python-dotenv",
-  "shortuuid"
+  "shortuuid",
+  "pybedtools"
 ]
 
 [project.scripts]
