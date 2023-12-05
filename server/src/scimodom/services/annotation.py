@@ -50,6 +50,35 @@ class AnnotationService:
     ) -> None:
         self._session = session
 
+    @classmethod
+    def from_new(
+        cls,
+        session: Session,
+        taxonomy_id: int,
+        release: int,
+        assembly: str | None = None,
+        fmt: str = "gtf",
+    ) -> None:
+        """Provides AnnotationService factory for first
+        time annotation.
+
+        :param session: SQLAlchemy ORM session
+        :type session: Session
+        :param taxonomy_id: Taxonomy ID for organism
+        :type taxonomy_id: integer
+        :param release: Release number
+        :type release: integer
+        :param assembly: Assembly
+        :type assembly: string | None
+        :param fmt: Annotation file format
+        :type fmt: string
+        """
+        service = cls(session)
+        service.create_annotation(
+            session, service.DATA_PATH, taxonomy_id, release, assembly, fmt
+        )
+        return service
+
     @staticmethod
     def create_annotation(
         session: Session,
@@ -57,7 +86,7 @@ class AnnotationService:
         taxonomy_id: int,
         release: int,
         assembly: str | None = None,
-        fmt: str = "gff3",
+        fmt: str = "gtf",
     ) -> None:
         """Download and wrangle gene annotation.
 
