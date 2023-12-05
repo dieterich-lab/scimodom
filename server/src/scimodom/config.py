@@ -88,6 +88,14 @@ class Config:
             "AssemblyVersion",
             Path(self.import_dir, "assembly_version.csv"),
         )
+        self.annotation_tbl: tuple[str, Path] = (
+            "Annotation",
+            Path(self.import_dir, "annotation.csv"),
+        )
+        self.annotation_version_tbl: tuple[str, Path] = (
+            "AnnotationVersion",
+            Path(self.import_dir, "annotation_version.csv"),
+        )
         self.method_tbl: tuple[str, Path] = (
             "DetectionMethod",
             Path(self.import_dir, "method.csv"),

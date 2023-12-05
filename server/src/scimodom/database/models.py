@@ -9,9 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 
 class Modomics(Base):
-    """
-    Modified residues
-    """
+    """Modified residues"""
 
     __tablename__ = "modomics"
 
@@ -26,6 +24,8 @@ class Modomics(Base):
 
 
 class Modification(Base):
+    """Modification (RNA type)"""
+
     __tablename__ = "modification"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -37,6 +37,8 @@ class Modification(Base):
 
 
 class DetectionMethod(Base):
+    """Detection methods (nomenclature)"""
+
     __tablename__ = "method"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -49,6 +51,8 @@ class DetectionMethod(Base):
 
 
 class DetectionTechnology(Base):
+    """Detection methods (technology)"""
+
     __tablename__ = "technology"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -60,7 +64,7 @@ class DetectionTechnology(Base):
 
 
 class Assembly(Base):
-    """Data upload"""
+    """Assembly"""
 
     __tablename__ = "assembly"
 
@@ -76,11 +80,73 @@ class Assembly(Base):
 
 
 class AssemblyVersion(Base):
-    """Data upload"""
+    """Assembly version"""
 
     __tablename__ = "assembly_version"
 
     version_num: Mapped[str] = mapped_column(String(12), primary_key=True)
+
+
+class Annotation(Base):
+    """Annotation"""
+
+    __tablename__ = "annotation"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    release: Mapped[int] = mapped_column(nullable=False)
+    taxa_id: Mapped[int] = mapped_column(ForeignKey("ncbi_taxa.id"))
+    version: Mapped[str] = mapped_column(
+        String(12), nullable=False
+    )  # current is annotation_version.version_num
+
+    inst_taxa: Mapped["Taxa"] = relationship(back_populates="annotations")
+    annotations: Mapped[List["GenomicAnnotation"]] = relationship(
+        back_populates="inst_annotation"
+    )
+    regions: Mapped[List["GenomicRegion"]] = relationship(
+        back_populates="inst_annotation"
+    )
+    records: Mapped[List["Data"]] = relationship(back_populates="inst_annotation")
+
+
+class AnnotationVersion(Base):
+    """Annotation version"""
+
+    __tablename__ = "annotation_version"
+
+    version_num: Mapped[str] = mapped_column(String(12), primary_key=True)
+
+
+class GenomicAnnotation(Base):
+    """Gene annotation"""
+
+    __tablename__ = "genomic_annotation"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    annotation_id: Mapped[int] = mapped_column(ForeignKey("annotation.id"))
+    chrom: Mapped[str] = mapped_column(String(128), nullable=False)
+    start: Mapped[int] = mapped_column(nullable=False)
+    end: Mapped[int] = mapped_column(nullable=False)
+    strand: Mapped[str] = mapped_column(String(1), nullable=False)
+    gene_name: Mapped[str] = mapped_column(String(32), nullable=False)
+    gene_id: Mapped[str] = mapped_column(String(32), nullable=False)
+    gene_biotype: Mapped[str] = mapped_column(String(32), nullable=False)
+
+    inst_annotation: Mapped["Annotation"] = relationship(back_populates="annotations")
+
+
+class GenomicRegion(Base):
+    """Genomic region"""
+
+    __tablename__ = "genomic_region"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    data_id: Mapped[int] = mapped_column(ForeignKey("data.id"))
+    annotation_id: Mapped[int] = mapped_column(ForeignKey("annotation.id"))
+    feature: Mapped[str] = mapped_column(String(32), nullable=False)
+
+    inst_data: Mapped["Data"] = relationship(back_populates="regions")
+    inst_annotation: Mapped["Annotation"] = relationship(back_populates="regions")
 
 
 class Taxonomy(Base):
@@ -107,12 +173,15 @@ class Taxa(Base):
     taxonomy_id: Mapped[int] = mapped_column(ForeignKey("taxonomy.id"))
 
     assemblies: Mapped[List["Assembly"]] = relationship(back_populates="inst_taxa")
+    annotations: Mapped[List["Annotation"]] = relationship(back_populates="inst_taxa")
     inst_taxonomy: Mapped["Taxonomy"] = relationship(back_populates="taxa")
     organisms: Mapped[List["Organism"]] = relationship(back_populates="inst_taxa")
     datasets: Mapped[List["Dataset"]] = relationship(back_populates="inst_taxa")
 
 
 class Organism(Base):
+    """Organism (cell, tissue, organ)"""
+
     __tablename__ = "organism"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -124,9 +193,7 @@ class Organism(Base):
 
 
 class Selection(Base):
-    """Association:
-    Modification, DetectionTechnology, Organism
-    """
+    """Association: Modification, DetectionTechnology, Organism"""
 
     __tablename__ = "selection"
 
@@ -151,6 +218,8 @@ class Selection(Base):
 # for Project and Dataset, allow Optional (None in Python), but nullable=False (NOT NULL)
 # to instantiate class, assign later?
 class Project(Base):
+    """Project metadata"""
+
     __tablename__ = "project"
 
     id: Mapped[str] = mapped_column(
@@ -171,6 +240,8 @@ class Project(Base):
 
 
 class ProjectContact(Base):
+    """Project contact"""
+
     __tablename__ = "project_contact"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -182,6 +253,8 @@ class ProjectContact(Base):
 
 
 class ProjectSource(Base):
+    """Project external source"""
+
     __tablename__ = "project_source"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -197,6 +270,8 @@ class ProjectSource(Base):
 # allowing, in principle e.g. future change, to have a given bedRMod/dataset to have 1+ RNA type/mod (and technology and/or e.g. cell type)
 # although at upload we'd only allow 1+ RNA type/mod
 class Dataset(Base):
+    """Dataset metadata"""
+
     __tablename__ = "dataset"
 
     id: Mapped[str] = mapped_column(String(12), primary_key=True)  # EUFID
@@ -241,9 +316,7 @@ class Dataset(Base):
 
 
 class Association(Base):
-    """Association:
-    Dataset, Selection
-    """
+    """Association: Dataset, Selection"""
 
     __tablename__ = "association"
 
@@ -258,10 +331,15 @@ class Association(Base):
 
 
 class Data(Base):
+    """Dataset (records)"""
+
     __tablename__ = "data"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     dataset_id: Mapped[str] = mapped_column(ForeignKey("dataset.id"))  # EUFID
+    annotation_id: Mapped[int] = mapped_column(
+        ForeignKey("annotation.id"), nullable=True
+    )  # nullable
     # bedRMod fields - order must match bedRMod columns?
     chrom: Mapped[str] = mapped_column(String(128), nullable=False)
     start: Mapped[int] = mapped_column(nullable=False)
@@ -277,13 +355,5 @@ class Data(Base):
     ref_base: Mapped[str] = mapped_column(String(1), nullable=False)
 
     inst_dataset: Mapped["Dataset"] = relationship(back_populates="records")
-
-    # TODO:
-    # is_3utr
-    # is_5utr
-    # is_cds
-    # is_exon
-    # is_intron
-    # is_intergenic
-    # gene
-    # gene_id
+    inst_annotation: Mapped["Annotation"] = relationship(back_populates="records")
+    regions: Mapped[List["GenomicRegion"]] = relationship(back_populates="inst_data")

@@ -301,6 +301,7 @@ def test_importer(Session, setup, project_template):
     import shortuuid
     import pandas as pd
 
+    # the order is that defined in the model...
     columns = utils.get_table_columns(Data)
 
     metadata = project_template["metadata"][0]
@@ -373,10 +374,10 @@ def test_importer(Session, setup, project_template):
                 )
                 for r in records
             ],
-            columns=columns[2:],
+            columns=columns[3:],
         )
         expected_df = pd.read_csv(
-            _get_file(), sep="\t", skiprows=12, header=None, names=columns[2:]
+            _get_file(), sep="\t", skiprows=12, header=None, names=columns[3:]
         )
         expected_df = expected_df.astype(importer._dtypes["Data"])
         pd.testing.assert_frame_equal(df, expected_df, check_exact=True)
