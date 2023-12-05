@@ -42,13 +42,20 @@ class AnnotationService:
     :type session: Session
     """
 
-    DATA_PATH: ClassVar[str | Path] = os.getenv("DATA_PATH")
+    DATA_PATH: ClassVar[str | Path | None] = os.getenv("DATA_PATH")
 
     def __init__(
         self,
         session: Session,
     ) -> None:
         self._session = session
+
+    def __new__(cls, session: Session):
+        if cls.DATA_PATH is None:
+            msg = "Missing environment variable: DATA_PATH. Terminating!"
+            raise ValueError(msg)
+        else:
+            return super(AnnotationService, cls).__new__(cls)
 
     @classmethod
     def from_new(
@@ -58,7 +65,7 @@ class AnnotationService:
         release: int,
         assembly: str | None = None,
         fmt: str = "gtf",
-    ) -> None:
+    ):
         """Provides AnnotationService factory for first
         time annotation.
 
@@ -72,6 +79,8 @@ class AnnotationService:
         :type assembly: string | None
         :param fmt: Annotation file format
         :type fmt: string
+        :returns: AnnotationService class instance
+        :rtype: AnnotationService
         """
         service = cls(session)
         service.create_annotation(
@@ -82,9 +91,9 @@ class AnnotationService:
     @staticmethod
     def create_annotation(
         session: Session,
-        data_path: str | Path,
+        data_path: str | Path | None,
         taxonomy_id: int,
-        release: int,
+        release: int | None = None,
         assembly: str | None = None,
         fmt: str = "gtf",
     ) -> None:
@@ -95,7 +104,7 @@ class AnnotationService:
         :param taxonomy_id: Taxonomy ID for organism
         :type taxonomy_id: integer
         :param release: Release number
-        :type release: integer
+        :type release: integer | None
         :param assembly: Assembly
         :type assembly: string | None
         :param fmt: Annotation file format
@@ -103,13 +112,17 @@ class AnnotationService:
         """
         import gzip
         import zlib
-        import requests
+        import requests  # type: ignore
 
         import scimodom.utils.specifications as specs
-
         import scimodom.database.queries as queries
 
         from posixpath import join as urljoin
+        from scimodom.utils.operations import get_genomic_annotation
+
+        if data_path is None:
+            msg = "Missing data path. Terminating!"
+            raise ValueError(msg)
 
         try:
             query = queries.query_column_where(
@@ -123,6 +136,35 @@ class AnnotationService:
             logger.error(msg)
             return
         organism = "_".join(organism[0].split())
+
+        if release is None:
+            query = queries.get_annotation_version()
+            db_annotation_version = session.execute(query).scalar()
+            query = queries.query_column_where(
+                "Annotation",
+                "release",
+                filters={"taxa_id": taxonomy_id, "version": db_annotation_version},
+            )
+            release = session.execute(query).scalar()
+        else:
+            query = queries.query_column_where(
+                "Annotation", "release", filters={"taxa_id": taxonomy_id}
+            )
+            annotation_releases = session.execute(query).scalars().all()
+            if release not in annotation_releases:
+                msg = f"Given annotation release={release} with taxonomy id={taxonomy_id} not found! Terminating!"
+                logger.error(msg)
+                return
+        query = queries.query_column_where(
+            "Annotation",
+            "id",
+            filters={
+                "taxa_id": taxonomy_id,
+                "release": release,
+                "version": db_annotation_version,
+            },
+        )
+        annotation_id = session.execute(query).scalar()
 
         if assembly is None:
             query = queries.get_assembly_version()
@@ -139,7 +181,7 @@ class AnnotationService:
             )
             assembly_names = session.execute(query).scalars().all()
             if assembly not in assembly_names:
-                msg = f"Given assembly {assembly} with taxonomy id={taxonomy_id} not found! Terminating!"
+                msg = f"Given assembly={assembly} with taxonomy id={taxonomy_id} not found! Terminating!"
                 logger.error(msg)
                 return
 
@@ -170,6 +212,12 @@ class AnnotationService:
                 msg = f"Request failed with {request.status_code}. Content: {request.content}"
                 logger.error(msg)
                 return
+
+        records = get_genomic_annotation(destination, annotation_id)
+        # convet records to dict for bulk insert - where are models now? -> generalize
+
+        # need a warning/error before commit if entries exists already, check for annotation_id?
+        # bulk insert
 
         # can pybedtool/bedtool work with gzip data? YES do not uncompress
         # TODO:

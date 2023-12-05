@@ -9,6 +9,8 @@ from scimodom.database.models import (
     Selection,
     Assembly,
     AssemblyVersion,
+    Annotation,
+    AnnotationVersion,
     Project,
     ProjectContact,
     Dataset,
@@ -21,6 +23,10 @@ from scimodom.database.models import (
 
 def get_assembly_version():
     return select(AssemblyVersion.version_num)
+
+
+def get_annotation_version():
+    return select(AnnotationVersion.version_num)
 
 
 # -- simple query wrappers

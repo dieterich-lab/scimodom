@@ -4,6 +4,7 @@
 from collections.abc import Sequence
 from typing import Any
 
+from pathlib import Path
 from scimodom.utils.utils import flatten_list
 
 import pybedtools  # type: ignore
@@ -204,3 +205,37 @@ def get_subtract(
     c_bedtool = a_bedtool.subtract(b_bedtool, s=s, sorted=sorted)
     c_records = [(i.fields[:offset]) for i in c_bedtool]
     return c_records
+
+
+def get_genomic_annotation(filen: str | Path, annotation_id: int) -> list[Any]:
+    """Create records for genomic annotation
+
+    :param filen: Path to annotation (gtf)
+    :type filen: str | Path
+    :param annotation_id: Current annotation id (taxa, release, version)
+    :type annotation_id: int
+    :returns: GTF fields as BED+ records
+    :rtype: list of tuples (records)
+    """
+    from scimodom.utils.utils import parse_gtf_attributes
+
+    annotation = pybedtools.BedTool(filen).sort()
+    genes = annotation.filter(lambda a: a.fields[2] == "gene")
+
+    records = [
+        tuple(
+            sum(
+                (
+                    [i.chrom, i.start, i.end, i.name, annotation_id, i.strand],
+                    [
+                        parse_gtf_attributes(i.fields[8]).get(k)
+                        for k in ["gene_id", "gene_biotype"]
+                    ],
+                ),
+                [],
+            )
+        )
+        for i in genes
+    ]
+
+    return records
