@@ -41,3 +41,8 @@ local/
 logs/
 
 .idea
+.env
+docker/secrets/
+docker/backup/
+docker/db_data/
+docker/db_data_dev/

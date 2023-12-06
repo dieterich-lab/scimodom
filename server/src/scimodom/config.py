@@ -5,28 +5,25 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 
+DEFAULT_FRONTEND_PATH = Path(__file__).parent.parent.parent.parent.joinpath('client').joinpath('dist')
+
+
 class Config:
     """Set Flask and logging variables.
 
-    :param parent_dir: Parent directory (package)
-    :type parent_dir: Path | str
     :param import_dir: Import directory (package)
     :type import_dir: Path | str
     """
 
-    CWD = Path(__file__).absolute()
-    if os.getenv("LOCAL_APP"):
-        env_file = Path(CWD.parent.parent.parent, ".env.local")
-        LOCAL_APP = True
-    else:
-        env_file = Path(CWD.parent.parent.parent, ".env.development")
-        LOCAL_APP = False
-    load_dotenv(env_file)
+    ENV_FILE = os.getenv('ENV_FILE', '.env')
+    load_dotenv(ENV_FILE)
     FLASK_DEBUG = eval(os.getenv("FLASK_DEBUG", "False"))
     DATABASE_URI = os.getenv("DATABASE_URI")
     SECRET_KEY = os.getenv("SECRET_KEY")
     SESSION_COOKIE_SAMESITE = os.getenv("SESSION_COOKIE_SAMESITE")
     SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE")
+    IMPORT_PATH = os.getenv("IMPORT_PATH", "import")
+    FRONTEND_PATH = Path(os.getenv("FRONTEND_PATH", DEFAULT_FRONTEND_PATH))
 
     LOGGING = dict(
         version=1,
@@ -54,19 +51,17 @@ class Config:
 
     def __init__(
         self,
-        parent_dir: str | Path | None = None,
         import_dir: str | Path | None = None,
     ) -> None:
         """Constructor method.
 
         Note: Default tables from import directory, no check.
         """
-        if parent_dir is None:
-            parent_dir = self.CWD.parent.parent.parent
 
         if import_dir is None:
-            import_dir = "import"
-        self.import_dir: Path = Path(parent_dir, import_dir)
+            self.import_dir = self.IMPORT_PATH
+        else:
+            self.import_dir = import_dir
 
         self.modomics_tbl: tuple[str, Path] = (
             "Modomics",

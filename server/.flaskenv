@@ -1,2 +1,2 @@
-FLASK_APP=src/scimodom
+FLASK_APP=src/scimodom/app
 FLASK_DEBUG=True

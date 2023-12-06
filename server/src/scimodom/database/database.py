@@ -44,7 +44,7 @@ def get_engine():
 
 
 def init(engine: Engine, session) -> None:
-    """Set engine and session, create all tables.
+    """Set engine and session
 
     :param engine: Engine
     :type engine: Engine
@@ -54,7 +54,3 @@ def init(engine: Engine, session) -> None:
     global _engine, _session
     _engine = engine
     _session = session
-
-    import scimodom.database.models
-
-    Base.metadata.create_all(engine)
