@@ -44,7 +44,7 @@ def get_engine():
 
 
 def init(engine: Engine, session) -> None:
-    """Set engine and session, sreate all tables.
+    """Set engine and session, create all tables.
 
     :param engine: Engine
     :type engine: Engine
