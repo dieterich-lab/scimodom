@@ -1,4 +1,6 @@
-"""Data structures used in queries.
+"""Data classes mostly for type casting and "serialization"
+of records returned from operations (pybedtools).
+NOTE: Order of definition is important (should be guaranteed)!
 """
 
 import scimodom.utils.utils as utils
@@ -7,12 +9,21 @@ from collections.abc import Sequence
 from typing import NamedTuple, Any
 
 
-mapped_types = utils.get_table_column_python_types("Data")
-mapped_columns = utils.get_table_columns("Data")
-_dtypes = dict(zip(mapped_columns, mapped_types))
+def get_types(model: str) -> dict[str, Any]:
+    """utils wrapper to get column types from ORM
+    model definition
+
+    :param model: Model (name)
+    :type model: str
+    :returns: dictionary column: type
+    :rtype: dict
+    """
+    mapped_types = utils.get_table_column_python_types(model)
+    mapped_columns = utils.get_table_columns(model)
+    return dict(zip(mapped_columns, mapped_types))
 
 
-class Records(NamedTuple):
+class Subtract(NamedTuple):
     """Named tuple for twice BED6+3 records arrising
     from intersecting with -wa and -wb options.
 
@@ -33,6 +44,8 @@ class Records(NamedTuple):
     :param frequency: frequency
     :type frequency: Inferred from Data (int)
     """
+
+    _dtypes = get_types("Data")
 
     chrom: _dtypes["chrom"]
     start: _dtypes["start"]
@@ -45,7 +58,7 @@ class Records(NamedTuple):
     frequency: _dtypes["frequency"]
 
 
-class IntersectRecords(NamedTuple):
+class Intersect(NamedTuple):
     """Named tuple for twice BED6+3 records arrising
     from intersecting with -wa and -wb options.
 
@@ -66,6 +79,8 @@ class IntersectRecords(NamedTuple):
     :param frequency: frequency
     :type frequency: Inferred from Data (int)
     """
+
+    _dtypes = get_types("Data")
 
     chrom: _dtypes["chrom"]
     start: _dtypes["start"]
@@ -87,7 +102,7 @@ class IntersectRecords(NamedTuple):
     frequency_b: _dtypes["frequency"]
 
 
-class ClosestRecords(NamedTuple):
+class Closest(NamedTuple):
     """Named tuple for twice BED6+3 records arrising
     from intersecting with -wa and -wb options.
 
@@ -108,6 +123,8 @@ class ClosestRecords(NamedTuple):
     :param frequency: frequency
     :type frequency: Inferred from Data (int)
     """
+
+    _dtypes = get_types("Data")
 
     chrom: _dtypes["chrom"]
     start: _dtypes["start"]
@@ -130,23 +147,50 @@ class ClosestRecords(NamedTuple):
     distance: int
 
 
-def records_factory(op: str, vals: Sequence[Any]):
+class GenomicAnnotation(NamedTuple):
+    """Named tuple for GenomicAnnotation records.
+
+    :param chrom: Chromosome
+    :type chrom: Inferred from Data (str)
+    :param start: start
+    :type start: Inferred from Data (int)
+    :param end: end
+    :type end: Inferred from Data (int)
+    :param score: score
+    :type score: Inferred from Data (int)
+    :param strand: strand
+    :type strand: Inferred from Data (str)
+    :param dataset_id: dataset_id
+    :type dataset_id: Inferred from Data (str)
+    :param coverage: coverage
+    :type coverage: Inferred from Data (int)
+    :param frequency: frequency
+    :type frequency: Inferred from Data (int)
+    """
+
+    _dtypes = get_types("GenomicAnnotation")
+
+    chrom: _dtypes["chrom"]
+    start: _dtypes["start"]
+    end: _dtypes["end"]
+    gene_name: _dtypes["gene_name"]
+    annotation_id: _dtypes["annotation_id"]
+    strand: _dtypes["strand"]
+    gene_id: _dtypes["gene_id"]
+    gene_biotype: _dtypes["gene_biotype"]
+
+
+def records_factory(instance_str: str, vals: Sequence[Any]):
     """Factory to conditionally instantiate records class
 
-    :param op: operation (subtract, intersect, closest)
+    :param op: instance_str (Subtract, Intersect, Closest, etc.)
     :type op: str
     :param vals: records
     :type vals: Sequence[Any]
     :returns: TypedRecords instance
     :rtype: TypedRecords
     """
-    instance = (
-        ClosestRecords
-        if op == "closest"
-        else IntersectRecords
-        if op == "intersect"
-        else Records
-    )
+    instance = eval(instance_str)
 
     class TypedRecords(instance):
         """Inherit from instance with forced type conversion."""

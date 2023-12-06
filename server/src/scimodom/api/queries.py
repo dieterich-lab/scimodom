@@ -194,7 +194,7 @@ def get_comparison(step):
 
     from scimodom.services.importer import BEDImporter
     from scimodom.utils.operations import get_op
-    from scimodom.api.models import records_factory
+    from scimodom.utils.models import records_factory
 
     # API call in compare, then pass as params to SPA components
     # but sending all datasets may be too large?
@@ -301,7 +301,7 @@ def get_comparison(step):
 
         op, strand = query_operation.split("S")
         c_records = get_op(op)(a_records, b_records, s=eval(strand))
-        records = [records_factory(op, r)._asdict() for r in c_records]
+        records = [records_factory(op.capitalize(), r)._asdict() for r in c_records]
 
     return records
 

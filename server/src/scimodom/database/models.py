@@ -128,9 +128,9 @@ class GenomicAnnotation(Base):
     start: Mapped[int] = mapped_column(nullable=False)
     end: Mapped[int] = mapped_column(nullable=False)
     strand: Mapped[str] = mapped_column(String(1), nullable=False)
-    gene_name: Mapped[str] = mapped_column(String(32), nullable=False)
-    gene_id: Mapped[str] = mapped_column(String(32), nullable=False)
-    gene_biotype: Mapped[str] = mapped_column(String(32), nullable=False)
+    gene_name: Mapped[str] = mapped_column(String(32), nullable=True)
+    gene_id: Mapped[str] = mapped_column(String(32), nullable=True)
+    gene_biotype: Mapped[str] = mapped_column(String(255), nullable=True)
 
     inst_annotation: Mapped["Annotation"] = relationship(back_populates="annotations")
 

@@ -77,7 +77,7 @@ plugins = [
 show_error_codes = "True"
 #strict = "True"
 exclude = [
-    "scimodom.api.models.py"
+    "scimodom.utils.models.py"
 ]
 
 

@@ -210,6 +210,8 @@ def get_subtract(
 def get_genomic_annotation(filen: str | Path, annotation_id: int) -> list[Any]:
     """Create records for genomic annotation
 
+    NOTE: 06.12.2023 GTF only! fields indices hard coded!
+
     :param filen: Path to annotation (gtf)
     :type filen: str | Path
     :param annotation_id: Current annotation id (taxa, release, version)

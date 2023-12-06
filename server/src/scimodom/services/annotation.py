@@ -17,6 +17,13 @@ from pathlib import Path
 
 from sqlalchemy.orm import Session
 
+from scimodom.database.models import (
+    Annotation,
+    AnnotationVersion,
+    GenomicAnnotation,
+    GenomicRegion,
+)
+
 # from scimodom.services.importer import EUFImporter
 # from scimodom.database.models import (
 # Data,
@@ -99,6 +106,9 @@ class AnnotationService:
     ) -> None:
         """Download and wrangle gene annotation.
 
+        NOTE: 06.12.2023 GTF only!
+        See scimodom.utils.operations.get_genomic_annotation
+
         :param session: SQLAlchemy ORM session
         :type session: Session
         :param taxonomy_id: Taxonomy ID for organism
@@ -117,7 +127,10 @@ class AnnotationService:
         import scimodom.utils.specifications as specs
         import scimodom.database.queries as queries
 
+        from sqlalchemy import insert
+
         from posixpath import join as urljoin
+        from scimodom.utils.models import records_factory
         from scimodom.utils.operations import get_genomic_annotation
 
         if data_path is None:
@@ -141,14 +154,14 @@ class AnnotationService:
             query = queries.get_annotation_version()
             db_annotation_version = session.execute(query).scalar()
             query = queries.query_column_where(
-                "Annotation",
+                Annotation,
                 "release",
                 filters={"taxa_id": taxonomy_id, "version": db_annotation_version},
             )
             release = session.execute(query).scalar()
         else:
             query = queries.query_column_where(
-                "Annotation", "release", filters={"taxa_id": taxonomy_id}
+                Annotation, "release", filters={"taxa_id": taxonomy_id}
             )
             annotation_releases = session.execute(query).scalars().all()
             if release not in annotation_releases:
@@ -156,7 +169,7 @@ class AnnotationService:
                 logger.error(msg)
                 return
         query = queries.query_column_where(
-            "Annotation",
+            Annotation,
             "id",
             filters={
                 "taxa_id": taxonomy_id,
@@ -185,6 +198,9 @@ class AnnotationService:
                 logger.error(msg)
                 return
 
+        msg = "Downloading annotation and performing bulk insert, this could take a few seconds..."
+        logger.info(msg)
+
         annotation_file = f"{organism}.{assembly}.{release}.chr.{fmt}.gz"
         destination = Path(data_path, annotation_file)
 
@@ -203,28 +219,39 @@ class AnnotationService:
         )
         with requests.get(url, stream=True) as request:
             if request.ok:
-                with gzip.open(destination, mode="xb") as filen:
-                    for chunk in decompress_stream(
-                        request.iter_content(chunk_size=10 * 1024)
-                    ):
-                        filen.write(chunk)
+                try:
+                    with gzip.open(destination, mode="xb") as filen:
+                        for chunk in decompress_stream(
+                            request.iter_content(chunk_size=10 * 1024)
+                        ):
+                            filen.write(chunk)
+                except FileExistsError:
+                    msg = f"File at {destination} exists. Skipping download and DB transaction!"
+                    logger.warning(msg)
+                    return
             else:
                 msg = f"Request failed with {request.status_code}. Content: {request.content}"
                 logger.error(msg)
                 return
 
         records = get_genomic_annotation(destination, annotation_id)
-        # convet records to dict for bulk insert - where are models now? -> generalize
+        records = [records_factory("GenomicAnnotation", r)._asdict() for r in records]
 
-        # need a warning/error before commit if entries exists already, check for annotation_id?
-        # bulk insert
+        query = queries.query_column_where(GenomicAnnotation, "annotation_id")
+        ids = session.execute(query).scalars().all()
+        if annotation_id in ids:
+            msg = (
+                f"GenomicAnnotation already contains records with annotation_id={annotation_id}. "
+                "Skipping DB transaction! If annotation was downloaded successfully, there is a "
+                "risk of data corruption: check your database! Terminating!"
+            )
+            logger.warning(msg)
+            return
+        session.execute(insert(GenomicAnnotation), records)
+        session.commit()
 
-        # can pybedtool/bedtool work with gzip data? YES do not uncompress
         # TODO:
-        # 1. sort gtf
         # 2. extract exons, UTRS, CDS, and genes for processing
         # 3. subtract exons from genes -> introns
         # 4. complement genes (we need chrom sizes) -> intergenic
         # ? Do we work in some tmp directory, and move relevant files when done (context manager - rm all remaining files? incl. bedtools?)
-
-        # create class method to use or not create_annotation
