@@ -10,7 +10,7 @@ import logging
 from typing import ClassVar
 
 # from typing import TypeVar, Type
-# from sqlalchemy import select, func
+from sqlalchemy import select
 
 from pathlib import Path
 
@@ -18,6 +18,7 @@ from pathlib import Path
 from sqlalchemy.orm import Session
 
 from scimodom.database.models import (
+    Data,
     Annotation,
     AnnotationVersion,
     GenomicAnnotation,
@@ -51,13 +52,13 @@ class AnnotationService:
 
     DATA_PATH: ClassVar[str | Path | None] = os.getenv("DATA_PATH")
 
-    def __init__(
-        self,
-        session: Session,
-    ) -> None:
+    def __init__(self, session: Session, eufid: str) -> None:
+        """Initializer method."""
         self._session = session
+        self._eufid = eufid
 
     def __new__(cls, session: Session):
+        """Constructor method."""
         if cls.DATA_PATH is None:
             msg = "Missing environment variable: DATA_PATH. Terminating!"
             raise ValueError(msg)
@@ -250,8 +251,34 @@ class AnnotationService:
         session.execute(insert(GenomicAnnotation), records)
         session.commit()
 
-        # TODO:
-        # 2. extract exons, UTRS, CDS, and genes for processing
-        # 3. subtract exons from genes -> introns
-        # 4. complement genes (we need chrom sizes) -> intergenic
-        # ? Do we work in some tmp directory, and move relevant files when done (context manager - rm all remaining files? incl. bedtools?)
+    def annotate_data(self):
+        """Annotate Data: assign annotation_id"""
+
+        query = select(
+            Data.chrom,
+            Data.start,
+            Data.end,
+            Data.name,
+            Data.score,
+            Data.strand,
+            Data.id,
+            Data.dataset_id,
+            Data.thick_start,
+            Data.thick_end,
+            Data.item_rgb,
+            Data.coverage,
+            Data.frequency,
+            Data.ref_base,
+        ).where(Data.dataset_id == self._eufid)
+        records = self._session.execute(query).all()
+
+        query = select(
+            GenomicAnnotation.chrom,
+            GenomicAnnotation.start,
+            GenomicAnnotation.end,
+            GenomicAnnotation.gene_name,
+            GenomicAnnotation.annotation_id,
+            GenomicAnnotation.strand,
+            GenomicAnnotation.id,
+        )
+        annotation = self._session.execute(query).all()

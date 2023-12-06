@@ -70,7 +70,7 @@ class EUFImporter:
         MAX_BUFFER: ClassVar[int] = 1000
 
         def __init__(self, session: Session, model) -> None:
-            """Constructor method."""
+            """Initializer method."""
             self._session = session
             self._model = model
             self._buffer: list[dict] = []
@@ -100,7 +100,7 @@ class EUFImporter:
         assembly_id: int,
         lifted: bool,
     ) -> None:
-        """Constructor method."""
+        """Initializer method."""
         self._sep: str = self.SPECS["delimiter"]
         self._htag: str = self.SPECS["header"]["comment"]
         self._hsep: str = self.SPECS["header"]["delimiter"]

@@ -73,6 +73,7 @@ class DataService:
         technology_id: int,
         organism_id: int,
     ) -> None:
+        """Initializer method."""
         self._eufid: str | None = None
         self._selection_ids: dict = dict()
         self._lifted: bool = False

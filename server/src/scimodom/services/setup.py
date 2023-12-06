@@ -21,7 +21,7 @@ class SetupService:
     """
 
     def __init__(self, session) -> None:
-        """Constructor method."""
+        """Initializer method."""
         self._session = session
         self._config = Config()
         self._models_tables = [

@@ -46,7 +46,7 @@ class ProjectService:
     ASSEMBLY_NUM_LENGTH: ClassVar[int] = specs.ASSEMBLY_NUM_LENGTH
 
     def __init__(self, session: Session, project: dict) -> None:
-        """Constructor method."""
+        """Initializer method."""
         self._session = session
         self._project = project
 
