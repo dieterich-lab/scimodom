@@ -19,6 +19,11 @@ def favicon():
     return frontend.send_static_file('favicon.ico')
 
 
+@frontend.route('/config.js')
+def config():
+    return frontend.send_static_file('config.js')
+
+
 @frontend.route('/assets/<path:filename>')
 def assets(filename):
     print(filename)
