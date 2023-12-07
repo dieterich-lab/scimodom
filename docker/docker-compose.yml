@@ -1,3 +1,4 @@
+version: "3"
 services:
   scimodom_db:
     env_file: .env
@@ -11,7 +12,8 @@ services:
   scimodom_app:
     env_file: .env
     image: ${APP_IMAGE_NAME}
-    depends_on: scimodom_db
+    depends_on:
+      - scimodom_db
     ports:
       - "${HTTP_PORT}:8000"
     volumes:
