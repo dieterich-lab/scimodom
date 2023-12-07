@@ -9,8 +9,9 @@ HOST_SECRETS_DIR = environ.get('HOST_SECRETS_DIR')
 HOST_BACKUP_DIR = environ.get('HOST_BACKUP_DIR')
 HOST_DB_DATA_DIR = environ.get('HOST_DB_DATA_DIR')
 HOST_IMPORT_DIR = environ.get('HOST_IMPORT_DIR')
+HOST_CONFIG_DIR = environ.get('HOST_CONFIG_DIR')
 
-HOST_FOLDERS = [HOST_SECRETS_DIR, HOST_BACKUP_DIR, HOST_DB_DATA_DIR, HOST_IMPORT_DIR]
+HOST_FOLDERS = [HOST_SECRETS_DIR, HOST_BACKUP_DIR, HOST_DB_DATA_DIR, HOST_IMPORT_DIR, HOST_CONFIG_DIR]
 SECRET_FILES = ['mariadb-root', 'mariadb-scimodom', 'flask-secret']
 
 PASSWORD_LENGTH = 32
@@ -42,8 +43,16 @@ def write_password_file(filename):
         print(get_random_string(), file=fp)
 
 
+def write_client_config():
+    path = join(HOST_CONFIG_DIR, 'config.js')
+    url = environ.get('HTTP_PUBLIC_URL')
+    with open(path, 'w') as fp:
+        print(f"window.API_BASE_URL = '{url}/api/v0';", file=fp)
+
+
 umask(0o77)
 for folder in HOST_FOLDERS:
     Path(folder).mkdir(exist_ok=True)
 for name in SECRET_FILES:
     write_password_file(name)
+write_client_config()

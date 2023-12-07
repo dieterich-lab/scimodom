@@ -17,6 +17,9 @@ HTTP_PORT=8000
 # We use gunicorn. The docs suggest 2*CPU worker processes.
 HTTP_WORKER_PROCESSES=4
 
+# Enter here the URL to access the API.
+HTTP_PUBLIC_URL=http://127.0.0.1:5000
+
 # That should fit for the first instance created with podman-compose.
 # In doubt check "podman-compose ps".
 DB_CONTAINER_NAME=docker_scimodom_db_1
@@ -46,6 +49,8 @@ HOST_IMPORT_DIR=../server/import
 # so that the service can be re-deployed without losing all data.
 # (tbd: do Docker Volumes work too?)
 HOST_DB_DATA_DIR=./db_data
+# Used to inject configuration in the APP container
+HOST_CONFIG_DIR=./config
 
 # Only used for DEV setup
 HOST_DEV_DB_DATA_DIR=./db_data_dev
