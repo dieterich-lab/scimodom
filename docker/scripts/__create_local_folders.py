@@ -1,18 +1,17 @@
 #!/usr/bin/python3
-from os import umask
+from os import umask, environ
 from pathlib import Path
-from os.path import dirname, join
+from os.path import join
 from random import randrange
 from sys import stderr
 
-SCRIPT_DIR = dirname(__file__)
-SECRETS_FOLDER = join(dirname(SCRIPT_DIR), 'secrets')
+HOST_SECRETS_DIR = environ.get('HOST_SECRETS_DIR')
+HOST_BACKUP_DIR = environ.get('HOST_BACKUP_DIR')
+HOST_DB_DATA_DIR = environ.get('HOST_DB_DATA_DIR')
+HOST_IMPORT_DIR = environ.get('HOST_IMPORT_DIR')
+
+HOST_FOLDERS = [HOST_SECRETS_DIR, HOST_BACKUP_DIR, HOST_DB_DATA_DIR, HOST_IMPORT_DIR]
 SECRET_FILES = ['mariadb-root', 'mariadb-scimodom', 'flask-secret']
-
-BACKUP_FOLDER = join(dirname(SCRIPT_DIR), 'backup')
-DATA_FOLDER = join(dirname(SCRIPT_DIR), 'db_data')
-
-HOST_FOLDERS = [SECRETS_FOLDER, BACKUP_FOLDER, DATA_FOLDER]
 
 PASSWORD_LENGTH = 32
 
@@ -34,8 +33,8 @@ def get_random_string():
     return ''.join(chars)
 
 
-def write_password_file(name):
-    path = join(SECRETS_FOLDER, name)
+def write_password_file(filename):
+    path = join(HOST_SECRETS_DIR, filename)
     if Path(path).exists():
         print(f"Ignoring '{path}' - exists already.", file=stderr)
         return

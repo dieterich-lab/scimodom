@@ -59,7 +59,7 @@ have to create folders for the database and it's backups. This can be
 done a follows:
 
 ```bash
-./scripts/create_local_folders.py
+./scripts/create_local_folders.sh
 ```
 
 The following files are required:
@@ -120,7 +120,7 @@ the docker/.env file. When running it the first time, you need to set up the
 secrets create the data folder for the DEV database:
 
 ```bash
-./scripts/create_local_folders.py
+./scripts/create_local_folders.sh
 mkdir db_data_dev
 podman-compose -f docker-compose-db-only.yml up -d
 ```
