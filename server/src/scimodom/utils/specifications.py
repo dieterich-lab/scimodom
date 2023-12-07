@@ -51,4 +51,6 @@ specsEUF = {
 }
 
 # Annotation
-ANNOTATION_URL = "https://ftp.ensembl.org/pub"
+ENSEMBL_FTP = "https://ftp.ensembl.org/pub"
+ENSEMBL_SERVER = "http://rest.ensembl.org"
+ENSEMBL_ASM = "info/assembly"

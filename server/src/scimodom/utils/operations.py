@@ -207,37 +207,37 @@ def get_subtract(
     return c_records
 
 
-def get_genomic_annotation(filen: str | Path, annotation_id: int) -> list[Any]:
-    """Create records for genomic annotation
+# def get_genomic_annotation(filen: str | Path, annotation_id: int) -> list[Any]:
+# """Create records for genomic annotation
 
-    NOTE: 06.12.2023 GTF only! fields indices hard coded!
+# NOTE: 06.12.2023 GTF only! fields indices hard coded!
 
-    :param filen: Path to annotation (gtf)
-    :type filen: str | Path
-    :param annotation_id: Current annotation id (taxa, release, version)
-    :type annotation_id: int
-    :returns: GTF fields as BED+ records
-    :rtype: list of tuples (records)
-    """
-    from scimodom.utils.utils import parse_gtf_attributes
+#:param filen: Path to annotation (gtf)
+#:type filen: str | Path
+#:param annotation_id: Current annotation id (taxa, release, version)
+#:type annotation_id: int
+#:returns: GTF fields as BED+ records
+#:rtype: list of tuples (records)
+# """
+# from scimodom.utils.utils import parse_gtf_attributes
 
-    annotation = pybedtools.BedTool(filen).sort()
-    genes = annotation.filter(lambda a: a.fields[2] == "gene")
+# annotation = pybedtools.BedTool(filen).sort()
+# genes = annotation.filter(lambda a: a.fields[2] == "gene")
 
-    records = [
-        tuple(
-            sum(
-                (
-                    [i.chrom, i.start, i.end, i.name, annotation_id, i.strand],
-                    [
-                        parse_gtf_attributes(i.fields[8]).get(k)
-                        for k in ["gene_id", "gene_biotype"]
-                    ],
-                ),
-                [],
-            )
-        )
-        for i in genes
-    ]
+# records = [
+# tuple(
+# sum(
+# (
+# [i.chrom, i.start, i.end, i.name, annotation_id, i.strand],
+# [
+# parse_gtf_attributes(i.fields[8]).get(k)
+# for k in ["gene_id", "gene_biotype"]
+# ],
+# ),
+# [],
+# )
+# )
+# for i in genes
+# ]
 
-    return records
+# return records

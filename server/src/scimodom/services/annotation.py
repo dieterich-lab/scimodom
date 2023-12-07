@@ -174,7 +174,8 @@ class AnnotationService:
 
         from posixpath import join as urljoin
         from scimodom.utils.models import records_factory
-        from scimodom.utils.operations import get_genomic_annotation
+
+        # from scimodom.utils.operations import get_genomic_annotation
 
         if data_path is None or not Path(data_path).is_dir():
             try:
@@ -235,28 +236,58 @@ class AnnotationService:
             yield o.flush()
 
         url = urljoin(
-            specs.ANNOTATION_URL,
+            specs.ENSEMBL_FTP,
             f"release-{release}",
             fmt,
             organism.lower(),
             annotation_file,
         )
         with requests.get(url, stream=True) as request:
-            if request.ok:
-                try:
-                    with gzip.open(destination, mode="xb") as filen:
-                        for chunk in decompress_stream(
-                            request.iter_content(chunk_size=10 * 1024)
-                        ):
-                            filen.write(chunk)
-                except FileExistsError:
-                    msg = f"File at {destination} exists. Skipping download!"
-                    logger.warning(msg)
-                    return
-            else:
-                msg = f"Request failed with {request.status_code}: {request.content}"
-                logger.error(msg)
-                return
+            if not request.ok:
+                request.raise_for_status()
+            try:
+                with gzip.open(destination, mode="xb") as filen:
+                    for chunk in decompress_stream(
+                        request.iter_content(chunk_size=10 * 1024)
+                    ):
+                        filen.write(chunk)
+            except FileExistsError:
+                msg = f"File at {destination} exists. Skipping!"
+                logger.warning(msg)
+
+        # here now, but may be moved to assembly service...
+        # here parent is one dir up, assume it exists (see above)...
+        # overvrite
+        parent = Path(data_path, organism, assembly)
+        destination = Path(parent, "chrom.sizes")
+
+        url = urljoin(
+            specs.ENSEMBL_SERVER,
+            specs.ENSEMBL_ASM,
+            organism.lower(),
+        )
+        request = requests.get(url, headers={"Content-Type": "application/json"})
+        if not request.ok:
+            request.raise_for_status()
+        gene_build = request.json()
+        coord_sysver = gene_build["default_coord_system_version"]
+        if not coord_sysver == assembly:
+            msg = f"Mismatch between assembly {assembly} and coord system version {coord_sysver}. Terminating!"
+            logger.error(msg)
+            return
+        chroms = gene_build["karyotype"]
+        top_level = {
+            d["name"]: d["length"]
+            for d in gene_build["top_level_region"]
+            if d["coord_system"] == "chromosome" and d["name"] in chroms
+        }
+        try:
+            with open(destination, "x") as filen:
+                for chrom in sorted(chroms):
+                    filen.write(f"{chrom}\t{top_level[chrom]}\n")
+        except FileExistsError:
+            msg = f"File at {destination} exists. Skipping!"
+            logger.warning(msg)
 
         # records = get_genomic_annotation(destination, annotation_id)
         # records = [records_factory("GenomicAnnotation", r)._asdict() for r in records]
@@ -275,7 +306,12 @@ class AnnotationService:
         # session.commit()
 
     def annotate_data(self):
-        """Annotate Data: add entries to GenomicAnnotation"""
+        """Annotate Data: add entries to GenomicAnnotation
+
+        NOTE: 06.12.2023 GTF only!
+        See scimodom.utils.operations.get_genomic_annotation
+
+        """
 
         query = select(
             Data.chrom,
