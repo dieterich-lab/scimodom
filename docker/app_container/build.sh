@@ -10,4 +10,4 @@ cd "$script_path/../../client"
 npm install
 npm run build
 cd "$script_path/../.."
-$DOCKER build . -t scimodom_app:latest -f docker/app_container/Dockerfile
+"$DOCKER" build . -t "$APP_IMAGE_NAME" -f docker/app_container/Dockerfile
