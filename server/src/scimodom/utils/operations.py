@@ -10,26 +10,19 @@ from scimodom.utils.utils import flatten_list
 import pybedtools  # type: ignore
 
 
-def _to_bedtool(
-    a_records: Sequence[Any], b_records: Sequence[Any], append: bool = True
-):
+def _to_bedtool(records: Sequence[Any], asl: bool = False):
     """Convert records to BedTool and sort
 
-    :param a_records: DB records (A features)
-    :type a_records: Sequence (list of tuples)
-    :param b_records: DB records (B features)
-    :type b_records: Sequence (list of tuples)
-    :returns: a_bedtool, b_bedtool
+    :param records: Database records (or list of records)
+    :type records: Sequence
+    :returns: bedtool
     :rtype: BedTool or list of BedTool
     """
-    a_bedtool = pybedtools.BedTool(a_records).sort()
-    if append:
-        b_bedtool = []
-        for records in b_records:
-            b_bedtool.append(pybedtools.BedTool(records).sort())
+    if asl:
+        bedtool = [pybedtools.BedTool(record).sort() for record in records]
     else:
-        b_bedtool = pybedtools.BedTool(b_records).sort()
-    return a_bedtool, b_bedtool
+        bedtool = pybedtools.BedTool(records).sort()
+    return bedtool
 
 
 def get_op(op: str):
@@ -40,15 +33,10 @@ def get_op(op: str):
     :returns: selected function
     :rtype: function
     """
-    if op == "intersect":
-        return get_intersection
-    elif op == "closest":
-        return get_closest
-    elif op == "subtract":
-        return get_subtract
+    return eval(f"get_{op}")
 
 
-def get_intersection(
+def get_intersect(
     a_records: Sequence[Any],
     b_records: Sequence[Any],
     s: bool = True,
@@ -87,7 +75,7 @@ def get_intersection(
     if len(b_records) == 1:
         filnum_idx = 0
 
-    a_bedtool, b_bedtool = _to_bedtool(a_records, b_records)
+    a_bedtool, b_bedtool = _to_bedtool(a_records), _to_bedtool(b_records, asl=True)
     c_bedtool = a_bedtool.intersect(
         b=[b.fn for b in b_bedtool], wa=wa, wb=wb, s=s, sorted=sorted
     )
@@ -150,7 +138,7 @@ def get_closest(
     if len(b_records) == 1:
         filnum_idx = 0
 
-    a_bedtool, b_bedtool = _to_bedtool(a_records, b_records)
+    a_bedtool, b_bedtool = _to_bedtool(a_records), _to_bedtool(b_records, asl=True)
     c_bedtool = a_bedtool.closest(
         b=[b.fn for b in b_bedtool], io=io, t=t, mdb=mdb, D=D, s=s, sorted=sorted
     )
@@ -201,43 +189,115 @@ def get_subtract(
     # file number index
     offset = 6 + n_fields
 
-    a_bedtool, b_bedtool = _to_bedtool(a_records, flatten_list(b_records), append=False)
+    a_bedtool, b_bedtool = _to_bedtool(a_records), _to_bedtool(flatten_list(b_records))
     c_bedtool = a_bedtool.subtract(b_bedtool, s=s, sorted=sorted)
     c_records = [(i.fields[:offset]) for i in c_bedtool]
     return c_records
 
 
-# def get_genomic_annotation(filen: str | Path, annotation_id: int) -> list[Any]:
-# """Create records for genomic annotation
+def get_genomic_annotation(
+    annotation_file: str | Path,
+    chrom_file: str | Path,
+    annotation_id: int,
+    records: Sequence[Any],
+) -> list[Any]:
+    """Create records for genomic annotation
 
-# NOTE: 06.12.2023 GTF only! fields indices hard coded!
+    NOTE: 06.12.2023 GTF only! fields indices hard coded!
+          Requires > ~3GB /tmp disk space
 
-#:param filen: Path to annotation (gtf)
-#:type filen: str | Path
-#:param annotation_id: Current annotation id (taxa, release, version)
-#:type annotation_id: int
-#:returns: GTF fields as BED+ records
-#:rtype: list of tuples (records)
-# """
-# from scimodom.utils.utils import parse_gtf_attributes
+    :param annotation_file: Path to annotation (gtf)
+    :type annotation_file: str | Path
+    :param chrom_file: Path to chrom sizes
+    :type chrom_file: str | Path
+    :param annotation_id: Current annotation id (taxa, release, version)
+    :type annotation_id: int
+    :param records: DB records
+    :type records: Sequence (list of tuples)
+    :returns: Records for GenomicAnnotation
+    :rtype: list of tuples
+    """
+    import tempfile
+    from scimodom.utils.utils import flatten_list
+    from scimodom.utils.utils import parse_gtf_attributes
 
-# annotation = pybedtools.BedTool(filen).sort()
-# genes = annotation.filter(lambda a: a.fields[2] == "gene")
+    features = {
+        "exon": "Exon",
+        "five_prime_utr": "5'UTR",
+        "three_prime_utr": "3'UTR",
+        "CDS": "CDS",
+    }
 
-# records = [
-# tuple(
-# sum(
-# (
-# [i.chrom, i.start, i.end, i.name, annotation_id, i.strand],
-# [
-# parse_gtf_attributes(i.fields[8]).get(k)
-# for k in ["gene_id", "gene_biotype"]
-# ],
-# ),
-# [],
-# )
-# )
-# for i in genes
-# ]
+    def _gtf_to_records(bedtool):
+        return [
+            tuple(
+                sum(
+                    (
+                        [i.chrom, i.start, i.end, i.name, annotation_id, i.strand],
+                        [
+                            parse_gtf_attributes(i.fields[8]).get(k)
+                            for k in ["gene_id", "gene_biotype"]
+                        ],
+                    ),
+                    [],
+                )
+            )
+            for i in bedtool
+        ]
 
-# return records
+    def _clean_fields(field, delim=","):
+        for f in field:
+            if delim not in f:
+                yield f
+                continue
+            yield None
+
+    def _to_records(bedtool, feature):
+        return [
+            tuple(
+                sum(
+                    (
+                        [i.fields[4], i.fields[10], feature],
+                        [
+                            k
+                            for k in _clean_fields(
+                                [i.fields[9], i.fields[12], i.fields[13]]
+                            )
+                        ],
+                    ),
+                    [],
+                )
+            )
+            for i in bedtool
+        ]
+
+    def _intersect(data, stream, feature):
+        bedtool = _to_bedtool(_gtf_to_records(stream))
+        merged = bedtool.merge(s=True, c=[4, 5, 6, 7, 8], o="distinct")
+        itrx = data.intersect(b=merged, wa=True, wb=True, s=True, sorted=True)
+        return _to_records(itrx, feature)
+
+    all_records = []
+    tmpdir = pybedtools.helpers.get_tempdir()
+    # with tempfile.TemporaryDirectory(dir=tmpdir) as tempdir:
+    with tempfile.TemporaryDirectory(dir="/home/eboileau/Downloads/tables/") as tempdir:
+        pybedtools.helpers.set_tempdir(tempdir)
+        annotation = _to_bedtool(annotation_file)  # as gtf
+        data_bedtool = _to_bedtool(records)
+        for key, val in features.items():
+            stream = annotation.filter(lambda a: a.fields[2] == key)
+            all_records.append(_intersect(data_bedtool, stream, val))
+        genes = annotation.filter(
+            lambda a: a.fields[2] == "gene"
+        ).saveas()  # "complement" see issue #49 for more
+        exons = annotation.filter(lambda a: a.fields[2] == "exon")
+        introns = genes.subtract(exons, s=True, sorted=True)
+        all_records.append(_intersect(data_bedtool, introns, "Intron"))
+        inter = genes.complement(g=chrom_file)
+        itrx = data_bedtool.intersect(b=inter, wa=True, wb=True, s=False, sorted=True)
+        itrx_records = [
+            (i.fields[4], annotation_id, "Intergenic", None, None, None) for i in itrx
+        ]
+        all_records.append(itrx_records)
+    pybedtools.helpers.set_tempdir(tmpdir)
+    return flatten_list(all_records)

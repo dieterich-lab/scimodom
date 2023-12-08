@@ -127,10 +127,10 @@ def _get_records():
     return a, [b, c], intersect
 
 
-def test_get_intersection():
-    import scimodom.utils.operations as ops
+def test_get_intersect():
+    from scimodom.utils.operations import get_op
 
     a_records, b_records, expected_records = _get_records()
-    records = ops.get_intersection(a_records, b_records)
+    records = get_op("intersect")(a_records, b_records)
 
     assert records == expected_records

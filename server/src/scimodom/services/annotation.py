@@ -3,19 +3,11 @@
 import os
 import logging
 
-# import scimodom.utils.utils as utils
-# import scimodom.utils.specifications as specs
-# import scimodom.database.queries as queries
 import scimodom.database.queries as queries
 
-from typing import ClassVar
-
-# from typing import TypeVar, Type
-from sqlalchemy import select
-
 from pathlib import Path
-
-
+from typing import ClassVar
+from sqlalchemy import select, insert
 from sqlalchemy.orm import Session
 
 from scimodom.database.models import (
@@ -24,21 +16,7 @@ from scimodom.database.models import (
     Annotation,
     AnnotationVersion,
     GenomicAnnotation,
-    GenomicRegion,
 )
-
-# from scimodom.services.importer import EUFImporter
-# from scimodom.database.models import (
-# Data,
-# Dataset,
-# Association,
-# Selection,
-# Modomics,
-# Modification,
-# DetectionTechnology,
-# Organism,
-# Assembly,
-# )
 
 # T = TypeVar('T', bound='Parent')
 
@@ -54,9 +32,12 @@ class AnnotationService:
     :type eufid: str
     :param DATA_PATH: Path to annotation file
     :type DATA_PATH: str | Path | None
+    :param FMT: Annotation file format
+    :type FMT: str
     """
 
     DATA_PATH: ClassVar[str | Path | None] = os.getenv("DATA_PATH")
+    FMT: ClassVar[str] = "gtf"  # 12.23 only handle GTF
 
     def __init__(self, session: Session, eufid: str) -> None:
         """Initializer method."""
@@ -71,7 +52,7 @@ class AnnotationService:
         self._taxa_id: int = self._session.execute(query).scalar()
 
         query = queries.get_assembly_version()
-        db_assembly_version = session.execute(query).scalar()
+        db_assembly_version = self._session.execute(query).scalar()
         query = queries.query_column_where(
             "Assembly",
             "name",
@@ -80,7 +61,7 @@ class AnnotationService:
         self._assembly: str = self._session.execute(query).scalar()
 
         query = queries.get_annotation_version()
-        db_annotation_version = session.execute(query).scalar()
+        db_annotation_version = self._session.execute(query).scalar()
         query = queries.query_column_where(
             Annotation,
             "release",
@@ -99,6 +80,21 @@ class AnnotationService:
         )
         self._annotation_id: int = self._session.execute(query).scalar()
 
+        query = queries.query_column_where(
+            "Taxa",
+            "name",
+            filters={"id": self._taxa_id},
+        )
+        organism = self._session.execute(query).scalar()
+        organism = "_".join(organism.split())
+
+        parent, filen = self.get_annotation_path(
+            self.DATA_PATH, organism, self._assembly, self._release, self.FMT
+        )
+        self._annotation_file = Path(parent, filen)
+        parent, filen = self.get_chrom_path(self.DATA_PATH, organism, self._assembly)
+        self._chrom_file = Path(parent, filen)
+
     def __new__(cls, session: Session, eufid: str):
         """Constructor method."""
         if cls.DATA_PATH is None:
@@ -108,12 +104,7 @@ class AnnotationService:
             return super(AnnotationService, cls).__new__(cls)
 
     @classmethod
-    def from_new(
-        cls,
-        session: Session,
-        eufid: str,
-        fmt: str = "gtf",
-    ):
+    def from_new(cls, session: Session, eufid: str):
         """Provides AnnotationService factory for first
         time annotation.
 
@@ -121,8 +112,6 @@ class AnnotationService:
         :type session: Session
         :param eufid: EUFID
         :type eufid: string
-        :param fmt: Annotation file format
-        :type fmt: string
         :returns: AnnotationService class instance
         :rtype: AnnotationService
         """
@@ -133,9 +122,50 @@ class AnnotationService:
             service._release,
             service._assembly,
             service.DATA_PATH,
-            fmt,
+            service.FMT,
         )
         return service
+
+    @staticmethod
+    def get_annotation_path(
+        path: str | Path, organism: str, assembly: str, release: int, fmt: str
+    ) -> tuple[str | Path, str]:
+        """Construct file path (annotation)
+
+        :param path: Base path
+        :type path: str | Path
+        :param organism: Organism
+        :type organism: str
+        :param assembly: Assembly
+        :type assembly: str
+        :param release: Annotation release
+        :type release: int
+        :param fmt: Annotation file format
+        :type fmt: str
+        :returns: Parent and file name
+        :rtype: tuple[str | Path, str]
+        """
+        parent = Path(path, organism, assembly, str(release))
+        filen = f"{organism}.{assembly}.{release}.chr.{fmt}.gz"
+        return parent, filen
+
+    @staticmethod
+    def get_chrom_path(
+        path: str | Path, organism: str, assembly: str
+    ) -> tuple[str | Path, str]:
+        """Construct file path (chrom sizes)
+
+        :param path: Base path
+        :type path: str | Path
+        :param organism: Organism
+        :type organism: str
+        :param assembly: Assembly
+        :type assembly: str
+        :returns: Parent and file name
+        :rtype: tuple[str | Path, str]
+        """
+        parent = Path(path, organism, assembly)
+        return parent, "chrom.sizes"
 
     @staticmethod
     def create_annotation(
@@ -173,7 +203,6 @@ class AnnotationService:
         from sqlalchemy import insert
 
         from posixpath import join as urljoin
-        from scimodom.utils.models import records_factory
 
         # from scimodom.utils.operations import get_genomic_annotation
 
@@ -219,9 +248,10 @@ class AnnotationService:
         msg = "Downloading annotation: this could take a few seconds..."
         logger.debug(msg)
 
-        annotation_file = f"{organism}.{assembly}.{release}.chr.{fmt}.gz"
+        parent, annotation_file = AnnotationService.get_annotation_path(
+            data_path, organism, assembly, release, fmt
+        )
         try:
-            parent = Path(data_path, organism, assembly, str(release))
             parent.mkdir(parents=True, exist_ok=False)
         except FileExistsError:
             msg = f"Annotation directory at {parent} already exists... continuing!"
@@ -258,8 +288,10 @@ class AnnotationService:
         # here now, but may be moved to assembly service...
         # here parent is one dir up, assume it exists (see above)...
         # overvrite
-        parent = Path(data_path, organism, assembly)
-        destination = Path(parent, "chrom.sizes")
+        parent, chrom_file = AnnotationService.get_chrom_path(
+            data_path, organism, assembly
+        )
+        destination = Path(parent, chrom_file)
 
         url = urljoin(
             specs.ENSEMBL_SERVER,
@@ -289,22 +321,6 @@ class AnnotationService:
             msg = f"File at {destination} exists. Skipping!"
             logger.warning(msg)
 
-        # records = get_genomic_annotation(destination, annotation_id)
-        # records = [records_factory("GenomicAnnotation", r)._asdict() for r in records]
-
-        # query = queries.query_column_where(GenomicAnnotation, "annotation_id")
-        # ids = session.execute(query).scalars().all()
-        # if annotation_id in ids:
-        # msg = (
-        # f"GenomicAnnotation already contains records with annotation_id={annotation_id}. "
-        # "Skipping DB transaction! If annotation was downloaded successfully, there is a "
-        # "risk of data corruption: check your database! Terminating!"
-        # )
-        # logger.warning(msg)
-        # return
-        # session.execute(insert(GenomicAnnotation), records)
-        # session.commit()
-
     def annotate_data(self):
         """Annotate Data: add entries to GenomicAnnotation
 
@@ -312,6 +328,8 @@ class AnnotationService:
         See scimodom.utils.operations.get_genomic_annotation
 
         """
+        from scimodom.utils.operations import get_genomic_annotation
+        from scimodom.utils.models import records_factory
 
         query = select(
             Data.chrom,
@@ -323,15 +341,18 @@ class AnnotationService:
         ).where(Data.dataset_id == self._eufid)
         records = self._session.execute(query).all()
 
-        # here
+        msg = "Annotating records may take a few minutes..."
+        logger.debug(msg)
 
-        # query = select(
-        # GenomicAnnotation.chrom,
-        # GenomicAnnotation.start,
-        # GenomicAnnotation.end,
-        # GenomicAnnotation.gene_name,
-        # GenomicAnnotation.annotation_id,
-        # GenomicAnnotation.strand,
-        # GenomicAnnotation.id,
-        # )
-        # annotation = self._session.execute(query).all()
+        annotated = get_genomic_annotation(
+            self._annotation_file, self._chrom_file, self._annotation_id, records
+        )
+
+        msg = "... done! Now inserting into DB."
+        logger.debug(msg)
+
+        annotated = [
+            records_factory("GenomicAnnotation", r)._asdict() for r in annotated
+        ]
+        self._session.execute(insert(GenomicAnnotation), annotated)
+        self._session.commit()

@@ -170,14 +170,12 @@ class GenomicAnnotation(NamedTuple):
 
     _dtypes = get_types("GenomicAnnotation")
 
-    chrom: _dtypes["chrom"]
-    start: _dtypes["start"]
-    end: _dtypes["end"]
-    gene_name: _dtypes["gene_name"]
+    data_id: _dtypes["data_id"]
     annotation_id: _dtypes["annotation_id"]
-    strand: _dtypes["strand"]
-    gene_id: _dtypes["gene_id"]
-    gene_biotype: _dtypes["gene_biotype"]
+    feature: _dtypes["feature"]
+    gene_name: _dtypes["gene_name"]  # | None
+    gene_id: _dtypes["gene_id"]  # | None
+    gene_biotype: _dtypes["gene_biotype"]  # | None
 
 
 def records_factory(instance_str: str, vals: Sequence[Any]):
@@ -198,8 +196,8 @@ def records_factory(instance_str: str, vals: Sequence[Any]):
         def __new__(cls, *vals):
             super_obj = super(instance, cls)
             superclass = super_obj.__thisclass__
-            typed_vals = [
-                _dtype.__call__(val)
+            typed_vals = [  # is it safe? to accomodate for nullable columns e.g. GenomicAnnotation
+                _dtype.__call__(val) if val is not None else None
                 for val, _dtype in zip(vals, superclass.__annotations__.values())
             ]
             return super_obj.__new__(cls, typed_vals)

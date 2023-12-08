@@ -103,10 +103,6 @@ class Annotation(Base):
     annotations: Mapped[List["GenomicAnnotation"]] = relationship(
         back_populates="inst_annotation"
     )
-    regions: Mapped[List["GenomicRegion"]] = relationship(
-        back_populates="inst_annotation"
-    )
-    records: Mapped[List["Data"]] = relationship(back_populates="inst_annotation")
 
 
 class AnnotationVersion(Base):
@@ -123,30 +119,15 @@ class GenomicAnnotation(Base):
     __tablename__ = "genomic_annotation"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    annotation_id: Mapped[int] = mapped_column(ForeignKey("annotation.id"))
-    chrom: Mapped[str] = mapped_column(String(128), nullable=False)
-    start: Mapped[int] = mapped_column(nullable=False)
-    end: Mapped[int] = mapped_column(nullable=False)
-    strand: Mapped[str] = mapped_column(String(1), nullable=False)
-    gene_name: Mapped[str] = mapped_column(String(32), nullable=True)
-    gene_id: Mapped[str] = mapped_column(String(32), nullable=True)
-    gene_biotype: Mapped[str] = mapped_column(String(255), nullable=True)
-
-    inst_annotation: Mapped["Annotation"] = relationship(back_populates="annotations")
-
-
-class GenomicRegion(Base):
-    """Genomic region"""
-
-    __tablename__ = "genomic_region"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
     data_id: Mapped[int] = mapped_column(ForeignKey("data.id"))
     annotation_id: Mapped[int] = mapped_column(ForeignKey("annotation.id"))
     feature: Mapped[str] = mapped_column(String(32), nullable=False)
+    gene_name: Mapped[str] = mapped_column(String(128), nullable=True)
+    gene_id: Mapped[str] = mapped_column(String(128), nullable=True)
+    gene_biotype: Mapped[str] = mapped_column(String(255), nullable=True)
 
-    inst_data: Mapped["Data"] = relationship(back_populates="regions")
-    inst_annotation: Mapped["Annotation"] = relationship(back_populates="regions")
+    inst_data: Mapped["Data"] = relationship(back_populates="annotations")
+    inst_annotation: Mapped["Annotation"] = relationship(back_populates="annotations")
 
 
 class Taxonomy(Base):
@@ -337,9 +318,6 @@ class Data(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     dataset_id: Mapped[str] = mapped_column(ForeignKey("dataset.id"))  # EUFID
-    annotation_id: Mapped[int] = mapped_column(
-        ForeignKey("annotation.id"), nullable=True
-    )  # nullable
     # bedRMod fields - order must match bedRMod columns?
     chrom: Mapped[str] = mapped_column(String(128), nullable=False)
     start: Mapped[int] = mapped_column(nullable=False)
@@ -355,5 +333,6 @@ class Data(Base):
     ref_base: Mapped[str] = mapped_column(String(1), nullable=False)
 
     inst_dataset: Mapped["Dataset"] = relationship(back_populates="records")
-    inst_annotation: Mapped["Annotation"] = relationship(back_populates="records")
-    regions: Mapped[List["GenomicRegion"]] = relationship(back_populates="inst_data")
+    annotations: Mapped[List["GenomicAnnotation"]] = relationship(
+        back_populates="inst_data"
+    )

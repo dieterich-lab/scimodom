@@ -374,10 +374,10 @@ def test_importer(Session, setup, project_template):
                 )
                 for r in records
             ],
-            columns=columns[3:],
+            columns=columns[2:],
         )
         expected_df = pd.read_csv(
-            _get_file(), sep="\t", skiprows=12, header=None, names=columns[3:]
+            _get_file(), sep="\t", skiprows=12, header=None, names=columns[2:]
         )
         expected_df = expected_df.astype(importer._dtypes["Data"])
         pd.testing.assert_frame_equal(df, expected_df, check_exact=True)
