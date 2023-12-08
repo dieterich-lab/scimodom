@@ -1,12 +1,22 @@
+from datetime import datetime, timezone
+from io import StringIO
+
 import pytest
+from sqlalchemy import select
+
+import scimodom.database.queries as queries
+import scimodom.utils.utils as utils
+from scimodom.database.models import Assembly, Association, Selection, Dataset, Modification, \
+    DetectionTechnology, Organism, Project, ProjectSource, ProjectContact
+from scimodom.services.dataset import DataService, DuplicateDatasetError
+from scimodom.services.project import ProjectService
+
 
 # NOTE: ultimately relies on ProjectService(Session(), project).create_project()
 # to avoid using ProjectService, we force/add project directly - skip checks
 
 
 def _get_file():
-    from io import StringIO
-
     string = """#fileformat=bedRModv1.6
     #organism=9606
     #modification_type=RNA
@@ -37,15 +47,6 @@ def _get_project(project_template, case=None):
 
 
 def _add_selection(session, metadata):
-    import scimodom.utils.utils as utils
-    import scimodom.database.queries as queries
-    from scimodom.database.models import (
-        Modification,
-        DetectionTechnology,
-        Organism,
-        Selection,
-    )
-
     for d in utils.to_list(metadata):
         rna = d["rna"]
         modomics_id = d["modomics_id"]
@@ -93,12 +94,9 @@ def _add_selection(session, metadata):
         )
         session.add(selection)
         session.flush()
-        selection_id = selection.id
 
 
 def _add_contact(session, project):
-    from scimodom.database.models import ProjectContact
-
     contact_name = project["contact_name"]
     contact_institution = project["contact_institution"]
     contact_email = project["contact_email"]
@@ -114,11 +112,6 @@ def _add_contact(session, project):
 
 
 def _mock_project_service(session, project):
-    from datetime import datetime, timezone
-    import scimodom.utils.utils as utils
-    from scimodom.services.project import ProjectService
-    from scimodom.database.models import Project, ProjectSource
-
     _add_selection(session, project["metadata"])
     contact_id = _add_contact(session, project)
     stamp = datetime.now(timezone.utc).replace(microsecond=0)
@@ -149,9 +142,6 @@ def _mock_project_service(session, project):
     ],
 )
 def test_dataset_get_selection(selection, Session, setup, project_template, caplog):
-    from io import StringIO
-    from scimodom.services.dataset import DataService
-
     project = _get_project(project_template, case=selection)
 
     with Session() as session, session.begin():
@@ -190,9 +180,6 @@ def test_dataset_get_selection(selection, Session, setup, project_template, capl
 
 
 def test_dataset_validate_entry(Session, setup, project_template):
-    from io import StringIO
-    from scimodom.services.dataset import DataService
-
     with Session() as session, session.begin():
         session.add_all(setup)
         smid = _mock_project_service(session, project_template)
@@ -220,10 +207,6 @@ def test_dataset_validate_entry(Session, setup, project_template):
 
 
 def test_dataset_validate_existing_entry(Session, setup, project_template):
-    from io import StringIO
-    from scimodom.services.dataset import DataService, DuplicateDatasetError
-    from scimodom.database.models import Dataset, Association
-
     taxa_id = 9606
     assembly_id = 1
     modification_ids = [1]
@@ -269,11 +252,6 @@ def test_dataset_validate_existing_entry(Session, setup, project_template):
 
 
 def test_dataset_validate_assembly(Session, setup, project_template):
-    from io import StringIO
-    from scimodom.services.dataset import DataService
-    from scimodom.database.models import Assembly
-    import scimodom.database.queries as queries
-
     taxa_id = 9606
     modification_ids = [1]
     technology_id = 1
@@ -353,11 +331,6 @@ def test_dataset_create_eufid(selection, Session, setup, project_template, caplo
 
 
 def test_dataset_add_association(Session, setup, project_template):
-    from sqlalchemy import select
-    from io import StringIO
-    from scimodom.services.dataset import DataService
-    from scimodom.database.models import Association, Selection
-
     with Session() as session, session.begin():
         session.add_all(setup)
         smid = _mock_project_service(session, project_template)

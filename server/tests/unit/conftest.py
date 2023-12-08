@@ -3,7 +3,7 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from scimodom.database.database import init
+from scimodom.database.database import init, Base
 
 
 @pytest.fixture()
@@ -11,6 +11,7 @@ def Session():
     engine = create_engine("sqlite:///:memory:")
     session = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     init(engine, lambda: session)
+    Base.metadata.create_all(engine)
 
     # from sqlalchemy import inspect
     # insp = inspect(engine)
