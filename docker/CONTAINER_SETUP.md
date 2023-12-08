@@ -6,7 +6,11 @@
 
 You will need a container CLI, which can handle docker-compose-like
 files, e.g. podman-compose or the original docker-compose. Docker Swarm
-is very restricted and may **not** work.
+is very restricted and may **not** work. The following versions are known to
+work:
+
+* podman 4.3.1 with podman-compose 1.0.3 on Debian 12
+* docker 20.10 with docker-compose 1.25.0 on Debian 11
 
 If podman is correctly installed, with podman all operations can be done
 as a non-root user.
@@ -14,7 +18,11 @@ as a non-root user.
 ### Image Building: NodeJS
 
 In addition, NodeJS and npm are required on the machine, which builds
-the container images.
+the container images. VUE.js presently requires NodeJS 16 or newer.
+The following version is known to work:
+
+* NodeJS 18.13.0 on Debian 12
+* NodeJS 18.17.1 on Debian 11 from nodesource.com
 
 ## Configure .env
 
@@ -73,8 +81,6 @@ like '/', '@' or ':' may not work.  Later changes only have effect if
 the database container is recreated. That will reset the database
 completely. So you may have to restore a backup.
 
-**TODO**: Populate import folder!!!
-
 ## Starting and Stopping
 
 To start the containers just use the docker-compos.yml, e.g.:
@@ -125,7 +131,7 @@ mkdir db_data_dev
 podman-compose -f docker-compose-db-only.yml up -d
 ```
 
-TIn the ../server/.env the correct DATABASE_URI must be configured:
+In the ../server/.env the correct DATABASE_URI must be configured:
 
 ```
 DATABASE_URI=mysql+mysqldb://scimodom:PASSWORD@127.0.0.1:3306/scimodom
