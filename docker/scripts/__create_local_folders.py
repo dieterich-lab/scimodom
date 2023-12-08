@@ -1,9 +1,8 @@
 #!/usr/bin/python3
-from os import umask, environ
+from os import umask, environ, chmod
 from pathlib import Path
 from os.path import join
 from random import randrange
-from shutil import chown
 from sys import stderr
 
 HOST_SECRETS_DIR = environ.get('HOST_SECRETS_DIR')
@@ -49,7 +48,7 @@ def write_client_config():
     url = environ.get('HTTP_PUBLIC_URL')
     with open(path, 'w') as fp:
         print(f"window.API_BASE_URL = '{url}/api/v0/';", file=fp)
-    chown(path, 0o644)
+    chmod(path, 0o644)
 
 
 umask(0o77)
