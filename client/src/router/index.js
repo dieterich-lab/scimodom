@@ -15,27 +15,27 @@ const router = createRouter({
       component: HomeView
     },
     {
-      path: '/search',
+      path: '/',
       name: 'search',
       component: SearchView
     },
     {
-      path: '/browse',
+      path: '/',
       name: 'browse',
       component: BrowseView
     },
     {
-      path: '/compare',
+      path: '/',
       name: 'compare',
       component: CompareView
     },
     {
-      path: '/download',
+      path: '/',
       name: 'download',
       component: DownloadView
     },
     {
-      path: '/documentation',
+      path: '/',
       name: 'documentation',
       component: DocumentationView
     }
