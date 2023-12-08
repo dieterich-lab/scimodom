@@ -11,22 +11,36 @@ See docker/CONTAINER_SETUP.md for details.
 
 The application consists of the following components:
 
-* Database: MaraiDB
-* Server: A Web-API backend based on Python with Flask
-* Client: A Web-GUI written JavaScript bades on VUE.js
+- Database: MaraiDB
+- Server: A Web-API backend based on Python with Flask
+- Client: A Web-GUI written JavaScript bades on VUE.js
 
 To do development all components can be run locally.
+
+### Pre-commit hooks and static code analyseses
+
+For development:
+
+```bash
+pip install pre-commit
+pre-commit install
+# runs on all file at commit or pre-commit run
+
+# run static type checker
+pip install sqlalchemy[mypy]
+mypy -p scimodom
+```
 
 ### DEV Database Setup
 
 Set up a MariaDB database. One way to do this, is to run a MariaDB
 container image. See the 'Development Setup' section in
-docker/CONTAINER_SETUP.md how to do this. A local  MariaDB database
+docker/CONTAINER_SETUP.md how to do this. A local MariaDB database
 is also possible with simular steps. In any case following steps are required:
 
-* Create a database - usually called 'scimodom'.
-* Create a database user - usually also called 'scimodom'.
-* Grant access to the database to this user.
+- Create a database - usually called 'scimodom'.
+- Create a database user - usually also called 'scimodom'.
+- Grant access to the database to this user.
 
 ### DEV Server Setup
 
@@ -89,7 +103,7 @@ npm run dev
 
 Now the application is available here:
 
-* http://localhost:5173/
+- http://localhost:5173/
 
 To test the bundled frontend run in the client folder:
 
@@ -103,7 +117,7 @@ HTML/JavaScript code as it should be deployed in production.
 The server can now also serve this code. The complete application
 is now also available under the Flask develpment server URL:
 
-* http://127.0.0.1:5000
+- http://127.0.0.1:5000
 
 ## Development Hints
 
@@ -112,8 +126,8 @@ is now also available under the Flask develpment server URL:
 The database schema is tracked using Alembic any changes to the database
 must be coded at two locations:
 
-* An Alembic version must be defined in server/migrations/versions
-* The model must be updated in server/src/scimodom/database/models.py
+- An Alembic version must be defined in server/migrations/versions
+- The model must be updated in server/src/scimodom/database/models.py
 
 ### Tests
 
@@ -122,6 +136,7 @@ To execute the Python tests run in the server folder:
 ```bash
 pytest tests
 ```
+
 ## License
 
 `scimodom` is licensed under the GNU Affero General Public Licence (AGPL) version 3.
