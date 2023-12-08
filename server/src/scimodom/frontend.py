@@ -14,17 +14,7 @@ def index():
     return frontend.send_static_file('index.html')
 
 
-@frontend.route('/favicon.ico')
-def favicon():
-    return frontend.send_static_file('favicon.ico')
-
-
-@frontend.route('/config.js')
-def config():
-    return frontend.send_static_file('config.js')
-
-
-@frontend.route('/assets/<path:filename>')
+@frontend.route('/<path:filename>')
 def assets(filename):
     print(filename)
-    return frontend.send_static_file(f"assets/{filename}")
+    return frontend.send_static_file(filename)
