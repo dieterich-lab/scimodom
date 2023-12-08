@@ -5,7 +5,7 @@ services:
     ports:
       - ${MARIADB_DEV_PORT}:3306
     volumes:
-      - ${HOST_SECRET_DIR}:/run/secrets
+      - ${HOST_SECRETS_DIR}:/run/secrets
       - ${HOST_BACKUP_DIR}:/backup
       - ${HOST_DEV_DB_DATA_DIR}:/var/lib/mysql
     restart: always

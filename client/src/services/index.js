@@ -1,7 +1,8 @@
 import axios from 'axios'
+import {API_BASE_URL} from "/config.js";
 
 const HTTP = axios.create({
-  baseURL: window.API_BASE_URL,
+  baseURL: API_BASE_URL,
   withCredentials: false,
   headers: {
     Accept: 'application/json',

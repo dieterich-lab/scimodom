@@ -47,7 +47,7 @@ def write_client_config():
     path = join(HOST_CONFIG_DIR, 'config.js')
     url = environ.get('HTTP_PUBLIC_URL')
     with open(path, 'w') as fp:
-        print(f"window.API_BASE_URL = '{url}/api/v0/';", file=fp)
+        print(f"export const API_BASE_URL = '{url}/api/v0/';", file=fp)
     chmod(path, 0o644)
 
 
