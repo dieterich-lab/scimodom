@@ -258,5 +258,7 @@ class DataService:
         self._create_eufid()
         self._add_association()
 
+        return self._eufid
+
         # if self._lifted, upsert table records for this newly added dataset with "lifted" data...
         # what for annotations?
