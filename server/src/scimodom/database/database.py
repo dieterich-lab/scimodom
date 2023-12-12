@@ -1,11 +1,11 @@
 import os
-from typing import Callable
+from typing import Callable, Optional
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase, Session
 from sqlalchemy.engine import Engine
 
 _engine = None
-_session = None
+_session: Optional[Callable[[], Session]] = None
 
 
 class Base(DeclarativeBase):
@@ -43,13 +43,13 @@ def get_engine():
         return _engine
 
 
-def init(engine: Engine, session) -> None:
+def init(engine: Engine, session: Callable[[], Session]) -> None:
     """Set engine and session
 
     :param engine: Engine
     :type engine: Engine
     :param session: Session
-    :type session: Session
+    :type session: Callable[[], Session]
     """
     global _engine, _session
     _engine = engine

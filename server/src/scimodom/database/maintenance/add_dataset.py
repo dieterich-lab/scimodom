@@ -13,7 +13,9 @@ import scimodom.database.queries as queries
 from pathlib import Path
 from sqlalchemy import select
 from argparse import ArgumentParser, SUPPRESS
-from scimodom.database.database import make_session, init
+
+from scimodom.config import Config
+from scimodom.database.database import make_session
 from scimodom.services.dataset import DataService
 from scimodom.database.models import (
     Project,
@@ -38,8 +40,12 @@ def main():
     required = parser.add_argument_group("required arguments")
     optional = parser.add_argument_group("optional arguments")
 
-    required.add_argument(
-        "-db", "--database", help="""Database URI""", type=str, required=True
+    optional.add_argument(
+        "-db",
+        "--database",
+        help="Database URI",
+        type=str,
+        default=Config.DATABASE_URI,
     )
 
     required.add_argument(
@@ -144,19 +150,15 @@ def main():
     args = parser.parse_args()
     utils.update_logging(args)
 
-    # init DB
-    engine, Session = make_session(args.database)
-    init(engine, lambda: Session)
-
+    engine, session_factory = make_session(args.database)
+    session = session_factory()
     # do quite a bit of validation...
 
     # is SMID valid?
     try:
-        smid = (
-            Session()
-            .execute(select(Project.id).where(Project.id == args.project_id))
-            .one()
-        )
+        smid = session.execute(
+            select(Project.id).where(Project.id == args.project_id)
+        ).one()
     except:
         msg = f"Given project ID SMID={args.project_id} not found! Terminating!"
         logger.error(msg)
@@ -174,9 +176,7 @@ def main():
 
     # is organism valid?
     try:
-        taxa_id = (
-            Session().execute(select(Taxa.id).where(Taxa.id == args.organism)).one()
-        )
+        taxa_id = session.execute(select(Taxa.id).where(Taxa.id == args.organism)).one()
     except:
         msg = f"Given organism Taxa ID={args.organism} not found! Terminating!"
         logger.error(msg)
@@ -185,7 +185,7 @@ def main():
 
     # is assembly valid?
     if args.assembly_id:
-        ids = Session().execute(select(Assembly.id)).scalars().all()
+        ids = session.execute(select(Assembly.id)).scalars().all()
         if args.assembly_id not in ids:
             msg = f"Given assembly ID {args.assembly} not found! Terminating!"
             logger.error(msg)
@@ -193,15 +193,11 @@ def main():
         assembly_id = args.assembly_id
     else:
         try:
-            assembly_id = (
-                Session()
-                .execute(
-                    select(Assembly.id).where(
-                        Assembly.name == args.assembly, Assembly.taxa_id == taxa_id
-                    )
+            assembly_id = session.execute(
+                select(Assembly.id).where(
+                    Assembly.name == args.assembly, Assembly.taxa_id == taxa_id
                 )
-                .one()
-            )
+            ).one()
             assembly_id = assembly_id[0]
         except:
             msg = f"Given assembly {args.assembly} with taxa ID={taxa_id} not found! Terminating!"
@@ -210,7 +206,7 @@ def main():
 
     # are modifications valid?
     if args.modification_id:
-        ids = Session().execute(select(Modification.id)).scalars().all()
+        ids = session.execute(select(Modification.id)).scalars().all()
         if not all(m in ids for m in args.modification_id):
             msg = f"Some modification IDs {args.modification_id} were not found! Terminating!"
             logger.error(msg)
@@ -222,35 +218,27 @@ def main():
             logger.error(msg)
             return
         modification_ids = []
-        try:
-            for modification, rna in zip(args.modification, args.rna_type):
-                modomics_id = (
-                    Session()
-                    .execute(
-                        select(Modomics.id).where(Modomics.short_name == modification)
+        for modification, rna in zip(args.modification, args.rna_type):
+            try:
+                modomics_id = session.execute(
+                    select(Modomics.id).where(Modomics.short_name == modification)
+                ).scalar()
+                modification_id = session.execute(
+                    select(Modification.id).where(
+                        Modification.modomics_id == modomics_id,
+                        Modification.rna == rna,
                     )
-                    .scalar()
-                )
-                modification_id = (
-                    Session()
-                    .execute(
-                        select(Modification.id).where(
-                            Modification.modomics_id == modomics_id,
-                            Modification.rna == rna,
-                        )
-                    )
-                    .one()
-                )
+                ).one()
                 modification_ids.append(modification_id[0])
-        except:
-            msg = f"Modification {modification} (RNA type = {rna}) not found! Terminating!"
-            logger.error(msg)
-            return
+            except:
+                msg = f"Modification {modification} (RNA type = {rna}) not found! Terminating!"
+                logger.error(msg)
+                return
 
     # is technology valid?
     # in principle if same tech with 2 meth, one() should raise an error...
     if args.technology_id:
-        ids = Session().execute(select(DetectionTechnology.id)).scalars().all()
+        ids = session.execute(select(DetectionTechnology.id)).scalars().all()
         if args.technology_id not in ids:
             msg = f"Technology ID {args.technology_id} not found! Terminating!"
             logger.error(msg)
@@ -258,15 +246,11 @@ def main():
         technology_id = args.technology_id
     else:
         try:
-            technology_id = (
-                Session()
-                .execute(
-                    select(DetectionTechnology.id).where(
-                        DetectionTechnology.tech == args.technology
-                    )
+            technology_id = session.execute(
+                select(DetectionTechnology.id).where(
+                    DetectionTechnology.tech == args.technology
                 )
-                .one()
-            )
+            ).one()
             technology_id = technology_id[0]
         except:
             msg = f"Given technology {args.technology} not found, or ambiguous selection due to method! Terminating!"
@@ -276,7 +260,7 @@ def main():
     # is technology valid?
     # in principle if same tech with 2 meth, one() should raise an error...
     if args.cto_id:
-        ids = Session().execute(select(Organism.id)).scalars().all()
+        ids = session.execute(select(Organism.id)).scalars().all()
         if args.cto_id not in ids:
             msg = f"Organism ID {args.cto_id} not found! Terminating!"
             logger.error(msg)
@@ -284,16 +268,12 @@ def main():
         cto_id = args.cto_id
     else:
         try:
-            cto_id = (
-                Session()
-                .execute(
-                    select(Organism.id).where(
-                        Organism.cto == args.cell_type,
-                        Organism.taxa_id == taxa_id,
-                    )
+            cto_id = session.execute(
+                select(Organism.id).where(
+                    Organism.cto == args.cell_type,
+                    Organism.taxa_id == taxa_id,
                 )
-                .one()
-            )
+            ).one()
             cto_id = cto_id[0]
         except:
             msg = f"Given cell type {args.cell_type} for Taxa ID {taxa_id} not found! Terminating!"
@@ -303,17 +283,13 @@ def main():
     # double check, are selections valid?
     for idx in modification_ids:
         try:
-            selection_id = (
-                Session()
-                .execute(
-                    select(Selection.id).where(
-                        Selection.modification_id == idx,
-                        Selection.technology_id == technology_id,
-                        Selection.organism_id == cto_id,
-                    )
+            selection_id = session.execute(
+                select(Selection.id).where(
+                    Selection.modification_id == idx,
+                    Selection.technology_id == technology_id,
+                    Selection.organism_id == cto_id,
                 )
-                .one()
-            )
+            ).one()
         except:
             msg = "Given selection not found! Terminating!"
             logger.error(msg)
@@ -321,7 +297,7 @@ def main():
 
     # call
     service = DataService(
-        Session(),
+        session,
         smid,
         args.title,
         args.file,
@@ -334,23 +310,21 @@ def main():
     )
 
     query = queries.query_column_where(Taxa, "name", filters={"id": taxa_id})
-    organism = Session().execute(query).scalar()
+    organism = session.execute(query).scalar()
     query = queries.query_column_where(Assembly, "name", filters={"id": assembly_id})
-    assembly = Session().execute(query).scalar()
+    assembly = session.execute(query).scalar()
     modifications = []
     for idx in modification_ids:
-        records = (
-            Session()
-            .execute(select(Modification).where(Modification.id == idx))
-            .scalar()
-        )
+        records = session.execute(
+            select(Modification).where(Modification.id == idx)
+        ).scalar()
         modifications.append(f"{records.modomics_id} ({records.rna})")
     query = queries.query_column_where(
         DetectionTechnology, "tech", filters={"id": technology_id}
     )
-    technology = Session().execute(query).scalar()
+    technology = session.execute(query).scalar()
     query = queries.query_column_where(Organism, "cto", filters={"id": cto_id})
-    cto = Session().execute(query).scalar()
+    cto = session.execute(query).scalar()
 
     msg = (
         f"Adding dataset for Taxa ID={organism}; Assembly={assembly}; Modifications={', '.join(modifications)}; "

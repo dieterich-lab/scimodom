@@ -12,7 +12,9 @@ import logging
 import scimodom.utils.utils as utils
 
 from argparse import ArgumentParser, SUPPRESS
-from scimodom.database.database import make_session, init
+
+from scimodom.config import Config
+from scimodom.database.database import make_session
 from scimodom.services.project import ProjectService
 from scimodom.services.setup import SetupService
 
@@ -27,8 +29,12 @@ def main():
     required = parser.add_argument_group("required arguments")
     optional = parser.add_argument_group("optional arguments")
 
-    required.add_argument(
-        "-db", "--database", help="""Database URI""", type=str, required=True
+    optional.add_argument(
+        "-db",
+        "--database",
+        help="Database URI",
+        type=str,
+        default=Config.DATABASE_URI,
     )
 
     required.add_argument(
@@ -52,11 +58,9 @@ def main():
     args = parser.parse_args()
     utils.update_logging(args)
 
-    # init DB
-    engine, Session = make_session(args.database)
-    init(engine, lambda: Session)
-
-    setup = SetupService(Session())
+    engine, session_factory = make_session(args.database)
+    session = session_factory()
+    setup = SetupService(session)
     setup.upsert_all()
 
     # load project metadata
@@ -65,7 +69,7 @@ def main():
     msg = f"Adding project ({args.project}) to {args.database}..."
     if not utils.confirm(msg):
         return
-    ProjectService(Session(), project).create_project()
+    ProjectService(session, project).create_project()
 
 
 if __name__ == "__main__":

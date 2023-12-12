@@ -10,7 +10,8 @@ import logging
 import scimodom.utils.utils as utils
 
 from argparse import ArgumentParser, SUPPRESS
-from scimodom.database.database import make_session, init
+from scimodom.config import Config
+from scimodom.database.database import make_session
 from scimodom.services.setup import SetupService
 
 logger = logging.getLogger(__name__)
@@ -23,11 +24,14 @@ def main():
         init database schema.""",
     )
 
-    required = parser.add_argument_group("required arguments")
     optional = parser.add_argument_group("optional arguments")
 
-    required.add_argument(
-        "-db", "--database", help="""Database URI""", type=str, required=True
+    optional.add_argument(
+        "-db",
+        "--database",
+        help="Database URI",
+        type=str,
+        default=Config.DATABASE_URI,
     )
 
     optional.add_argument(
@@ -65,12 +69,8 @@ def main():
     args = parser.parse_args()
     utils.update_logging(args)
 
-    # init DB
-    logger.info(f"Creating schema for {args.database}...")
-    engine, Session = make_session(args.database)
-    init(engine, lambda: Session)
-
-    setup = SetupService(Session())
+    engine, session_factory = make_session(args.database)
+    setup = SetupService(session_factory())
 
     if args.all:
         setup.upsert_all()
