@@ -301,6 +301,7 @@ def test_importer(Session, setup, project_template):
     import shortuuid
     import pandas as pd
 
+    # the order is that defined in the model...
     columns = utils.get_table_columns(Data)
 
     metadata = project_template["metadata"][0]

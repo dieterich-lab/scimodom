@@ -1,9 +1,15 @@
-# logging_utils
+"""utils
+"""
+
+import re
 
 from collections.abc import Sequence, Iterable
 from typing import Any
 from argparse import ArgumentParser, Namespace
 from logging import Logger
+
+
+# logging_utils
 
 
 def add_log_opts(parser: ArgumentParser, logf: str = "") -> None:
@@ -229,6 +235,49 @@ def gen_short_uuid(length: int, suuids: Sequence[Any]) -> str:
     while suuid in suuids:
         suuid = shortuuid.encode(u)[:length]
     return suuid
+
+
+R_SEMICOLON = re.compile(r"\s*;\s*")
+R_COMMA = re.compile(r"\s*,\s*")
+R_KEYVALUE = re.compile(r"(\s+|\s*=\s*)")
+
+
+def _get_gtf_value(value: str | None) -> str | None:
+    """Parse GTF attribute value
+
+    :param value: GTF attribute value
+    :type value: str | None
+    :returns: Clean value or None
+    :rtype: str | None
+    """
+    if not value:
+        return None
+    value = value.strip("\"'")
+    if value in ["", ".", "NA"]:
+        return None
+
+    return value
+
+
+def parse_gtf_attributes(attrs_str: str) -> dict[str | Any, str | None]:
+    """Parse GTF attributes
+
+    :param attrs_str: GTF attributes (from pybedtools interval fields)
+    :type attrs_str: str
+    :returns: Dictionary of attributes
+    :rtype: dict
+    """
+    attrs = [x for x in re.split(R_SEMICOLON, attrs_str) if x.strip()]
+    result = dict()
+
+    for attr in attrs:
+        try:
+            key, _, value = re.split(R_KEYVALUE, attr, 1)
+        except ValueError:
+            continue
+        result[key] = _get_gtf_value(value)
+
+    return result
 
 
 # script-related utilities

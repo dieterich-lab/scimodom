@@ -1,19 +1,7 @@
 # template queries
 
 from sqlalchemy import select
-from scimodom.database.models import (
-    Modification,
-    DetectionTechnology,
-    Taxa,
-    Organism,
-    Selection,
-    Assembly,
-    AssemblyVersion,
-    Project,
-    ProjectContact,
-    Dataset,
-    Data,
-)
+from scimodom.database.models import AssemblyVersion, AnnotationVersion
 
 
 # -- special queries
@@ -21,6 +9,10 @@ from scimodom.database.models import (
 
 def get_assembly_version():
     return select(AssemblyVersion.version_num)
+
+
+def get_annotation_version():
+    return select(AnnotationVersion.version_num)
 
 
 # -- simple query wrappers

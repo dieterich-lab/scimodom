@@ -21,7 +21,7 @@ class SetupService:
     """
 
     def __init__(self, session) -> None:
-        """Constructor method."""
+        """Initializer method."""
         self._session = session
         self._config = Config()
         self._models_tables = [
@@ -30,6 +30,8 @@ class SetupService:
             self._config.ncbi_taxa_tbl,
             self._config.assembly_tbl,
             self._config.assembly_version_tbl,
+            self._config.annotation_tbl,
+            self._config.annotation_version_tbl,
             self._config.method_tbl,
         ]
 
@@ -60,7 +62,9 @@ class SetupService:
         """
         cols = table.columns.tolist()
         name = model.__name__
-        if table.shape[1] == 1 and not name == "AssemblyVersion":
+        if table.shape[1] == 1 and not (
+            name == "AssemblyVersion" or name == "AnnotationVersion"
+        ):
             msg = (
                 f"Only {cols[0]} found in TABLE. At least id "
                 f"and one other column are required. Terminating!"

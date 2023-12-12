@@ -73,6 +73,7 @@ class DataService:
         technology_id: int,
         organism_id: int,
     ) -> None:
+        """Initializer method."""
         self._eufid: str | None = None
         self._selection_ids: dict = dict()
         self._lifted: bool = False
@@ -256,6 +257,8 @@ class DataService:
 
         self._create_eufid()
         self._add_association()
+
+        return self._eufid
 
         # if self._lifted, upsert table records for this newly added dataset with "lifted" data...
         # what for annotations?

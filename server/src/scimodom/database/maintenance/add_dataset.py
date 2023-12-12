@@ -17,6 +17,7 @@ from argparse import ArgumentParser, SUPPRESS
 from scimodom.config import Config
 from scimodom.database.database import make_session
 from scimodom.services.dataset import DataService
+from scimodom.services.annotation import AnnotationService
 from scimodom.database.models import (
     Project,
     Taxa,
@@ -332,7 +333,10 @@ def main():
     )
     if not utils.confirm(msg):
         return
-    service.create_dataset()
+    eufid = service.create_dataset()
+
+    service = AnnotationService(Session(), eufid)
+    service.annotate_data()
 
 
 if __name__ == "__main__":
