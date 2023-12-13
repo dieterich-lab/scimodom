@@ -5,7 +5,9 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 
-DEFAULT_FRONTEND_PATH = Path(__file__).parent.parent.parent.parent.joinpath('client').joinpath('dist')
+DEFAULT_FRONTEND_PATH = (
+    Path(__file__).parent.parent.parent.parent.joinpath("client").joinpath("dist")
+)
 
 
 class Config:
@@ -15,7 +17,7 @@ class Config:
     :type import_dir: Path | str
     """
 
-    ENV_FILE = os.getenv('ENV_FILE', '.env')
+    ENV_FILE = os.getenv("ENV_FILE", ".env")
     load_dotenv(ENV_FILE)
     FLASK_DEBUG = eval(os.getenv("FLASK_DEBUG", "False"))
     DATABASE_URI = os.getenv("DATABASE_URI")
@@ -23,6 +25,7 @@ class Config:
     SESSION_COOKIE_SAMESITE = os.getenv("SESSION_COOKIE_SAMESITE")
     SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE")
     IMPORT_PATH = os.getenv("IMPORT_PATH", "import")
+    DATA_PATH = os.getenv("DATA_PATH", "data")
     FRONTEND_PATH = Path(os.getenv("FRONTEND_PATH", DEFAULT_FRONTEND_PATH))
 
     LOGGING = dict(

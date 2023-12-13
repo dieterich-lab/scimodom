@@ -10,6 +10,7 @@ from typing import ClassVar
 from sqlalchemy import select, insert
 from sqlalchemy.orm import Session
 
+from scimodom.config import Config
 from scimodom.database.models import (
     Data,
     Dataset,
@@ -36,7 +37,7 @@ class AnnotationService:
     :type FMT: str
     """
 
-    DATA_PATH: ClassVar[str | Path | None] = os.getenv("DATA_PATH")
+    DATA_PATH: ClassVar[str | Path | None] = Config.DATA_PATH
     FMT: ClassVar[str] = "gtf"  # 12.23 only handle GTF
 
     def __init__(self, session: Session, eufid: str) -> None:
