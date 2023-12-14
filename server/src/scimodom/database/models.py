@@ -330,7 +330,6 @@ class Data(Base):
     item_rgb: Mapped[str] = mapped_column(String(128), nullable=False)
     coverage: Mapped[int] = mapped_column(nullable=False)
     frequency: Mapped[int] = mapped_column(nullable=False)
-    ref_base: Mapped[str] = mapped_column(String(1), nullable=False)
 
     inst_dataset: Mapped["Dataset"] = relationship(back_populates="records")
     annotations: Mapped[List["GenomicAnnotation"]] = relationship(

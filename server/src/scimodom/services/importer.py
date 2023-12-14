@@ -56,7 +56,7 @@ class EUFImporter:
     :type SPECS: dict
     """
 
-    SPECS: ClassVar[dict] = specs.specsEUF
+    SPECS: ClassVar[dict] = specs.SPECS_EUF
 
     class _Buffer:
         """Utility class to insert data to selected model tables.
@@ -405,7 +405,7 @@ class BEDImporter:
     :type SPECS: dict
     """
 
-    SPECS: ClassVar[dict] = specs.specsEUF
+    SPECS: ClassVar[dict] = specs.SPECS_EUF
     QORDER: list[str] = [
         "chrom",
         "start",

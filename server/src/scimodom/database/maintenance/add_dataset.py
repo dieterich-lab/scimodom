@@ -335,7 +335,7 @@ def main():
         return
     eufid = service.create_dataset()
 
-    service = AnnotationService(Session(), eufid)
+    service = AnnotationService(session, eufid)
     service.annotate_data()
 
 

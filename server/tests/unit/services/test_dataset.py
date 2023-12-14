@@ -6,8 +6,18 @@ from sqlalchemy import select
 
 import scimodom.database.queries as queries
 import scimodom.utils.utils as utils
-from scimodom.database.models import Assembly, Association, Selection, Dataset, Modification, \
-    DetectionTechnology, Organism, Project, ProjectSource, ProjectContact
+from scimodom.database.models import (
+    Assembly,
+    Association,
+    Selection,
+    Dataset,
+    Modification,
+    DetectionTechnology,
+    Organism,
+    Project,
+    ProjectSource,
+    ProjectContact,
+)
 from scimodom.services.dataset import DataService, DuplicateDatasetError
 from scimodom.services.project import ProjectService
 
@@ -16,8 +26,8 @@ from scimodom.services.project import ProjectService
 # to avoid using ProjectService, we force/add project directly - skip checks
 
 
-def _get_file():
-    string = """#fileformat=bedRModv1.6
+def _get_file(EUF_version):
+    string = f"""#fileformat=bedRModv{EUF_version}
     #organism=9606
     #modification_type=RNA
     #assembly=GRCh38
@@ -28,12 +38,12 @@ def _get_file():
     #bioinformatics_workflow=Workflow
     #experiment=Description of experiment.
     #external_source=
-    #chrom\tchromStart\tchromEnd\tname\tscore\tstrand\tthickStart\tthickEnd\titemRgb\tcoverage\tfrequency\trefBase
-    1\t139219\t139220\tm6A\t100\t+\t139219\t139220\t0,0,0\t50\t10\tA
-    1\t139220\t139221\tm5C\t5\t+\t139220\t139221\t0,0,0\t100\t5\tA
-    1\t139221\t139222\tm5C\t5\t+\t139221\t139222\t0,0,0\t300\t5\tA
-    1\t139222\t139223\tm6A\t500\t+\t139222\t139223\t0,0,0\t250\t100\tA
-    1\t139223\t139224\tm6A\t5\t+\t139223\t139224\t0,0,0\t10\t5\tA"""
+    #chrom\tchromStart\tchromEnd\tname\tscore\tstrand\tthickStart\tthickEnd\titemRgb\tcoverage\tfrequency
+    1\t139219\t139220\tm6A\t100\t+\t139219\t139220\t0,0,0\t50\t10
+    1\t139220\t139221\tm5C\t5\t+\t139220\t139221\t0,0,0\t100\t5
+    1\t139221\t139222\tm5C\t5\t+\t139221\t139222\t0,0,0\t300\t5
+    1\t139222\t139223\tm6A\t500\t+\t139222\t139223\t0,0,0\t250\t100
+    1\t139223\t139224\tm6A\t5\t+\t139223\t139224\t0,0,0\t10\t5"""
     return StringIO(string)
 
 
@@ -290,7 +300,9 @@ def test_dataset_validate_assembly(Session, setup, project_template):
         ("two"),
     ],
 )
-def test_dataset_create_eufid(selection, Session, setup, project_template, caplog):
+def test_dataset_create_eufid(
+    selection, Session, setup, project_template, caplog, EUF_version
+):
     from scimodom.services.dataset import DataService
 
     # two modifications for the same dataset, same technology, same organism
@@ -314,7 +326,7 @@ def test_dataset_create_eufid(selection, Session, setup, project_template, caplo
         smid,
         "Dataset title",
         "filename",
-        _get_file(),
+        _get_file(EUF_version),
         taxa_id,
         assembly_id,
         modification_ids,

@@ -5,6 +5,14 @@ from sqlalchemy.orm import sessionmaker
 
 from scimodom.database.database import init, Base
 
+# EUF version - columns must match "ORM Data model"
+EUF_VERSION = "1.7"
+
+
+@pytest.fixture()
+def EUF_version():
+    return EUF_VERSION
+
 
 @pytest.fixture()
 def Session():
