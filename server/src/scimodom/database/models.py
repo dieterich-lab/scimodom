@@ -277,9 +277,9 @@ class Dataset(Base):
     # when "upgrading" the DB, all data is lifted from old to new assembly, and flag is set to True for all -> dump old DB with stamp
     # so assembly is just really recorded for data tracing
     lifted: Mapped[Optional[bool]] = mapped_column(default=False, nullable=False)
-    annotation_source: Mapped[str] = mapped_column(String(128), nullable=False)
+    annotation_source: Mapped[str] = mapped_column(String(128), nullable=True)
     annotation_version: Mapped[str] = mapped_column(
-        String(128), nullable=False
+        String(128), nullable=True
     )  # VARCHAR or INTEGER - can we fix this at upload ?
     # all optional - from header only
     sequencing_platform: Mapped[str] = mapped_column(String(255), nullable=True)

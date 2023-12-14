@@ -248,10 +248,10 @@ def test_importer_validate_columns(fmt, Session, EUF_version):
     importer._lino = 1
     importer._read_version()
     if fmt == "columns_extra":
-        importer._validate_columns()
+        importer._validate_columns(next(importer._handle))
     else:
         with pytest.raises(SpecsError) as excinfo:
-            importer._validate_columns()
+            importer._validate_columns(next(importer._handle))
 
 
 @pytest.mark.parametrize(

@@ -92,9 +92,9 @@ class AnnotationService:
         parent, filen = self.get_annotation_path(
             self.DATA_PATH, organism, self._assembly, self._release, self.FMT
         )
-        self._annotation_file = Path(parent, filen)
+        self._annotation_file: Path = Path(parent, filen)
         parent, filen = self.get_chrom_path(self.DATA_PATH, organism, self._assembly)
-        self._chrom_file = Path(parent, filen)
+        self._chrom_file: Path = Path(parent, filen)
 
     def __new__(cls, session: Session, eufid: str):
         """Constructor method."""

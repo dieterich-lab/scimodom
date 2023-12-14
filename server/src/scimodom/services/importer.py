@@ -8,9 +8,12 @@ import scimodom.utils.utils as utils
 import scimodom.database.queries as queries
 import scimodom.utils.specifications as specs
 
+from pathlib import Path
 from typing import TextIO, Iterable, ClassVar, Any
 from sqlalchemy import insert, select
 from sqlalchemy.orm import Session
+
+from scimodom.services.annotation import AnnotationService
 from scimodom.database.models import Data, Dataset
 from scimodom.database.database import Base
 
@@ -22,6 +25,16 @@ logger = logging.getLogger(__name__)
 #   @abstractmethod
 #   def parse(self, data):
 # then define given importer e.g. MyImporter(BaseImporter)
+
+
+# ad hoc wrangling of annotation_source and annotation_version
+# according to EUF specs, entries are required, but often they are just None
+# we allow them to be nullable
+empty_pattern = r"^none$|^null$|^na$|^nan$|^nat$|^nil$|^nothing$|^empty$|^unknown$|^no$"
+empty_pattern = re.compile(empty_pattern, re.I)
+
+# ad hoc wrangling of chrom field
+chrom_pattern = re.compile("chromosome|chrom|chr", re.I)
 
 
 class SpecsError(Exception):
@@ -129,6 +142,11 @@ class EUFImporter:
         self._assembly_id = assembly_id
         self._lifted = lifted
 
+        service = AnnotationService(self._session, self._eufid)
+        with open(service._chrom_file, "r") as chrom_file:
+            lines = chrom_file.readlines()
+        self._chroms = [l.split()[0] for l in lines]
+
     def close(self) -> None:
         """Close handle, flush all buffers, commit."""
         self._handle.close()
@@ -150,8 +168,8 @@ class EUFImporter:
         self._read_header()
 
         self._buffers["Data"] = EUFImporter._Buffer(session=self._session, model=Data)
-        self._validate_columns()
-        for line in self._handle:
+        data_line = self._lino
+        for line in itertools.islice(self._handle, data_line, None):
             self._lino += 1
             self._read_line(line)
 
@@ -274,6 +292,11 @@ class EUFImporter:
         }
         # for non-required headers, nullify empty strings
         self._header = dict((k, None if not v else v) for k, v in self._header.items())
+        # ad hoc wrangling of annotation_source, annotation_version
+        if empty_pattern.match(self._header["annotation_source"]):
+            self._header["annotation_source"] = None
+        if empty_pattern.match(self._header["annotation_version"]):
+            self._header["annotation_version"] = None
         return _get_header("assembly")
 
     def _read_header(self) -> None:
@@ -289,32 +312,66 @@ class EUFImporter:
         _buffer.buffer_data(self._header)
         _buffer.flush()
 
-    def _validate_columns(self) -> None:
-        """Validate bedRMod/EUF columns
+        # read remaining header lines that are unused
+        for line in self._handle:
+            self._lino += 1
+            if not line.startswith(self._htag):
+                self._validate_columns(line)
+                self._lino -= 1
+                break
+        self._handle.seek(0)
 
-        Note: This function forces standard column names!
-        """
+    # def _validate_columns(self) -> None:
+    # """Validate bedRMod/EUF columns
+
+    # Note: This function forces standard column names!
+    # """
+    # num_cols = len(self._specs["columns"])
+    # line = next(self._handle).replace(self._htag, "")
+    # self._lino += 1
+    # cols = [l.strip() for l in line.split(self._sep)]
+    # extra_cols = cols[num_cols:]
+    # for col in extra_cols:
+    # msg = f"Extra column '{col}' from {self._filen} will be ignored."
+    # logger.warning(msg)
+    # cols = cols[:num_cols]
+    # if len(cols) != num_cols:
+    # msg = f"Column count doesn't match required count at row {self._lino} for {self._version}."
+    # raise SpecsError(msg)
+    ## Is it safe? How to overwrite if this happens (EUFID assignment, etc.)?
+    # for col_read, col_specs in zip(cols, self._specs["columns"].keys()):
+    # if not col_read.lower() == col_specs.lower():
+    # msg = (
+    # f"Column name '{col_read}' from {self._filen} differs from the required {col_specs}. "
+    # f"Data import will continue, assuming conformity to {self._version}. "
+    # f"If you suspect misformatting, or data corruption, check {self._filen} and start again!"
+    # )
+    # logger.warning(msg)
+    ## for type casting
+    # self._int_types = [
+    # i
+    # for i, v in enumerate(self._specs["columns"].values())
+    # if v
+    # in [
+    # "start",
+    # "end",
+    # "score",
+    # "thick_start",
+    # "thick_end",
+    # "coverage",
+    # "frequency",
+    # ]
+    # ]
+
+    def _validate_columns(self, line) -> None:
+        """Validate bedRMod/EUF columns"""
         num_cols = len(self._specs["columns"])
-        line = next(self._handle).replace(self._htag, "")
-        self._lino += 1
         cols = [l.strip() for l in line.split(self._sep)]
-        extra_cols = cols[num_cols:]
-        for col in extra_cols:
-            msg = f"Extra column '{col}' from {self._filen} will be ignored."
-            logger.warning(msg)
+        # silently ignore extra cols
         cols = cols[:num_cols]
         if len(cols) != num_cols:
             msg = f"Column count doesn't match required count at row {self._lino} for {self._version}."
             raise SpecsError(msg)
-        # Is it safe? How to overwrite if this happens (EUFID assignment, etc.)?
-        for col_read, col_specs in zip(cols, self._specs["columns"].keys()):
-            if not col_read.lower() == col_specs.lower():
-                msg = (
-                    f"Column name '{col_read}' from {self._filen} differs from the required {col_specs}. "
-                    f"Data import will continue, assuming conformity to {self._version}. "
-                    f"If you suspect misformatting, or data corruption, check {self._filen} and start again!"
-                )
-                logger.warning(msg)
         # for type casting
         self._int_types = [
             i
@@ -355,6 +412,16 @@ class EUFImporter:
             for i, c in enumerate(self._specs["columns"].values())
         }
         data["dataset_id"] = self._eufid
+        # format chrom field
+        match = chrom_pattern.match(data["chrom"])
+        if match:
+            data["chrom"] = data["chrom"].replace(match.group(), "")
+        # throw away contigs
+        if not data["chrom"] in self._chroms:
+            raise ValueError(
+                f"Skipping chrom {data['chrom']} at line {self._lino}. You can safely ignore "
+                "this warning for scaffolds and contigs, otherwise this could be due to misformatting!"
+            )
         return data
 
     def _read_line(self, line: str) -> None:
