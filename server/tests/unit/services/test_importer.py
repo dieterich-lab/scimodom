@@ -299,6 +299,7 @@ def test_importer_read_line(fmt, Session, caplog, EUF_version):
         ]
     ]
 
+    importer._chroms = ["1"]
     line = next(importer._handle)
     if fmt == "data":
         importer._read_line(line)
@@ -370,6 +371,7 @@ def test_importer(Session, setup, project_template, EUF_version):
         assembly_id,
         False,
     )
+    importer._chroms = ["1"]
     importer.parseEUF()
     importer.close()
 

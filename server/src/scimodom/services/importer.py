@@ -127,6 +127,7 @@ class EUFImporter:
         self._buffers: dict[str, EUFImporter._Buffer] = dict()
         self._dtypes: dict[str, dict[str, Any]] = dict()
         self._modifications_from_file: set[str] = set()
+        self._chroms: list[str] | None = None
 
         # presumably, SMID, title, taxa_id, assembly_id all come from the FE upload form
         # or from arguments to the API/maintenance -> TODO: data upload service
@@ -142,11 +143,6 @@ class EUFImporter:
         self._assembly_id = assembly_id
         self._lifted = lifted
 
-        service = AnnotationService(self._session, self._eufid)
-        with open(service._chrom_file, "r") as chrom_file:
-            lines = chrom_file.readlines()
-        self._chroms = [l.split()[0] for l in lines]
-
     def close(self) -> None:
         """Close handle, flush all buffers, commit."""
         self._handle.close()
@@ -156,22 +152,44 @@ class EUFImporter:
 
     def parseEUF(self) -> None:
         """File parser."""
+        if self._chroms is None:
+            self._get_chroms()
         self._lino = 1
         self._read_version()
-
         self._validate_attributes(Dataset, self._specs["headers"].values())
         self._validate_attributes(Data, self._specs["columns"].values())
-
         self._buffers["Dataset"] = EUFImporter._Buffer(
             session=self._session, model=Dataset
         )
         self._read_header()
-
         self._buffers["Data"] = EUFImporter._Buffer(session=self._session, model=Data)
         data_line = self._lino
         for line in itertools.islice(self._handle, data_line, None):
             self._lino += 1
             self._read_line(line)
+
+    def _get_chroms(self):
+        """Read chrom.sizes."""
+        query = queries.query_column_where(
+            "Taxa",
+            "name",
+            filters={"id": self._taxa_id},
+        )
+        organism = self._session.execute(query).scalar()
+        organism = "_".join(organism.split())
+
+        query = queries.query_column_where(
+            "Assembly", "name", filters={"id": self._assembly_id}
+        )
+        assembly = self._session.execute(query).scalar()
+
+        parent, chrom_file = AnnotationService.get_chrom_path(
+            AnnotationService.DATA_PATH, organism, assembly
+        )
+        destination = Path(parent, chrom_file)
+        with open(destination, "r") as f:
+            lines = f.readlines()
+        self._chroms = [l.split()[0] for l in lines]
 
     def _read_version(self) -> None:
         """Read and validate EUF/bedRMod version."""
