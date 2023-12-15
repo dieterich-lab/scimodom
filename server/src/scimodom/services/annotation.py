@@ -31,26 +31,38 @@ class AnnotationService:
     :type session: Session
     :param eufid: EUFID
     :type eufid: str
-    :param DATA_PATH: Path to annotation file
+    :param taxid: Taxa ID
+    :type taxid: int
+    :param DATA_PATH: Path to annotation
     :type DATA_PATH: str | Path | None
+    :param DATA_SUB_PATH: Subpath to annotation file
+    :type DATA_SUB_PATH: str
     :param FMT: Annotation file format
     :type FMT: str
     """
 
-    DATA_PATH: ClassVar[str | Path | None] = Config.DATA_PATH
+    DATA_PATH: ClassVar[str | Path] = Config.DATA_PATH
+    DATA_SUB_PATH: ClassVar[str] = "annotation"
     FMT: ClassVar[str] = "gtf"  # 12.23 only handle GTF
 
-    def __init__(self, session: Session, eufid: str) -> None:
+    def __init__(self, session: Session, **kwargs) -> None:
         """Initializer method."""
         self._session = session
-        self._eufid = eufid
+        self._eufid: str
+        self._taxa_id: int
 
-        query = queries.query_column_where(
-            Dataset,
-            "taxa_id",
-            filters={"id": self._eufid},
-        )
-        self._taxa_id: int = self._session.execute(query).scalar()
+        eufid = kwargs.get("eufid", None)
+        taxa_id = kwargs.get("taxid", None)
+        if eufid is not None:
+            self._eufid = eufid
+            query = queries.query_column_where(
+                Dataset,
+                "taxa_id",
+                filters={"id": self._eufid},
+            )
+            self._taxa_id = self._session.execute(query).scalar()
+        else:
+            self._taxa_id = taxa_id
 
         query = queries.get_assembly_version()
         db_assembly_version = self._session.execute(query).scalar()
@@ -90,24 +102,36 @@ class AnnotationService:
         organism = "_".join(organism.split())
 
         parent, filen = self.get_annotation_path(
-            self.DATA_PATH, organism, self._assembly, self._release, self.FMT
+            Path(self.DATA_PATH, self.DATA_SUB_PATH),
+            organism,
+            self._assembly,
+            self._release,
+            self.FMT,
         )
         self._annotation_file: Path = Path(parent, filen)
-        parent, filen = self.get_chrom_path(self.DATA_PATH, organism, self._assembly)
+        parent, filen = self.get_chrom_path(
+            Path(self.DATA_PATH, self.DATA_SUB_PATH), organism, self._assembly
+        )
         self._chrom_file: Path = Path(parent, filen)
 
-    def __new__(cls, session: Session, eufid: str):
+    def __new__(cls, session: Session, **kwargs):
         """Constructor method."""
         if cls.DATA_PATH is None:
             msg = "Missing environment variable: DATA_PATH. Terminating!"
             raise ValueError(msg)
+        elif not Path(cls.DATA_PATH, cls.DATA_SUB_PATH).is_dir():
+            msg = f"DATA PATH {Path(cls.DATA_PATH, cls.DATA_SUB_PATH)} not found! Terminating!"
+            raise FileNotFoundError(msg)
         else:
+            if not all(key in ["eufid", "taxid"] for key in kwargs):
+                msg = "Missing keyword argument eufid or taxid to class! Terminating!"
+                raise ValueError(msg)
             return super(AnnotationService, cls).__new__(cls)
 
     @classmethod
     def from_new(cls, session: Session, eufid: str):
         """Provides AnnotationService factory for first
-        time annotation.
+        time annotation from EUFID.
 
         :param session: SQLAlchemy ORM session
         :type session: Session
@@ -116,13 +140,36 @@ class AnnotationService:
         :returns: AnnotationService class instance
         :rtype: AnnotationService
         """
-        service = cls(session, eufid)
+        service = cls(session, eufid=eufid)
         service.create_annotation(
             session,
             service._taxa_id,
             service._release,
             service._assembly,
-            service.DATA_PATH,
+            Path(service.DATA_PATH, service.DATA_SUB_PATH),
+            service.FMT,
+        )
+        return service
+
+    @classmethod
+    def from_taxid(cls, session: Session, taxid: int):
+        """Provides AnnotationService factory for first
+        time annotation from taxa ID.
+
+        :param session: SQLAlchemy ORM session
+        :type session: Session
+        :param taxid: Taxa ID
+        :type taxid: int
+        :returns: AnnotationService class instance
+        :rtype: AnnotationService
+        """
+        service = cls(session, taxid=taxid)
+        service.create_annotation(
+            session,
+            service._taxa_id,
+            service._release,
+            service._assembly,
+            Path(service.DATA_PATH, service.DATA_SUB_PATH),
             service.FMT,
         )
         return service
@@ -215,9 +262,11 @@ class AnnotationService:
 
         if data_path is None or not Path(data_path).is_dir():
             try:
-                data_path = os.environ["DATA_PATH"]
+                data_path = Path(
+                    os.environ["DATA_PATH"], AnnotationService.DATA_SUB_PATH
+                )
             except KeyError:
-                msg = "Missing or invalid data path to create annotation. Terminating!"
+                msg = "Missing or invalid DATA PATH to create annotation. Terminating!"
                 logger.error(msg)
                 raise
 

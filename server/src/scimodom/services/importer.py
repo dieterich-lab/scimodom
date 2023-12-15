@@ -13,7 +13,6 @@ from typing import TextIO, Iterable, ClassVar, Any
 from sqlalchemy import insert, select
 from sqlalchemy.orm import Session
 
-from scimodom.config import Config
 from scimodom.services.annotation import AnnotationService
 from scimodom.database.models import Data, Dataset
 from scimodom.database.database import Base
@@ -150,7 +149,9 @@ class EUFImporter:
         self._data_path = data_path
 
         if self._data_path is None:
-            self._data_path = Config.DATA_PATH
+            self._data_path = Path(
+                AnnotationService.DATA_PATH, AnnotationService.DATA_SUB_PATH
+            )
 
     def close(self) -> None:
         """Close handle, flush all buffers, commit."""

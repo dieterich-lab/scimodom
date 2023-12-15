@@ -1,14 +1,18 @@
 #! /usr/bin/env python3
 
 import logging
+import json
 
 import scimodom.utils.utils as utils
 import scimodom.utils.specifications as specs
 import scimodom.database.queries as queries
+from scimodom.services.annotation import AnnotationService
 
+from pathlib import Path
 from typing import ClassVar
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func
+from scimodom.config import Config
 from scimodom.database.models import (
     Project,
     ProjectSource,
@@ -40,15 +44,34 @@ class ProjectService:
     :type SMID_LENGTH: int
     :param ASSEMBLY_NUM_LENGTH: Length of assembly ID
     :type ASSEMBLY_NUM_LENGTH: int
+    :param DATA_PATH: Data path
+    :type DATA_PATH: str | Path | None
+    :param DATA_SUB_PATH: Data sub path
+    :type DATA_SUB_PATH: str
     """
 
     SMID_LENGTH: ClassVar[int] = specs.SMID_LENGTH
     ASSEMBLY_NUM_LENGTH: ClassVar[int] = specs.ASSEMBLY_NUM_LENGTH
+    DATA_PATH: ClassVar[str | Path] = Config.DATA_PATH
+    DATA_SUB_PATH: ClassVar[str] = "metadata"
 
     def __init__(self, session: Session, project: dict) -> None:
         """Initializer method."""
         self._session = session
         self._project = project
+        self._smid: str
+        self._taxa_ids: set[int] = set()
+
+    def __new__(cls, session: Session, project: dict):
+        """Constructor method."""
+        if cls.DATA_PATH is None:
+            msg = "Missing environment variable: DATA_PATH. Terminating!"
+            raise ValueError(msg)
+        elif not Path(cls.DATA_PATH, cls.DATA_SUB_PATH).is_dir():
+            msg = f"DATA PATH {Path(cls.DATA_PATH, cls.DATA_SUB_PATH)} not found! Terminating!"
+            raise FileNotFoundError(msg)
+        else:
+            return super(ProjectService, cls).__new__(cls)
 
     def _validate_keys(self) -> None:
         """Validate keys from project description (dictionary)."""
@@ -143,7 +166,7 @@ class ProjectService:
 
             # technology
             tech = d["tech"]
-            method_id = d["method_id"]
+            method_id = int(d["method_id"])
             query = queries.query_column_where(
                 DetectionTechnology,
                 "id",
@@ -159,7 +182,8 @@ class ProjectService:
             # organism
             d_organism = d["organism"]
             cto = d_organism["cto"]
-            taxa_id = d_organism["taxa_id"]
+            taxa_id = int(d_organism["taxa_id"])
+            self._taxa_ids.add(taxa_id)
             query = queries.query_column_where(
                 Organism, "id", filters={"cto": cto, "taxa_id": taxa_id}
             )
@@ -242,14 +266,14 @@ class ProjectService:
 
         query = select(Project.id)
         smids = self._session.execute(query).scalars().all()
-        smid = utils.gen_short_uuid(self.SMID_LENGTH, smids)
+        self._smid = utils.gen_short_uuid(self.SMID_LENGTH, smids)
 
         contact_id = self._add_contact()
 
         stamp = datetime.now(timezone.utc).replace(microsecond=0)  # .isoformat()
 
         project = Project(
-            id=smid,
+            id=self._smid,
             title=self._project["title"],
             summary=self._project["summary"],
             contact_id=contact_id,
@@ -259,12 +283,18 @@ class ProjectService:
 
         sources = []
         for s in utils.to_list(self._project["external_sources"]):
-            source = ProjectSource(project_id=smid, doi=s["doi"], pmid=s["pmid"])
+            source = ProjectSource(project_id=self._smid, doi=s["doi"], pmid=s["pmid"])
             sources.append(source)
 
         self._session.add(project)
         self._session.add_all(sources)
         self._session.commit()
+
+    def _write_metadata(self) -> None:
+        """Writes a copy of project metadata."""
+        parent = Path(self.DATA_PATH, self.DATA_SUB_PATH)
+        with open(Path(parent, f"{self._smid}.json"), "w") as f:
+            json.dump(self._project, f, indent="\t")
 
     def create_project(self) -> None:
         """Project constructor."""
@@ -272,3 +302,10 @@ class ProjectService:
         self._validate_entry()
         self._add_selection()
         self._create_smid()
+
+        self._write_metadata()
+
+        msg = "Preparing annotation for selected organisms"
+        logger.info(msg)
+        for taxid in self._taxa_ids:
+            service = AnnotationService.from_taxid(self._session, taxid=taxid)

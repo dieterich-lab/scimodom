@@ -49,7 +49,7 @@ Github = "https://github.com/dieterich-lab/scimodom"
 Issues = "https://github.com/dieterich-lab/scimodom/issues"
 
 [project.optional-dependencies]
-tests = ["pytest", "pytest-cov", "pytest-depends"] # do we need pytest-depends?
+tests = ["pytest", "pytest-cov", "pytest-depends", "pytest-env"] # do we need pytest-depends?
 docs = [
   "ipykernel",
   "matplotlib",
@@ -86,3 +86,7 @@ exclude = [
 testpaths = ["tests"]
 log_cli = true
 log_cli_level = "INFO"
+addopts = "--basetemp /tmp/pytest-of-scimodom"
+env = [
+    "DATA_PATH=/tmp/pytest-of-scimodom/data0",
+]

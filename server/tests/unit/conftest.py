@@ -1,9 +1,22 @@
+import os
 import pytest
 
+from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from scimodom.services.annotation import AnnotationService
 from scimodom.database.database import init, Base
+from scimodom.database.models import (
+    Modomics,
+    Taxonomy,
+    Taxa,
+    Assembly,
+    AssemblyVersion,
+    Annotation,
+    AnnotationVersion,
+    DetectionMethod,
+)
 
 # EUF version - columns must match "ORM Data model"
 EUF_VERSION = "1.7"
@@ -33,15 +46,6 @@ def Session():
 
 @pytest.fixture()
 def setup():
-    from scimodom.database.models import (
-        Modomics,
-        Taxonomy,
-        Taxa,
-        Assembly,
-        AssemblyVersion,
-        DetectionMethod,
-    )
-
     modomics = [
         Modomics(
             id="6A", name="N6-methyladenosine", short_name="m6A", moiety="nucleoside"
@@ -63,7 +67,7 @@ def setup():
     ]
 
     taxa = [
-        Taxa(id=9606, name="Homo Sapiens", short_name="H.Sapiens", taxonomy_id=1),
+        Taxa(id=9606, name="Homo sapiens", short_name="H. sapiens", taxonomy_id=1),
         Taxa(id=10090, name="Mus musculus", short_name="M. musculus", taxonomy_id=1),
         Taxa(
             id=7227,
@@ -101,6 +105,15 @@ def setup():
         AssemblyVersion(version_num="GcatSmFcytpU"),
     ]
 
+    annotation = [
+        Annotation(release=110, taxa_id=9606, version="EyRBnPeVwbzW"),
+        Annotation(release=110, taxa_id=10090, version="EyRBnPeVwbzW"),
+    ]
+
+    annotation_version = [
+        AnnotationVersion(version_num="EyRBnPeVwbzW"),
+    ]
+
     method = [
         DetectionMethod(cls="Quantification", meth="2D-TLC"),
         DetectionMethod(cls="Quantification", meth="LC–MS"),
@@ -124,6 +137,8 @@ def setup():
     add.extend(taxa)
     add.extend(assembly)
     add.extend(assembly_version)
+    add.extend(annotation)
+    add.extend(annotation_version)
     add.extend(method)
 
     return add
@@ -189,3 +204,29 @@ def project_template():
     ]
 
     return project
+
+
+@pytest.fixture(scope="session")
+def data_path(tmp_path_factory):
+    loc = tmp_path_factory.mktemp("data")
+    ASSEMBLY_PATH = loc / "assembly"
+    ASSEMBLY_PATH.mkdir()
+    ANNOTATION_PATH = loc / "annotation"
+    ANNOTATION_PATH.mkdir()
+    META_PATH = loc / "metadata"
+    META_PATH.mkdir()
+
+    # release 110 see above
+    path, annotation_file = AnnotationService.get_annotation_path(
+        ANNOTATION_PATH, "Homo_sapiens", "GRCh38", 110, "gtf"
+    )
+    path.mkdir(parents=True, exist_ok=True)
+    Path(path, annotation_file).touch()
+    path, chrom_file = AnnotationService.get_chrom_path(
+        ANNOTATION_PATH, "Homo_sapiens", "GRCh38"
+    )
+    path.mkdir(parents=True, exist_ok=True)
+    with open(Path(path, chrom_file), "w") as f:
+        f.write("1\t1000000")
+
+    yield ASSEMBLY_PATH, ANNOTATION_PATH, META_PATH
