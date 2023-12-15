@@ -1,6 +1,7 @@
 import os
 import logging
 
+from typing import ClassVar
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -17,16 +18,18 @@ class Config:
     :type import_dir: Path | str
     """
 
-    ENV_FILE = os.getenv("ENV_FILE", ".env")
+    ENV_FILE: ClassVar[str] = os.getenv("ENV_FILE", ".env")
     load_dotenv(ENV_FILE)
-    FLASK_DEBUG = eval(os.getenv("FLASK_DEBUG", "False"))
-    DATABASE_URI = os.getenv("DATABASE_URI")
-    SECRET_KEY = os.getenv("SECRET_KEY")
-    SESSION_COOKIE_SAMESITE = os.getenv("SESSION_COOKIE_SAMESITE")
-    SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE")
-    IMPORT_PATH = os.getenv("IMPORT_PATH", "import")
-    DATA_PATH = os.getenv("DATA_PATH", "data")
-    FRONTEND_PATH = Path(os.getenv("FRONTEND_PATH", DEFAULT_FRONTEND_PATH))
+    FLASK_DEBUG: ClassVar[bool] = eval(os.getenv("FLASK_DEBUG", "False"))
+    DATABASE_URI: ClassVar[str | None] = os.getenv("DATABASE_URI")
+    SECRET_KEY: ClassVar[str | None] = os.getenv("SECRET_KEY")
+    SESSION_COOKIE_SAMESITE: ClassVar[str | None] = os.getenv("SESSION_COOKIE_SAMESITE")
+    SESSION_COOKIE_SECURE: ClassVar[str | None] = os.getenv("SESSION_COOKIE_SECURE")
+    IMPORT_PATH: ClassVar[str | Path] = os.getenv("IMPORT_PATH", "import")
+    DATA_PATH: ClassVar[str | Path] = os.getenv("DATA_PATH", "data")
+    FRONTEND_PATH: ClassVar[Path] = Path(
+        os.getenv("FRONTEND_PATH", DEFAULT_FRONTEND_PATH)
+    )
 
     LOGGING = dict(
         version=1,

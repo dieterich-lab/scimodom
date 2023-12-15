@@ -129,8 +129,8 @@ class AnnotationService:
 
     @staticmethod
     def get_annotation_path(
-        path: str | Path, organism: str, assembly: str, release: int, fmt: str
-    ) -> tuple[str | Path, str]:
+        path: str | Path | None, organism: str, assembly: str, release: int, fmt: str
+    ) -> tuple[Path, str]:
         """Construct file path (annotation)
 
         :param path: Base path
@@ -146,14 +146,18 @@ class AnnotationService:
         :returns: Parent and file name
         :rtype: tuple[str | Path, str]
         """
+        if path is None:
+            raise TypeError(
+                "Missing DATA PATH! Cannot construct path to annotation file!"
+            )
         parent = Path(path, organism, assembly, str(release))
         filen = f"{organism}.{assembly}.{release}.chr.{fmt}.gz"
         return parent, filen
 
     @staticmethod
     def get_chrom_path(
-        path: str | Path, organism: str, assembly: str
-    ) -> tuple[str | Path, str]:
+        path: str | Path | None, organism: str, assembly: str
+    ) -> tuple[Path, str]:
         """Construct file path (chrom sizes)
 
         :param path: Base path
@@ -165,6 +169,8 @@ class AnnotationService:
         :returns: Parent and file name
         :rtype: tuple[str | Path, str]
         """
+        if path is None:
+            raise TypeError("Missing DATA PATH! Cannot construct path to chrom.sizes!")
         parent = Path(path, organism, assembly)
         return parent, "chrom.sizes"
 
@@ -258,7 +264,7 @@ class AnnotationService:
             msg = f"Annotation directory at {parent} already exists... continuing!"
             logger.warning(msg)
             parent.mkdir(parents=True, exist_ok=True)
-        destination = Path(parent, annotation_file)
+        annotation_path = Path(parent, annotation_file)
 
         def decompress_stream(stream):
             o = zlib.decompressobj(16 + zlib.MAX_WBITS)
@@ -277,13 +283,13 @@ class AnnotationService:
             if not request.ok:
                 request.raise_for_status()
             try:
-                with gzip.open(destination, mode="xb") as filen:
+                with gzip.open(annotation_path, mode="xb") as afile:
                     for chunk in decompress_stream(
                         request.iter_content(chunk_size=10 * 1024)
                     ):
-                        filen.write(chunk)
+                        afile.write(chunk)
             except FileExistsError:
-                msg = f"File at {destination} exists. Skipping!"
+                msg = f"File at {annotation_path} exists. Skipping!"
                 logger.warning(msg)
 
         # here now, but may be moved to assembly service...
@@ -292,7 +298,7 @@ class AnnotationService:
         parent, chrom_file = AnnotationService.get_chrom_path(
             data_path, organism, assembly
         )
-        destination = Path(parent, chrom_file)
+        chrom_path = Path(parent, chrom_file)
 
         url = urljoin(
             specs.ENSEMBL_SERVER,
@@ -315,11 +321,11 @@ class AnnotationService:
             if d["coord_system"] == "chromosome" and d["name"] in chroms
         }
         try:
-            with open(destination, "x") as filen:
+            with open(chrom_path, "x") as cfile:
                 for chrom in sorted(chroms):
-                    filen.write(f"{chrom}\t{top_level[chrom]}\n")
+                    cfile.write(f"{chrom}\t{top_level[chrom]}\n")
         except FileExistsError:
-            msg = f"File at {destination} exists. Skipping!"
+            msg = f"File at {chrom_path} exists. Skipping!"
             logger.warning(msg)
 
     def annotate_data(self):

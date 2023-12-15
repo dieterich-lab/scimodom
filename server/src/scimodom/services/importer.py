@@ -13,6 +13,7 @@ from typing import TextIO, Iterable, ClassVar, Any
 from sqlalchemy import insert, select
 from sqlalchemy.orm import Session
 
+from scimodom.config import Config
 from scimodom.services.annotation import AnnotationService
 from scimodom.database.models import Data, Dataset
 from scimodom.database.database import Base
@@ -30,8 +31,9 @@ logger = logging.getLogger(__name__)
 # ad hoc wrangling of annotation_source and annotation_version
 # according to EUF specs, entries are required, but often they are just None
 # we allow them to be nullable
-empty_pattern = r"^none$|^null$|^na$|^nan$|^nat$|^nil$|^nothing$|^empty$|^unknown$|^no$"
-empty_pattern = re.compile(empty_pattern, re.I)
+empty_pattern = re.compile(
+    ".*?missing.*?|.*?unknown.*?|nothing|none|no.*?|null|nan|na|nil", re.I
+)
 
 # ad hoc wrangling of chrom field
 chrom_pattern = re.compile("chromosome|chrom|chr", re.I)
@@ -65,6 +67,8 @@ class EUFImporter:
     :type assembly_id: int
     :param lifted: Is Assembly ID (version) different from DB assembly version? (dataset marked for liftover)
     :type lifted: bool
+    :param data_path: DATA_PATH (AnnotationService)
+    :type data_path: str | Path | None
     :param SPECS: Default specs
     :type SPECS: dict
     """
@@ -112,6 +116,7 @@ class EUFImporter:
         taxa_id: int,
         assembly_id: int,
         lifted: bool,
+        data_path: str | Path | None = None,
     ) -> None:
         """Initializer method."""
         self._sep: str = self.SPECS["delimiter"]
@@ -127,7 +132,7 @@ class EUFImporter:
         self._buffers: dict[str, EUFImporter._Buffer] = dict()
         self._dtypes: dict[str, dict[str, Any]] = dict()
         self._modifications_from_file: set[str] = set()
-        self._chroms: list[str] | None = None
+        self._chroms: list[str] = []
 
         # presumably, SMID, title, taxa_id, assembly_id all come from the FE upload form
         # or from arguments to the API/maintenance -> TODO: data upload service
@@ -142,6 +147,10 @@ class EUFImporter:
         self._taxa_id = taxa_id
         self._assembly_id = assembly_id
         self._lifted = lifted
+        self._data_path = data_path
+
+        if self._data_path is None:
+            self._data_path = Config.DATA_PATH
 
     def close(self) -> None:
         """Close handle, flush all buffers, commit."""
@@ -152,7 +161,7 @@ class EUFImporter:
 
     def parseEUF(self) -> None:
         """File parser."""
-        if self._chroms is None:
+        if not self._chroms:
             self._get_chroms()
         self._lino = 1
         self._read_version()
@@ -184,7 +193,7 @@ class EUFImporter:
         assembly = self._session.execute(query).scalar()
 
         parent, chrom_file = AnnotationService.get_chrom_path(
-            AnnotationService.DATA_PATH, organism, assembly
+            self._data_path, organism, assembly
         )
         destination = Path(parent, chrom_file)
         with open(destination, "r") as f:
@@ -333,7 +342,7 @@ class EUFImporter:
         # read remaining header lines that are unused
         for line in self._handle:
             self._lino += 1
-            if not line.startswith(self._htag):
+            if not line.strip().startswith(self._htag):
                 self._validate_columns(line)
                 self._lino -= 1
                 break
@@ -439,6 +448,11 @@ class EUFImporter:
             raise ValueError(
                 f"Skipping chrom {data['chrom']} at line {self._lino}. You can safely ignore "
                 "this warning for scaffolds and contigs, otherwise this could be due to misformatting!"
+            )
+        # additional checks...
+        if not data["strand"] in ["+", "-"]:
+            raise ValueError(
+                f"Unknown strand {data['strand']}! Skipping entry at line {self._lino}!"
             )
         return data
 

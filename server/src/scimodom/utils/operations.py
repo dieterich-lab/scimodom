@@ -17,10 +17,10 @@ if os.getenv("APP_TEMPDIR"):
     pybedtools.helpers.set_tempdir(tempdir)
 
 
-def _to_bedtool(records: Sequence[Any], asl: bool = False):
+def _to_bedtool(records, asl: bool = False):
     """Convert records to BedTool and sort
 
-    TODO: records can be a file path, see below get_genomic_annotation!
+    TODO: records can be str | Path | Sequence[Any], see below get_genomic_annotation!
     check https://daler.github.io/pybedtools/autodocs/pybedtools.bedtool.BedTool.html
     For testing, should we allow passing from_string?
 

@@ -6,6 +6,7 @@ import scimodom.utils.utils as utils
 import scimodom.utils.specifications as specs
 import scimodom.database.queries as queries
 
+from pathlib import Path
 from typing import TextIO, ClassVar, Any
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
@@ -54,6 +55,8 @@ class DataService:
     :type technology_id: int
     :param organism_id: Organism ID associated with file/dataset (from upload)
     :type organism_id: int
+    :param data_path: DATA_PATH (EUFImporter)
+    :type data_path: str | Path | None
     :param EUFID_LENGTH: Length of dataset ID (EUFID)
     :type EUFID_LENGTH: int
     """
@@ -72,9 +75,10 @@ class DataService:
         modification_ids: list[int],
         technology_id: int,
         organism_id: int,
+        data_path: str | Path | None = None,
     ) -> None:
         """Initializer method."""
-        self._eufid: str | None = None
+        self._eufid: str
         self._selection_ids: dict = dict()
         self._lifted: bool = False
 
@@ -91,6 +95,7 @@ class DataService:
         self._modification_ids = modification_ids  # list - selection from FE upload form - eventually check with file content?
         self._technology_id = technology_id  # for now just one
         self._organism_id = organism_id  # for now just one
+        self._data_path = data_path
 
     def _get_selection(self) -> None:
         """Get selection IDs associated with dataset.
@@ -213,6 +218,7 @@ class DataService:
             self._taxa_id,
             self._assembly_id,
             self._lifted,
+            data_path=self._data_path,
         )
         importer.parseEUF()
 
@@ -249,8 +255,12 @@ class DataService:
             self._session.add(association)
             self._session.commit()
 
-    def create_dataset(self) -> None:
-        """Dataset constructor."""
+    def create_dataset(self) -> str:
+        """Dataset constructor.
+
+        :returns: EUFID
+        :rtype: str
+        """
         self._get_selection()
         self._validate_entry()
         self._validate_assembly()

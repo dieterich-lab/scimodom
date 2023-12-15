@@ -53,6 +53,32 @@ def _get_header(EUF_version, fmt=None):
         #bioinformatics_workflow=Workflow
         #experiment=Description of experiment.
         #external_source="""
+    elif fmt == "longer":
+        string = f"""#fileformat=bedRModv{EUF_version}
+        #organism=9606
+        #modification_type=RNA
+        #assembly=GRCh38
+        #annotation_source=   Annotation
+        #annotation_version=Version
+        #sequencing_platform=Sequencing platform
+        #basecalling=
+        #bioinformatics_workflow=Workflow
+        #experiment=Description of experiment.
+        #external_source=
+        #methods=method
+        #references=pubmed_id:12345678"""
+    elif fmt == "disordered":  # fileformat first
+        string = f"""#fileformat=bedRModv{EUF_version}
+        #modification_type=RNA
+        #sequencing_platform=Sequencing platform
+        #organism= 9606
+        #assembly=GRCh38
+        #experiment=Description of experiment.
+        #annotation_source=   Annotation
+        #annotation_version=Version
+        #basecalling=
+        #bioinformatics_workflow=Workflow
+        #external_source="""
     elif fmt == "columns_extra":  # some misformatted columns... (case-insensitive)
         if EUF_version == "1.6":
             string = """#fileformat=bedRModv1.6
@@ -175,6 +201,8 @@ def test_importer_read_version(fmt, Session, EUF_version):
         ("full"),
         ("misformatted"),
         ("missing"),
+        ("longer"),
+        ("disordered"),
     ],
 )
 def test_importer_read_header(fmt, Session, EUF_version):
@@ -198,9 +226,12 @@ def test_importer_read_header(fmt, Session, EUF_version):
     importer._read_version()
     importer._validate_attributes(Dataset, importer._specs["headers"].values())
     importer._buffers["Dataset"] = EUFImporter._Buffer(session=Session(), model=Dataset)
-    if fmt == "full":
+    if fmt in ["full", "longer", "disordered"]:
         importer._read_header()
-        assert importer._lino == len(importer._specs["headers"])
+        expected_pointer = len(importer._specs["headers"])
+        if fmt == "longer":
+            expected_pointer += 2
+        assert importer._lino == expected_pointer
         with Session() as session, session.begin():
             records = session.execute(select(Dataset)).scalar()
             assert records.id == "123456789ABC"

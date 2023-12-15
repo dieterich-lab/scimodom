@@ -1,7 +1,9 @@
 from datetime import datetime, timezone
 from io import StringIO
 
+import tempfile
 import pytest
+from pathlib import Path
 from sqlalchemy import select
 
 import scimodom.database.queries as queries
@@ -314,32 +316,39 @@ def test_dataset_create_eufid(
         session.commit()
 
     taxa_id = 9606
-    assembly_id = 1
+    assembly_id = 1  # GRCh38
     modification_ids = [1, 2]
     if selection == "one":
         _ = modification_ids.pop(1)
     technology_id = 1
-    organism_id = 1
+    organism_id = 1  # Homo Sapiens
 
-    service = DataService(
-        Session(),
-        smid,
-        "Dataset title",
-        "filename",
-        _get_file(EUF_version),
-        taxa_id,
-        assembly_id,
-        modification_ids,
-        technology_id,
-        organism_id,
-    )
-    service._get_selection()
-    if selection == "one":
-        with pytest.raises(Exception) as excinfo:
+    with tempfile.TemporaryDirectory() as tempdir:
+        path = Path(tempdir, "Homo_Sapiens", "GRCh38")
+        path.mkdir(parents=True, exist_ok=True)
+        with open(Path(path, "chrom.sizes"), "w") as chrom_file:
+            chrom_file.write("1\t1000000")
+
+        service = DataService(
+            Session(),
+            smid,
+            "Dataset title",
+            "filename",
+            _get_file(EUF_version),
+            taxa_id,
+            assembly_id,
+            modification_ids,
+            technology_id,
+            organism_id,
+            data_path=tempdir,
+        )
+        service._get_selection()
+        if selection == "one":
+            with pytest.raises(Exception) as excinfo:
+                service._create_eufid()
+            # assert caplog.record_tuples == [('scimodom.services.importer', 30, 'Overwriting header: assembly=GRCh38 from filename with GRCh38 given at upload. Data import will continue...'), ('scimodom.services.dataset', 40, "Selection for modification and modifications read from filename differ: {'m5c'}. Aborting transaction!")]
+        else:
             service._create_eufid()
-        # assert caplog.record_tuples == [('scimodom.services.importer', 30, 'Overwriting header: assembly=GRCh38 from filename with GRCh38 given at upload. Data import will continue...'), ('scimodom.services.dataset', 40, "Selection for modification and modifications read from filename differ: {'m5c'}. Aborting transaction!")]
-    else:
-        service._create_eufid()
 
 
 def test_dataset_add_association(Session, setup, project_template):
