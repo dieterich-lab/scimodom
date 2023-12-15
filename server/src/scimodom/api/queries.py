@@ -104,7 +104,6 @@ def get_search():
             Data.strand,
             Data.coverage,
             Data.frequency,
-            Data.ref_base,
         )
         .join_from(Association, Data, Association.dataset_id == Data.dataset_id)
         .join_from(Association, Selection, Association.selection_id == Selection.id)
@@ -275,12 +274,12 @@ def get_comparison(step):
         )
         a_records = get_session().execute(query).all()
 
-        # AD HOC
+        # AD HOC - EUF VERSION SHOULD COME FROM SOMEWHERE ELSE!
         if dataset_upload:
             filen = Path(dataset_upload).stem
             b_records = [
                 BEDImporter(
-                    filen, open(dataset_upload, "r"), filen, "1.6"
+                    filen, open(dataset_upload, "r"), filen, "1.7"
                 ).get_records()
             ]
         else:

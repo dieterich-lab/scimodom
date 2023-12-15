@@ -96,9 +96,15 @@ def main():
     optional.add_argument(
         "-m",
         "--modification",
-        help="""Valid names of modifications (MODOMICS short name)""",
+        help="""Valid names of modifications (MODOMICS short name or MODOMICS ID if [--modomics])""",
         nargs="+",
         type=str,
+    )
+
+    optional.add_argument(
+        "--modomics",
+        help="""Use MODOMICS ID for [--modification]""",
+        action="store_true",
     )
 
     optional.add_argument(
@@ -221,9 +227,12 @@ def main():
         modification_ids = []
         for modification, rna in zip(args.modification, args.rna_type):
             try:
-                modomics_id = session.execute(
-                    select(Modomics.id).where(Modomics.short_name == modification)
-                ).scalar()
+                if args.modomics:
+                    modomics_id = modification
+                else:
+                    modomics_id = session.execute(
+                        select(Modomics.id).where(Modomics.short_name == modification)
+                    ).scalar()
                 modification_id = session.execute(
                     select(Modification.id).where(
                         Modification.modomics_id == modomics_id,
@@ -335,7 +344,7 @@ def main():
         return
     eufid = service.create_dataset()
 
-    service = AnnotationService(session, eufid)
+    service = AnnotationService(session, eufid=eufid)
     service.annotate_data()
 
 

@@ -360,9 +360,15 @@ class AnnotationService:
         gene_build = request.json()
         coord_sysver = gene_build["default_coord_system_version"]
         if not coord_sysver == assembly:
-            msg = f"Mismatch between assembly {assembly} and coord system version {coord_sysver}. Terminating!"
-            logger.error(msg)
-            return
+            msg = (
+                f"Mismatch between assembly {assembly} and current coord system version {coord_sysver}! "
+                "Upgrade your database! Continuing anyway..."
+            )
+            logger.warning(msg)
+            if assembly not in gene_build["coord_system_versions"]:
+                msg = f"Assembly {assembly} not in available coord system versions! Terminating!"
+                raise ValueError(msg)
+
         chroms = gene_build["karyotype"]
         top_level = {
             d["name"]: d["length"]

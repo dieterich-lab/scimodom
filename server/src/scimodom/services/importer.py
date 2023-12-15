@@ -671,6 +671,9 @@ class BEDImporter:
             data["coverage"] = 0
             data["frequency"] = 0
         data = {k: data[k] for k in self.QORDER}
+        match = chrom_pattern.match(data["chrom"])
+        if match:
+            data["chrom"] = data["chrom"].replace(match.group(), "")
         return data
 
     def _read_line(self, line: str) -> None:
