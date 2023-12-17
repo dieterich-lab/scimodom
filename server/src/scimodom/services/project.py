@@ -309,3 +309,6 @@ class ProjectService:
         logger.info(msg)
         for taxid in self._taxa_ids:
             service = AnnotationService.from_taxid(self._session, taxid=taxid)
+
+    def get_smid(self) -> str:
+        return self._smid

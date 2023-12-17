@@ -69,7 +69,9 @@ def main():
     msg = f"Adding project ({args.project}) to {args.database}..."
     if not utils.confirm(msg):
         return
-    ProjectService(session, project).create_project()
+    service = ProjectService(session, project)
+    service.create_project()
+    return service.get_smid()
 
 
 if __name__ == "__main__":
