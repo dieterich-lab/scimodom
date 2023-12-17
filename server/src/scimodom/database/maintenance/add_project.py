@@ -29,14 +29,6 @@ def main():
     required = parser.add_argument_group("required arguments")
     optional = parser.add_argument_group("optional arguments")
 
-    optional.add_argument(
-        "-db",
-        "--database",
-        help="Database URI",
-        type=str,
-        default=Config.DATABASE_URI,
-    )
-
     required.add_argument(
         "-p",
         "--project",
@@ -52,6 +44,14 @@ def main():
         action="help",
         default=SUPPRESS,
         help="show this help message and exit",
+    )
+
+    optional.add_argument(
+        "-db",
+        "--database",
+        help="Database URI",
+        type=str,
+        default=Config.DATABASE_URI,
     )
 
     utils.add_log_opts(parser)
