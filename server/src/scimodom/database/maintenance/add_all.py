@@ -5,6 +5,9 @@ from project templates (json only).
 
 NOTE: For maintainers to batch add data, but these extra (optional)
 fields are required in the template: file, data_title.
+This script is not particularly efficient nor safe, but it is not
+intended for general usage: we just want to batch add some data
+to the DB in the short-term.
 """
 
 import os
@@ -73,6 +76,7 @@ def _add_dataset(key, data, smid, directory):
     d = metadata[0]
     if len(metadata) > 1:
         # assume all remaining entries are identical...
+        # this might not be true...
         d["rna"] = " ".join([m["rna"] for m in metadata])
         d["modomics_id"] = " ".join([m["modomics_id"] for m in metadata])
     args = [

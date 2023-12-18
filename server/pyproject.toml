@@ -43,6 +43,7 @@ dependencies = [
 upsert = "scimodom.database.maintenance.upsert:main"
 add-project = "scimodom.database.maintenance.add_project:main"
 add-dataset = "scimodom.database.maintenance.add_dataset:main"
+add-all = "scimodom.database.maintenance.add_all:main"
 
 [project.urls]
 Github = "https://github.com/dieterich-lab/scimodom"
