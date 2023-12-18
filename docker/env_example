@@ -21,7 +21,7 @@ HTTP_WORKER_PROCESSES=4
 HTTP_PUBLIC_URL=http://127.0.0.1:5000
 
 # That should fit for the first instance created with podman-compose.
-# In doubt check "podman-compose ps".
+# In doubt check "podman-compose ps" or "docker ps".
 DB_CONTAINER_NAME=docker_scimodom_db_1
 APP_CONTAINER_NAME=docker_scimodom_app_1
 
@@ -44,6 +44,8 @@ HOST_BACKUP_DIR=./backup
 HOST_SECRETS_DIR=./secrets
 # Data for the initial database load
 HOST_IMPORT_DIR=../server/import
+# Required for the app to write metadata, annotation and assembly information
+HOST_DATA_DIR=/data
 # That is directory where the MariaDB stores it's data.
 # This place should be outside the scope of the docker-compose.yml
 # so that the service can be re-deployed without losing all data.
@@ -61,4 +63,3 @@ MARIADB_USER=scimodom
 MARIADB_DATABASE=scimodom
 MARIADB_ROOT_PASSWORD_FILE=/run/secrets/mariadb-root
 MARIADB_PASSWORD_FILE=/run/secrets/mariadb-scimodom
-
