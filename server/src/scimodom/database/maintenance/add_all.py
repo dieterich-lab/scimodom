@@ -71,7 +71,7 @@ def _get_dataset(project):
     return d
 
 
-def _add_dataset(key, data, smid, directory):
+def _add_dataset(key, data, smid, args):
     metadata = data[key]
     d = metadata[0]
     if len(metadata) > 1:
@@ -79,14 +79,14 @@ def _add_dataset(key, data, smid, directory):
         # this might not be true...
         d["rna"] = " ".join([m["rna"] for m in metadata])
         d["modomics_id"] = " ".join([m["modomics_id"] for m in metadata])
-    args = [
+    call = [
         "add-dataset",
         "-smid",
         smid,
         "--title",
         f'"{d["data_title"]}"',
         "--file",
-        Path(directory, key).as_posix(),
+        Path(args.directory, key).as_posix(),
         "-o",
         str(d["organism"]["taxa_id"]),
         "-a",
@@ -100,8 +100,10 @@ def _add_dataset(key, data, smid, directory):
         d["tech"],
         "-cto",
         d["organism"]["cto"],
+        "-db",
+        args.database,
     ]
-    return_code = subprocess.call(f"printf 'Y' | {' '.join(args)}", shell=True)
+    return_code = subprocess.call(f"printf 'Y' | {' '.join(call)}", shell=True)
     return key, return_code
 
 
@@ -176,9 +178,7 @@ def main():
         metadata = _get_dataset(project)
         with ProcessPoolExecutor(max_workers=os.cpu_count()) as ppe:
             for key, return_code in ppe.map(
-                partial(
-                    _add_dataset, data=metadata, smid=smid, directory=args.directory
-                ),
+                partial(_add_dataset, data=metadata, smid=smid, args=args),
                 metadata.keys(),
             ):
                 if not return_code == 0:
