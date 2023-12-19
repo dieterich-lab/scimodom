@@ -149,6 +149,14 @@ def main():
         default=Config.DATABASE_URI,
     )
 
+    optional.add_argument(
+        "--map-async",
+        help="""Concurrent calls to 'add-dataset'. Caution:
+        filling of the /tmp space due to concurrent pybedtools
+        operations may occur!""",
+        action="store_true",
+    )
+
     utils.add_log_opts(parser)
     args = parser.parse_args()
     utils.update_logging(args)
@@ -180,11 +188,9 @@ def main():
             logger.error(msg)
             continue
         metadata = _get_dataset(project)
-        with ProcessPoolExecutor(max_workers=os.cpu_count()) as ppe:
-            for key, ret in ppe.map(
-                partial(_add_dataset, data=metadata, smid=smid, args=args),
-                metadata.keys(),
-            ):
+        if not args.map_async:
+            for key in metadata.keys():
+                _, ret = _add_dataset(key, metadata, smid, args)
                 msg = (
                     f"Subprocess returned with {ret[0]} for dataset {key}. "
                     f"Traceback stdout: {ret[1]}. "
@@ -194,6 +200,21 @@ def main():
                     logger.error(msg)
                 else:
                     logger.warning(msg)
+        else:
+            with ProcessPoolExecutor(max_workers=os.cpu_count()) as ppe:
+                for key, ret in ppe.map(
+                    partial(_add_dataset, data=metadata, smid=smid, args=args),
+                    metadata.keys(),
+                ):
+                    msg = (
+                        f"Subprocess returned with {ret[0]} for dataset {key}. "
+                        f"Traceback stdout: {ret[1]}. "
+                        f"Traceback stderr: {ret[2]}."
+                    )
+                    if not ret[0] == 0:
+                        logger.error(msg)
+                    else:
+                        logger.warning(msg)
 
 
 if __name__ == "__main__":
