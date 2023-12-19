@@ -36,7 +36,8 @@ dependencies = [
   "pandas",
   "python-dotenv",
   "shortuuid",
-  "pybedtools"
+  "pybedtools",
+  "requests"
 ]
 
 [project.scripts]

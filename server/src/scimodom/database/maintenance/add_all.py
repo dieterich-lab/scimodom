@@ -14,8 +14,6 @@ import os
 import json
 import logging
 
-import subprocess
-
 import scimodom.utils.utils as utils
 
 from pathlib import Path
@@ -23,6 +21,7 @@ from argparse import ArgumentParser, SUPPRESS
 from concurrent.futures import ProcessPoolExecutor
 from collections import defaultdict
 from functools import partial
+from subprocess import Popen, PIPE
 
 from scimodom.config import Config
 from scimodom.database.database import make_session
@@ -97,14 +96,16 @@ def _add_dataset(key, data, smid, args):
         d["rna"],
         "--modomics",
         "-t",
-        d["tech"],
+        f'"{d["tech"]}"',
         "-cto",
-        d["organism"]["cto"],
+        f'"{d["organism"]["cto"]}"',
         "-db",
         args.database,
     ]
-    return_code = subprocess.call(f"printf 'Y' | {' '.join(call)}", shell=True)
-    return key, return_code
+    p = Popen(f"printf 'Y' | {' '.join(call)}", stdout=PIPE, stderr=PIPE, shell=True)
+    stdout, stderr = p.communicate()
+
+    return key, (p.returncode, stdout, stderr)
 
 
 def main():
@@ -164,26 +165,35 @@ def main():
             service = ProjectService(session, project)
             service.create_project()
             project["SMID"] = service.get_smid()
-        except:
-            msg = f"Failed to add project template {project['path']}. Skipping!"
+        except Exception as e:
+            msg = (
+                f"Failed to add project template {project['path']}. "
+                f"Exception is {e}. Skipping!"
+            )
             logger.error(msg)
 
     # add data
     for project in projects:
         smid = project.get("SMID", None)
         if smid is None:
-            msg = f"Failed to add project data for {project['title']}. Skipping!"
+            msg = f"Missing SMID! Failed to add project data for {project['title']}. Skipping!"
             logger.error(msg)
             continue
         metadata = _get_dataset(project)
         with ProcessPoolExecutor(max_workers=os.cpu_count()) as ppe:
-            for key, return_code in ppe.map(
+            for key, ret in ppe.map(
                 partial(_add_dataset, data=metadata, smid=smid, args=args),
                 metadata.keys(),
             ):
-                if not return_code == 0:
-                    msg = f"Failed to add dataset {key}. Skipping!"
-                    logging.error(msg)
+                msg = (
+                    f"Subprocess returned with {ret[0]} for dataset {key}. "
+                    f"Traceback stdout: {ret[1]}. "
+                    f"Traceback stderr: {ret[2]}."
+                )
+                if not ret[0] == 0:
+                    logger.error(msg)
+                else:
+                    logger.warning(msg)
 
 
 if __name__ == "__main__":
