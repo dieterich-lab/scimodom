@@ -20,6 +20,7 @@ from scimodom.database.models import (
     Organism,
     Association,
     Selection,
+    GenomicAnnotation,
 )
 from scimodom.database.database import get_session
 
@@ -90,6 +91,8 @@ def get_search():
     modification_ids = request.args.getlist("modification", type=int)
     technology_ids = request.args.getlist("technology", type=int)
     organism_ids = request.args.getlist("organism", type=int)
+    selected_feature = request.args.getlist("selectedFeature", type=str)
+    selected_biotype = request.args.getlist("selectedBiotype", type=str)
     first_record = request.args.get("firstRecord", type=int)
     max_records = request.args.get("maxRecords", type=int)
     multi_sort = request.args.getlist("multiSort", type=str)
@@ -107,6 +110,7 @@ def get_search():
         )
         .join_from(Association, Data, Association.dataset_id == Data.dataset_id)
         .join_from(Association, Selection, Association.selection_id == Selection.id)
+        .join_from(Data, GenomicAnnotation, Data.id == GenomicAnnotation.data_id)
     )
     # an empty list would return an empty set...
     if modification_ids:
@@ -115,6 +119,26 @@ def get_search():
         query = query.where(Selection.technology_id.in_(technology_ids))
     if organism_ids:
         query = query.where(Selection.organism_id.in_(organism_ids))
+
+    # get features and biotypes before filtering
+    feature_query = select(GenomicAnnotation.feature.distinct()).where(
+        GenomicAnnotation.data_id.in_(query.with_only_columns(Data.id))
+    )
+    features = get_session().execute(feature_query).scalars().all()
+    # TODO: remove "null" and map features to feature groups for display - add to specifications.py
+    biotype_query = select(GenomicAnnotation.gene_biotype.distinct()).where(
+        GenomicAnnotation.data_id.in_(query.with_only_columns(Data.id))
+    )
+    biotypes = get_session().execute(biotype_query).scalars().all()
+    if selected_feature:
+        query = query.where(GenomicAnnotation.feature.in_(selected_feature))
+    if selected_biotype:
+        query = query.where(GenomicAnnotation.gene_biotype.in_(selected_biotype))
+
+    # INNER JOIN GenomicAnnotation - duplicates (feature)
+    # What about Association/Selection (modification)???
+    query = query.distinct()
+
     for sort in multi_sort:
         col, order = sort.split(".")
         expr = eval(f"Data.{col}.{order}()")
@@ -124,6 +148,8 @@ def get_search():
     # TODO: caching (how/when?)
 
     response_object = dict()
+    response_object["features"] = features
+    response_object["biotypes"] = biotypes
     response_object["totalRecords"], query = _paginate(query, first_record, max_records)
     response_object["records"] = _dump(query)
 
