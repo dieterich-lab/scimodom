@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { toIds, fmtOrder } from '@/utils/index.js'
+import { toIds, fmtOrder, fmtFilter } from '@/utils/index.js'
 import {
   updModification,
   updTechnologyFromMod,
@@ -17,19 +17,29 @@ const organism = ref()
 const selectedOrganism = ref()
 
 const dt = ref()
+const first = ref(0)
 const records = ref()
 const loading = ref(false)
 const totalRecords = ref(0)
 const lazyParams = ref({})
+const filters = ref({
+  gene_name_gc: { value: null, matchMode: 'contains' },
+  gene_id_gc: { value: null, matchMode: 'contains' }
+})
 
 const onPage = (event) => {
   lazyParams.value = event
-  lazyLoad()
+  lazyLoad(event)
 }
 
 const onSort = (event) => {
   lazyParams.value = event
-  lazyLoad()
+  lazyLoad(event)
+}
+
+const onFilter = (event) => {
+  lazyParams.value.filters = filters.value
+  lazyLoad(event)
 }
 
 const onExport = () => {
@@ -57,8 +67,11 @@ const updateTmp = () => {
   lazyLoad()
 }
 
-function lazyLoad() {
+function lazyLoad(event) {
   loading.value = true
+  lazyParams.value = { ...lazyParams.value, first: event?.first || first.value }
+  // console.log("FIRST", lazyParams.value.first)
+  // console.log("ROWS", lazyParams.value.rows)
   service
     .get('/search', {
       params: {
@@ -67,7 +80,8 @@ function lazyLoad() {
         organism: toIds(selectedOrganism.value, []),
         firstRecord: lazyParams.value.first,
         maxRecords: lazyParams.value.rows,
-        multiSort: fmtOrder(lazyParams.value.multiSortMeta)
+        multiSort: fmtOrder(lazyParams.value.multiSortMeta),
+        tableFilter: fmtFilter(lazyParams.value.filters)
       },
       paramsSerializer: {
         indexes: null
@@ -85,8 +99,9 @@ function lazyLoad() {
 
 onMounted(() => {
   lazyParams.value = {
-    first: dt.value.first,
-    rows: dt.value.rows
+    first: 0,
+    rows: 10,
+    filters: filters.value
   }
   lazyLoad()
   service
@@ -170,8 +185,11 @@ onMounted(() => {
           :value="records"
           lazy
           paginator
-          :first="0"
+          :first="first"
           :rows="10"
+          v-model:filters="filters"
+          @filter="onFilter($event)"
+          filterDisplay="row"
           ref="dt"
           :totalRecords="totalRecords"
           :loading="loading"
@@ -205,6 +223,40 @@ onMounted(() => {
           <Column field="strand" header="Strand" exportHeader="strand"></Column>
           <Column field="coverage" header="Coverage" sortable exportHeader="coverage"></Column>
           <Column field="frequency" header="Frequency" sortable exportHeader="frequency"></Column>
+          <Column
+            field="gene_name_gc"
+            header="Gene"
+            exportHeader="geneName"
+            filterMatchMode="startsWith"
+          >
+            <template #filter="{ filterModel, filterCallback }">
+              <InputText
+                type="text"
+                v-model="filterModel.value"
+                @keydown.enter="filterCallback()"
+                class="p-column-filter"
+                placeholder="Search"
+              />
+            </template>
+          </Column>
+          <Column
+            field="gene_id_gc"
+            header="Gene ID"
+            exportHeader="geneId"
+            FilterMatchMode="startsWith"
+          >
+            <template #filter="{ filterModel, filterCallback }">
+              <InputText
+                type="text"
+                v-model="filterModel.value"
+                @keydown.enter="filterCallback()"
+                class="p-column-filter"
+                placeholder="Search"
+              />
+            </template>
+          </Column>
+          <Column field="gene_biotype_gc" header="Biotype" exportHeader="biotype"></Column>
+          <Column field="feature_gc" header="Feature" exportHeader="feature"></Column>
         </DataTable>
       </div>
     </SectionLayout>

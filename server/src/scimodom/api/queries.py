@@ -2,9 +2,11 @@ import os
 import json
 
 from pathlib import Path
-from sqlalchemy import select, func
+from sqlalchemy import select, func, and_, or_, not_
 from flask import request
 from flask_cors import cross_origin
+
+import scimodom.utils.specifications as specs
 
 from scimodom.database.models import (
     Modomics,
@@ -91,11 +93,12 @@ def get_search():
     modification_ids = request.args.getlist("modification", type=int)
     technology_ids = request.args.getlist("technology", type=int)
     organism_ids = request.args.getlist("organism", type=int)
-    selected_feature = request.args.getlist("selectedFeature", type=str)
-    selected_biotype = request.args.getlist("selectedBiotype", type=str)
     first_record = request.args.get("firstRecord", type=int)
     max_records = request.args.get("maxRecords", type=int)
     multi_sort = request.args.getlist("multiSort", type=str)
+    table_filter = request.args.getlist("tableFilter", type=str)
+
+    print(f">>>>>>>>>>>>>>>>>>>> {table_filter}")
 
     query = (
         select(
@@ -107,10 +110,31 @@ def get_search():
             Data.strand,
             Data.coverage,
             Data.frequency,
+            # GenomicAnnotation.gene_name,
+            # GenomicAnnotation.gene_id,
+            # GenomicAnnotation.gene_biotype
+            func.group_concat(GenomicAnnotation.gene_name.distinct()).label(
+                "gene_name_gc"
+            ),
+            func.group_concat(GenomicAnnotation.gene_id.distinct()).label("gene_id_gc"),
+            func.group_concat(GenomicAnnotation.gene_biotype.distinct()).label(
+                "gene_biotype_gc"
+            ),
+            func.group_concat(GenomicAnnotation.feature.distinct()).label("feature_gc"),
         )
         .join_from(Association, Data, Association.dataset_id == Data.dataset_id)
         .join_from(Association, Selection, Association.selection_id == Selection.id)
         .join_from(Data, GenomicAnnotation, Data.id == GenomicAnnotation.data_id)
+        # .where(
+        # and_(
+        # or_(
+        # GenomicAnnotation.gene_name.is_not(None),
+        # GenomicAnnotation.gene_id.is_not(None)
+        # ),
+        # GenomicAnnotation.gene_biotype.is_not(None),
+        # )
+        # )
+        .group_by(Data.id)
     )
     # an empty list would return an empty set...
     if modification_ids:
@@ -120,23 +144,9 @@ def get_search():
     if organism_ids:
         query = query.where(Selection.organism_id.in_(organism_ids))
 
-    # get features and biotypes before filtering
-    feature_query = select(GenomicAnnotation.feature.distinct()).where(
-        GenomicAnnotation.data_id.in_(query.with_only_columns(Data.id))
-    )
-    features = get_session().execute(feature_query).scalars().all()
-    # TODO: remove "null" and map features to feature groups for display - add to specifications.py
-    biotype_query = select(GenomicAnnotation.gene_biotype.distinct()).where(
-        GenomicAnnotation.data_id.in_(query.with_only_columns(Data.id))
-    )
-    biotypes = get_session().execute(biotype_query).scalars().all()
-    if selected_feature:
-        query = query.where(GenomicAnnotation.feature.in_(selected_feature))
-    if selected_biotype:
-        query = query.where(GenomicAnnotation.gene_biotype.in_(selected_biotype))
-
     # INNER JOIN GenomicAnnotation - duplicates (feature)
     # What about Association/Selection (modification)???
+    # Do we need this after func.group_concat??? and where?
     query = query.distinct()
 
     for sort in multi_sort:
@@ -144,12 +154,48 @@ def get_search():
         expr = eval(f"Data.{col}.{order}()")
         query = query.order_by(expr)
 
+    prop_comparators = {
+        "startsWith": "istartswith",
+        "contains": "icontains",
+        "notContains": "icontains",
+        "endsWith": "iendswith",
+        "equals": "__eq__",
+        "notEquals": "__eq__",
+    }
+
+    # order of sort and filter????
+    for flt in table_filter:
+        col, string, operator = flt.split(".")
+        col = col.replace("_gc", "")
+        if operator.startswith("not"):
+            expr = eval(
+                f"~GenomicAnnotation.{col}.{prop_comparators[operator]}(string)",
+                {"GenomicAnnotation": GenomicAnnotation, "string": string},
+            )
+        else:
+            expr = eval(
+                f"GenomicAnnotation.{col}.{prop_comparators[operator]}(string)",
+                {"GenomicAnnotation": GenomicAnnotation, "string": string},
+            )
+            # print(expr)
+        query = query.where(expr)
+
+        # on concat column e.g. gname, or mapping to true columnb gene_name? or remove label above?
+        # expr = eval(f"GenomicAnnotation.gene_name.istartswith({string})")
+        # query = query.where(GenomicAnnotation.gene_name.istartswith(string, autoescape=True))
+
+        ## after func.group_concat this may have unexpected behaviour e.g. with starts, ends, equals, not equals
+        # Starts with - startswith or istartswith
+        # Contains - contains or icontains
+        # Not contains
+        # Ends with - endswith or iendswith
+        # Equals
+        # Not equals notEquals
+
     # TODO: so far this hasn't hit the DB
     # TODO: caching (how/when?)
 
     response_object = dict()
-    response_object["features"] = features
-    response_object["biotypes"] = biotypes
     response_object["totalRecords"], query = _paginate(query, first_record, max_records)
     response_object["records"] = _dump(query)
 

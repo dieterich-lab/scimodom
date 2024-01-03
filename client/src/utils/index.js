@@ -40,3 +40,13 @@ export function fmtOrder(array) {
   }
   return []
 }
+
+export function fmtFilter(object) {
+  return Object.entries(object)
+    .map(([k, v]) => {
+      if (!Object.is(v.value, null)) {
+        return [k, v.value, v.matchMode].join('.')
+      }
+    })
+    .filter((item) => item)
+}
