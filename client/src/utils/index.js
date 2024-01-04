@@ -35,7 +35,7 @@ export function fmtOrder(array) {
     return array.map((d) =>
       Object.entries(d)
         .map(([k, v]) => setOrder(v))
-        .join('.')
+        .join('%2B')
     )
   }
   return []
@@ -44,8 +44,8 @@ export function fmtOrder(array) {
 export function fmtFilter(object) {
   return Object.entries(object)
     .map(([k, v]) => {
-      if (!Object.is(v.value, null)) {
-        return [k, v.value, v.matchMode].join('.')
+      if (!(Object.is(v.value, null) || v.value.length === 0)) {
+        return [k, v.value, v.matchMode].join('%2B')
       }
     })
     .filter((item) => item)

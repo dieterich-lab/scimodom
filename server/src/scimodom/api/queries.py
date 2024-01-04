@@ -1,13 +1,17 @@
 import os
 import json
 
-from pathlib import Path
-from sqlalchemy import select, func, and_, or_, not_
-from flask import request
-from flask_cors import cross_origin
-
 import scimodom.utils.specifications as specs
 
+# import scimodom.database.queries as queries
+
+from pathlib import Path
+from flask import request
+from flask_cors import cross_origin
+from sqlalchemy import select, func, and_, or_, not_
+
+from . import api
+from scimodom.database.database import get_session
 from scimodom.database.models import (
     Modomics,
     Modification,
@@ -24,11 +28,17 @@ from scimodom.database.models import (
     Selection,
     GenomicAnnotation,
 )
-from scimodom.database.database import get_session
 
-# import scimodom.database.queries as queries
 
-from . import api
+prop_comparators = {
+    "startsWith": "istartswith",
+    "contains": "icontains",
+    "notContains": "icontains",
+    "endsWith": "iendswith",
+    "equals": "__eq__",
+    "notEquals": "__eq__",
+    "in": "in_",
+}
 
 
 def _dump(query):
@@ -39,6 +49,28 @@ def _paginate(query, first, rows):
     length = get_session().scalar(select(func.count()).select_from(query))
     query = query.offset(first).limit(rows)
     return (length, query)
+
+
+def _get_arg_sort(string, url_split="%2B"):
+    col, order = string.split(url_split)
+    return f"Data.{col}.{order}()"
+
+
+def _get_arg_flt(string, url_split="%2B", substr="_gc"):
+    col, val, operator = string.split(url_split)
+    col = col.replace(substr, "")
+    arg = (
+        [k for k, v in specs.BIOTYPES.items() if v in val.split(",")]
+        if "biotype" in col
+        else val.split(",")
+        if "feature" in col
+        else val
+    )
+    arg_str = f"({arg})" if operator == "in" else f"('{arg}')"
+    expr = f"GenomicAnnotation.{col}.{prop_comparators[operator]}{arg_str}"
+    if operator.startswith("not"):
+        expr = f"~{expr}"
+    return expr
 
 
 @api.route("/selection", methods=["GET"])
@@ -98,7 +130,8 @@ def get_search():
     multi_sort = request.args.getlist("multiSort", type=str)
     table_filter = request.args.getlist("tableFilter", type=str)
 
-    print(f">>>>>>>>>>>>>>>>>>>> {table_filter}")
+    print(f"FILTERS: {table_filter}")
+    print(f"SORT: {multi_sort}")
 
     query = (
         select(
@@ -110,9 +143,6 @@ def get_search():
             Data.strand,
             Data.coverage,
             Data.frequency,
-            # GenomicAnnotation.gene_name,
-            # GenomicAnnotation.gene_id,
-            # GenomicAnnotation.gene_biotype
             func.group_concat(GenomicAnnotation.gene_name.distinct()).label(
                 "gene_name_gc"
             ),
@@ -125,15 +155,6 @@ def get_search():
         .join_from(Association, Data, Association.dataset_id == Data.dataset_id)
         .join_from(Association, Selection, Association.selection_id == Selection.id)
         .join_from(Data, GenomicAnnotation, Data.id == GenomicAnnotation.data_id)
-        # .where(
-        # and_(
-        # or_(
-        # GenomicAnnotation.gene_name.is_not(None),
-        # GenomicAnnotation.gene_id.is_not(None)
-        # ),
-        # GenomicAnnotation.gene_biotype.is_not(None),
-        # )
-        # )
         .group_by(Data.id)
     )
     # an empty list would return an empty set...
@@ -144,58 +165,38 @@ def get_search():
     if organism_ids:
         query = query.where(Selection.organism_id.in_(organism_ids))
 
-    # INNER JOIN GenomicAnnotation - duplicates (feature)
-    # What about Association/Selection (modification)???
-    # Do we need this after func.group_concat??? and where?
+    feature_query = select(GenomicAnnotation.feature.distinct()).where(
+        GenomicAnnotation.data_id.in_(query.with_only_columns(Data.id))
+    )
+    features = get_session().execute(feature_query).scalars().all()
+    biotype_query = select(GenomicAnnotation.gene_biotype.distinct()).where(
+        GenomicAnnotation.data_id.in_(query.with_only_columns(Data.id))
+    )
+    biotypes = get_session().execute(biotype_query).scalars().all()
+    biotypes = sorted(
+        list(
+            set(
+                [specs.BIOTYPES[biotype] for biotype in biotypes if biotype is not None]
+            )
+        )
+    )
+
+    # removes duplicates from INNER JOIN Association/Selection (and GenomicAnnotation feature?)
+    # but check https://github.com/dieterich-lab/scimodom/issues/53
     query = query.distinct()
 
     for sort in multi_sort:
-        col, order = sort.split(".")
-        expr = eval(f"Data.{col}.{order}()")
-        query = query.order_by(expr)
-
-    prop_comparators = {
-        "startsWith": "istartswith",
-        "contains": "icontains",
-        "notContains": "icontains",
-        "endsWith": "iendswith",
-        "equals": "__eq__",
-        "notEquals": "__eq__",
-    }
+        expr = _get_arg_sort(sort)
+        query = query.order_by(eval(expr))
 
     # order of sort and filter????
     for flt in table_filter:
-        col, string, operator = flt.split(".")
-        col = col.replace("_gc", "")
-        if operator.startswith("not"):
-            expr = eval(
-                f"~GenomicAnnotation.{col}.{prop_comparators[operator]}(string)",
-                {"GenomicAnnotation": GenomicAnnotation, "string": string},
-            )
-        else:
-            expr = eval(
-                f"GenomicAnnotation.{col}.{prop_comparators[operator]}(string)",
-                {"GenomicAnnotation": GenomicAnnotation, "string": string},
-            )
-            # print(expr)
-        query = query.where(expr)
-
-        # on concat column e.g. gname, or mapping to true columnb gene_name? or remove label above?
-        # expr = eval(f"GenomicAnnotation.gene_name.istartswith({string})")
-        # query = query.where(GenomicAnnotation.gene_name.istartswith(string, autoescape=True))
-
-        ## after func.group_concat this may have unexpected behaviour e.g. with starts, ends, equals, not equals
-        # Starts with - startswith or istartswith
-        # Contains - contains or icontains
-        # Not contains
-        # Ends with - endswith or iendswith
-        # Equals
-        # Not equals notEquals
-
-    # TODO: so far this hasn't hit the DB
-    # TODO: caching (how/when?)
+        expr = _get_arg_flt(flt)
+        query = query.where(eval(expr))
 
     response_object = dict()
+    response_object["features"] = features
+    response_object["biotypes"] = biotypes
     response_object["totalRecords"], query = _paginate(query, first_record, max_records)
     response_object["records"] = _dump(query)
 

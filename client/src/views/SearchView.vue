@@ -9,6 +9,8 @@ import {
 import service from '@/services/index.js'
 
 const options = ref()
+const biotypes = ref()
+const features = ref()
 const modification = ref()
 const selectedModification = ref()
 const technology = ref()
@@ -24,7 +26,9 @@ const totalRecords = ref(0)
 const lazyParams = ref({})
 const filters = ref({
   gene_name_gc: { value: null, matchMode: 'contains' },
-  gene_id_gc: { value: null, matchMode: 'contains' }
+  gene_id_gc: { value: null, matchMode: 'contains' },
+  gene_biotype_gc: { value: null, matchMode: 'in' },
+  feature_gc: { value: null, matchMode: 'in' }
 })
 
 const onPage = (event) => {
@@ -39,6 +43,11 @@ const onSort = (event) => {
 
 const onFilter = (event) => {
   lazyParams.value.filters = filters.value
+  console.log('FILTER:', lazyParams.value.filters)
+  console.log('FILTER NAME:', lazyParams.value.filters['gene_name_gc'])
+  console.log('FILTER BIOTYPE:', lazyParams.value.filters['gene_biotype_gc'])
+  console.log('FILTER FEATURE:', lazyParams.value.filters['feature_gc'])
+  console.log('FMT FILTER:', fmtFilter(lazyParams.value.filters))
   lazyLoad(event)
 }
 
@@ -89,7 +98,8 @@ function lazyLoad(event) {
     })
     .then(function (response) {
       records.value = response.data.records
-      totalRecords.value = response.data.totalRecords
+      ;(totalRecords.value = response.data.totalRecords), (biotypes.value = response.data.biotypes)
+      features.value = response.data.features
     })
     .catch((error) => {
       console.log(error)
@@ -255,8 +265,40 @@ onMounted(() => {
               />
             </template>
           </Column>
-          <Column field="gene_biotype_gc" header="Biotype" exportHeader="biotype"></Column>
-          <Column field="feature_gc" header="Feature" exportHeader="feature"></Column>
+          <Column
+            field="gene_biotype_gc"
+            header="Biotype"
+            exportHeader="biotype"
+            :showFilterMenu="false"
+          >
+            <template #filter="{ filterModel, filterCallback }">
+              <MultiSelect
+                v-model="filterModel.value"
+                @change="filterCallback()"
+                :options="biotypes"
+                placeholder="Any"
+                :maxSelectedLabels="1"
+              >
+              </MultiSelect>
+            </template>
+          </Column>
+          <Column
+            field="feature_gc"
+            header="Feature"
+            exportHeader="feature"
+            :showFilterMenu="false"
+          >
+            <template #filter="{ filterModel, filterCallback }">
+              <MultiSelect
+                v-model="filterModel.value"
+                @change="filterCallback()"
+                :options="features"
+                placeholder="Any"
+                :maxSelectedLabels="1"
+              >
+              </MultiSelect>
+            </template>
+          </Column>
         </DataTable>
       </div>
     </SectionLayout>
