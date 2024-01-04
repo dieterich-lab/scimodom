@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { toIds, fmtOrder, fmtFilter } from '@/utils/index.js'
+import { FilterMatchMode, FilterOperator } from 'primevue/api'
 import {
   updModification,
   updTechnologyFromMod,
@@ -11,6 +12,7 @@ import service from '@/services/index.js'
 const options = ref()
 const biotypes = ref()
 const features = ref()
+const names = ref()
 const modification = ref()
 const selectedModification = ref()
 const technology = ref()
@@ -29,6 +31,12 @@ const filters = ref({
   gene_id_gc: { value: null, matchMode: 'contains' },
   gene_biotype_gc: { value: null, matchMode: 'in' },
   feature_gc: { value: null, matchMode: 'in' }
+  // name: { value: null, matchMode: FilterMatchMode.IN }
+  // name: { value: null, matchMode: 'in' }
+  // name: {
+  //   operator: FilterOperator.AND,
+  //   constraints: [{ value: null, matchMode: FilterMatchMode.IN }]
+  // },
 })
 
 const onPage = (event) => {
@@ -98,8 +106,10 @@ function lazyLoad(event) {
     })
     .then(function (response) {
       records.value = response.data.records
-      ;(totalRecords.value = response.data.totalRecords), (biotypes.value = response.data.biotypes)
+      totalRecords.value = response.data.totalRecords
+      biotypes.value = response.data.biotypes
       features.value = response.data.features
+      // names.value = [...new Set(records.value.map(item => item.name))]
     })
     .catch((error) => {
       console.log(error)
@@ -228,7 +238,19 @@ onMounted(() => {
           <Column field="chrom" header="Chrom" sortable exportHeader="chrom"></Column>
           <Column field="start" header="Start" sortable exportHeader="chromStart"></Column>
           <Column field="end" header="End" exportHeader="chromEnd"></Column>
-          <Column field="name" header="Name" exportHeader="name"></Column>
+          <Column field="name" header="Name" exportHeader="name">
+            <!-- <Column field="name" header="Name" exportHeader="name" :showFilterMenu="false"> -->
+            <!-- <template #filter="{ filterModel, filterCallback }">
+                 <MultiSelect
+                 v-model="filterModel.value"
+                 @change="filterCallback()"
+                 :options="names"
+                 placeholder="Any"
+                 :maxSelectedLabels="1"
+                 >
+                 </MultiSelect>
+                 </template> -->
+          </Column>
           <Column field="score" header="Score" sortable exportHeader="score"></Column>
           <Column field="strand" header="Strand" exportHeader="strand"></Column>
           <Column field="coverage" header="Coverage" sortable exportHeader="coverage"></Column>
