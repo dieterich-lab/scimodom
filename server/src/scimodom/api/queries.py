@@ -67,6 +67,8 @@ def _get_arg_flt(string, url_split="%2B", substr="_gc"):
         else val
     )
     arg_str = f"({arg})" if operator == "in" else f"('{arg}')"
+    # col will not work - filtering with in_ will not work
+    # expr = f"ga.c.{col}.{prop_comparators[operator]}{arg_str}"
     expr = f"GenomicAnnotation.{col}.{prop_comparators[operator]}{arg_str}"
     if operator.startswith("not"):
         expr = f"~{expr}"
@@ -133,6 +135,41 @@ def get_search():
     print(f"FILTERS: {table_filter}")
     print(f"SORT: {multi_sort}")
 
+    # ga = (
+    # select(
+    # GenomicAnnotation.data_id,
+    # func.group_concat(GenomicAnnotation.gene_name.distinct()).label("gene_name_gc"),
+    # func.group_concat(GenomicAnnotation.gene_id.distinct()).label("gene_id_gc"),
+    # func.group_concat(GenomicAnnotation.gene_biotype.distinct()).label("gene_biotype_gc"),
+    # func.group_concat(GenomicAnnotation.feature.distinct()).label("feature_gc"),
+    # )
+    # .group_by(GenomicAnnotation.data_id)
+    # ).cte("ga")
+
+    # query = (
+    # select(
+    # Data.chrom,
+    # Data.start,
+    # Data.end,
+    # Data.name,
+    # Data.score,
+    # Data.strand,
+    # Data.coverage,
+    # Data.frequency,
+    # ga.c.gene_name_gc,
+    # ga.c.gene_id_gc,
+    # ga.c.gene_biotype_gc,
+    # ga.c.feature_gc,
+    # )
+    # .join_from(Data, ga, Data.id == ga.c.data_id)
+    # .join_from(Data, Association, Data.dataset_id == Association.dataset_id)
+    # .join_from(Association, Selection, Association.selection_id == Selection.id)
+    ##.order_by(Data.chrom, Data.start)
+    ## duplicate entries from JOIN Association/Selection where 1+ modification
+    ## https://github.com/dieterich-lab/scimodom/issues/53 and related
+    ##.distinct()
+    # )
+
     query = (
         select(
             Data.chrom,
@@ -181,8 +218,7 @@ def get_search():
         )
     )
 
-    # removes duplicates from INNER JOIN Association/Selection (and GenomicAnnotation feature?)
-    # but check https://github.com/dieterich-lab/scimodom/issues/53
+    # see above
     query = query.distinct()
 
     for sort in multi_sort:
