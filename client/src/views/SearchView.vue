@@ -261,15 +261,15 @@ onMounted(() => {
             exportHeader="geneName"
             filterMatchMode="startsWith"
           >
-            <template #filter="{ filterModel, filterCallback }">
-              <InputText
-                type="text"
-                v-model="filterModel.value"
-                @keydown.enter="filterCallback()"
-                class="p-column-filter"
-                placeholder="Search"
-              />
-            </template>
+            <!-- <template #filter="{ filterModel, filterCallback }">
+                 <InputText
+                 type="text"
+                 v-model="filterModel.value"
+                 @keydown.enter="filterCallback()"
+                 class="p-column-filter"
+                 placeholder="Search"
+                 />
+                 </template> -->
           </Column>
           <Column
             field="gene_id_gc"
@@ -277,15 +277,15 @@ onMounted(() => {
             exportHeader="geneId"
             FilterMatchMode="startsWith"
           >
-            <template #filter="{ filterModel, filterCallback }">
-              <InputText
-                type="text"
-                v-model="filterModel.value"
-                @keydown.enter="filterCallback()"
-                class="p-column-filter"
-                placeholder="Search"
-              />
-            </template>
+            <!-- <template #filter="{ filterModel, filterCallback }">
+                 <InputText
+                 type="text"
+                 v-model="filterModel.value"
+                 @keydown.enter="filterCallback()"
+                 class="p-column-filter"
+                 placeholder="Search"
+                 />
+                 </template> -->
           </Column>
           <Column
             field="gene_biotype_gc"
@@ -293,16 +293,16 @@ onMounted(() => {
             exportHeader="biotype"
             :showFilterMenu="false"
           >
-            <template #filter="{ filterModel, filterCallback }">
-              <MultiSelect
-                v-model="filterModel.value"
-                @change="filterCallback()"
-                :options="biotypes"
-                placeholder="Any"
-                :maxSelectedLabels="1"
-              >
-              </MultiSelect>
-            </template>
+            <!-- <template #filter="{ filterModel, filterCallback }">
+                 <MultiSelect
+                 v-model="filterModel.value"
+                 @change="filterCallback()"
+                 :options="biotypes"
+                 placeholder="Any"
+                 :maxSelectedLabels="1"
+                 >
+                 </MultiSelect>
+                 </template> -->
           </Column>
           <Column
             field="feature_gc"
@@ -310,16 +310,16 @@ onMounted(() => {
             exportHeader="feature"
             :showFilterMenu="false"
           >
-            <template #filter="{ filterModel, filterCallback }">
-              <MultiSelect
-                v-model="filterModel.value"
-                @change="filterCallback()"
-                :options="features"
-                placeholder="Any"
-                :maxSelectedLabels="1"
-              >
-              </MultiSelect>
-            </template>
+            <!-- <template #filter="{ filterModel, filterCallback }">
+                 <MultiSelect
+                 v-model="filterModel.value"
+                 @change="filterCallback()"
+                 :options="features"
+                 placeholder="Any"
+                 :maxSelectedLabels="1"
+                 >
+                 </MultiSelect>
+                 </template> -->
           </Column>
         </DataTable>
       </div>

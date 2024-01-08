@@ -132,43 +132,19 @@ def get_search():
     multi_sort = request.args.getlist("multiSort", type=str)
     table_filter = request.args.getlist("tableFilter", type=str)
 
-    print(f"FILTERS: {table_filter}")
-    print(f"SORT: {multi_sort}")
-
-    # ga = (
-    # select(
-    # GenomicAnnotation.data_id,
-    # func.group_concat(GenomicAnnotation.gene_name.distinct()).label("gene_name_gc"),
-    # func.group_concat(GenomicAnnotation.gene_id.distinct()).label("gene_id_gc"),
-    # func.group_concat(GenomicAnnotation.gene_biotype.distinct()).label("gene_biotype_gc"),
-    # func.group_concat(GenomicAnnotation.feature.distinct()).label("feature_gc"),
-    # )
-    # .group_by(GenomicAnnotation.data_id)
-    # ).cte("ga")
-
-    # query = (
-    # select(
-    # Data.chrom,
-    # Data.start,
-    # Data.end,
-    # Data.name,
-    # Data.score,
-    # Data.strand,
-    # Data.coverage,
-    # Data.frequency,
-    # ga.c.gene_name_gc,
-    # ga.c.gene_id_gc,
-    # ga.c.gene_biotype_gc,
-    # ga.c.feature_gc,
-    # )
-    # .join_from(Data, ga, Data.id == ga.c.data_id)
-    # .join_from(Data, Association, Data.dataset_id == Association.dataset_id)
-    # .join_from(Association, Selection, Association.selection_id == Selection.id)
-    ##.order_by(Data.chrom, Data.start)
-    ## duplicate entries from JOIN Association/Selection where 1+ modification
-    ## https://github.com/dieterich-lab/scimodom/issues/53 and related
-    ##.distinct()
-    # )
+    ga = (
+        select(
+            GenomicAnnotation.data_id,
+            func.group_concat(GenomicAnnotation.gene_name.distinct()).label(
+                "gene_name_gc"
+            ),
+            func.group_concat(GenomicAnnotation.gene_id.distinct()).label("gene_id_gc"),
+            func.group_concat(GenomicAnnotation.gene_biotype.distinct()).label(
+                "gene_biotype_gc"
+            ),
+            func.group_concat(GenomicAnnotation.feature.distinct()).label("feature_gc"),
+        ).group_by(GenomicAnnotation.data_id)
+    ).cte("ga")
 
     query = (
         select(
@@ -180,20 +156,44 @@ def get_search():
             Data.strand,
             Data.coverage,
             Data.frequency,
-            func.group_concat(GenomicAnnotation.gene_name.distinct()).label(
-                "gene_name_gc"
-            ),
-            func.group_concat(GenomicAnnotation.gene_id.distinct()).label("gene_id_gc"),
-            func.group_concat(GenomicAnnotation.gene_biotype.distinct()).label(
-                "gene_biotype_gc"
-            ),
-            func.group_concat(GenomicAnnotation.feature.distinct()).label("feature_gc"),
+            ga.c.gene_name_gc,
+            ga.c.gene_id_gc,
+            ga.c.gene_biotype_gc,
+            ga.c.feature_gc,
         )
-        .join_from(Association, Data, Association.dataset_id == Data.dataset_id)
+        .join_from(Data, ga, Data.id == ga.c.data_id)
+        .join_from(Data, Association, Data.dataset_id == Association.dataset_id)
         .join_from(Association, Selection, Association.selection_id == Selection.id)
-        .join_from(Data, GenomicAnnotation, Data.id == GenomicAnnotation.data_id)
-        .group_by(Data.id)
+        # .order_by(Data.chrom, Data.start)
+        # duplicate entries from JOIN Association/Selection where 1+ modification
+        # https://github.com/dieterich-lab/scimodom/issues/53 and related
+        # .distinct()
     )
+
+    # query = (
+    # select(
+    # Data.chrom,
+    # Data.start,
+    # Data.end,
+    # Data.name,
+    # Data.score,
+    # Data.strand,
+    # Data.coverage,
+    # Data.frequency,
+    # func.group_concat(GenomicAnnotation.gene_name.distinct()).label(
+    # "gene_name_gc"
+    # ),
+    # func.group_concat(GenomicAnnotation.gene_id.distinct()).label("gene_id_gc"),
+    # func.group_concat(GenomicAnnotation.gene_biotype.distinct()).label(
+    # "gene_biotype_gc"
+    # ),
+    # func.group_concat(GenomicAnnotation.feature.distinct()).label("feature_gc"),
+    # )
+    # .join_from(Association, Data, Association.dataset_id == Data.dataset_id)
+    # .join_from(Association, Selection, Association.selection_id == Selection.id)
+    # .join_from(Data, GenomicAnnotation, Data.id == GenomicAnnotation.data_id)
+    # .group_by(Data.id)
+    # )
     # an empty list would return an empty set...
     if modification_ids:
         query = query.where(Selection.modification_id.in_(modification_ids))
@@ -202,21 +202,21 @@ def get_search():
     if organism_ids:
         query = query.where(Selection.organism_id.in_(organism_ids))
 
-    feature_query = select(GenomicAnnotation.feature.distinct()).where(
-        GenomicAnnotation.data_id.in_(query.with_only_columns(Data.id))
-    )
-    features = get_session().execute(feature_query).scalars().all()
-    biotype_query = select(GenomicAnnotation.gene_biotype.distinct()).where(
-        GenomicAnnotation.data_id.in_(query.with_only_columns(Data.id))
-    )
-    biotypes = get_session().execute(biotype_query).scalars().all()
-    biotypes = sorted(
-        list(
-            set(
-                [specs.BIOTYPES[biotype] for biotype in biotypes if biotype is not None]
-            )
-        )
-    )
+    # feature_query = select(GenomicAnnotation.feature.distinct()).where(
+    # GenomicAnnotation.data_id.in_(query.with_only_columns(Data.id))
+    # )
+    # features = get_session().execute(feature_query).scalars().all()
+    # biotype_query = select(GenomicAnnotation.gene_biotype.distinct()).where(
+    # GenomicAnnotation.data_id.in_(query.with_only_columns(Data.id))
+    # )
+    # biotypes = get_session().execute(biotype_query).scalars().all()
+    # biotypes = sorted(
+    # list(
+    # set(
+    # [specs.BIOTYPES[biotype] for biotype in biotypes if biotype is not None]
+    # )
+    # )
+    # )
 
     # see above
     query = query.distinct()
@@ -226,13 +226,13 @@ def get_search():
         query = query.order_by(eval(expr))
 
     # order of sort and filter????
-    for flt in table_filter:
-        expr = _get_arg_flt(flt)
-        query = query.where(eval(expr))
+    # for flt in table_filter:
+    # expr = _get_arg_flt(flt)
+    # query = query.where(eval(expr))
 
     response_object = dict()
-    response_object["features"] = features
-    response_object["biotypes"] = biotypes
+    response_object["features"] = []  # features
+    response_object["biotypes"] = []  # biotypes
     response_object["totalRecords"], query = _paginate(query, first_record, max_records)
     response_object["records"] = _dump(query)
 
