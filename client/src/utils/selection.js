@@ -84,6 +84,10 @@ export function updDataset(selection, organism, slctOrg, slctMod, slctTech, data
     )
   }
   return [...new Map(opts.map((item) => [item['dataset_id'], item])).values()].map((item) => {
-    return { dataset_id: item.dataset_id, dataset_title: item.dataset_title }
+    return {
+      dataset_id: item.dataset_id,
+      dataset_title: item.dataset_title,
+      dataset_display: item.dataset_title + '    [' + item.dataset_id + ']'
+    }
   })
 }

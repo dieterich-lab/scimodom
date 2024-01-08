@@ -43,6 +43,11 @@ const app = createApp(App)
 const tailoredTailwind = usePassThrough(
   Tailwind,
   {
+    divider: {
+      root: (props) => ({
+        class: ['before:border-t-2 before:border-crmbs-25']
+      })
+    },
     inputtext: {
       root: (context) => ({
         class: [

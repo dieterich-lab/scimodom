@@ -11,12 +11,10 @@ const filters = ref()
 // todo
 const status = ref(['public', 'restricted'])
 const columns = [
-  { field: 'project_title', header: 'Project' },
+  { field: 'project_title', header: 'Title' },
   { field: 'project_summary', header: 'Summary' },
   { field: 'date_added', header: 'Added' },
-  { field: 'date_published', header: 'Published' },
-  { field: 'doi', header: 'DOI' },
-  { field: 'pmid', header: 'PMID' }
+  { field: 'date_published', header: 'Published' }
 ]
 
 const initFilters = () => {
@@ -165,10 +163,10 @@ onMounted(() => {
               </div>
             </template>
             <template #empty> No results found. </template>
-            <Column field="project_id" header="SMID" style="width: 5%"></Column>
-            <Column field="dataset_id" header="EUFID" style="width: 5%"></Column>
-            <Column field="dataset_title" header="Title" style="width: 5%"></Column>
-            <Column field="rna" header="RNA" filterField="rna" style="width: 10%">
+            <Column field="project_id" header="SMID" style="display: none"></Column>
+            <Column field="dataset_id" header="EUFID" style="display: none"></Column>
+            <Column field="dataset_title" header="Title" style="width: 25%"></Column>
+            <Column field="rna" header="RNA" filterField="rna" style="width: 5%">
               <template #body="{ data }">
                 {{ data.rna }}
               </template>
@@ -185,7 +183,7 @@ onMounted(() => {
               field="modomics_sname"
               header="Modification"
               filterField="modomics_sname"
-              style="width: 25%"
+              style="width: 10%"
             >
               <template #body="{ data }">
                 {{ data.modomics_sname }}
@@ -199,7 +197,7 @@ onMounted(() => {
                 />
               </template>
             </Column>
-            <Column field="tech" header="Technology" filterField="tech" style="width: 20%">
+            <Column field="tech" header="Technology" filterField="tech" style="width: 15%">
               <template #body="{ data }">
                 {{ data.tech }}
               </template>
@@ -295,11 +293,17 @@ onMounted(() => {
           v-model:visible="recordsOverlay"
           header="Additional information"
           :modal="true"
-          class="p-fluid"
+          :pt="{
+            root: { class: 'w-fit' }
+          }"
         >
           <div>
-            <h2>{{ thisRecord.dataset_id }}</h2>
-            <p>{{ thisRecord.sequencing_platform }}</p>
+            <div class="flex space-x-12 mb-6">
+              <span class="inline-block font-semibold pr-2">SMID:</span>
+              {{ thisRecord.project_id }}
+              <span class="inline-block font-semibold pr-2">EUFID:</span>
+              {{ thisRecord.dataset_id }}
+            </div>
             <DataTable
               :value="records.filter((val) => val.dataset_id == thisRecord.dataset_id)"
               tableStyle="min-width: 50rem"
@@ -310,6 +314,23 @@ onMounted(() => {
                 :field="col.field"
                 :header="col.header"
               ></Column>
+              <Column field="doi" header="DOI">
+                <template #body="{ data }">
+                  <a class="text-crmb" target="_blank" :href="`https://doi.org/${data.doi}`">{{
+                    data.doi
+                  }}</a>
+                </template>
+              </Column>
+              <Column field="pmid" header="PMID">
+                <template #body="{ data }">
+                  <a
+                    class="text-crmb"
+                    target="_blank"
+                    :href="`http://www.ncbi.nlm.nih.gov/pubmed/${data.pmid}`"
+                    >{{ data.pmid }}</a
+                  >
+                </template>
+              </Column>
             </DataTable>
           </div>
         </Dialog>

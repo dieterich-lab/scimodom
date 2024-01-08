@@ -192,7 +192,7 @@ function updateDataset() {
       v-model="selectedDataset"
       :options="datasetSelection"
       filter
-      optionLabel="dataset_title"
+      optionLabel="dataset_display"
       placeholder="4. Select dataset"
       :maxSelectedLabels="3"
       :disabled="disabled"
