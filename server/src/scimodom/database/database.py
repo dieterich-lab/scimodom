@@ -20,9 +20,9 @@ def make_session(database_uri: str) -> tuple[Engine, sessionmaker[Session]]:
     :returns: engine and session
     :rtype: tuple(Engine, Session)
     """
-    # options -> pool_recycle, isolation_level
+    # https://docs.sqlalchemy.org/en/20/core/pooling.html#pool-disconnects
     # connect_args={"check_same_thread": False}
-    engine = create_engine(database_uri)
+    engine = create_engine(database_uri, pool_pre_ping=True, pool_recycle=3600)
     session = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     return engine, session
 
