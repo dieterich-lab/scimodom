@@ -15,6 +15,7 @@ import '@/assets/style/index.css'
 import 'primeicons/primeicons.css'
 import Accordion from 'primevue/accordion'
 import AccordionTab from 'primevue/accordiontab'
+import AnimateOnScroll from 'primevue/animateonscroll'
 import Button from 'primevue/button'
 import Card from 'primevue/card'
 import Column from 'primevue/column'
@@ -198,6 +199,7 @@ app.use(router)
 
 app.component('Accordion', Accordion)
 app.component('AccordionTab', AccordionTab)
+app.directive('animateonscroll', AnimateOnScroll)
 app.component('Button', Button)
 app.component('Card', Card)
 app.component('Column', Column)

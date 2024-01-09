@@ -17,7 +17,7 @@ defineProps({
       <i :class="icon" class="p-0 px-1" />
       <slot name="title"></slot>
     </h5>
-    <p class="mb-3 font-normal text-gray-500">
+    <p class="mb-3 font-normal text-gray-600">
       <slot name="content"></slot>
     </p>
     <RouterLink :to="{ name: route }" class="inline-flex items-center text-crmg hover:text-crmb">
