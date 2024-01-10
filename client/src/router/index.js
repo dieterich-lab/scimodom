@@ -41,7 +41,7 @@ const router = createRouter({
       component: DocumentationView
     },
     {
-      path: '/public-roadmap',
+      path: '/',
       name: 'roadmap',
       component: HomeRoadmap
     }

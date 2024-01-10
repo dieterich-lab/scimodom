@@ -17,7 +17,7 @@
         <p class="indent-4 text-xl leading-relaxed mt-2 mb-4">
           Sci-ModoM is under active development. Consult our roadmap for 2024
           <!-- <div class="flex justify-center mt-4 animate-pulse"> -->
-          <RouterLink class="pl-2 animate-pulse" :to="{ name: 'roadmap' }" target="_blank">
+          <RouterLink class="pl-2 animate-pulse" :to="{ name: 'roadmap' }">
             <!-- <a class="pl-2 animate-pulse" href="https://www.trr319-rmap.de" target="_blank" rel="noopener noreferrer"> -->
             <Button
               icon="pi pi-arrow-right"
