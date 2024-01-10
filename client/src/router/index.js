@@ -5,6 +5,7 @@ import BrowseView from '@/views/BrowseView.vue'
 import CompareView from '@/views/CompareView.vue'
 import DownloadView from '@/views/DownloadView.vue'
 import DocumentationView from '@/views/DocumentationView.vue'
+import HomeRoadmap from '@/components/home/HomeRoadmap.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -38,6 +39,11 @@ const router = createRouter({
       path: '/',
       name: 'documentation',
       component: DocumentationView
+    },
+    {
+      path: '/public-roadmap',
+      name: 'roadmap',
+      component: HomeRoadmap
     }
     // {
     //   path: '/about',
@@ -47,7 +53,11 @@ const router = createRouter({
     //   // which is lazy-loaded when the route is visited.
     //   component: () => import('../views/AboutView.vue'),
     // },
-  ]
+  ],
+  scrollBehavior(to, from, savedPosition) {
+    // always scroll to top
+    return { top: 0 }
+  }
 })
 
 export default router

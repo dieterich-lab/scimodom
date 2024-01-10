@@ -168,16 +168,6 @@
                   </div>
                 </div>
                 <div class="p-3 border-l-4 border-solid border-crmbs-50 rounded-l">
-                  <h2 class="text-lg font-bold mt-0 mb-2">Modomics</h2>
-                  <p class="mt-0 mb-3 line-height-3">Link, synchronize efforts.</p>
-                  <div class="border-2 border-solid border-crmbs-50 rounded">
-                    <div
-                      class="border-2 border-solid border-crmbs-50 rounded"
-                      style="width: 0%"
-                    ></div>
-                  </div>
-                </div>
-                <div class="p-3 border-l-4 border-solid border-crmbs-50 rounded-l">
                   <h2 class="text-lg font-bold mt-0 mb-2">Analysis & Visualization</h2>
                   <p class="mt-0 mb-3 line-height-3">DB visualization, online data analysis.</p>
                   <div class="border-2 border-solid border-crmbs-50 rounded">
@@ -318,7 +308,7 @@
                 <div
                   class="flex shrink-0 p-3 bg-crmgs-25 text-white border-solid rounded-md font-bold text-lg items-center justify-center w-56"
                 >
-                  Showcase
+                  Community
                 </div>
                 <div class="flex-1 flex gap-3 flex-col">
                   <div class="p-3 border-l-4 border-solid border-crmgs-25 rounded-l">
@@ -334,9 +324,9 @@
                 </div>
                 <div class="flex-1 flex gap-3 flex-col">
                   <div class="p-3 border-l-4 border-solid border-crmgs-25 rounded-l">
-                    <h2 class="text-lg font-bold mt-0 mb-2">A&A, Data Upload</h2>
+                    <h2 class="text-lg font-bold mt-0 mb-2">Feedback</h2>
                     <p class="mt-0 mb-3 line-height-3">
-                      Test Sci-ModoM: login, user data upload, ...
+                      A&A functionalities, user upload, roll up, update roadmap, ...
                     </p>
                     <div class="border-2 border-solid border-crmgs-25 rounded">
                       <div
@@ -345,9 +335,13 @@
                       ></div>
                     </div>
                   </div>
+                </div>
+                <div class="flex-1 flex gap-3 flex-col">
                   <div class="p-3 border-l-4 border-solid border-crmgs-25 rounded-l">
-                    <h2 class="text-lg font-bold mt-0 mb-2">Feedback</h2>
-                    <p class="mt-0 mb-3 line-height-3">Update roadmap.</p>
+                    <h2 class="text-lg font-bold mt-0 mb-2">Modomics</h2>
+                    <p class="mt-0 mb-3 line-height-3">
+                      Link with Sci-ModoM (functionality), synchronize efforts.
+                    </p>
                     <div class="border-2 border-solid border-crmgs-25 rounded">
                       <div
                         class="border-2 border-solid border-crmgs-25 rounded"
@@ -357,77 +351,8 @@
                   </div>
                 </div>
                 <div class="flex-1 flex gap-3 flex-col"></div>
-                <div class="flex-1 flex gap-3 flex-col"></div>
               </div>
             </div>
-
-            <!-- <div class="flex gap-3 border-bottom-1 surface-border pb-3">
-                         <div class="flex-shrink-0 p-3 bg-indigo-500 text-white border-round font-bold text-lg flex align-items-center justify-content-center w-14rem">Infrastructure</div>
-                         <div class="flex-1 flex gap-3 flex-column">
-                         <div class="p-3 surface-card border-round border-indigo-500" style="border-left: 6px solid">
-                         <h2 class="text-lg font-bold mt-0 mb-2">New Figma Tokens</h2>
-                         <p class="mt-0 mb-3 line-height-3">Update tokens to sync with the new styled mode.</p>
-                         <div class="surface-200 border-round">
-                         <div class="bg-indigo-500 border-round" style="width: 25%; height: 4px"></div>
-                         </div>
-                         </div>
-                         <div class="p-3 surface-card border-round border-indigo-500" style="border-left: 6px solid">
-                         <h2 class="text-lg font-bold mt-0 mb-2">Figma to Theme API</h2>
-                         <p class="mt-0 mb-3 line-height-3">Build the infrastructure to generate themes from Figma.</p>
-                         <div class="surface-200 border-round">
-                         <div class="bg-indigo-500 border-round" style="width: 0%; height: 4px"></div>
-                         </div>
-                         </div>
-                         </div>
-                         <div class="flex-1 flex gap-3 flex-column"></div>
-                         <div class="flex-1 flex gap-3 flex-column"></div>
-                         <div class="flex-1 flex gap-3 flex-column"></div>
-                         </div>
-                         <div class="flex gap-3 border-bottom-1 surface-border pb-3">
-                         <div class="flex-shrink-0 p-3 bg-teal-500 text-white border-round font-bold text-lg flex align-items-center justify-content-center w-14rem">Design</div>
-                         <div class="flex-1 flex gap-3 flex-column">
-                         <div class="p-3 surface-card border-round border-teal-500" style="border-left: 6px solid">
-                         <h2 class="text-lg font-bold mt-0 mb-2">Documentation</h2>
-                         <p class="mt-0 mb-3 line-height-3">Add server backed data samples for data driven examples e.g. VirtualScroll, Lazy.</p>
-                         <div class="surface-200 border-round">
-                         <div class="bg-teal-500 border-round" style="width: 0%; height: 4px"></div>
-                         </div>
-                         </div>
-                         </div>
-                         <div class="flex-1 flex gap-3 flex-column"></div>
-                         <div class="flex-1 flex gap-3 flex-column"></div>
-                         <div class="flex-1 flex gap-3 flex-column"></div>
-                         </div>
-                         <div class="flex gap-3 border-bottom-1 surface-border pb-3">
-                         <div class="flex-shrink-0 p-3 bg-orange-500 text-white border-round font-bold text-lg flex align-items-center justify-content-center w-14rem">Showcase</div>
-                         <div class="flex-1 flex gap-3 flex-column">
-                         <div class="p-3 surface-card border-round border-orange-500" style="border-left: 6px solid">
-                         <h2 class="text-lg font-bold mt-0 mb-2">Blocks Update</h2>
-                         <p class="mt-0 mb-3 line-height-3">Add 80+ New Blocks.</p>
-                         <div class="surface-200 border-round">
-                         <div class="bg-orange-500 border-round" style="width: 20%; height: 4px"></div>
-                         </div>
-                         </div>
-                         <div class="p-3 surface-card border-round border-orange-500" style="border-left: 6px solid">
-                         <h2 class="text-lg font-bold mt-0 mb-2">Tailwind Blocks</h2>
-                         <p class="mt-0 mb-3 line-height-3">Port the entire Blocks to Tailwind.</p>
-                         <div class="surface-200 border-round">
-                         <div class="bg-orange-500 border-round" style="width: 0%; height: 4px"></div>
-                         </div>
-                         </div>
-                         </div>
-                         <div class="flex-1 flex gap-3 flex-column">
-                         <div class="p-3 surface-card border-round border-orange-500" style="border-left: 6px solid">
-                         <h2 class="text-lg font-bold mt-0 mb-2">Online App</h2>
-                         <p class="mt-0 mb-3 line-height-3">Implement a SaaS app to access the blocks instead of an offline download.</p>
-                         <div class="surface-200 border-round">
-                         <div class="bg-orange-500 border-round" style="width: 0%; height: 4px"></div>
-                         </div>
-                         </div>
-                         </div>
-                         <div class="flex-1 flex gap-3 flex-column"></div>
-                         <div class="flex-1 flex gap-3 flex-column"></div>
-                         </div> -->
           </div>
         </div>
       </div>
