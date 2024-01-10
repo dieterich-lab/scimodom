@@ -30,7 +30,9 @@ import Logo from '@/assets/images/rmap-logo.svg'
             <ul class="text-gray-600 font-medium">
               <li class="mb-4">
                 <!-- TODO: add release page or link to Github -->
-                <a href="https://noroute" class="hover:underline">Releases</a>
+                <a href="https://github.com/dieterich-lab/scimodom/releases" class="hover:underline"
+                  >Releases</a
+                >
               </li>
               <li class="mb-4">
                 <RouterLink :to="{ name: 'documentation' }">

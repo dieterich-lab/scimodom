@@ -5,7 +5,7 @@
         <span>Sci-ModoM</span>
       </h1>
       <p class="text-xl font-medium text-gray-600 pt-4 pb-2">
-        Data availability and usability remains a critical challenge in Life Sciences.
+        Data availability and usability remain a critical challenge in Life Sciences.
       </p>
       <p class="text-xl font-medium text-gray-600 pb-4">
         In coordination with the epitranscriptomics community, we aim to establish a pan-European

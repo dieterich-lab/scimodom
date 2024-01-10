@@ -11,8 +11,8 @@ Data model
 Schema
 ^^^^^^
 
-Schema V4 28.09.2023.
-Alembic version ``a2107e9c03fc``.
+Schema 01.2024.
+Alembic version ``79fa0c30513f``.
 
 .. code-block:: bash
 
@@ -20,11 +20,14 @@ Alembic version ``a2107e9c03fc``.
     | Tables_in_scimodom |
     +--------------------+
     | alembic_version    |
+    | annotation         |
+    | annotation_version |
     | assembly           |
     | assembly_version   |
     | association        |
     | data               |
     | dataset            |
+    | genomic_annotation |
     | method             |
     | modification       |
     | modomics           |
@@ -42,190 +45,219 @@ Alembic version ``a2107e9c03fc``.
 .. code-block:: mysql
 
     CREATE TABLE `alembic_version` (
-    `version_num` varchar(32) NOT NULL,
-    PRIMARY KEY (`version_num`)
+        `version_num` varchar(32) NOT NULL,
+        PRIMARY KEY (`version_num`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+    CREATE TABLE `annotation` (
+        `id` int(11) NOT NULL AUTO_INCREMENT,
+        `release` int(11) NOT NULL,
+        `taxa_id` int(11) NOT NULL,
+        `version` varchar(12) NOT NULL,
+        PRIMARY KEY (`id`),
+        KEY `taxa_id` (`taxa_id`),
+        CONSTRAINT `annotation_ibfk_1` FOREIGN KEY (`taxa_id`) REFERENCES `ncbi_taxa` (`id`)
+    ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+    CREATE TABLE `annotation_version` (
+        `version_num` varchar(12) NOT NULL,
+        PRIMARY KEY (`version_num`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
     CREATE TABLE `assembly` (
-    `id` int(11) NOT NULL AUTO_INCREMENT,
-    `name` varchar(128) NOT NULL,
-    `taxa_id` int(11) NOT NULL,
-    `version` varchar(12) NOT NULL,
-    PRIMARY KEY (`id`),
-    KEY `taxa_id` (`taxa_id`),
-    CONSTRAINT `assembly_ibfk_1` FOREIGN KEY (`taxa_id`) REFERENCES `ncbi_taxa` (`id`)
+        `id` int(11) NOT NULL AUTO_INCREMENT,
+        `name` varchar(128) NOT NULL,
+        `taxa_id` int(11) NOT NULL,
+        `version` varchar(12) NOT NULL,
+        PRIMARY KEY (`id`),
+        KEY `taxa_id` (`taxa_id`),
+        CONSTRAINT `assembly_ibfk_1` FOREIGN KEY (`taxa_id`) REFERENCES `ncbi_taxa` (`id`)
     ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
     CREATE TABLE `assembly_version` (
-    `version_num` varchar(12) NOT NULL,
-    PRIMARY KEY (`version_num`)
+        `version_num` varchar(12) NOT NULL,
+        PRIMARY KEY (`version_num`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
     CREATE TABLE `association` (
-    `id` int(11) NOT NULL AUTO_INCREMENT,
-    `dataset_id` varchar(12) NOT NULL,
-    `selection_id` int(11) NOT NULL,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `dataset_id` (`dataset_id`,`selection_id`),
-    KEY `selection_id` (`selection_id`),
-    CONSTRAINT `association_ibfk_1` FOREIGN KEY (`dataset_id`) REFERENCES `dataset` (`id`),
-    CONSTRAINT `association_ibfk_2` FOREIGN KEY (`selection_id`) REFERENCES `selection` (`id`)
+        `id` int(11) NOT NULL AUTO_INCREMENT,
+        `dataset_id` varchar(12) NOT NULL,
+        `selection_id` int(11) NOT NULL,
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `dataset_id` (`dataset_id`,`selection_id`),
+        KEY `selection_id` (`selection_id`),
+        CONSTRAINT `association_ibfk_1` FOREIGN KEY (`dataset_id`) REFERENCES `dataset` (`id`),
+        CONSTRAINT `association_ibfk_2` FOREIGN KEY (`selection_id`) REFERENCES `selection` (`id`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
     CREATE TABLE `data` (
-    `id` int(11) NOT NULL AUTO_INCREMENT,
-    `dataset_id` varchar(12) NOT NULL,
-    `chrom` varchar(128) NOT NULL,
-    `start` int(11) NOT NULL,
-    `end` int(11) NOT NULL,
-    `name` varchar(32) NOT NULL,
-    `score` int(11) NOT NULL,
-    `strand` varchar(1) NOT NULL,
-    `thick_start` int(11) NOT NULL,
-    `thick_end` int(11) NOT NULL,
-    `item_rgb` varchar(128) NOT NULL,
-    `coverage` int(11) NOT NULL,
-    `frequency` int(11) NOT NULL,
-    `ref_base` varchar(1) NOT NULL,
-    PRIMARY KEY (`id`),
-    KEY `dataset_id` (`dataset_id`),
-    CONSTRAINT `data_ibfk_1` FOREIGN KEY (`dataset_id`) REFERENCES `dataset` (`id`)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+        `id` int(11) NOT NULL AUTO_INCREMENT,
+        `dataset_id` varchar(12) NOT NULL,
+        `chrom` varchar(128) NOT NULL,
+        `start` int(11) NOT NULL,
+        `end` int(11) NOT NULL,
+        `name` varchar(32) NOT NULL,
+        `score` int(11) NOT NULL,
+        `strand` varchar(1) NOT NULL,
+        `thick_start` int(11) NOT NULL,
+        `thick_end` int(11) NOT NULL,
+        `item_rgb` varchar(128) NOT NULL,
+        `coverage` int(11) NOT NULL,
+        `frequency` int(11) NOT NULL,
+        PRIMARY KEY (`id`),
+        KEY `dataset_id` (`dataset_id`),
+        CONSTRAINT `data_ibfk_1` FOREIGN KEY (`dataset_id`) REFERENCES `dataset` (`id`)
+    ) ENGINE=InnoDB AUTO_INCREMENT=48935 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
     CREATE TABLE `dataset` (
-    `id` varchar(12) NOT NULL,
-    `project_id` varchar(8) NOT NULL,
-    `title` varchar(255) NOT NULL,
-    `file_format` varchar(32) NOT NULL,
-    `modification_type` varchar(32) NOT NULL,
-    `taxa_id` int(11) NOT NULL,
-    `assembly_id` int(11) NOT NULL,
-    `lifted` tinyint(1) NOT NULL,
-    `annotation_source` varchar(128) NOT NULL,
-    `annotation_version` varchar(128) NOT NULL,
-    `sequencing_platform` varchar(255) DEFAULT NULL,
-    `basecalling` text DEFAULT NULL,
-    `bioinformatics_workflow` text DEFAULT NULL,
-    `experiment` text DEFAULT NULL,
-    `external_source` varchar(255) DEFAULT NULL,
-    PRIMARY KEY (`id`),
-    KEY `taxa_id` (`taxa_id`),
-    KEY `assembly_id` (`assembly_id`),
-    KEY `dataset_ibfk_1` (`project_id`),
-    CONSTRAINT `dataset_ibfk_1` FOREIGN KEY (`project_id`) REFERENCES `project` (`id`),
-    CONSTRAINT `dataset_ibfk_2` FOREIGN KEY (`taxa_id`) REFERENCES `ncbi_taxa` (`id`),
-    CONSTRAINT `dataset_ibfk_3` FOREIGN KEY (`assembly_id`) REFERENCES `assembly` (`id`)
+        `id` varchar(12) NOT NULL,
+        `project_id` varchar(8) NOT NULL,
+        `title` varchar(255) NOT NULL,
+        `file_format` varchar(32) NOT NULL,
+        `modification_type` varchar(32) NOT NULL,
+        `taxa_id` int(11) NOT NULL,
+        `assembly_id` int(11) NOT NULL,
+        `lifted` tinyint(1) NOT NULL,
+        `annotation_source` varchar(128) DEFAULT NULL,
+        `annotation_version` varchar(128) DEFAULT NULL,
+        `sequencing_platform` varchar(255) DEFAULT NULL,
+        `basecalling` text DEFAULT NULL,
+        `bioinformatics_workflow` text DEFAULT NULL,
+        `experiment` text DEFAULT NULL,
+        `external_source` varchar(255) DEFAULT NULL,
+        PRIMARY KEY (`id`),
+        KEY `project_id` (`project_id`),
+        KEY `taxa_id` (`taxa_id`),
+        KEY `assembly_id` (`assembly_id`),
+        CONSTRAINT `dataset_ibfk_1` FOREIGN KEY (`project_id`) REFERENCES `project` (`id`),
+        CONSTRAINT `dataset_ibfk_2` FOREIGN KEY (`taxa_id`) REFERENCES `ncbi_taxa` (`id`),
+        CONSTRAINT `dataset_ibfk_3` FOREIGN KEY (`assembly_id`) REFERENCES `assembly` (`id`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+    CREATE TABLE `genomic_annotation` (
+        `id` int(11) NOT NULL AUTO_INCREMENT,
+        `annotation_id` int(11) NOT NULL,
+        `gene_name` varchar(128) DEFAULT NULL,
+        `gene_id` varchar(128) DEFAULT NULL,
+        `gene_biotype` varchar(255) DEFAULT NULL,
+        `data_id` int(11) NOT NULL,
+        `feature` varchar(32) NOT NULL,
+        PRIMARY KEY (`id`),
+        KEY `annotation_id` (`annotation_id`),
+        KEY `data_id` (`data_id`),
+        CONSTRAINT `genomic_annotation_ibfk_1` FOREIGN KEY (`annotation_id`) REFERENCES `annotation` (`id`),
+        CONSTRAINT `genomic_annotation_ibfk_2` FOREIGN KEY (`data_id`) REFERENCES `data` (`id`)
+    ) ENGINE=InnoDB AUTO_INCREMENT=37296 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
     CREATE TABLE `method` (
-    `id` int(11) NOT NULL AUTO_INCREMENT,
-    `cls` varchar(32) NOT NULL,
-    `meth` varchar(128) NOT NULL,
-    PRIMARY KEY (`id`)
+        `id` int(11) NOT NULL AUTO_INCREMENT,
+        `cls` varchar(32) NOT NULL,
+        `meth` varchar(128) NOT NULL,
+        PRIMARY KEY (`id`)
     ) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
     CREATE TABLE `modification` (
-    `id` int(11) NOT NULL AUTO_INCREMENT,
-    `rna` varchar(32) NOT NULL,
-    `modomics_id` varchar(128) NOT NULL,
-    PRIMARY KEY (`id`),
-    KEY `modomics_id` (`modomics_id`),
-    CONSTRAINT `modification_ibfk_1` FOREIGN KEY (`modomics_id`) REFERENCES `modomics` (`id`)
+        `id` int(11) NOT NULL AUTO_INCREMENT,
+        `rna` varchar(32) NOT NULL,
+        `modomics_id` varchar(128) NOT NULL,
+        PRIMARY KEY (`id`),
+        KEY `modomics_id` (`modomics_id`),
+        CONSTRAINT `modification_ibfk_1` FOREIGN KEY (`modomics_id`) REFERENCES `modomics` (`id`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
     CREATE TABLE `modomics` (
-    `id` varchar(128) NOT NULL,
-    `name` varchar(255) NOT NULL,
-    `short_name` varchar(32) NOT NULL,
-    `moiety` varchar(32) NOT NULL,
-    PRIMARY KEY (`id`)
+        `id` varchar(128) NOT NULL,
+        `name` varchar(255) NOT NULL,
+        `short_name` varchar(32) NOT NULL,
+        `moiety` varchar(32) NOT NULL,
+        PRIMARY KEY (`id`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
     CREATE TABLE `ncbi_taxa` (
-    `id` int(11) NOT NULL AUTO_INCREMENT,
-    `name` varchar(128) NOT NULL,
-    `taxonomy_id` int(11) NOT NULL,
-    `short_name` varchar(128) NOT NULL,
-    PRIMARY KEY (`id`),
-    KEY `taxonomy_id` (`taxonomy_id`),
-    CONSTRAINT `ncbi_taxa_ibfk_1` FOREIGN KEY (`taxonomy_id`) REFERENCES `taxonomy` (`id`)
+        `id` int(11) NOT NULL AUTO_INCREMENT,
+        `name` varchar(128) NOT NULL,
+        `taxonomy_id` int(11) NOT NULL,
+        `short_name` varchar(128) NOT NULL,
+        PRIMARY KEY (`id`),
+        KEY `taxonomy_id` (`taxonomy_id`),
+        CONSTRAINT `ncbi_taxa_ibfk_1` FOREIGN KEY (`taxonomy_id`) REFERENCES `taxonomy` (`id`)
     ) ENGINE=InnoDB AUTO_INCREMENT=10091 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
     CREATE TABLE `organism` (
-    `id` int(11) NOT NULL AUTO_INCREMENT,
-    `cto` varchar(255) NOT NULL,
-    `taxa_id` int(11) NOT NULL,
-    PRIMARY KEY (`id`),
-    KEY `taxa_id` (`taxa_id`),
-    CONSTRAINT `organism_ibfk_1` FOREIGN KEY (`taxa_id`) REFERENCES `ncbi_taxa` (`id`)
+        `id` int(11) NOT NULL AUTO_INCREMENT,
+        `cto` varchar(255) NOT NULL,
+        `taxa_id` int(11) NOT NULL,
+        PRIMARY KEY (`id`),
+        KEY `taxa_id` (`taxa_id`),
+        CONSTRAINT `organism_ibfk_1` FOREIGN KEY (`taxa_id`) REFERENCES `ncbi_taxa` (`id`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
     CREATE TABLE `project` (
-    `id` varchar(8) NOT NULL,
-    `title` varchar(255) NOT NULL,
-    `summary` text NOT NULL,
-    `date_published` datetime NOT NULL,
-    `date_added` datetime NOT NULL,
-    `contact_id` int(11) NOT NULL,
-    PRIMARY KEY (`id`),
-    KEY `contact_id` (`contact_id`),
-    CONSTRAINT `project_ibfk_1` FOREIGN KEY (`contact_id`) REFERENCES `project_contact` (`id`)
+        `id` varchar(8) NOT NULL,
+        `title` varchar(255) NOT NULL,
+        `summary` text NOT NULL,
+        `date_published` datetime NOT NULL,
+        `date_added` datetime NOT NULL,
+        `contact_id` int(11) NOT NULL,
+        PRIMARY KEY (`id`),
+        KEY `contact_id` (`contact_id`),
+        CONSTRAINT `project_ibfk_1` FOREIGN KEY (`contact_id`) REFERENCES `project_contact` (`id`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
     CREATE TABLE `project_contact` (
-    `id` int(11) NOT NULL AUTO_INCREMENT,
-    `contact_name` varchar(128) NOT NULL,
-    `contact_institution` varchar(255) NOT NULL,
-    `contact_email` varchar(320) NOT NULL,
-    PRIMARY KEY (`id`)
+        `id` int(11) NOT NULL AUTO_INCREMENT,
+        `contact_name` varchar(128) NOT NULL,
+        `contact_institution` varchar(255) NOT NULL,
+        `contact_email` varchar(320) NOT NULL,
+        PRIMARY KEY (`id`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
     CREATE TABLE `project_source` (
-    `id` int(11) NOT NULL AUTO_INCREMENT,
-    `project_id` varchar(8) NOT NULL,
-    `doi` varchar(255) DEFAULT NULL,
-    `pmid` int(11) DEFAULT NULL,
-    PRIMARY KEY (`id`),
-    KEY `project_source_ibfk_1` (`project_id`),
-    CONSTRAINT `project_source_ibfk_1` FOREIGN KEY (`project_id`) REFERENCES `project` (`id`)
+        `id` int(11) NOT NULL AUTO_INCREMENT,
+        `project_id` varchar(8) NOT NULL,
+        `doi` varchar(255) DEFAULT NULL,
+        `pmid` int(11) DEFAULT NULL,
+        PRIMARY KEY (`id`),
+        KEY `project_source_ibfk_1` (`project_id`),
+        CONSTRAINT `project_source_ibfk_1` FOREIGN KEY (`project_id`) REFERENCES `project` (`id`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
     CREATE TABLE `selection` (
-    `id` int(11) NOT NULL AUTO_INCREMENT,
-    `modification_id` int(11) NOT NULL,
-    `technology_id` int(11) NOT NULL,
-    `organism_id` int(11) NOT NULL,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `modification_id` (`modification_id`,`technology_id`,`organism_id`),
-    KEY `technology_id` (`technology_id`),
-    KEY `organism_id` (`organism_id`),
-    CONSTRAINT `selection_ibfk_1` FOREIGN KEY (`modification_id`) REFERENCES `modification` (`id`),
-    CONSTRAINT `selection_ibfk_2` FOREIGN KEY (`technology_id`) REFERENCES `technology` (`id`),
-    CONSTRAINT `selection_ibfk_3` FOREIGN KEY (`organism_id`) REFERENCES `organism` (`id`)
+        `id` int(11) NOT NULL AUTO_INCREMENT,
+        `modification_id` int(11) NOT NULL,
+        `technology_id` int(11) NOT NULL,
+        `organism_id` int(11) NOT NULL,
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `modification_id` (`modification_id`,`technology_id`,`organism_id`),
+        KEY `technology_id` (`technology_id`),
+        KEY `organism_id` (`organism_id`),
+        CONSTRAINT `selection_ibfk_1` FOREIGN KEY (`modification_id`) REFERENCES `modification` (`id`),
+        CONSTRAINT `selection_ibfk_2` FOREIGN KEY (`technology_id`) REFERENCES `technology` (`id`),
+        CONSTRAINT `selection_ibfk_3` FOREIGN KEY (`organism_id`) REFERENCES `organism` (`id`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
     CREATE TABLE `taxonomy` (
-    `id` int(11) NOT NULL AUTO_INCREMENT,
-    `domain` varchar(32) NOT NULL,
-    `kingdom` varchar(32) DEFAULT NULL,
-    `phylum` varchar(32) DEFAULT NULL,
-    PRIMARY KEY (`id`)
+        `id` int(11) NOT NULL AUTO_INCREMENT,
+        `domain` varchar(32) NOT NULL,
+        `kingdom` varchar(32) DEFAULT NULL,
+        `phylum` varchar(32) DEFAULT NULL,
+        PRIMARY KEY (`id`)
     ) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
     CREATE TABLE `technology` (
-    `id` int(11) NOT NULL AUTO_INCREMENT,
-    `tech` varchar(255) NOT NULL,
-    `method_id` int(11) NOT NULL,
-    PRIMARY KEY (`id`),
-    KEY `method_id` (`method_id`),
-    CONSTRAINT `technology_ibfk_1` FOREIGN KEY (`method_id`) REFERENCES `method` (`id`)
+        `id` int(11) NOT NULL AUTO_INCREMENT,
+        `tech` varchar(255) NOT NULL,
+        `method_id` int(11) NOT NULL,
+        PRIMARY KEY (`id`),
+        KEY `method_id` (`method_id`),
+        CONSTRAINT `technology_ibfk_1` FOREIGN KEY (`method_id`) REFERENCES `method` (`id`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 
 Model description
 ^^^^^^^^^^^^^^^^^
 
-SMID/project creation is handled by maintainers *e.g.* via request. This is currently only available via maintenance scripts (TODO via API).
+SMID/project creation is handled by maintainers *e.g.* via request. This is currently only available via maintenance scripts.
 A standard template is required:
 
 .. code-block:: json
@@ -273,7 +305,7 @@ Nomenclature
 
 The nomenclature for modifications (table ``modomics``), technologies (table ``method``), taxa (tables ``taxonomy`` and ``ncbi_taxa``), and assemblies (table ``assembly``) is fixed. Entries in these tables allow to define options for data upload, search and compare filters.
 
-The classification of detection technologies is taken from this [paper](https://www.nature.com/articles/s12276-022-00821-0), *.e.g.* NGS 2nd generation is subclassified into direct sequencing, chemical-assisted sequencing (m6A-SAC-seq, RiboMeth-seq, ...), Antibody-based (m6A-seq/MeRIP, ...), enzyme/protein-assisted (DART-seq, MAZTER-seq, ...).
+The classification of detection technologies is taken from this `paper <https://www.nature.com/articles/s12276-022-00821-0>`_ *.e.g.* NGS 2nd generation is subclassified into direct sequencing, chemical-assisted sequencing (m6A-SAC-seq, RiboMeth-seq, ...), Antibody-based (m6A-seq/MeRIP, ...), enzyme/protein-assisted (DART-seq, MAZTER-seq, ...).
 
 Dates should be formatted by the following format: YYYY-MM-DD (ISO 8601).
 
@@ -298,7 +330,13 @@ How does it work?
 Annotation
 ^^^^^^^^^^
 
-We need annotations to add genomic regions (CDS, UTRs, *etc*), gene names, and biotypes to records.
+To annotate a dataset, all of its records are intersected in turn with features such as Exon, CDS, 3'UTR, 5'UTR, introns, and intergenic regions. This is currently done at dataset upload. Feature sets are first merged on ``gene_name``, ``annotation_id``, ``strand``, ``gene_id``, and ``gene_biotype``. All intersections are strand-aware, except for the intergenic region. Introns are obtained by subtracting exons from genomic features. Intergenic regions are the chromosome complement of genomic regions. This is used to fill ``GenomicAnnotation``.
+
+A given modification can thus be annotated *e.g.* as Exon, 3'UTR, and CDS, possibly with different ``gene_name`` or ``gene_id``, resulting in more than one entry in ``GenomicAnnotation``. This has the advantage of allowing a fine-grain annotation. But when a given intersection results in more than one ``gene_name``, ``gene_id``, and/or ``gene_biotype``, the corresponding field is left empty (NULL). These are merged during query, resulting in *e.g.*
+
+.. code-block:: bash
+    15	90984058	90984059	Y	150	-	372	15	PRC1	ENSG00000198901,ENSG00000284946	protein_coding	3\'UTR,CDS,Exon
+
 
 
 Download
@@ -329,54 +367,41 @@ These tables (``modomics``, ``method``, ``taxonomy``, ``ncbi_taxa``, ``assembly`
     9606,Homo sapiens,H. sapiens,1
     10090,Mus musculus,M. musculus,1
 
-*Note:* These tables should only change with database version. We can skip the upsert at production.
-
-For any given database, the upsert can also be done for one table at a time, or all tables (via ``config.py``), without launching the app
+This is typically done *e.g.*
 
 .. code-block:: bash
 
-    upsert -db DATABASE [--model MODEL] [--table TABLE] [--all]
+    # under docker
+    docker compose -f docker-compose-db-only.yml up -d
+    # under server
+    alembic upgrade head
+    upsert --all
 
+This is subject to change.
 
-Projects are added (currently only without launching the app) with
+Projects are added with
 
 .. code-block:: bash
 
-    add-project -db DATABASE -p PROJECT
+    add-project -p PROJECT
 
 where PROJECT is a (path to a) json file, as described above.
 
-
-After project creation, dataset can be added (currently only without launching the app) with
+After project creation, dataset can be added with
 
 .. code-block:: bash
 
-    add-dataset -db DATABASE -smid PROJECT_ID --title TITLE --file FILE [-o ORGANISM] [-a ASSEMBLY] [-m MODIFICATION [MODIFICATION ...]]
-    [-rna {mRNA,rRNA,tRNA} [{mRNA,rRNA,tRNA} ...]] [-t TECHNOLOGY] [-cto CELL_TYPE] [--assembly-id ASSEMBLY_ID]
+    add-dataset -smid PROJECT_ID --title TITLE --file FILE [-o ORGANISM] [-a ASSEMBLY] [-m MODIFICATION [MODIFICATION ...]]
+    [--modomics] [-rna {mRNA,rRNA,tRNA} [{mRNA,rRNA,tRNA} ...]] [-t TECHNOLOGY] [-cto CELL_TYPE] [--assembly-id ASSEMBLY_ID]
     [--modification-id MODIFICATION_ID [MODIFICATION_ID ...]] [--technology-id TECHNOLOGY_ID] [--cto-id CTO_ID]
 
 where FILE is a valid bedRMod file.
 
-
-Local setup
-^^^^^^^^^^^
-
-We use ``python-dotenv`` to manage local environment variables. As of 20.09.2023, if ``LOCAL_APP`` is set, ``config.py`` uses ``.env.local``, else ``.env.development``. The former is a database that we re-create as needed, while the latter is the standard development database.
-
-.. code-block:: mysql
-
-    -- sudo mysql
-    -- DROP DATABASE scimodom_local;
-    CREATE DATABASE IF NOT EXISTS scimodom_local;
-    GRANT ALL PRIVILEGES ON scimodom_local.* TO 'eboileau'@'localhost';
-
-
-Versioning
-^^^^^^^^^^
-
-We use Alembic
+These steps can be done all at once with
 
 .. code-block:: bash
+    add-all -d DIR -pt PROJECT
 
-    alembic revision --autogenerate [-m "message"]
-    alembic upgrade head
+where DIR is a directory with project templates and dataset files, and PROJECT is the name of a project (w/o extension).
+
+This is also subject to change.
