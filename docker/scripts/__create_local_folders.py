@@ -68,3 +68,4 @@ for folder in HOST_FOLDERS:
 for name in SECRET_FILES:
     write_password_file(name)
 write_client_config()
+Path(HOST_IMPORT_DIR).chmod(0o755)

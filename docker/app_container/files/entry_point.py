@@ -33,4 +33,6 @@ def get_secret(path):
 
 
 write_env_file()
-system(f"exec su - app /app/run_flask.sh {environ.get('HTTP_WORKER_PROCESSES')}")
+system(
+    f"exec su - app /app/run_flask.sh {environ.get('HTTP_WORKER_PROCESSES')} {environ.get('GUNICORN_WORKER_TIMEOUT')}"
+)
