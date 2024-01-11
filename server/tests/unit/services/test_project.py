@@ -117,7 +117,12 @@ def _get_project(
     ],
 )
 def test_project_validate_keys_error(
-    external_sources_fmt, metadata_fmt, missing_key, Session, project_template
+    external_sources_fmt,
+    metadata_fmt,
+    missing_key,
+    Session,
+    project_template,
+    data_path,
 ):
     from scimodom.services.project import ProjectService
 
@@ -131,7 +136,7 @@ def test_project_validate_keys_error(
         ProjectService(Session(), project)._validate_keys()
 
 
-def test_project_add_selection(Session, setup, project_template):
+def test_project_add_selection(Session, setup, project_template, data_path):
     from sqlalchemy import select
     from scimodom.database.models import Selection
     from scimodom.services.project import ProjectService
@@ -165,7 +170,13 @@ def test_project_add_selection(Session, setup, project_template):
     ],
 )
 def test_project_validate_existing_entry(
-    external_sources_fmt, metadata_fmt, missing_key, Session, setup, project_template
+    external_sources_fmt,
+    metadata_fmt,
+    missing_key,
+    Session,
+    setup,
+    project_template,
+    data_path,
 ):
     from scimodom.services.project import ProjectService, DuplicateProjectError
     from scimodom.database.models import Project, ProjectSource, ProjectContact
@@ -215,7 +226,7 @@ def test_project_validate_existing_entry(
         ProjectService(Session(), project)._validate_entry()
 
 
-def test_project_validate_entry(Session, project_template):
+def test_project_validate_entry(Session, project_template, data_path):
     from scimodom.services.project import ProjectService
 
     project = _get_project(
@@ -227,7 +238,7 @@ def test_project_validate_entry(Session, project_template):
     assert ProjectService(Session(), project)._validate_entry() is None
 
 
-def test_project_create_project(Session, setup, project_template):
+def test_project_create_project(Session, setup, project_template, data_path):
     from datetime import date, datetime, timezone
 
     from sqlalchemy import select
