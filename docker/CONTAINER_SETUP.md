@@ -22,7 +22,7 @@ The following version is known to work:
 
 ## Configure .env
 
-Create a file _.env_ in the _docker_ directory based on [env_example](docker/env_example).
+Create a file _.env_ in the _docker_ directory based on [env_example](env_example).
 You may stick with the relative path names used there, but then you need to make sure that all scripts are run from the _docker_ directory.
 
 ## Build the images

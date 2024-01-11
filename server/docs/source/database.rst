@@ -335,6 +335,7 @@ To annotate a dataset, all of its records are intersected in turn with features 
 A given modification can thus be annotated *e.g.* as Exon, 3'UTR, and CDS, possibly with different ``gene_name`` or ``gene_id``, resulting in more than one entry in ``GenomicAnnotation``. This has the advantage of allowing a fine-grain annotation. But when a given intersection results in more than one ``gene_name``, ``gene_id``, and/or ``gene_biotype``, the corresponding field is left empty (NULL). These are merged during query, resulting in *e.g.*
 
 .. code-block:: bash
+
     15	90984058	90984059	Y	150	-	372	15	PRC1	ENSG00000198901,ENSG00000284946	protein_coding	3\'UTR,CDS,Exon
 
 
@@ -351,6 +352,8 @@ If downloading a single dataset *e.g.* corresponding to one original bedRMod fil
 
 Setup
 -----
+
+*All this is subject to change*
 
 At lauchtime, the app uses tables defined in ``config.py`` to perform an ``INSERT... ON DUPLICATE KEY UPDATE``
 
@@ -375,9 +378,8 @@ This is typically done *e.g.*
     docker compose -f docker-compose-db-only.yml up -d
     # under server
     alembic upgrade head
-    upsert --all
+    upsert --all # <- this is subject to change!
 
-This is subject to change.
 
 Projects are added with
 
@@ -400,8 +402,7 @@ where FILE is a valid bedRMod file.
 These steps can be done all at once with
 
 .. code-block:: bash
+
     add-all -d DIR -pt PROJECT
 
 where DIR is a directory with project templates and dataset files, and PROJECT is the name of a project (w/o extension).
-
-This is also subject to change.
