@@ -132,19 +132,23 @@ def get_search():
     multi_sort = request.args.getlist("multiSort", type=str)
     table_filter = request.args.getlist("tableFilter", type=str)
 
-    ga = (
-        select(
-            GenomicAnnotation.data_id,
-            func.group_concat(GenomicAnnotation.gene_name.distinct()).label(
-                "gene_name_gc"
-            ),
-            func.group_concat(GenomicAnnotation.gene_id.distinct()).label("gene_id_gc"),
-            func.group_concat(GenomicAnnotation.gene_biotype.distinct()).label(
-                "gene_biotype_gc"
-            ),
-            func.group_concat(GenomicAnnotation.feature.distinct()).label("feature_gc"),
-        ).group_by(GenomicAnnotation.data_id)
-    ).cte("ga")
+    selection_query = select(Selection.id)
+    if modification_ids:
+        selection_query = selection_query.where(
+            Selection.modification_id.in_(modification_ids)
+        )
+    if technology_ids:
+        selection_query = selection_query.where(
+            Selection.technology_id.in_(technology_ids)
+        )
+    if organism_ids:
+        selection_query = selection_query.where(Selection.organism_id.in_(organism_ids))
+
+    selection_ids = get_session().execute(selection_query).scalars().all()
+    association_query = select(Association.dataset_id).where(
+        Association.selection_id.in_(selection_ids)
+    )
+    association_ids = get_session().execute(association_query).scalars().all()
 
     query = (
         select(
@@ -156,19 +160,88 @@ def get_search():
             Data.strand,
             Data.coverage,
             Data.frequency,
-            ga.c.gene_name_gc,
-            ga.c.gene_id_gc,
-            ga.c.gene_biotype_gc,
-            ga.c.feature_gc,
+            func.group_concat(GenomicAnnotation.gene_name.distinct()).label(
+                "gene_name_gc"
+            ),
+            func.group_concat(GenomicAnnotation.gene_id.distinct()).label("gene_id_gc"),
+            func.group_concat(GenomicAnnotation.gene_biotype.distinct()).label(
+                "gene_biotype_gc"
+            ),
+            func.group_concat(GenomicAnnotation.feature.distinct()).label("feature_gc"),
         )
-        .join_from(Data, ga, Data.id == ga.c.data_id)
-        .join_from(Data, Association, Data.dataset_id == Association.dataset_id)
-        .join_from(Association, Selection, Association.selection_id == Selection.id)
-        # .order_by(Data.chrom, Data.start)
-        # duplicate entries from JOIN Association/Selection where 1+ modification
-        # https://github.com/dieterich-lab/scimodom/issues/53 and related
-        # .distinct()
+        .join_from(
+            GenomicAnnotation, Data, GenomicAnnotation.data_id == Data.id
+        )  # inner, drop unannotated records...
+        .where(Data.dataset_id.in_(association_ids))
+        .group_by(GenomicAnnotation.data_id)
     )
+
+    # ------------------------------
+
+    # query = (
+    # select(
+    # Data.chrom,
+    # Data.start,
+    # Data.end,
+    # Data.name,
+    # Data.score,
+    # Data.strand,
+    # Data.coverage,
+    # Data.frequency,
+    # func.group_concat(GenomicAnnotation.gene_name.distinct()).label(
+    # "gene_name_gc"
+    # ),
+    # func.group_concat(GenomicAnnotation.gene_id.distinct()).label("gene_id_gc"),
+    # func.group_concat(GenomicAnnotation.gene_biotype.distinct()).label(
+    # "gene_biotype_gc"
+    # ),
+    # func.group_concat(GenomicAnnotation.feature.distinct()).label("feature_gc"),
+    # )
+    # .join_from(GenomicAnnotation, Data, GenomicAnnotation.data_id == Data.id) # inner, drop unannotated records...
+    # .join(Association, Association.dataset_id == Data.dataset_id, isouter=True) # problematic, does the outer resolve the issue?
+    # .join(Selection, Association.selection_id == Selection.id)
+    # .group_by(GenomicAnnotation.data_id)
+    # )
+
+    # ------------------------------
+
+    # ga = (
+    # select(
+    # GenomicAnnotation.data_id,
+    # func.group_concat(GenomicAnnotation.gene_name.distinct()).label(
+    # "gene_name_gc"
+    # ),
+    # func.group_concat(GenomicAnnotation.gene_id.distinct()).label("gene_id_gc"),
+    # func.group_concat(GenomicAnnotation.gene_biotype.distinct()).label(
+    # "gene_biotype_gc"
+    # ),
+    # func.group_concat(GenomicAnnotation.feature.distinct()).label("feature_gc"),
+    # ).group_by(GenomicAnnotation.data_id)
+    # ).cte("ga")
+
+    # query = (
+    # select(
+    # Data.chrom,
+    # Data.start,
+    # Data.end,
+    # Data.name,
+    # Data.score,
+    # Data.strand,
+    # Data.coverage,
+    # Data.frequency,
+    # ga.c.gene_name_gc,
+    # ga.c.gene_id_gc,
+    # ga.c.gene_biotype_gc,
+    # ga.c.feature_gc,
+    # )
+    # .join_from(Data, ga, Data.id == ga.c.data_id)
+    # .join_from(Data, Association, Data.dataset_id == Association.dataset_id)
+    # .join_from(Association, Selection, Association.selection_id == Selection.id)
+    ## .order_by(Data.chrom, Data.start)
+    ## duplicate entries from JOIN Association/Selection where 1+ modification
+    ## https://github.com/dieterich-lab/scimodom/issues/53 and related
+    ## .distinct()
+    # )
 
     # query = (
     # select(
@@ -194,14 +267,15 @@ def get_search():
     # .join_from(Data, GenomicAnnotation, Data.id == GenomicAnnotation.data_id)
     # .group_by(Data.id)
     # )
+    # ------------------------------
     # an empty list would return an empty set...
-    if modification_ids:
-        query = query.where(Selection.modification_id.in_(modification_ids))
-    if technology_ids:
-        query = query.where(Selection.technology_id.in_(technology_ids))
-    if organism_ids:
-        query = query.where(Selection.organism_id.in_(organism_ids))
-
+    # if modification_ids:
+    # query = query.where(Selection.modification_id.in_(modification_ids))
+    # if technology_ids:
+    # query = query.where(Selection.technology_id.in_(technology_ids))
+    # if organism_ids:
+    # query = query.where(Selection.organism_id.in_(organism_ids))
+    # ------------------------------
     # feature_query = select(GenomicAnnotation.feature.distinct()).where(
     # GenomicAnnotation.data_id.in_(query.with_only_columns(Data.id))
     # )
@@ -219,7 +293,8 @@ def get_search():
     # )
 
     # see above
-    query = query.distinct()
+    # is this needed?
+    # query = query.distinct()
 
     for sort in multi_sort:
         expr = _get_arg_sort(sort)
