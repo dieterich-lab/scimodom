@@ -8,7 +8,7 @@ import scimodom.utils.specifications as specs
 from pathlib import Path
 from flask import request
 from flask_cors import cross_origin
-from sqlalchemy import select, func, and_, or_, not_
+from sqlalchemy import select, func, and_, or_, not_, literal_column
 
 from . import api
 from scimodom.database.database import get_session
@@ -40,13 +40,18 @@ prop_comparators = {
     "in": "in_",
 }
 
+ONE = literal_column("1")
+
 
 def _dump(query):
     return [r._asdict() for r in get_session().execute(query)]
 
 
 def _paginate(query, first, rows):
-    length = get_session().scalar(select(func.count()).select_from(query))
+    # length = get_session().scalar(select(func.count(ONE)).select_from(query))
+    length = get_session().scalar(
+        select(func.count()).select_from(query.with_only_columns(Data.id))
+    )
     query = query.offset(first).limit(rows)
     return (length, query)
 
