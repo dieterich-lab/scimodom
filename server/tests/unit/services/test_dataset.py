@@ -303,7 +303,7 @@ def test_dataset_validate_assembly(Session, setup, project_template):
     ],
 )
 def test_dataset_create_eufid(
-    selection, Session, setup, project_template, caplog, EUF_version
+    selection, Session, setup, project_template, caplog, EUF_version, data_path
 ):
     from scimodom.services.dataset import DataService
 

@@ -355,7 +355,7 @@ def test_importer_read_line(fmt, Session, caplog, EUF_version):
         assert "Warning: Failed to parse fileformat at row 1:" in caplog.text
 
 
-def test_importer(Session, setup, project_template, EUF_version):
+def test_importer(Session, setup, project_template, EUF_version, data_path):
     from scimodom.services.importer import EUFImporter
     from scimodom.services.project import ProjectService
     from scimodom.services.dataset import Data, DataService
