@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { toIds, fmtOrder, fmtFilter } from '@/utils/index.js'
 import { FilterMatchMode, FilterOperator } from 'primevue/api'
 import {
@@ -20,6 +20,8 @@ const selectedTechnology = ref()
 const organism = ref()
 const selectedOrganism = ref()
 
+const disabled = computed(() => isAllSelected())
+
 const dt = ref()
 const first = ref(0)
 const records = ref()
@@ -39,6 +41,18 @@ const filters = ref({
   // },
 })
 
+const submitQuery = () => {
+  lazyLoad()
+}
+
+function isAllSelected() {
+  return (
+    Object.is(selectedModification.value, undefined) ||
+    Object.is(selectedTechnology.value, undefined) ||
+    Object.is(selectedOrganism.value, undefined)
+  )
+}
+
 const onPage = (event) => {
   lazyParams.value = event
   lazyLoad(event)
@@ -51,11 +65,11 @@ const onSort = (event) => {
 
 const onFilter = (event) => {
   lazyParams.value.filters = filters.value
-  console.log('FILTER:', lazyParams.value.filters)
-  console.log('FILTER NAME:', lazyParams.value.filters['gene_name_gc'])
-  console.log('FILTER BIOTYPE:', lazyParams.value.filters['gene_biotype_gc'])
-  console.log('FILTER FEATURE:', lazyParams.value.filters['feature_gc'])
-  console.log('FMT FILTER:', fmtFilter(lazyParams.value.filters))
+  // console.log('FILTER:', lazyParams.value.filters)
+  // console.log('FILTER NAME:', lazyParams.value.filters['gene_name_gc'])
+  // console.log('FILTER BIOTYPE:', lazyParams.value.filters['gene_biotype_gc'])
+  // console.log('FILTER FEATURE:', lazyParams.value.filters['feature_gc'])
+  // console.log('FMT FILTER:', fmtFilter(lazyParams.value.filters))
   lazyLoad(event)
 }
 
@@ -67,7 +81,7 @@ const updateTechnology = () => {
   selectedTechnology.value = undefined
   selectedOrganism.value = undefined
   technology.value = updTechnologyFromMod(options.value, selectedModification.value)
-  lazyLoad()
+  // lazyLoad()
 }
 
 const updateOrganism = () => {
@@ -77,11 +91,11 @@ const updateOrganism = () => {
     selectedModification.value,
     selectedTechnology.value
   )
-  lazyLoad()
+  // lazyLoad()
 }
 
 const updateTmp = () => {
-  lazyLoad()
+  // lazyLoad()
 }
 
 function lazyLoad(event) {
@@ -123,7 +137,7 @@ onMounted(() => {
     rows: 10,
     filters: filters.value
   }
-  lazyLoad()
+  // lazyLoad()
   service
     .getEndpoint('/selection')
     .then(function (response) {
@@ -195,6 +209,22 @@ onMounted(() => {
           />
         </div>
       </div>
+
+      <div class="pt-8">
+        <Button
+          icon="pi pi-sync"
+          label="Submit"
+          :disabled="disabled"
+          @click="submitQuery"
+          :pt="{
+            root: {
+              class:
+                'bg-crmg border-crmg shadow hover:bg-crmg/75 hover:border-crmg/75 focus:ring-crmg/75 focus:outline-none focus:!shadow-[0_0_0_2px_rgba(255,255,255,1),0_0_0_4px_rgba(0,176,81,1),0_1px_2px_0_rgba(0,0,0,1)]'
+            }
+          }"
+        />
+      </div>
+
       <!-- FILTER 2 -->
     </SectionLayout>
     <!-- SECTION -->

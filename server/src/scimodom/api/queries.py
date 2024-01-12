@@ -40,7 +40,7 @@ prop_comparators = {
     "in": "in_",
 }
 
-ONE = literal_column("1")
+# ONE = literal_column("1")
 
 
 def _dump(query):
