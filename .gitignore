@@ -47,10 +47,3 @@ docker/backup/
 docker/db_data/
 docker/db_data_dev/
 docker/config/
-
-# Sphinx documentation
-docs/_build/
-docs/build/
-docs/source/_build/
-doc/source/build/
-_readthedocs/
