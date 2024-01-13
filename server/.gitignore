@@ -28,12 +28,6 @@ share/python-wheels/
 # Jupyter Notebook
 .ipynb_checkpoints
 
-# Sphinx documentation
-docs/_build/
-docs/build/
-docs/source/_build/
-doc/source/build/
-_readthedocs/
 
 # Unit test / coverage reports
 htmlcov/
