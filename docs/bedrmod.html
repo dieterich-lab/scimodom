@@ -1,0 +1,199 @@
+<!doctype html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="generator"
+      content="Docutils 0.18.1: http://docutils.sourceforge.net/"
+    />
+
+    <title>Data Specification​ &#8212; SciModoM-server 0 documentation</title>
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="_static/pygments.css?v=4f649999"
+    />
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="_static/alabaster.css?v=039e1c02"
+    />
+    <script src="_static/documentation_options.js?v=8dde47fa"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Database" href="database.html" />
+
+    <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=0.9, maximum-scale=0.9"
+    />
+  </head>
+  <body>
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            <section id="data-specification">
+              <h1>
+                Data Specification​<a
+                  class="headerlink"
+                  href="#data-specification"
+                  title="Link to this heading"
+                  >¶</a
+                >
+              </h1>
+              <p>
+                Current version v1.7, consult
+                <a
+                  class="reference external"
+                  href="https://github.com/anmabu/bedRMod/tree/main"
+                  >bedRMod</a
+                >. The file extension is “.bed” or “.bedrmod”.
+              </p>
+              <section id="notes">
+                <h2>
+                  Notes<a
+                    class="headerlink"
+                    href="#notes"
+                    title="Link to this heading"
+                    >¶</a
+                  >
+                </h2>
+                <section id="additional-columns">
+                  <h3>
+                    Additional columns<a
+                      class="headerlink"
+                      href="#additional-columns"
+                      title="Link to this heading"
+                      >¶</a
+                    >
+                  </h3>
+                  <p>
+                    Users can add any number of additional columns to suit their
+                    needs (same as for BED), but these are ignored in Sci-ModoM.
+                    Note however that a bedRMod file with exactly 12 columns may
+                    be implicitely assumed to be a BED12 file by some software
+                    (bedtools, genome browsers, …).
+                  </p>
+                </section>
+                <section id="unmodified-bases">
+                  <h3>
+                    Unmodified bases<a
+                      class="headerlink"
+                      href="#unmodified-bases"
+                      title="Link to this heading"
+                      >¶</a
+                    >
+                  </h3>
+                  <p>
+                    bedRMod is a format to store modification data
+                    (site-specific or not), hence unmodified bases should not be
+                    recorded. Context can be recorded using chromStart/End +
+                    thickStart/End, additional columns, <em>etc</em>.
+                  </p>
+                </section>
+                <section id="general-remarks">
+                  <h3>
+                    General remarks<a
+                      class="headerlink"
+                      href="#general-remarks"
+                      title="Link to this heading"
+                      >¶</a
+                    >
+                  </h3>
+                  <p>
+                    In Sci-ModoM, uploading data in bedRMod format requires each
+                    bedRMod to contain a single organism (species and cell,
+                    tissue, or organ) and a single technology. One bedRMod file
+                    can however contain more than one modification, as recorded
+                    by column 4.
+                  </p>
+                  <p>
+                    If you file bedRmod file contains different data and/or
+                    additional columns to store information such as RNA type,
+                    experimental condition, <em>etc.</em>, you need to split
+                    your data such that individual bedRMod files can be uploaded
+                    with as much specific information as possible,
+                    <em
+                      >e.g. m6A in human cell type X using technology Y under
+                      treatment condition Z, etc.</em
+                    >
+                  </p>
+                </section>
+              </section>
+            </section>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+          <h1 class="logo"><a href="index.html">SciModoM-server</a></h1>
+
+          <h3>Navigation</h3>
+          <ul class="current">
+            <li class="toctree-l1">
+              <a class="reference internal" href="database.html">Database</a>
+            </li>
+            <li class="toctree-l1 current">
+              <a class="current reference internal" href="#"
+                >Data Specification​</a
+              >
+            </li>
+          </ul>
+
+          <div class="relations">
+            <h3>Related Topics</h3>
+            <ul>
+              <li>
+                <a href="index.html">Documentation overview</a>
+                <ul>
+                  <li>
+                    Previous:
+                    <a href="database.html" title="previous chapter"
+                      >Database</a
+                    >
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </div>
+          <div id="searchbox" style="display: none" role="search">
+            <h3 id="searchlabel">Quick search</h3>
+            <div class="searchformwrapper">
+              <form class="search" action="search.html" method="get">
+                <input
+                  type="text"
+                  name="q"
+                  aria-labelledby="searchlabel"
+                  autocomplete="off"
+                  autocorrect="off"
+                  autocapitalize="off"
+                  spellcheck="false"
+                />
+                <input type="submit" value="Go" />
+              </form>
+            </div>
+          </div>
+          <script>
+            document.getElementById("searchbox").style.display = "block";
+          </script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2023, Etienne Boileau. | Powered by
+      <a href="http://sphinx-doc.org/">Sphinx 7.2.6</a> &amp;
+      <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
+
+      |
+      <a href="_sources/bedrmod.rst.txt" rel="nofollow">Page source</a>
+    </div>
+  </body>
+</html>
