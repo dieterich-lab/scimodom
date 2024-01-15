@@ -46,6 +46,9 @@ const submitQuery = () => {
   loadingButton.value = true
   lazyLoad()
   loadingButton.value = false
+  //   setTimeout(() => {
+  //         loadingButton.value = false;
+  //     }, 2000);
 }
 
 function isAllSelected() {
@@ -215,16 +218,17 @@ onMounted(() => {
 
       <div class="pt-8">
         <Button
+          type="button"
           icon="pi pi-sync"
           label="Submit"
-          :disabled="disabled"
           :loading="loadingButton"
           @click="submitQuery"
           :pt="{
             root: {
               class:
                 'bg-crmg border-crmg shadow hover:bg-crmg/75 hover:border-crmg/75 focus:ring-crmg/75 focus:outline-none focus:!shadow-[0_0_0_2px_rgba(255,255,255,1),0_0_0_4px_rgba(0,176,81,1),0_1px_2px_0_rgba(0,0,0,1)]'
-            }
+            },
+            loadingIcon: { class: 'mr-2' }
           }"
         />
       </div>
