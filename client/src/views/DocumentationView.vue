@@ -106,6 +106,16 @@
           Annotation are created by intersecting dataset records with features (UTRs, CDS, ...)
           merged across transcripts extracted from a given Ensembl GTF file.
         </p>
+        <p class="indent-4 text-xl leading-relaxed mt-4 mb-2">
+          For detailed documentation and development notes, consult the
+          <a
+            class="text-crmg hover:text-crmb"
+            href="https://dieterich-lab.github.io/scimodom/"
+            target="_blank"
+            rel="noopener noreferrer"
+            >server documentation</a
+          >.
+        </p>
       </div>
       <!-- HOW TO ----  -->
       <div class="text-justify m-6">

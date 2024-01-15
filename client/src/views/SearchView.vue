@@ -26,6 +26,7 @@ const dt = ref()
 const first = ref(0)
 const records = ref()
 const loading = ref(false)
+const loadingButton = ref(false)
 const totalRecords = ref(0)
 const lazyParams = ref({})
 const filters = ref({
@@ -42,7 +43,9 @@ const filters = ref({
 })
 
 const submitQuery = () => {
+  loadingButton.value = true
   lazyLoad()
+  loadingButton.value = false
 }
 
 function isAllSelected() {
@@ -215,6 +218,7 @@ onMounted(() => {
           icon="pi pi-sync"
           label="Submit"
           :disabled="disabled"
+          :loading="loadingButton"
           @click="submitQuery"
           :pt="{
             root: {

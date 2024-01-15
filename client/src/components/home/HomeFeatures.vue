@@ -11,9 +11,9 @@
     <div class="grid grid-cols-3 gap-4">
       <div class="justify-center rounded-md p-4 shadow-xl">
         <i class="pi pi-file-export" />
-        <div class="font-semibold mb-3 text-lg">EUF</div>
+        <div class="font-semibold mb-3 text-lg">Data Format</div>
         <p class="m-0 text-secondary font-medium">
-          Support and promote the bedRMod (EU) format. This format is similar to the
+          Support and promote the bedRMod format. This format is similar to the
           <a
             class="text-crmg hover:text-crmb"
             href="https://www.encodeproject.org/data-standards/wgbs/"
@@ -51,11 +51,19 @@
         <i class="pi pi-comments" />
         <div class="font-semibold mb-3 text-lg">Support</div>
         <p class="m-0 text-secondary font-medium">
-          Full support during the development phase.
-          <a href="mailto:boileau@uni-heidelberg.de" class="text-crmg hover:text-crmb"
-            >Contact us</a
+          Full support during the development phase. Check our
+          <a
+            href="https://github.com/dieterich-lab/scimodom/discussions"
+            class="text-crmg hover:text-crmb"
+            target="_blank"
+            rel="noopener noreferrer"
+            >forum</a
           >
-          with your feedback, request, or question.
+          or
+          <a href="mailto:boileau@uni-heidelberg.de" class="text-crmg hover:text-crmb"
+            >contact us</a
+          >
+          with your feedback, request, or questions.
         </p>
       </div>
       <div class="justify-center rounded-md p-4 shadow-xl">

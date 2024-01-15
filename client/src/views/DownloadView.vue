@@ -9,8 +9,12 @@
         </span>
         selected dataset
       </h1>
-      <p class="text-lg font-normal text-gray-500 lg:text-xl">Database dump or EUF files</p>
+      <p class="text-lg font-normal text-gray-500 lg:text-xl">Database dumps</p>
       <Divider :pt="{ root: { class: 'bg-crmg' } }" />
+      <p class="indent-4 text-xl leading-relaxed mt-2 mb-4">
+        Data export is available for Search, Browse, and Compare. Database dumps of all or selected
+        dataset will soon be available.
+      </p>
     </SectionLayout>
   </DefaultLayout>
 </template>

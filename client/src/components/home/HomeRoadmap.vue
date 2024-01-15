@@ -60,7 +60,7 @@
                   <h2 class="text-lg font-bold mt-0 mb-2">Advanced Queries</h2>
                   <p class="mt-0 mb-3 line-height-3">
                     Allow to filter by genomic annotation (feature, biotype), evidence per site
-                    across techniques, dataset.
+                    across techniques, dataset, ...
                   </p>
                   <div class="border-2 border-solid border-crmbs-50 rounded">
                     <div
@@ -72,7 +72,7 @@
                 <div class="p-3 border-l-4 border-solid border-crmbs-50 rounded-l">
                   <h2 class="text-lg font-bold mt-0 mb-2">Data Annotation</h2>
                   <p class="mt-0 mb-3 line-height-3">
-                    Provide advanced and faster records annotation.
+                    Update model, provide advanced and faster records annotation.
                   </p>
                   <div class="border-2 border-solid border-crmbs-50 rounded">
                     <div
@@ -250,7 +250,9 @@
                 <div class="flex-1 flex gap-3 flex-col">
                   <div class="p-3 border-l-4 border-solid border-crmgs-50 rounded-l">
                     <h2 class="text-lg font-bold mt-0 mb-2">Tables Display</h2>
-                    <p class="mt-0 mb-3 line-height-3">Update layout (+intuitive, +control)</p>
+                    <p class="mt-0 mb-3 line-height-3">
+                      Re-design, update layout (+intuitive, +control)
+                    </p>
                     <div class="border-2 border-solid border-crmgs-50 rounded">
                       <div
                         class="border-2 border-solid border-crmgs-50 rounded"
