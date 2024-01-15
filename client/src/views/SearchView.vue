@@ -45,10 +45,10 @@ const filters = ref({
 const submitQuery = () => {
   loadingButton.value = true
   lazyLoad()
-  loadingButton.value = false
-  //   setTimeout(() => {
-  //         loadingButton.value = false;
-  //     }, 2000);
+  //   loadingButton.value = false
+  setTimeout(() => {
+    loadingButton.value = false
+  }, 2500)
 }
 
 function isAllSelected() {
@@ -221,6 +221,7 @@ onMounted(() => {
           type="button"
           icon="pi pi-sync"
           label="Submit"
+          :disabled="disabled"
           :loading="loadingButton"
           @click="submitQuery"
           :pt="{
