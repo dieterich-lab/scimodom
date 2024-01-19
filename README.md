@@ -16,20 +16,6 @@ The application consists of the following components:
 
 All components can be run locally.
 
-### Pre-commit hooks and static code analyses
-
-For development:
-
-```bash
-pip install pre-commit
-pre-commit install
-# runs on all file at commit or pre-commit run
-
-pip install sqlalchemy[mypy]
-# run static type checker after install
-mypy -p scimodom
-```
-
 ### Database setup
 
 Set up a MariaDB database. One way to do this is to run a MariaDB container image. See the _Development Setup_ section in [Container Setup](docker/CONTAINER_SETUP.md) on how to do this. A local MariaDB database is also possible with similar setup steps. The following steps are required:
@@ -53,8 +39,12 @@ Get the source code and install :
 git clone https://github.com/dieterich-lab/scimodom.git
 cd scimodom
 pip install --upgrade pip setuptools
-pip --verbose install -e '.[test]' 2>&1 | tee install.log
+pip --verbose install 2>&1 | tee install.log
 ```
+
+**Note:** The package depends on [mysqlclient](https://pypi.org/project/mysqlclient/). You may have to install MySQL development headers and
+libraries before. You also need a working installation of [Bedtools](https://bedtools.readthedocs.io/en/latest/), _e.g._
+[pre-compiled binaries](https://bedtools.readthedocs.io/en/latest/content/installation.html#downloading-a-pre-compiled-binary).
 
 Set up your environment configuration in _server/.env_ like this:
 
@@ -84,6 +74,38 @@ flask run
 ```
 
 Most Python IDEs can run this process in the integrated debugger.
+
+### Development
+
+For development:
+
+```bash
+pip --verbose install -e '.[dev,tests,docs]' 2>&1 | tee install.log
+```
+
+#### Pre-commit and static type checker
+
+Under the _server_ directory:
+
+```bash
+# first time, you might have to
+pre-commit install
+# the first time pre-commit runs on a file it will automatically download, install, and run the hook
+# runs on all file at commit or run manually
+pre-commit run --all-files
+# to run individual hooks use pre-commit run <hook_id>
+
+# run static type checker
+mypy -p scimodom
+```
+
+#### Tests
+
+To execute the Python tests run under the _server_ directory:
+
+```bash
+pytest tests
+```
 
 ### Client setup
 
@@ -124,14 +146,6 @@ Any change to the schema is generally tracked with:
 # under client/server
 alembic revision --autogenerate [-m "message"]
 alembic upgrade head
-```
-
-### Tests
-
-To execute the Python tests run under the _server_ directory:
-
-```bash
-pytest tests
 ```
 
 ## License

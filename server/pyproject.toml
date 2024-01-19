@@ -49,9 +49,12 @@ add-all = "scimodom.database.maintenance.add_all:main"
 [project.urls]
 Github = "https://github.com/dieterich-lab/scimodom"
 Issues = "https://github.com/dieterich-lab/scimodom/issues"
+Discussions = "https://github.com/dieterich-lab/scimodom/discussions"
+Documentation = "https://dieterich-lab.github.io/scimodom"
 
 [project.optional-dependencies]
-tests = ["pytest", "pytest-cov", "pytest-depends", "pytest-env"] # do we need pytest-depends?
+dev = ["pre-commit", "SQLAlchemy[mypy]"]
+tests = ["pytest", "pytest-cov", "pytest-depends", "pytest-env"]
 docs = [
   "ipykernel",
   "matplotlib",
@@ -82,7 +85,6 @@ show_error_codes = "True"
 exclude = [
     "scimodom.utils.models.py"
 ]
-
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

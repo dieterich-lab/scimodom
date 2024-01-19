@@ -16,6 +16,9 @@ HTTP_PORT=8000
 
 # We use gunicorn. The docs suggest 2*CPU worker processes.
 HTTP_WORKER_PROCESSES=4
+# https://docs.gunicorn.org/en/stable/settings.html#timeout
+# if undefined uses default value of 30
+HTTP_WORKER_TIMEOUT=120
 
 # Enter here the URL to access the API.
 HTTP_PUBLIC_URL=http://127.0.0.1:5000
