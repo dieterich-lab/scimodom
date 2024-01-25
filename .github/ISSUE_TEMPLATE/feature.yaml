@@ -11,7 +11,7 @@ body:
       description: If yes, please add a link to the issue/PR number in the next section.
       options:
         - label: Is this related to an existing issue or PR?
-          required: true
+          required: false
   - type: textarea
     id: context
     attributes:
