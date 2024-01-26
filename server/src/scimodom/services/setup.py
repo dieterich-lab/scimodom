@@ -1,14 +1,13 @@
 #! /usr/bin/env python3
 
 import logging
+from pathlib import Path
 
 import pandas as pd  # type: ignore # import-untyped
 
-import scimodom.utils.utils as utils
-
-from pathlib import Path
 from scimodom.config import Config
 from scimodom.database.database import Base
+import scimodom.utils.utils as utils
 
 logger = logging.getLogger(__name__)
 

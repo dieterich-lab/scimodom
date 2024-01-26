@@ -5,19 +5,14 @@ This script allows to create a new dataset for an existing
 project.
 """
 
-import logging
-
-import scimodom.utils.utils as utils
-import scimodom.database.queries as queries
-
-from pathlib import Path
-from sqlalchemy import select
 from argparse import ArgumentParser, SUPPRESS
+import logging
+from pathlib import Path
+
+from sqlalchemy import select
 
 from scimodom.config import Config
 from scimodom.database.database import make_session
-from scimodom.services.dataset import DataService
-from scimodom.services.annotation import AnnotationService
 from scimodom.database.models import (
     Project,
     Taxa,
@@ -28,6 +23,10 @@ from scimodom.database.models import (
     Organism,
     Selection,
 )
+import scimodom.database.queries as queries
+from scimodom.services.annotation import AnnotationService
+from scimodom.services.dataset import DataService
+import scimodom.utils.utils as utils
 
 logger = logging.getLogger(__name__)
 

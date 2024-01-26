@@ -1,11 +1,7 @@
-import os
 import json
-
-import scimodom.utils.specifications as specs
-
-# import scimodom.database.queries as queries
-
+import os
 from pathlib import Path
+
 from flask import request
 from flask_cors import cross_origin
 from sqlalchemy import select, func, and_, or_, not_, literal_column
@@ -28,7 +24,10 @@ from scimodom.database.models import (
     Selection,
     GenomicAnnotation,
 )
-
+from scimodom.services.importer import BEDImporter
+from scimodom.utils.models import records_factory
+from scimodom.utils.operations import get_op
+import scimodom.utils.specifications as specs
 
 prop_comparators = {
     "startsWith": "istartswith",
@@ -380,10 +379,6 @@ def get_dataset():
 def get_comparison(step):
     """Retrieve ..."""
 
-    from scimodom.services.importer import BEDImporter
-    from scimodom.utils.operations import get_op
-    from scimodom.utils.models import records_factory
-
     # API call in compare, then pass as params to SPA components
     # but sending all datasets may be too large?
     # final call after dataset selection + query
@@ -501,7 +496,7 @@ def upload_file():
 
     # TODO: define app.config['UPLOAD_PATH'] = UPLOAD_FOLDER
     # ALLOWED_EXTENSIONS are dealt with PrimeVue FileUpload
-
+    # PEP8 import
     from werkzeug.utils import secure_filename
 
     upload = os.getenv("UPLOAD_PATH")

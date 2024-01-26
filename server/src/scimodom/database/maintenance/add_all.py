@@ -10,22 +10,20 @@ intended for general usage: we just want to batch add some data
 to the DB in the short-term.
 """
 
-import os
+from argparse import ArgumentParser, SUPPRESS
+from collections import defaultdict
+from concurrent.futures import ProcessPoolExecutor
+from functools import partial
 import json
 import logging
-
-import scimodom.utils.utils as utils
-
+import os
 from pathlib import Path
-from argparse import ArgumentParser, SUPPRESS
-from concurrent.futures import ProcessPoolExecutor
-from collections import defaultdict
-from functools import partial
 from subprocess import Popen, PIPE
 
 from scimodom.config import Config
 from scimodom.database.database import make_session
 from scimodom.services.project import ProjectService
+import scimodom.utils.utils as utils
 
 logger = logging.getLogger(__name__)
 

@@ -1,21 +1,20 @@
 #! /usr/bin/env python3
 
-import re
-import logging
 import itertools
-
-import scimodom.utils.utils as utils
-import scimodom.database.queries as queries
-import scimodom.utils.specifications as specs
-
+import logging
 from pathlib import Path
+import re
 from typing import TextIO, Iterable, ClassVar, Any
+
 from sqlalchemy import insert, select
 from sqlalchemy.orm import Session
 
-from scimodom.services.annotation import AnnotationService
-from scimodom.database.models import Data, Dataset
 from scimodom.database.database import Base
+from scimodom.database.models import Data, Dataset
+import scimodom.database.queries as queries
+from scimodom.services.annotation import AnnotationService
+import scimodom.utils.specifications as specs
+import scimodom.utils.utils as utils
 
 logger = logging.getLogger(__name__)
 

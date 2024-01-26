@@ -1,5 +1,13 @@
-import pytest
+from datetime import date, datetime, timezone
+from itertools import chain
+import uuid
 
+import pytest
+import shortuuid
+from sqlalchemy import select
+
+from scimodom.database.models import Project, ProjectSource, ProjectContact, Selection
+from scimodom.services.project import ProjectService, DuplicateProjectError
 import scimodom.utils.utils as utils
 
 
@@ -27,7 +35,6 @@ def _get_project(
     dict
         Project template
     """
-    from itertools import chain
 
     project = project_template.copy()
 
@@ -124,8 +131,6 @@ def test_project_validate_keys_error(
     project_template,
     data_path,
 ):
-    from scimodom.services.project import ProjectService
-
     project = _get_project(
         project_template,
         external_sources_fmt=external_sources_fmt,
@@ -137,10 +142,6 @@ def test_project_validate_keys_error(
 
 
 def test_project_add_selection(Session, setup, project_template, data_path):
-    from sqlalchemy import select
-    from scimodom.database.models import Selection
-    from scimodom.services.project import ProjectService
-
     with Session() as session, session.begin():
         session.add_all(setup)
 
@@ -178,14 +179,6 @@ def test_project_validate_existing_entry(
     project_template,
     data_path,
 ):
-    from scimodom.services.project import ProjectService, DuplicateProjectError
-    from scimodom.database.models import Project, ProjectSource, ProjectContact
-
-    import uuid
-    import shortuuid
-
-    from datetime import datetime, timezone
-
     u = uuid.uuid4()
     smid = shortuuid.encode(u)[: ProjectService.SMID_LENGTH]
     stamp = datetime.now(timezone.utc).replace(microsecond=0)
@@ -227,8 +220,6 @@ def test_project_validate_existing_entry(
 
 
 def test_project_validate_entry(Session, project_template, data_path):
-    from scimodom.services.project import ProjectService
-
     project = _get_project(
         project_template,
         external_sources_fmt="list",
@@ -239,12 +230,6 @@ def test_project_validate_entry(Session, project_template, data_path):
 
 
 def test_project_create_project(Session, setup, project_template, data_path):
-    from datetime import date, datetime, timezone
-
-    from sqlalchemy import select
-    from scimodom.services.project import ProjectService
-    from scimodom.database.models import Project, ProjectSource, ProjectContact
-
     with Session() as session, session.begin():
         session.add_all(setup)
 

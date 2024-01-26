@@ -1,8 +1,8 @@
-import pytest
-
-# import pandas as pd
 from io import StringIO
 
+import pytest
+
+from scimodom.services.setup import SetupService
 import scimodom.utils.utils as utils
 
 # one example table...
@@ -43,8 +43,6 @@ csvStringIO = StringIO(csvString)
 
 
 def test_get_table(Session):
-    from scimodom.services.setup import SetupService
-
     setup = SetupService(Session())
 
     model = utils.get_model("Taxonomy")

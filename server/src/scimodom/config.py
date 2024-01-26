@@ -1,10 +1,9 @@
-import os
 import logging
-
-from typing import ClassVar
+import os
 from pathlib import Path
-from dotenv import load_dotenv
+from typing import ClassVar
 
+from dotenv import load_dotenv
 
 DEFAULT_FRONTEND_PATH = (
     Path(__file__).parent.parent.parent.parent.joinpath("client").joinpath("dist")

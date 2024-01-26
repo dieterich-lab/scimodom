@@ -1,13 +1,19 @@
 """utils
 """
 
-import re
-
-from collections.abc import Sequence, Iterable
-from typing import Any
 from argparse import ArgumentParser, Namespace
-from logging import Logger
+from collections.abc import Sequence, Iterable
+import inspect
+from itertools import chain
+import logging
+import re
+import sys
+from typing import Any
+import uuid
 
+import shortuuid
+
+import scimodom.database.models as models
 
 # logging_utils
 
@@ -51,7 +57,7 @@ def add_log_opts(parser: ArgumentParser, logf: str = "") -> None:
 
 def update_logging(
     args: Namespace,
-    logger: Logger | None = None,
+    logger: logging.Logger | None = None,
     format_str: str = "%(levelname)-8s %(name)-8s %(asctime)s : %(message)s",
 ) -> None:
     """Configure loggers/handlers.
@@ -63,8 +69,6 @@ def update_logging(
     :param format_str: Format string
     :type format_str: str
     """
-    import sys
-    import logging
 
     # get root logger
     if logger is None:
@@ -129,9 +133,6 @@ def get_model(model: str):
     :returns: The model class
     :rtype: Base
     """
-
-    import inspect
-    import scimodom.database.models as models
 
     try:
         return {
@@ -212,7 +213,6 @@ def flatten_list(l: list | Sequence | Iterable) -> list:
     :returns: flattened list
     :rtype: list
     """
-    from itertools import chain
 
     return list(chain.from_iterable(l))
 
@@ -227,8 +227,6 @@ def gen_short_uuid(length: int, suuids: Sequence[Any]) -> str:
     :returns: Newly created ID
     :rtype: str
     """
-    import uuid
-    import shortuuid
 
     u = uuid.uuid4()
     suuid = shortuuid.encode(u)[:length]

@@ -6,17 +6,15 @@ configuration json file. It calls the SetupService by default
 and upsert all DB tables.
 """
 
+from argparse import ArgumentParser, SUPPRESS
 import json
 import logging
-
-import scimodom.utils.utils as utils
-
-from argparse import ArgumentParser, SUPPRESS
 
 from scimodom.config import Config
 from scimodom.database.database import make_session
 from scimodom.services.project import ProjectService
 from scimodom.services.setup import SetupService
+import scimodom.utils.utils as utils
 
 logger = logging.getLogger(__name__)
 

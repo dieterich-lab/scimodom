@@ -1,17 +1,14 @@
 #! /usr/bin/env python3
 
-import logging
+from datetime import datetime, timezone
 import json
-
-import scimodom.utils.utils as utils
-import scimodom.utils.specifications as specs
-import scimodom.database.queries as queries
-from scimodom.services.annotation import AnnotationService
-
+import logging
 from pathlib import Path
 from typing import ClassVar
+
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func
+
 from scimodom.config import Config
 from scimodom.database.models import (
     Project,
@@ -23,6 +20,10 @@ from scimodom.database.models import (
     Selection,
     Assembly,
 )
+import scimodom.database.queries as queries
+from scimodom.services.annotation import AnnotationService
+import scimodom.utils.specifications as specs
+import scimodom.utils.utils as utils
 
 logger = logging.getLogger(__name__)
 
@@ -262,7 +263,6 @@ class ProjectService:
 
     def _create_smid(self) -> None:
         """Add project."""
-        from datetime import datetime, timezone
 
         query = select(Project.id)
         smids = self._session.execute(query).scalars().all()

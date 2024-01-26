@@ -1,6 +1,10 @@
+from pathlib import Path
+import tempfile
+
 import pytest
 
-from pathlib import Path
+from scimodom.utils.operations import get_genomic_annotation
+from scimodom.utils.operations import get_op
 
 
 def _get_records(operation):
@@ -302,8 +306,6 @@ def _get_annotation_file():
     ],
 )
 def test_get_intersect(operation):
-    from scimodom.utils.operations import get_op
-
     a_records, b_records, expected_records = _get_records(operation)
     records = get_op(operation)(a_records, b_records)
 
@@ -311,9 +313,6 @@ def test_get_intersect(operation):
 
 
 def test_get_annotation():
-    import tempfile
-    from scimodom.utils.operations import get_genomic_annotation
-
     records = [
         ("2", 15940573, 15940574, "m6A", 1, "+"),
         ("2", 15940606, 15940607, "m6A", 2, "+"),

@@ -1,16 +1,19 @@
 #! /usr/bin/env python3
 
-import os
+import gzip
 import logging
-
-import scimodom.database.queries as queries
-
+import os
 from pathlib import Path
+from posixpath import join as urljoin
 from typing import ClassVar
+import zlib
+
+import requests  # type: ignore
 from sqlalchemy import select, insert
 from sqlalchemy.orm import Session
 
 from scimodom.config import Config
+import scimodom.database.queries as queries
 from scimodom.database.models import (
     Data,
     Dataset,
@@ -18,6 +21,9 @@ from scimodom.database.models import (
     AnnotationVersion,
     GenomicAnnotation,
 )
+from scimodom.utils.models import records_factory
+from scimodom.utils.operations import get_genomic_annotation
+import scimodom.utils.specifications as specs
 
 # T = TypeVar('T', bound='Parent')
 
@@ -248,15 +254,6 @@ class AnnotationService:
         :param fmt: Annotation file format
         :type fmt: str
         """
-        import gzip
-        import zlib
-        import requests  # type: ignore
-
-        import scimodom.utils.specifications as specs
-
-        from sqlalchemy import insert
-
-        from posixpath import join as urljoin
 
         # from scimodom.utils.operations import get_genomic_annotation
 
@@ -390,8 +387,6 @@ class AnnotationService:
         See scimodom.utils.operations.get_genomic_annotation
 
         """
-        from scimodom.utils.operations import get_genomic_annotation
-        from scimodom.utils.models import records_factory
 
         query = select(
             Data.chrom,

@@ -4,15 +4,14 @@
 This script allows to upsert selected or all DB tables.
 """
 
-import sys
-import logging
-
-import scimodom.utils.utils as utils
-
 from argparse import ArgumentParser, SUPPRESS
+import logging
+import sys
+
 from scimodom.config import Config
 from scimodom.database.database import make_session
 from scimodom.services.setup import SetupService
+import scimodom.utils.utils as utils
 
 logger = logging.getLogger(__name__)
 

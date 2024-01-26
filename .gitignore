@@ -11,6 +11,9 @@ tramp
 # emacs projectiles files
 .projectile
 
+# directory configuration
+.dir-locals.el
+
 # backup
 *.bak
 *.gho

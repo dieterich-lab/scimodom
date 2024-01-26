@@ -4,17 +4,18 @@
 #
 #
 from flask import Blueprint
+
 from scimodom.config import Config
 
 frontend = Blueprint("frontend", __name__, static_folder=Config.FRONTEND_PATH)
 
 
-@frontend.route('/')
+@frontend.route("/")
 def index():
-    return frontend.send_static_file('index.html')
+    return frontend.send_static_file("index.html")
 
 
-@frontend.route('/<path:filename>')
+@frontend.route("/<path:filename>")
 def assets(filename):
     print(filename)
     return frontend.send_static_file(filename)

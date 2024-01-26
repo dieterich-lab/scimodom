@@ -1,15 +1,16 @@
 """pybedtools
 """
 
-import os
-
 from collections.abc import Sequence
+import os
+from pathlib import Path
+import tempfile
 from typing import Any
 
-from pathlib import Path
-from scimodom.utils.utils import flatten_list
-
 import pybedtools  # type: ignore
+
+from scimodom.utils.utils import flatten_list
+from scimodom.utils.utils import parse_gtf_attributes
 
 
 if os.getenv("APP_TEMPDIR"):
@@ -229,9 +230,6 @@ def get_genomic_annotation(
     :returns: Records for GenomicAnnotation
     :rtype: list of tuples
     """
-    import tempfile
-    from scimodom.utils.utils import flatten_list
-    from scimodom.utils.utils import parse_gtf_attributes
 
     features = {
         "exon": "Exon",

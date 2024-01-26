@@ -1,16 +1,12 @@
 #! /usr/bin/env python3
 
 import logging
-
-import scimodom.utils.utils as utils
-import scimodom.utils.specifications as specs
-import scimodom.database.queries as queries
-
 from pathlib import Path
 from typing import TextIO, ClassVar, Any
+
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
-from scimodom.services.importer import EUFImporter
+
 from scimodom.database.models import (
     Data,
     Dataset,
@@ -22,6 +18,10 @@ from scimodom.database.models import (
     Organism,
     Assembly,
 )
+import scimodom.database.queries as queries
+from scimodom.services.importer import EUFImporter
+import scimodom.utils.specifications as specs
+import scimodom.utils.utils as utils
 
 logger = logging.getLogger(__name__)
 

@@ -1,13 +1,11 @@
 from datetime import datetime, timezone
 from io import StringIO
-
-import tempfile
-import pytest
 from pathlib import Path
+import tempfile
+
+import pytest
 from sqlalchemy import select
 
-import scimodom.database.queries as queries
-import scimodom.utils.utils as utils
 from scimodom.database.models import (
     Assembly,
     Association,
@@ -20,8 +18,10 @@ from scimodom.database.models import (
     ProjectSource,
     ProjectContact,
 )
+import scimodom.database.queries as queries
 from scimodom.services.dataset import DataService, DuplicateDatasetError
 from scimodom.services.project import ProjectService
+import scimodom.utils.utils as utils
 
 
 # NOTE: ultimately relies on ProjectService(Session(), project).create_project()
@@ -305,8 +305,6 @@ def test_dataset_validate_assembly(Session, setup, project_template):
 def test_dataset_create_eufid(
     selection, Session, setup, project_template, caplog, EUF_version, data_path
 ):
-    from scimodom.services.dataset import DataService
-
     # two modifications for the same dataset, same technology, same organism
     project = _get_project(project_template, case=selection)
 

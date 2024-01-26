@@ -1,11 +1,10 @@
-from scimodom.database.database import Base
-
 from datetime import datetime
-
 from typing import List, Optional
 
 from sqlalchemy import String, Text, DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from scimodom.database.database import Base
 
 
 class Modomics(Base):

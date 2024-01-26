@@ -1,10 +1,21 @@
+from io import StringIO
+import uuid
+
+import pandas as pd
 import pytest
+import shortuuid
+from sqlalchemy import select
+
+from scimodom.database.models import Data, Dataset
+import scimodom.database.queries as queries
+from scimodom.services.importer import EUFImporter, SpecsError
+from scimodom.services.dataset import DataService
+from scimodom.services.project import ProjectService
+from scimodom.utils.specifications import SPECS_EUF
+import scimodom.utils.utils as utils
 
 
 def _get_header(EUF_version, fmt=None):
-    from io import StringIO
-    from scimodom.utils.specifications import SPECS_EUF
-
     specs = SPECS_EUF.copy()
     specs_format = specs.pop("format")
     _ = specs.pop("header")
@@ -119,8 +130,6 @@ def _get_header(EUF_version, fmt=None):
 
 
 def _get_file(EUF_version):
-    from io import StringIO
-
     if EUF_version == "1.6":
         string = """#fileformat=bedRModv1.6
         #organism=9606
@@ -170,8 +179,6 @@ def _get_file(EUF_version):
     ],
 )
 def test_importer_read_version(fmt, Session, EUF_version):
-    from scimodom.services.importer import EUFImporter, SpecsError
-
     version, handle = _get_header(EUF_version, fmt)
     importer = EUFImporter(
         Session(),
@@ -206,10 +213,6 @@ def test_importer_read_version(fmt, Session, EUF_version):
     ],
 )
 def test_importer_read_header(fmt, Session, EUF_version):
-    from sqlalchemy import select
-    from scimodom.services.importer import EUFImporter, SpecsError
-    from scimodom.database.models import Dataset
-
     _, handle = _get_header(EUF_version, fmt)
     importer = EUFImporter(
         Session(),
@@ -262,8 +265,6 @@ def test_importer_read_header(fmt, Session, EUF_version):
     ],
 )
 def test_importer_validate_columns(fmt, Session, EUF_version):
-    from scimodom.services.importer import EUFImporter, SpecsError
-
     _, handle = _get_header(EUF_version, fmt)
     importer = EUFImporter(
         Session(),
@@ -295,10 +296,6 @@ def test_importer_validate_columns(fmt, Session, EUF_version):
     ],
 )
 def test_importer_read_line(fmt, Session, caplog, EUF_version):
-    from sqlalchemy import select
-    from scimodom.services.importer import EUFImporter, SpecsError
-    from scimodom.database.models import Data
-
     _, handle = _get_header(EUF_version, fmt)
     importer = EUFImporter(
         Session(),
@@ -356,18 +353,6 @@ def test_importer_read_line(fmt, Session, caplog, EUF_version):
 
 
 def test_importer(Session, setup, project_template, EUF_version, data_path):
-    from scimodom.services.importer import EUFImporter
-    from scimodom.services.project import ProjectService
-    from scimodom.services.dataset import Data, DataService
-    from scimodom.database.models import Dataset
-    import scimodom.database.queries as queries
-    import scimodom.utils.utils as utils
-    from sqlalchemy import select
-
-    import uuid
-    import shortuuid
-    import pandas as pd
-
     # the order is that defined in the model...
     columns = utils.get_table_columns(Data)
 

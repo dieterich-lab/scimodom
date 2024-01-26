@@ -3,10 +3,10 @@ of records returned from operations (pybedtools).
 NOTE: Order of definition is important (should be guaranteed)!
 """
 
-import scimodom.utils.utils as utils
-
 from collections.abc import Sequence
 from typing import NamedTuple, Any
+
+import scimodom.utils.utils as utils
 
 
 def get_types(model: str) -> dict[str, Any]:
