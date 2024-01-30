@@ -1,16 +1,12 @@
 import { createApp } from 'vue'
 import App from './App.vue'
 
-import PrimeVue from 'primevue/config'
-import Tailwind from 'primevue/passthrough/tailwind'
-import { usePassThrough } from 'primevue/passthrough'
-
-import router from './router'
-
-import ToastService from 'primevue/toastservice'
-
 // global styles
 import '@/assets/style/index.css'
+// PrimeVue presets
+import PrimeVue from 'primevue/config'
+// import WindScm from '@/presets/windscm'
+import LaraScm from '@/presets/larascm'
 // UI components
 import 'primeicons/primeicons.css'
 import Accordion from 'primevue/accordion'
@@ -40,159 +36,14 @@ import TreeSelect from 'primevue/treeselect'
 import DefaultLayout from '@/components/layout/DefaultLayout.vue'
 import SectionLayout from '@/components/layout/SectionLayout.vue'
 
-const app = createApp(App)
-const tailoredTailwind = usePassThrough(
-  Tailwind,
-  {
-    divider: {
-      root: (props) => ({
-        class: ['before:border-t-2 before:border-crmbs-25']
-      })
-    },
-    inputtext: {
-      root: (context) => ({
-        class: [
-          'text-gray-600 border border-crmb',
-          {
-            'hover:border-crmbs-50 focus:outline-none focus:outline-offset-0 focus:shadow-[0_0_0_0.2rem_rgba(2,176,237,1)]':
-              !context.disabled,
-            'opacity-60 select-none pointer-events-none cursor-default': context.disabled
-          }
-        ]
-      })
-    },
-    dialog: {
-      closeButton: {
-        class: [
-          '!text-crmb',
-          'hover:text-gray-700 hover:border-transparent hover:bg-crmb/25',
-          'focus:outline-none focus:outline-offset-0 focus:shadow-crmb/25' // focus
-        ]
-      }
-    },
-    radiobutton: {
-      input: ({ props }) => ({
-        class: [
-          {
-            'border-gray-300 bg-white': props.value !== props.modelValue,
-            'border-crmg bg-crmg': props.value == props.modelValue
-          },
-          {
-            'hover:border-crmg/25 focus:outline-none focus:outline-offset-0 focus:shadow-crmg/25':
-              !props.disabled,
-            'cursor-default opacity-60': props.disabled
-          }
-        ]
-      })
-    },
-    dropdown: {
-      root: {
-        class: 'hover:border-gray-400 focus:outline-none focus:outline-offset-0 focus:shadow-none'
-      },
-      item: ({ context }) => ({
-        class: [
-          {
-            'text-gray-700 hover:text-gray-700 hover:!bg-crmg/25':
-              !context.focused && !context.selected,
-            '!bg-crmg text-gray-700 hover:text-gray-700 hover:bg-crmg':
-              context.focused && !context.selected,
-            'bg-crmg text-gray-50': context.focused && context.selected,
-            'bg-transparent text-gray-800': !context.focused && context.selected
-          }
-        ]
-      })
-    },
-    multiselect: {
-      item: ({ context }) => ({
-        class: [
-          {
-            'text-gray-700 hover:text-gray-700 hover:!bg-crmg/25':
-              !context.focused && !context.selected,
-            '!bg-crmg/25 text-gray-700 hover:text-gray-700 hover:bg-crmg/25':
-              context.focused && !context.selected,
-            'bg-transparent !text-gray-700': context.focused && context.selected,
-            'bg-transparent !text-gray-800': !context.focused && context.selected
-          }
-        ]
-      }),
-      headerCheckbox: ({ context }) => ({
-        class: [
-          'hover:border-crmg/25 focus:outline-none focus:outline-offset-0 focus:shadow-crmg/25',
-          {
-            'border-gray-300 bg-white': !context?.selected,
-            '!border-crmg/25 !bg-crmg/25': context?.selected
-          }
-        ]
-      }),
-      checkbox: ({ context }) => ({
-        class: [
-          'hover:border-crmg/25 focus:outline-none focus:outline-offset-0 focus:shadow-crmg/25',
-          {
-            'border-gray-300 bg-white': !context?.selected,
-            '!border-crmg/25 !bg-crmg/25': context?.selected
-          }
-        ]
-      }),
-      checkboxicon: {
-        class: '!text-crmg'
-      }
-    },
-    treeselect: {
-      tree: {
-        root: { class: 'border-none' },
-        container: { class: '-space-y-4' },
-        toggler: ({ context }) => ({
-          class: [
-            'focus:shadow-crmg/25',
-            {
-              'text-gray-500 hover:bg-crmg/25 hover:!text-crmg': !context.selected
-            },
-            {
-              hidden: context.leaf
-            }
-          ]
-        }),
-        checkbox: ({ context, props }) => ({
-          class: [
-            {
-              'border-gray-300 bg-transparent': !context.checked,
-              'border-crmg/25 bg-crmg/25 !text-crmg': context.checked
-            },
-            {
-              'hover:border-crmg/25 focus:shadow-crmg/25': !props.disabled
-            }
-          ]
-        }),
-        subgroup: { class: 'ml-4' }
-      }
-    },
-    datatable: {
-      bodyrow: ({ context }) => ({
-        class: [
-          context.selected ? 'bg-crmb text-crmb' : 'bg-white text-gray-600',
-          context.stripedRows
-            ? context.index % 2 === 0
-              ? 'bg-white text-gray-600'
-              : '!bg-crmb/10 text-gray-600'
-            : '',
-          'transition duration-200',
-          'focus:outline focus:outline-[0.15rem] focus:!outline-crmb focus:outline-offset-[-0.15rem]' // Focus
-        ]
-      })
-    }
-  },
-  {
-    mergeSections: true,
-    mergeProps: true
-  }
-)
+import ToastService from 'primevue/toastservice'
 
-app.use(PrimeVue, {
-  ripple: true,
-  //   unstyled: true,
-  pt: tailoredTailwind,
-  ptOptions: { mergeProps: true, mergeSections: true } // twice!
-})
+import router from '@/router'
+
+const app = createApp(App)
+
+// app.use(PrimeVue, { unstyled: true, pt: WindScm })
+app.use(PrimeVue, { unstyled: true, pt: LaraScm, ripple: true })
 
 app.use(ToastService)
 app.use(router)

@@ -155,8 +155,9 @@ function updateDataset() {
       :maxSelectedLabels="3"
       :disabled="disabled"
       :pt="{
-        root: { class: 'w-full md:w-full shadow' }
+        root: { class: 'w-full md:w-full' }
       }"
+      :ptOptions="{ mergeProps: true }"
     />
     <TreeSelect
       @change="updateTechnology"
@@ -167,8 +168,9 @@ function updateDataset() {
       placeholder="2. Select RNA modifications"
       :disabled="disabled"
       :pt="{
-        root: { class: 'w-full md:w-full shadow' }
+        root: { class: 'w-full md:w-full' }
       }"
+      :ptOptions="{ mergeProps: true }"
     />
     <TreeSelect
       @change="updateDataset"
@@ -179,8 +181,9 @@ function updateDataset() {
       placeholder="3. Select technologies"
       :disabled="disabled"
       :pt="{
-        root: { class: 'w-full md:w-full shadow' }
+        root: { class: 'w-full md:w-full' }
       }"
+      :ptOptions="{ mergeProps: true }"
     />
     <MultiSelect
       @change="
@@ -197,8 +200,9 @@ function updateDataset() {
       :maxSelectedLabels="3"
       :disabled="disabled"
       :pt="{
-        root: { class: 'col-span-4 md:w-full shadow' }
+        root: { class: 'col-span-4 w-full md:w-full' }
       }"
+      :ptOptions="{ mergeProps: true }"
     />
   </div>
 </template>

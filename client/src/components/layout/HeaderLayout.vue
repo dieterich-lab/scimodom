@@ -14,28 +14,8 @@ import NavigationBar from './NavigationBar.vue'
         <NavigationBar />
       </div>
       <div class="flex flex-wrap 2xl:w-1/5 xl:w-auto 2xl:pl-8 xl:pl-0 gap-4">
-        <Button
-          icon="pi pi-user"
-          size="small"
-          label="Login"
-          :pt="{
-            root: {
-              class:
-                'bg-crmg border-crmg shadow hover:bg-crmg/75 hover:border-crmg/75 focus:ring-crmg/75 focus:outline-none focus:!shadow-[0_0_0_2px_rgba(255,255,255,1),0_0_0_4px_rgba(0,176,81,1),0_1px_2px_0_rgba(0,0,0,1)]'
-            }
-          }"
-        />
-        <Button
-          icon="pi pi-user-plus"
-          size="small"
-          label="Sign Up"
-          :pt="{
-            root: {
-              class:
-                'bg-crmb border-crmb shadow hover:bg-crmb/75 hover:border-crmb/75 focus:ring-crmb/75 focus:outline-none focus:!shadow-[0_0_0_2px_rgba(255,255,255,1),0_0_0_4px_rgba(1,176,237,1),0_1px_2px_0_rgba(0,0,0,1)]'
-            }
-          }"
-        />
+        <Button icon="pi pi-user" size="small" label="Login" raised />
+        <Button icon="pi pi-user-plus" size="small" label="Sign Up" severity="secondary" raised />
       </div>
       <!-- <SearchForm /> -->
     </div>

@@ -136,14 +136,10 @@ onMounted(() => {
                     icon="pi pi-filter-slash"
                     size="small"
                     label="Clear"
+                    severity="secondary"
                     outlined
+                    raised
                     @click="clearFilter()"
-                    :pt="{
-                      root: {
-                        class:
-                          'text-crmb border-crmb shadow hover:border-crmb/75 focus:ring-crmb/75 focus:outline-none'
-                      }
-                    }"
                   />
                 </div>
                 <div class="text-right">
@@ -151,13 +147,9 @@ onMounted(() => {
                     icon="pi pi-external-link"
                     size="small"
                     label="Export"
+                    severity="secondary"
+                    raised
                     @click="onExport($event)"
-                    :pt="{
-                      root: {
-                        class:
-                          'bg-crmb border-crmb shadow hover:bg-crmb/75 hover:border-crmb/75 focus:ring-crmb/75 focus:outline-none focus:!shadow-[0_0_0_2px_rgba(255,255,255,1),0_0_0_4px_rgba(2,176,237,1),0_1px_2px_0_rgba(0,0,0,1)]'
-                      }
-                    }"
                   />
                 </div>
               </div>

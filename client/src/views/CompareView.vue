@@ -128,70 +128,40 @@ onMounted(() => {
             @click="active = 0"
             rounded
             label="A"
+            severity="secondary"
             :outlined="active !== 0"
             :pt="{
               root: ({ props, context }) => ({
-                class: [
-                  'h-12 w-12 p-0 shadow',
-                  {
-                    'text-white bg-crmb shadow border border-crmb hover:bg-crmb/75 hover:border-crmb/75 focus:shadow-[0_0_0_2px_rgba(255,255,255,1),0_0_0_4px_rgba(2,176,237,1),0_1px_2px_0_rgba(0,0,0,1)]':
-                      !props.link &&
-                      props.severity === null &&
-                      !props.text &&
-                      !props.outlined &&
-                      !props.plain,
-                    'text-crmb bg-transparent border border-crmb':
-                      props.link || props.text || props.outlined || props.plain
-                  }
-                ]
+                class: ['h-12 w-12 p-0 shadow']
               })
             }"
+            :ptOptions="{ mergeProps: true }"
           />
           <Button
             @click="active = 1"
             rounded
             label="B"
+            severity="secondary"
             :outlined="active !== 1"
             :pt="{
               root: ({ props, context }) => ({
-                class: [
-                  'h-12 w-12 p-0 shadow',
-                  {
-                    'text-white bg-crmb border border-crmb hover:bg-crmb/75 hover:border-crmb/75 focus:shadow-[0_0_0_2px_rgba(255,255,255,1),0_0_0_4px_rgba(2,176,237,1),0_1px_2px_0_rgba(0,0,0,1)]':
-                      !props.link &&
-                      props.severity === null &&
-                      !props.text &&
-                      !props.outlined &&
-                      !props.plain,
-                    'text-crmb bg-transparent border border-crmb':
-                      props.link || props.text || props.outlined || props.plain
-                  }
-                ]
+                class: ['h-12 w-12 p-0 shadow']
               })
             }"
+            :ptOptions="{ mergeProps: true }"
           />
           <Button
             @click="active = 2"
             rounded
             label="C"
+            severity="secondary"
             :outlined="active !== 2"
             :pt="{
               root: ({ props, context }) => ({
-                class: [
-                  'h-12 w-12 p-0 shadow',
-                  {
-                    'text-white bg-crmb border border-crmb hover:bg-crmb/75 hover:border-crmb/75 focus:shadow-[0_0_0_2px_rgba(255,255,255,1),0_0_0_4px_rgba(2,176,237,1),0_1px_2px_0_rgba(0,0,0,1)]':
-                      !props.link &&
-                      props.severity === null &&
-                      !props.text &&
-                      !props.outlined &&
-                      !props.plain,
-                    'text-crmb bg-transparent border border-crmb':
-                      props.link || props.text || props.outlined || props.plain
-                  }
-                ]
+                class: ['h-12 w-12 p-0 shadow']
               })
             }"
+            :ptOptions="{ mergeProps: true }"
           />
         </div>
 
@@ -360,12 +330,6 @@ onMounted(() => {
                     type="submit"
                     label="Submit"
                     :disabled="disabled"
-                    :pt="{
-                      root: {
-                        class:
-                          'bg-crmg border-crmg shadow hover:bg-crmg/75 hover:border-crmg/75 focus:ring-crmg/75 focus:outline-none focus:!shadow-[0_0_0_2px_rgba(255,255,255,1),0_0_0_4px_rgba(0,176,81,1),0_1px_2px_0_rgba(0,0,0,1)]'
-                      }
-                    }"
                   />
                   <small
                     id="text-error"
@@ -397,13 +361,9 @@ onMounted(() => {
                 icon="pi pi-external-link"
                 size="small"
                 label="Export"
+                severity="secondary"
+                raised
                 @click="onExport($event)"
-                :pt="{
-                  root: {
-                    class:
-                      'bg-crmb border-crmb hover:bg-crmb/75 hover:border-crmb/75 focus:ring-crmb/75 focus:outline-none focus:!shadow-[0_0_0_2px_rgba(255,255,255,1),0_0_0_4px_rgba(2,176,237,1),0_1px_2px_0_rgba(0,0,0,1)]'
-                  }
-                }"
               />
             </div>
           </template>

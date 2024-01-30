@@ -76,7 +76,7 @@ function updateDataset() {
 </script>
 
 <template>
-  <div class="grid grid-flow-row-dense grid-cols-4 gap-6">
+  <div class="grid grid-cols-4 gap-6">
     <Dropdown
       @change="updateOrganism"
       v-model="selectedSpecies"
@@ -86,8 +86,9 @@ function updateDataset() {
       optionGroupChildren="children"
       placeholder="1. Select one organism"
       :pt="{
-        root: { class: 'w-full md:w-full shadow' }
+        root: { class: 'w-full md:w-full' }
       }"
+      :ptOptions="{ mergeProps: true }"
     />
     <MultiSelect
       @change="updateModification"
@@ -97,8 +98,9 @@ function updateDataset() {
       placeholder="2. Select cell/tissue"
       :maxSelectedLabels="3"
       :pt="{
-        root: { class: 'w-full md:w-full shadow' }
+        root: { class: 'w-full md:w-full' }
       }"
+      :ptOptions="{ mergeProps: true }"
     />
     <TreeSelect
       @change="updateTechnology"
@@ -108,8 +110,9 @@ function updateDataset() {
       :metaKeySelection="false"
       placeholder="3. Select RNA modifications"
       :pt="{
-        root: { class: 'w-full md:w-full shadow' }
+        root: { class: 'w-full md:w-full' }
       }"
+      :ptOptions="{ mergeProps: true }"
     />
     <TreeSelect
       @change="updateDataset"
@@ -119,8 +122,9 @@ function updateDataset() {
       :metaKeySelection="false"
       placeholder="4. Select technologies"
       :pt="{
-        root: { class: 'w-full md:w-full shadow' }
+        root: { class: 'w-full md:w-full' }
       }"
+      :ptOptions="{ mergeProps: true }"
     />
     <MultiSelect
       @change="
@@ -136,8 +140,9 @@ function updateDataset() {
       placeholder="5. Select dataset"
       :maxSelectedLabels="3"
       :pt="{
-        root: { class: 'col-span-4 md:w-full shadow' }
+        root: { class: 'col-span-4 w-full md:w-full' }
       }"
+      :ptOptions="{ mergeProps: true }"
     />
   </div>
 </template>

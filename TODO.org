@@ -1,0 +1,42 @@
+#+title: SCIMODOM TODOs
+#+author: E. Boileau
+
+Draft or long-running issues, WIP, triage, and additional references or context re open issues.
+
+* DRAFT ISSUES
+
+** MAINTENANCE
+
+- [ ] ~pre-commit run --all-files~ under server (.pre-commit-config.yaml) runs for all files incl. client.
+
+** GENERAL
+
+- [ ] dependencies :: replace pandas in SetupService
+
+- [ ] models :: ~contact_email~ nullable
+- [ ] models :: ~assembly_id: Mapped[int] = mapped_column(ForeignKey("assembly.id"))~ in ~Dataset~ (and relationships) is redundant,
+  we don't need to know the assembly, as there is only one in the DB!
+- [ ] models :: RNA type nomenclature enforcement
+
+- [ ] design :: Button presets adapted for /primary/ (default, crmg) and /secondary/ (crmb) by redefining the API for severity.
+  We should redefine the API alltogether or add another option. Link, text, and outlined buttons only partially redesigned, remaining presets
+  are unchanged. We still need to harmonize light (automatic) /vs./ dark mode.
+
+*** FEATURE REQUEST
+
+- [ ] Vueuse (title)
+- [ ] Loading bar at the top
+
+* RUNNING ISSUES
+
+** CLOSED
+
+* OPEN ISSUES
+
+** REFERENCES
+
+* LONG-TERM
+
+** IMPROVEMENTS
+
+** QUESTIONS

@@ -15,16 +15,7 @@
     </div>
     <div class="flex justify-center mt-4 animate-pulse">
       <a href="https://www.trr319-rmap.de" target="_blank" rel="noopener noreferrer">
-        <Button
-          icon="pi pi-arrow-right"
-          label="Learn more"
-          :pt="{
-            root: {
-              class:
-                'bg-crmg border-crmg shadow hover:bg-crmg/75 hover:border-crmg/75 focus:ring-crmg/75 focus:outline-none focus:!shadow-[0_0_0_2px_rgba(255,255,255,1),0_0_0_4px_rgba(0,176,81,1),0_1px_2px_0_rgba(0,0,0,1)]'
-            }
-          }"
-        />
+        <Button icon="pi pi-arrow-right" label="Learn more" rounded />
       </a>
     </div>
   </SectionLayout>

@@ -14,7 +14,7 @@
     "axios": "^1.6.1",
     "pinia": "^2.1.7",
     "primeicons": "^6.0.1",
-    "primevue": "^3.40.1",
+    "primevue": "^3.47.2",
     "vee-validate": "^4.11.8",
     "vite-svg-loader": "^4.0.0",
     "vue": "^3.2.47",
