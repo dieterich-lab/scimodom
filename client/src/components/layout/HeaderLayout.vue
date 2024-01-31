@@ -4,9 +4,9 @@ import NavigationBar from './NavigationBar.vue'
 </script>
 
 <template>
-  <header class="top-0 z-20 sticky bg-white opacity-90 border-b border-[#e2ecec]">
+  <header class="top-0 z-20 sticky bg-white opacity-90 border-b border-surface-200">
     <div
-      class="p-1 bg-gradient-to-r from-crmgs-50 from-10% via-crmgs-25 via-40% via-crmbs-50 via-60% to-crmbs-100 to-100%"
+      class="p-1 bg-gradient-to-r from-gg-2 from-10% via-gg-1 via-40% via-gb-2 via-60% to-gb-4 to-100%"
     />
     <div class="mx-auto w-full max-w-screen-2xl p-2 py-6 lg:py-8 flex flex-wrap items-center">
       <div class="flex flex-wrap 2xl:w-4/5 xl:w-auto">

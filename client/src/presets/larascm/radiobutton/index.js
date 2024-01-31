@@ -8,7 +8,7 @@ export default {
       'align-bottom',
 
       // Size
-      'w-6 h-6',
+      'w-[1.571rem] h-[1.571rem]',
 
       // Misc
       'cursor-pointer',
@@ -21,7 +21,7 @@ export default {
       'flex justify-center items-center',
 
       // Size
-      'w-6 h-6',
+      'w-[1.571rem] h-[1.571rem]',
 
       // Shape
       'border-2',
@@ -38,17 +38,18 @@ export default {
           props.value !== props.modelValue && props.value !== undefined,
         'border-surface-300 dark:border-surface-700':
           props.value !== props.modelValue && props.value !== undefined,
-        'border-crmg/75 dark:border-crmg/50':
+        'border-primary-500 dark:border-primary-400':
           props.value == props.modelValue && props.value !== undefined,
-        'bg-crmg/75 dark:bg-crmg/50': props.value == props.modelValue && props.value !== undefined
+        'bg-primary-500 dark:bg-primary-400':
+          props.value == props.modelValue && props.value !== undefined
       },
 
       // States
       {
-        'peer-hover:border-crmg/75 dark:peer-hover:border-crmg/50': !props.disabled,
-        'peer-hover:border-crmg dark:peer-hover:border-crmg peer-hover:bg-crmg dark:peer-hover:bg-crmg':
+        'peer-hover:border-primary-500 dark:peer-hover:border-primary-400': !props.disabled,
+        'peer-hover:border-primary-600 dark:peer-hover:border-primary-300 peer-hover:bg-primary-600 dark:peer-hover:bg-primary-300':
           !props.disabled && props.value == props.modelValue && props.value !== undefined,
-        'peer-focus-visible:border-crmg/75 dark:peer-focus-visible:border-crmg/50 peer-focus-visible:ring-2 peer-focus-visible:ring-crmg/75 dark:peer-focus-visible:ring-crmg/50':
+        'peer-focus-visible:border-primary-500 dark:peer-focus-visible:border-primary-400 peer-focus-visible:ring-2 peer-focus-visible:ring-primary-400/20 dark:peer-focus-visible:ring-primary-300/20':
           !props.disabled,
         'opacity-60 cursor-default': props.disabled
       }
@@ -90,7 +91,7 @@ export default {
       'rounded-full',
 
       // Size
-      'w-3 h-3',
+      'w-[0.857rem] h-[0.857rem]',
 
       // Colors
       'bg-surface-0 dark:bg-surface-900',

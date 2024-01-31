@@ -3,13 +3,13 @@
     <SectionLayout>
       <h1 class="font-ham mb-4 text-3xl font-extrabold text-gray-900 md:text-5xl lg:text-6xl">
         <span
-          class="text-transparent bg-clip-text bg-gradient-to-r from-crmgs-50 from-10% via-crmgs-25 via-40% via-crmbs-50 via-60% to-crmbs-100 to-100"
+          class="text-transparent bg-clip-text bg-gradient-to-r from-gg-2 from-10% via-gg-1 via-40% via-gb-2 via-60% to-gb-4 to-100"
         >
           Documentation
         </span>
       </h1>
       <p class="text-lg font-normal text-gray-500 lg:text-xl">General information and how-to</p>
-      <Divider :pt="{ root: { class: 'bg-crmg' } }" />
+      <Divider />
       <div class="text-justify m-6">
         <h1 class="font-ham text-4xl font-semibold m-auto pt-4 pb-4">
           <span>Introduction</span>
@@ -24,7 +24,7 @@
           <!-- </a> -->
           <!-- </div> -->
         </p>
-        <p class="indent-4 text-lg underline underline-offset-8 decoration-crmbs-100/25">
+        <p class="indent-4 text-lg underline underline-offset-8 decoration-gb-4/25">
           Query nomenclature
         </p>
         <p class="indent-4 text-lg leading-relaxed mt-2 mb-2">
@@ -32,14 +32,14 @@
           species, and genomic features (<span class="italic">Search</span>). The classification of
           detection technologies is taken from
           <a
-            class="text-crmg hover:text-crmb"
+            class="text-primary-500 hover:text-secondary-500"
             href="https://www.nature.com/articles/s12276-022-00821-0"
             target="_blank"
             rel="noopener noreferrer"
             >Detection technologies for RNA modifications</a
           >.
         </p>
-        <p class="indent-4 text-lg underline underline-offset-8 decoration-crmbs-100/25">
+        <p class="indent-4 text-lg underline underline-offset-8 decoration-gb-4/25">
           Project and dataset
         </p>
         <p class="indent-4 text-lg leading-relaxed mt-2 mb-2">
@@ -55,14 +55,14 @@
           cell type, tissue, or organ). Project creation is handled by maintainers via request (more
           details soon). Once a project is created, users can add data to it.
         </p>
-        <p class="indent-4 text-lg underline underline-offset-8 decoration-crmbs-100/25">
+        <p class="indent-4 text-lg underline underline-offset-8 decoration-gb-4/25">
           bedRMod format
         </p>
         <p class="indent-4 text-lg leading-relaxed mt-2 mb-2">
           It is easy to think of a dataset as RNA modifications stored in a given bedRMod file. The
           bedRMod or EU (epitranscriptome unified data exchange) format is similar to the
           <a
-            class="text-crmg hover:text-crmb"
+            class="text-primary-500 hover:text-secondary-500"
             href="https://www.encodeproject.org/data-standards/wgbs/"
             target="_blank"
             rel="noopener noreferrer"
@@ -72,7 +72,7 @@
           modifications from every sequencing read over each reference genomic position. It is a
           convenient representation of all the modified based information stored in the
           <a
-            class="text-crmg hover:text-crmb"
+            class="text-primary-500 hover:text-secondary-500"
             href="http://samtools.github.io/hts-specs/SAMtags.pdf"
             target="_blank"
             rel="noopener noreferrer"
@@ -81,17 +81,13 @@
           stored in BAM alignment files. When aligning or basecalling, most recent software should
           output these tags.
         </p>
-        <p class="indent-4 text-lg underline underline-offset-8 decoration-crmbs-100/25">
-          Assembly
-        </p>
+        <p class="indent-4 text-lg underline underline-offset-8 decoration-gb-4/25">Assembly</p>
         <p class="indent-4 text-lg leading-relaxed mt-2 mb-2">
           Available assemblies for different organisms define the assembly version used in
           Sci-ModoM. Dataset that do not match the database assembly version are lifted over. Only
           chromosomes are considered.
         </p>
-        <p class="indent-4 text-lg underline underline-offset-8 decoration-crmbs-100/25">
-          Annotation
-        </p>
+        <p class="indent-4 text-lg underline underline-offset-8 decoration-gb-4/25">Annotation</p>
         <p class="indent-4 text-lg leading-relaxed mt-2 mb-2">
           Annotation are created by intersecting dataset records with features (UTRs, CDS, ...)
           merged across transcripts extracted from a given Ensembl GTF file.
@@ -99,7 +95,7 @@
         <p class="indent-4 text-xl leading-relaxed mt-4 mb-2">
           For detailed documentation and development notes, consult the
           <a
-            class="text-crmg hover:text-crmb"
+            class="text-primary-500 hover:text-secondary-500"
             href="https://dieterich-lab.github.io/scimodom/"
             target="_blank"
             rel="noopener noreferrer"

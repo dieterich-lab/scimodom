@@ -6,9 +6,8 @@ export default {
       'relative',
 
       // Shape
-      // 'w-full md:w-56',
+      'w-full md:w-56',
       'rounded-md',
-      'shadow',
 
       // Color and Background
       'bg-surface-0 dark:bg-surface-900',
@@ -19,8 +18,11 @@ export default {
       'duration-200',
 
       // States
-      'hover:border-crmg/75 dark:hover:border-crmg/50',
-      { 'outline-none outline-offset-0 ring ring-crmg/75 dark:ring-crmg/50': state.focused },
+      'hover:border-primary-500 dark:hover:border-primary-300',
+      {
+        'outline-none outline-offset-0 ring ring-primary-400/50 dark:ring-primary-300/50':
+          state.focused
+      },
 
       // Misc
       'cursor-pointer',
@@ -147,24 +149,27 @@ export default {
           !context.focused && !context.selected && context.disabled
       },
       {
-        'bg-crmg/75 dark:bg-crmg/50 text-surface-700 dark:text-white/80':
+        'bg-surface-200 dark:bg-surface-600/60 text-surface-700 dark:text-white/80':
           context.focused && !context.selected
       },
       {
-        'bg-cmrg dark:bg-crmg/75 text-primary-700 dark:text-white/80':
+        'bg-primary-100 dark:bg-primary-400/40 text-primary-700 dark:text-white/80':
           context.focused && context.selected
       },
       {
-        'bg-transparent text-primary-700 dark:text-white/80': !context.focused && context.selected
+        'bg-primary-50 dark:bg-primary-400/40 text-primary-700 dark:text-white/80':
+          !context.focused && context.selected
       },
 
       //States
-      { 'hover:bg-crmg/25 dark:hover:bg-crmg/25': !context.focused && !context.selected },
       {
-        'hover:text-surface-700 hover:bg-crmg/25 dark:hover:text-white dark:hover:bg-crmg/25':
+        'hover:bg-surface-100 dark:hover:bg-surface-600/80': !context.focused && !context.selected
+      },
+      {
+        'hover:text-surface-700 hover:bg-surface-100 dark:hover:text-white dark:hover:bg-surface-600/80':
           context.focused && !context.selected
       },
-      'focus-visible:outline-none focus-visible:outline-offset-0 focus-visible:ring focus-visible:ring-inset focus-visible:ring-crmg/75 dark:focus-visible:ring-crmg/50',
+      'focus-visible:outline-none focus-visible:outline-offset-0 focus-visible:ring focus-visible:ring-inset focus-visible:ring-primary-400/50 dark:focus-visible:ring-primary-300/50',
 
       // Transitions
       'transition-shadow',
@@ -253,9 +258,9 @@ export default {
       'duration-200',
 
       // States
-      'hover:border-crmg/75 dark:hover:border-crmg/50',
+      'hover:border-primary-500 dark:hover:border-primary-300',
       'focus:ring focus:outline-none focus:outline-offset-0',
-      'focus:ring-crmg/75 dark:focus:ring-crmg/50',
+      'focus:ring-primary-400/50 dark:focus:ring-primary-300/50',
 
       // Misc
       'appearance-none'

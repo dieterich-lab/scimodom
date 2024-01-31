@@ -7,7 +7,6 @@ export default {
 
       // Shape
       'rounded-md',
-      'shadow',
 
       // Color and Background
       'bg-surface-0 dark:bg-surface-900',
@@ -18,8 +17,11 @@ export default {
       'duration-200',
 
       // States
-      'hover:border-crmg/75 dark:hover:border-crmg/50',
-      { 'outline-none outline-offset-0 ring ring-crmg/75 dark:ring-crmg/50': state.focused },
+      'hover:border-primary-500 dark:hover:border-primary-300',
+      {
+        'outline-none outline-offset-0 ring ring-primary-400/50 dark:ring-primary-300/50':
+          state.focused
+      },
 
       // Misc
       'cursor-pointer',
@@ -114,7 +116,11 @@ export default {
       ]
     },
     node: {
-      class: ['p-1', 'outline-none']
+      class: [
+        'p-1',
+        'rounded-md',
+        'focus:outline-none focus:outline-offset-0 focus:ring focus:ring-inset focus:ring-primary-400/50 dark:focus:ring-primary-300/50'
+      ]
     },
     content: ({ context, props }) => ({
       class: [
@@ -129,8 +135,10 @@ export default {
 
         // Colors
         'text-surface-600 dark:text-white/70',
-        // context.checked
-        { 'bg-crmg/25 dark:bg-crmg/25 text-crmg dark:text-surface-0': context.selected },
+        {
+          'bg-primary-50 dark:bg-primary-400/30 text-primary-600 dark:text-surface-0':
+            context.selected
+        },
 
         // States
         {
@@ -165,15 +173,14 @@ export default {
         // Colors
         'bg-transparent',
         {
-          'text-surface-500 hover:text-crmg/75 dark:text-white dark:hover:text-crmg/50':
-            !context.selected,
-          'text-crmg dark:text-white': context.selected,
+          'text-surface-500 dark:text-white': !context.selected,
+          'text-primary-600 dark:text-white': context.selected,
           invisible: context.leaf
         },
 
         // States
         'hover:bg-surface-200/20 dark:hover:bg-surface-500/20',
-        'focus:outline-none focus:outline-offset-0 focus:ring focus:ring-crmg/75 dark:focus:ring-crmg/50',
+        'focus:outline-none focus:outline-offset-0 focus:ring focus:ring-primary-400/50 dark:focus:ring-primary-300/50',
 
         // Transition
         'transition duration-200',
@@ -222,16 +229,17 @@ export default {
           {
             'border-surface-200 bg-surface-0 dark:border-surface-700 dark:bg-surface-900':
               !context.checked,
-            'border-crmg/75 bg-crmg/75 dark:border-crmg/50 dark:bg-crmg/50': context.checked
+            'border-primary-500 bg-primary-500 dark:border-primary-400 dark:bg-primary-400':
+              context.checked
           },
 
           // States
           {
-            'peer-hover:border-crmg/75 dark:peer-hover:border-crmg/50':
+            'peer-hover:border-primary-500 dark:peer-hover:border-primary-400':
               !props.disabled && !context.checked,
-            'peer-hover:bg-crmg dark:peer-hover:bg-crmg peer-hover:border-crmg dark:peer-hover:border-crmg':
+            'peer-hover:bg-primary-600 dark:peer-hover:bg-primary-300 peer-hover:border-primary-700 dark:peer-hover:border-primary-300':
               !props.disabled && context.checked,
-            'peer-focus-visible:border-crmg/75 dark:peer-focus-visible:border-crmg/50 peer-focus-visible:ring-2 peer-focus-visible:ring-crmg/75 dark:peer-focus-visible:ring-crmg/50':
+            'peer-focus-visible:border-primary-500 dark:peer-focus-visible:border-primary-400 peer-focus-visible:ring-2 peer-focus-visible:ring-primary-400/20 dark:peer-focus-visible:ring-primary-300/20':
               !props.disabled,
             'cursor-default opacity-60': props.disabled
           },
@@ -333,8 +341,8 @@ export default {
         'border border-surface-300 dark:border-surface-600',
 
         // States
-        'hover:border-crmg/75 dark:hover:border-crmg/50',
-        'focus:outline-none focus:outline-offset-0 focus:ring focus:ring-crmg/75 dark:focus:ring-crmg/50',
+        'hover:border-primary-500 dark:hover:border-primary-400',
+        'focus:outline-none focus:outline-offset-0 focus:ring focus:ring-primary-500/50 dark:focus:ring-primary-400/50',
 
         // Transition & Misc
         'appearance-none',

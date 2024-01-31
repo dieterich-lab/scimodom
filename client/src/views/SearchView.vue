@@ -162,7 +162,7 @@ onMounted(() => {
     <SectionLayout>
       <h1 class="font-ham mb-4 text-3xl font-extrabold text-gray-900 md:text-5xl lg:text-6xl">
         <span
-          class="text-transparent bg-clip-text bg-gradient-to-r from-crmgs-50 from-10% via-crmgs-25 via-40% via-crmbs-50 via-60% to-crmbs-100 to-100"
+          class="text-transparent bg-clip-text bg-gradient-to-r from-gg-2 from-10% via-gg-1 via-40% via-gb-2 via-60% to-gb-4 to-100"
         >
           Search
         </span>
@@ -252,7 +252,6 @@ onMounted(() => {
           @sort="onSort($event)"
           removableSort
           sortMode="multiple"
-          stripedRows
         >
           <template #header>
             <div style="text-align: right">

@@ -1,5 +1,5 @@
 import global from './global.js'
-import radiobutton from './radiobutton'
+import button from './button'
 import autocomplete from './autocomplete'
 import calendar from './calendar'
 import cascadeselect from './cascadeselect'
@@ -17,6 +17,7 @@ import knob from './knob'
 import listbox from './listbox'
 import multiselect from './multiselect'
 import password from './password'
+import radiobutton from './radiobutton'
 import rating from './rating'
 import selectbutton from './selectbutton'
 import slider from './slider'
@@ -24,7 +25,6 @@ import textarea from './textarea'
 import togglebutton from './togglebutton'
 import treeselect from './treeselect'
 import tristatecheckbox from './tristatecheckbox'
-import button from './button'
 import splitbutton from './splitbutton'
 import datatable from './datatable'
 import dataview from './dataview'
@@ -78,7 +78,7 @@ export default {
     badgedirective,
     ripple
   },
-  radiobutton,
+  button,
   autocomplete,
   calendar,
   cascadeselect,
@@ -96,6 +96,7 @@ export default {
   listbox,
   multiselect,
   password,
+  radiobutton,
   rating,
   selectbutton,
   slider,
@@ -103,7 +104,6 @@ export default {
   togglebutton,
   treeselect,
   tristatecheckbox,
-  button,
   splitbutton,
   datatable,
   dataview,

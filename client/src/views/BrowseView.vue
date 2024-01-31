@@ -80,7 +80,7 @@ onMounted(() => {
     <SectionLayout>
       <h1 class="font-ham mb-4 text-3xl font-extrabold text-gray-900 md:text-5xl lg:text-6xl">
         <span
-          class="text-transparent bg-clip-text bg-gradient-to-r from-crmgs-50 from-10% via-crmgs-25 via-40% via-crmbs-50 via-60% to-crmbs-100 to-100"
+          class="text-transparent bg-clip-text bg-gradient-to-r from-gg-2 from-10% via-gg-1 via-40% via-gb-2 via-60% to-gb-4 to-100"
         >
           Browse
         </span>
@@ -89,7 +89,7 @@ onMounted(() => {
       <p class="text-lg font-normal text-gray-500 lg:text-xl">
         Use filters to find available dataset
       </p>
-      <Divider :pt="{ root: { class: 'bg-crmg' } }" />
+      <Divider />
       <div>
         <div>
           <DataTable
@@ -130,6 +130,21 @@ onMounted(() => {
                       size="small"
                       v-model="filters['global'].value"
                       placeholder="Search"
+                      :pt="{
+                        root: ({ props, context, parent }) => ({
+                          class: [
+                            {
+                              'hover:border-secondary-500 dark:hover:border-secondary-400':
+                                !context.disabled,
+                              'focus:outline-none focus:outline-offset-0 focus:ring focus:ring-secondary-500/50 dark:focus:ring-secondary-400/50':
+                                !context.disabled,
+                              'opacity-60 select-none pointer-events-none cursor-default':
+                                context.disabled
+                            }
+                          ]
+                        })
+                      }"
+                      :ptOptions="{ mergeProps: true }"
                     />
                   </span>
                   <Button
@@ -267,14 +282,9 @@ onMounted(() => {
                   icon="pi pi-plus"
                   outlined
                   rounded
+                  severity="secondary"
                   class="mr-2"
                   @click="onOverlay(slotProps.data)"
-                  :pt="{
-                    root: {
-                      class:
-                        'text-crmb border-crmb hover:border-crmb/75 focus:ring-crmb/75 focus:outline-none'
-                    }
-                  }"
                 />
               </template>
             </Column>
@@ -286,8 +296,10 @@ onMounted(() => {
           header="Additional information"
           :modal="true"
           :pt="{
-            root: { class: 'w-fit' }
+            root: { class: 'w-fit' },
+            closeButton: { class: 'focus:ring-secondary-400/50 dark:focus:ring-secondary-300/50' }
           }"
+          :ptOptions="{ mergeProps: true }"
         >
           <div>
             <div class="flex space-x-12 mb-6">
@@ -308,15 +320,18 @@ onMounted(() => {
               ></Column>
               <Column field="doi" header="DOI">
                 <template #body="{ data }">
-                  <a class="text-crmb" target="_blank" :href="`https://doi.org/${data.doi}`">{{
-                    data.doi
-                  }}</a>
+                  <a
+                    class="text-secondary-500"
+                    target="_blank"
+                    :href="`https://doi.org/${data.doi}`"
+                    >{{ data.doi }}</a
+                  >
                 </template>
               </Column>
               <Column field="pmid" header="PMID">
                 <template #body="{ data }">
                   <a
-                    class="text-crmb"
+                    class="text-secondary-500"
                     target="_blank"
                     :href="`http://www.ncbi.nlm.nih.gov/pubmed/${data.pmid}`"
                     >{{ data.pmid }}</a

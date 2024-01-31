@@ -15,7 +15,7 @@
         <p class="m-0 text-secondary font-medium">
           Support and promote the bedRMod format. This format is similar to the
           <a
-            class="text-crmg hover:text-crmb"
+            class="text-primary-500 hover:text-secondary-500"
             href="https://www.encodeproject.org/data-standards/wgbs/"
             target="_blank"
             rel="noopener noreferrer"
@@ -54,13 +54,15 @@
           Full support during the development phase. Check our
           <a
             href="https://github.com/dieterich-lab/scimodom/discussions"
-            class="text-crmg hover:text-crmb"
+            class="text-primary-500 hover:text-secondary-500"
             target="_blank"
             rel="noopener noreferrer"
             >forum</a
           >
           or
-          <a href="mailto:boileau@uni-heidelberg.de" class="text-crmg hover:text-crmb"
+          <a
+            href="mailto:boileau@uni-heidelberg.de"
+            class="text-primary-500 hover:text-secondary-500"
             >contact us</a
           >
           with your feedback, request, or questions.

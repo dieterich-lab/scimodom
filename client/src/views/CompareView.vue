@@ -113,14 +113,14 @@ onMounted(() => {
     <SectionLayout>
       <h1 class="font-ham mb-4 text-3xl font-extrabold text-gray-900 md:text-5xl lg:text-6xl">
         <span
-          class="text-transparent bg-clip-text bg-gradient-to-r from-crmgs-50 from-10% via-crmgs-25 via-40% via-crmbs-50 via-60% to-crmbs-100 to-100"
+          class="text-transparent bg-clip-text bg-gradient-to-r from-gg-2 from-10% via-gg-1 via-40% via-gb-2 via-60% to-gb-4 to-100"
         >
           Compare
         </span>
         dataset
       </h1>
       <p class="text-lg font-normal text-gray-500 lg:text-xl">Perform complex queries</p>
-      <Divider :pt="{ root: { class: 'bg-crmg' } }" />
+      <Divider />
 
       <div>
         <div class="flex mb-2 gap-2 justify-content-end">
@@ -175,7 +175,8 @@ onMounted(() => {
                   {
                     'border-gray-300 bg-white text-gray-700 hover:bg-white hover:border-gray-400 hover:text-gray-600':
                       parent.state.d_activeIndex !== context.index,
-                    'bg-white border-crmb text-crmb': parent.state.d_activeIndex === context.index
+                    'bg-white border-secondary-500 text-secondary-500':
+                      parent.state.d_activeIndex === context.index
                   }
                 ]
               })
@@ -198,7 +199,8 @@ onMounted(() => {
                   {
                     'border-gray-300 bg-white text-gray-700 hover:bg-white hover:border-gray-400 hover:text-gray-600':
                       parent.state.d_activeIndex !== context.index,
-                    'bg-white border-crmb text-crmb': parent.state.d_activeIndex === context.index
+                    'bg-white border-secondary-500 text-secondary-500':
+                      parent.state.d_activeIndex === context.index
                   }
                 ]
               })
@@ -223,7 +225,8 @@ onMounted(() => {
                   {
                     'border-gray-300 bg-white text-gray-700 hover:bg-white hover:border-gray-400 hover:text-gray-600':
                       parent.state.d_activeIndex !== context.index,
-                    'bg-white border-crmb text-crmb': parent.state.d_activeIndex === context.index
+                    'bg-white border-secondary-500 text-secondary-500':
+                      parent.state.d_activeIndex === context.index
                   }
                 ]
               })
@@ -333,7 +336,7 @@ onMounted(() => {
                   />
                   <small
                     id="text-error"
-                    class="p-4 select-none font-semibold text-base text-crmg"
+                    class="p-4 select-none font-semibold text-base text-primary-500"
                     >{{ errorMessage || '&nbsp;' }}</small
                   >
                 </div>
@@ -342,7 +345,7 @@ onMounted(() => {
           </TabPanel>
         </TabView>
       </div>
-      <Divider :pt="{ root: { class: 'bg-crmg' } }" />
+      <Divider />
       <div>
         <DataTable
           :value="records"
@@ -353,7 +356,6 @@ onMounted(() => {
           scrollHeight="400px"
           :virtualScrollerOptions="{ itemSize: 46 }"
           tableStyle="min-w-{50rem}"
-          stripedRows
         >
           <template #header>
             <div style="text-align: right">

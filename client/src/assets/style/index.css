@@ -4,18 +4,31 @@
   @tailwind base;
   @layer base {
     :root {
-      /* preset TODO: clean */
-      --primary-50: 236 253 245;
-      --primary-100: 209 250 229;
-      --primary-200: 167 243 208;
-      --primary-300: 110 231 183;
-      --primary-400: 52 211 153;
-      --primary-500: 16 185 129;
-      --primary-600: 5 150 105;
-      --primary-700: 4 120 87;
-      --primary-800: 6 95 70;
-      --primary-900: 4 78 56;
-      --primary-950: 2 44 34;
+      /* preset primary color */
+      --primary-50: 229 245 234; /* #e5f5ea */
+      --primary-100: 192 231 202; /* #c0e7ca */
+      --primary-200: 151 215 169; /* #97d7a9 */
+      --primary-300: 106 200 134; /* #6ac886 */
+      --primary-400: 67 188 108; /* #43bc6c */
+      --primary-500: 0 176 82; /* #00b052 RMap green */
+      --primary-600: 0 161 73; /* #00a149 */
+      --primary-700: 0 143 61; /* #008f3d */
+      --primary-800: 0 126 50; /* #007e32 */
+      --primary-900: 0 95 29; /* #005f1d */
+      --primary-950: 0 70 20; /* #004716 */
+      /* preset secondary color */
+      --secondary-50: 232 248 255; /* #e8f8ff */
+      --secondary-100: 224 244 253; /* #e0f4fd */
+      --secondary-200: 175 226 248; /* #afe2f8 */
+      --secondary-300: 122 207 244; /* #7acff4 */
+      --secondary-400: 67 188 239; /* #43bcef */
+      --secondary-500: 2 174 237; /* #02aeed RMaP blue */
+      --secondary-600: 0 160 234; /* #00a0ea */
+      --secondary-700: 0 147 219; /* #0093db */
+      --secondary-800: 0 128 200; /* #0080c8 */
+      --secondary-900: 0 111 180; /* #006fb4 */
+      --secondary-950: 0 81 147; /* #005093 */
+      /* preset surface */
       --surface-0: 255 255 255;
       --surface-50: 248 250 252;
       --surface-100: 241 245 249;
@@ -25,20 +38,18 @@
       --surface-500: 100 116 139;
       --surface-600: 71 85 105;
       --surface-700: 45 55 72;
-      /* --surface-700: 55 65 81; */
       --surface-800: 30 41 59;
       --surface-900: 15 23 42;
       --surface-950: 3 6 23;
-      --color-crmg: 0 176 81; /* #00b051 */
-      --color-crmg-one: 114 191 132; /* #72bf84 */
-      --color-crmg-two: 94 156 108; /* #5e9c6c */
-      --color-crmg-three: 73 122 84; /* #497a54 */
-      --color-crmg-four: 42 69 48; /* #2a4530 */
-      --color-crmb: 2 176 237; /* #02b0ed */
-      --color-crmb-one: 139 201 242; /* #8bc9f2 */
-      --color-crmb-two: 90 167 231; /* #5aa7e7 */
-      --color-crmb-three: 36 135 219; /* #2487db */
-      --color-crmb-four: 0 81 158; /* #00519e */
+      /* gradient RMaP  */
+      --gradient-green-1: 114 191 132; /* #72bf84 */
+      --gradient-green-2: 94 156 108; /* #5e9c6c */
+      --gradient-green-3: 73 122 84; /* #497a54 */
+      --gradient-green-4: 42 69 48; /* #2a4530 */
+      --gradient-blue-1: 139 201 242; /* #8bc9f2 */
+      --gradient-blue-2: 90 167 231; /* #5aa7e7 */
+      --gradient-blue-3: 36 135 219; /* #2487db */
+      --gradient-blue-4: 0 81 158; /* #00519e */
     }
     @font-face {
       font-family: 'ham';

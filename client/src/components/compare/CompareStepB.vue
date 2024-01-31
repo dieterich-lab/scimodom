@@ -138,7 +138,7 @@ function updateDataset() {
         root: { class: 'flex flex-wrap w-full md:w-full' },
         chooseButton: {
           class: [
-            'text-white text-bold bg-crmg shadow border border-crmg hover:bg-crmg/75 hover:border-crmg/75 focus:ring-crmg/75 focus:outline-none p-3 px-5 rounded-md text-base',
+            'text-white text-bold bg-primary-500 shadow border border-primary-500 hover:bg-primary-500/75 hover:border-primary-500/75 focus:ring-primary-500/75 focus:outline-none p-3 px-5 rounded-md text-base',
             'overflow-hidden relative'
           ]
         },

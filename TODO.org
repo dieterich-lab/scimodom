@@ -18,9 +18,19 @@ Draft or long-running issues, WIP, triage, and additional references or context 
   we don't need to know the assembly, as there is only one in the DB!
 - [ ] models :: RNA type nomenclature enforcement
 
-- [ ] design :: Button presets adapted for /primary/ (default, crmg) and /secondary/ (crmb) by redefining the API for severity.
-  We should redefine the API alltogether or add another option. Link, text, and outlined buttons only partially redesigned, remaining presets
-  are unchanged. We still need to harmonize light (automatic) /vs./ dark mode.
+- [ ] design :: Button presets adapted for /primary/ and /secondary/ by redefining the API for severity. Should we redefine the API
+  or add another option?
+- [ ] design :: ~DataTable~: ~bodyrow~ dark mode difficult to test before we fix sections. ~stripedRows~ removed, it doesn't work well
+  with dark mode, maybe we can modify the preset?
+- [ ] design :: ~DataTable~ harmonize header.
+- [ ] design :: ~DataTable~ filters /e.g./ ~filterMatchModeDropdown~ show a mix of primary and default Lara green colors (where in presets?
+  can we use ~pt~?).
+- [ ] design :: For ~DataTable~ and ~Paginator~, default preset color is secondary (to document).
+- [ ] design :: Adapt sections (custom components) or move to PrimeVue blocks and/or use presets, /e.g./ ~CardLink~ /vs./
+  PrimeVue ~Card~.
+
+- [ ] urgent :: What to do with missing ~VirtualScroll~ and ~FileUpload~?
+
 
 *** FEATURE REQUEST
 

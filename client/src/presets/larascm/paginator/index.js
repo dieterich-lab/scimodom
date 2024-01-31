@@ -35,7 +35,7 @@ export default {
       // State
       {
         'hover:bg-surface-50 dark:hover:bg-surface-700/70': !context.disabled,
-        'focus:outline-none focus:outline-offset-0 focus:ring focus:ring-primary-400/50 dark:focus:ring-primary-300/50':
+        'focus:outline-none focus:outline-offset-0 focus:ring focus:ring-secondary-400/50 dark:focus:ring-secondary-300/50':
           !context.disabled
       },
 
@@ -67,7 +67,7 @@ export default {
       // State
       {
         'hover:bg-surface-50 dark:hover:bg-surface-700/70': !context.disabled,
-        'focus:outline-none focus:outline-offset-0 focus:ring focus:ring-primary-400/50 dark:focus:ring-primary-300/50':
+        'focus:outline-none focus:outline-offset-0 focus:ring focus:ring-secondary-400/50 dark:focus:ring-secondary-300/50':
           !context.disabled
       },
 
@@ -99,7 +99,7 @@ export default {
       // State
       {
         'hover:bg-surface-50 dark:hover:bg-surface-700/70': !context.disabled,
-        'focus:outline-none focus:outline-offset-0 focus:ring focus:ring-primary-400/50 dark:focus:ring-primary-300/50':
+        'focus:outline-none focus:outline-offset-0 focus:ring focus:ring-secondary-400/50 dark:focus:ring-secondary-300/50':
           !context.disabled
       },
 
@@ -131,7 +131,7 @@ export default {
       // State
       {
         'hover:bg-surface-50 dark:hover:bg-surface-700/70': !context.disabled,
-        'focus:outline-none focus:outline-offset-0 focus:ring focus:ring-primary-400/50 dark:focus:ring-primary-300/50':
+        'focus:outline-none focus:outline-offset-0 focus:ring focus:ring-secondary-400/50 dark:focus:ring-secondary-300/50':
           !context.disabled
       },
 
@@ -160,14 +160,14 @@ export default {
       // Color
       'text-surface-500 dark:text-white/80',
       {
-        'bg-primary-50 border-primary-50 dark:border-transparent text-primary-700 dark:text-surface-0 dark:bg-primary-400/30':
+        'bg-secondary-50 border-secondary-50 dark:border-transparent text-secondary-700 dark:text-surface-0 dark:bg-secondary-400/30':
           context.active
       },
 
       // State
       {
         'hover:bg-surface-50 dark:hover:bg-surface-700/70': !context.disabled && !context.active,
-        'focus:outline-none focus:outline-offset-0 focus:ring focus:ring-primary-400/50 dark:focus:ring-primary-300/50':
+        'focus:outline-none focus:outline-offset-0 focus:ring focus:ring-secondary-400/50 dark:focus:ring-secondary-300/50':
           !context.disabled
       },
 
@@ -202,9 +202,9 @@ export default {
         'duration-200',
 
         // States
-        'hover:border-primary-500 dark:hover:border-primary-300',
+        'hover:border-secondary-500 dark:hover:border-secondary-300',
         {
-          'focus:outline-none focus:outline-offset-0 focus:ring focus:ring-primary-400/50 dark:focus:ring-primary-300/50':
+          'focus:outline-none focus:outline-offset-0 focus:ring focus:ring-secondary-400/50 dark:focus:ring-secondary-300/50':
             !state.focused
         },
 
@@ -325,11 +325,11 @@ export default {
             context.focused && !context.selected
         },
         {
-          'bg-primary-100 dark:bg-primary-400/40 text-primary-700 dark:text-white/80':
+          'bg-secondary-100 dark:bg-secondary-400/40 text-secondary-700 dark:text-white/80':
             context.focused && context.selected
         },
         {
-          'bg-primary-50 dark:bg-primary-400/40 text-primary-700 dark:text-white/80':
+          'bg-secondary-50 dark:bg-secondary-400/40 text-secondary-700 dark:text-white/80':
             !context.focused && context.selected
         },
 
@@ -388,9 +388,9 @@ export default {
           'duration-200',
 
           // States
-          'hover:border-primary-500 dark:hover:border-primary-400',
+          'hover:border-secondary-500 dark:hover:border-secondary-400',
           'focus:outline-none focus:shadow-none',
-          'focus:outline-none focus:outline-offset-0 focus:ring focus:ring-primary-500/50 dark:focus:ring-primary-400/50',
+          'focus:outline-none focus:outline-offset-0 focus:ring focus:ring-secondary-500/50 dark:focus:ring-secondary-400/50',
 
           // Misc
           'cursor-pointer',
@@ -421,9 +421,9 @@ export default {
         'duration-200',
 
         // States
-        'hover:border-primary-500 dark:hover:border-primary-300',
+        'hover:border-secondary-500 dark:hover:border-secondary-300',
         {
-          'focus:outline-none focus:outline-offset-0 focus:ring focus:ring-primary-400/50 dark:focus:ring-primary-300/50':
+          'focus:outline-none focus:outline-offset-0 focus:ring focus:ring-secondary-400/50 dark:focus:ring-secondary-300/50':
             !state.focused
         },
 
@@ -544,11 +544,11 @@ export default {
             context.focused && !context.selected
         },
         {
-          'bg-primary-100 dark:bg-primary-400/40 text-primary-700 dark:text-white/80':
+          'bg-secondary-100 dark:bg-secondary-400/40 text-secondary-700 dark:text-white/80':
             context.focused && context.selected
         },
         {
-          'bg-primary-50 dark:bg-primary-400/40 text-primary-700 dark:text-white/80':
+          'bg-secondary-50 dark:bg-secondary-400/40 text-secondary-700 dark:text-white/80':
             !context.focused && context.selected
         },
 

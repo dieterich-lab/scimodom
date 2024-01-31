@@ -25,7 +25,7 @@ export default {
       },
 
       // Link Button
-      { 'text-crmg bg-transparent border-transparent': props.link },
+      { 'text-primary-600 bg-transparent border-transparent': props.link },
 
       // Plain Button
       {
@@ -49,16 +49,19 @@ export default {
       {
         'text-white dark:text-surface-900':
           !props.link && props.severity === null && !props.text && !props.outlined && !props.plain,
-        'bg-crmg/75 dark:bg-crmg/50':
+        'bg-primary-500 dark:bg-primary-400':
           !props.link && props.severity === null && !props.text && !props.outlined && !props.plain,
-        'border border-crmg/75 dark:border-crmg/50':
+        'border border-primary-500 dark:border-primary-400':
           !props.link && props.severity === null && !props.text && !props.outlined && !props.plain
       },
       // Primary Text Button
-      { 'text-crmg dark:text-crmg': props.text && props.severity === null && !props.plain },
+      {
+        'text-primary-500 dark:text-primary-400':
+          props.text && props.severity === null && !props.plain
+      },
       // Primary Outlined Button
       {
-        'text-crmg border border-crmg/75 hover:bg-crmg/25 dark:hover:bg-crmg/25':
+        'text-primary-500 border border-primary-500 hover:bg-primary-300/20':
           props.outlined && props.severity === null && !props.plain
       },
 
@@ -66,16 +69,19 @@ export default {
       {
         'text-white dark:text-surface-900':
           props.severity === 'secondary' && !props.text && !props.outlined && !props.plain,
-        'bg-crmb/75 dark:bg-crmb/50':
+        'bg-secondary-500 dark:bg-secondary-400':
           props.severity === 'secondary' && !props.text && !props.outlined && !props.plain,
-        'border border-crmb/75 dark:border-crmb/50':
+        'border border-secondary-500 dark:border-secondary-400':
           props.severity === 'secondary' && !props.text && !props.outlined && !props.plain
       },
       // Secondary Text Button
-      { 'text-crmg dark:text-crmb': props.text && props.severity === 'secondary' && !props.plain },
+      {
+        'text-secondary-500 dark:text-secondary-300':
+          props.text && props.severity === 'secondary' && !props.plain
+      },
       // Secondary Outlined Button
       {
-        'text-crmb border border-crmb/75 hover:bg-crmb/25 dark:hover:bg-crmb/25':
+        'text-secondary-500 dark:text-secondary-300 border border-secondary-500 hover:bg-secondary-300/20':
           props.outlined && props.severity === 'secondary' && !props.plain
       },
 
@@ -181,7 +187,7 @@ export default {
       'focus:outline-none focus:outline-offset-0 focus:ring',
 
       // Link
-      { 'focus:ring-crmg/50 dark:focus:ring-crmg/25': props.link },
+      { 'focus:ring-primary-400/50 dark:focus:ring-primary-300/50': props.link },
 
       // Plain
       { 'hover:bg-gray-600 hover:border-gray-600': props.plain && !props.outlined && !props.text },
@@ -190,25 +196,28 @@ export default {
 
       // Primary
       {
-        'hover:bg-crmg dark:hover:bg-crmg/75 hover:border-crmg dark:hover:border-crmg/75':
+        'hover:bg-primary-600 dark:hover:bg-primary-300 hover:border-primary-600 dark:hover:border-primary-300':
           !props.link && props.severity === null && !props.text && !props.outlined && !props.plain
       },
-      { 'focus:ring-crmg/50 dark:focus:ring-crmg': props.severity === null },
+      { 'focus:ring-primary-400/50 dark:focus:ring-primary-300/50': props.severity === null },
       // Text & Outlined Button
       {
-        'hover:bg-crmg/25 dark:hover:bg-crmg/25':
+        'hover:bg-primary-300/20':
           (props.text || props.outlined) && props.severity === null && !props.plain
       },
 
       // Secondary
       {
-        'hover:bg-crmb dark:hover:bg-crmb/75 hover:border-crmb dark:hover:border-crmb/75':
+        'hover:bg-secondary-600 dark:hover:bg-secondary-300 hover:border-secondary-600 dark:hover:border-secondary-300':
           props.severity === 'secondary' && !props.text && !props.outlined && !props.plain
       },
-      { 'focus:ring-crmb/50 dark:focus:ring-crmb': props.severity === 'secondary' },
+      {
+        'focus:ring-secondary-400/50 dark:focus:ring-secondary-300/50':
+          props.severity === 'secondary'
+      },
       // Text & Outlined Button
       {
-        'hover:bg-crmb/25 dark:hover:bg-crmb/25':
+        'hover:bg-secondary-300/20':
           (props.text || props.outlined) && props.severity === 'secondary' && !props.plain
       },
 
