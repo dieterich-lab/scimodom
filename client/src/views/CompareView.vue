@@ -166,22 +166,7 @@ onMounted(() => {
         </div>
 
         <TabView v-model:activeIndex="active">
-          <TabPanel
-            header="Select reference dataset"
-            :pt="{
-              headeraction: ({ parent, context }) => ({
-                class: [
-                  'focus:shadow-none',
-                  {
-                    'border-gray-300 bg-white text-gray-700 hover:bg-white hover:border-gray-400 hover:text-gray-600':
-                      parent.state.d_activeIndex !== context.index,
-                    'bg-white border-secondary-500 text-secondary-500':
-                      parent.state.d_activeIndex === context.index
-                  }
-                ]
-              })
-            }"
-          >
+          <TabPanel header="Select reference dataset">
             <CompareStepA
               v-if="options && dataset"
               :options="options"
@@ -190,22 +175,7 @@ onMounted(() => {
               @selected-dataset="selectedDSA = $event"
             />
           </TabPanel>
-          <TabPanel
-            header="Select dataset for comparison"
-            :pt="{
-              headeraction: ({ parent, context }) => ({
-                class: [
-                  'focus:shadow-none',
-                  {
-                    'border-gray-300 bg-white text-gray-700 hover:bg-white hover:border-gray-400 hover:text-gray-600':
-                      parent.state.d_activeIndex !== context.index,
-                    'bg-white border-secondary-500 text-secondary-500':
-                      parent.state.d_activeIndex === context.index
-                  }
-                ]
-              })
-            }"
-          >
+          <TabPanel header="Select dataset for comparison">
             <CompareStepB
               v-if="options && dataset && selectedSpecies && selectedDSA"
               :options="options"
@@ -216,22 +186,7 @@ onMounted(() => {
               @uploaded-dataset="selectedDSU = $event"
             />
           </TabPanel>
-          <TabPanel
-            header="Select query criteria"
-            :pt="{
-              headeraction: ({ parent, context }) => ({
-                class: [
-                  'focus:shadow-none',
-                  {
-                    'border-gray-300 bg-white text-gray-700 hover:bg-white hover:border-gray-400 hover:text-gray-600':
-                      parent.state.d_activeIndex !== context.index,
-                    'bg-white border-secondary-500 text-secondary-500':
-                      parent.state.d_activeIndex === context.index
-                  }
-                ]
-              })
-            }"
-          >
+          <TabPanel header="Select query criteria">
             <div>
               <form @submit="onSubmit" class="flex flex-col gap-4">
                 <div class="flex flex-row">

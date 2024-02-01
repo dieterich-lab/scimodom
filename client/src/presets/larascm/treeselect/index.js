@@ -118,8 +118,9 @@ export default {
     node: {
       class: [
         'p-1',
-        'rounded-md',
-        'focus:outline-none focus:outline-offset-0 focus:ring focus:ring-inset focus:ring-primary-400/50 dark:focus:ring-primary-300/50'
+        'outline-none'
+        // 'rounded-md',
+        // 'focus:outline-none focus:outline-offset-0 focus:ring focus:ring-inset focus:ring-primary-400/50 dark:focus:ring-primary-300/50'
       ]
     },
     content: ({ context, props }) => ({

@@ -20,7 +20,6 @@ import InputText from 'primevue/inputtext'
 import MultiSelect from 'primevue/multiselect'
 import RadioButton from 'primevue/radiobutton'
 import Row from 'primevue/row'
-import SelectButton from 'primevue/selectbutton'
 import TabPanel from 'primevue/tabpanel'
 import TabView from 'primevue/tabview'
 import TreeSelect from 'primevue/treeselect'
@@ -51,7 +50,6 @@ app.component('InputText', InputText)
 app.component('MultiSelect', MultiSelect)
 app.component('RadioButton', RadioButton)
 app.component('Row', Row)
-app.component('SelectButton', SelectButton)
 app.component('TabPanel', TabPanel)
 app.component('TabView', TabView)
 app.component('TreeSelect', TreeSelect)

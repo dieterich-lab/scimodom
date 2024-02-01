@@ -33,7 +33,7 @@ export default {
 
       // Colors
       'bg-surface-0 dark:bg-surface-800',
-      'text-primary-500 dark:text-primary-400',
+      'text-secondary-500 dark:text-secondary-400',
       'shadow-md'
     ]
   },
@@ -53,7 +53,7 @@ export default {
 
       // Colors
       'bg-surface-0 dark:bg-surface-800',
-      'text-primary-500 dark:text-primary-400',
+      'text-secondary-500 dark:text-secondary-400',
       'shadow-md'
     ]
   },
@@ -111,18 +111,18 @@ export default {
           'text-surface-700 dark:text-surface-0/80': parent.state.d_activeIndex !== context.index,
 
           'bg-surface-0 dark:bg-surface-800': parent.state.d_activeIndex === context.index,
-          'border-primary-500 dark:border-primary-400':
+          'border-secondary-500 dark:border-secondary-400':
             parent.state.d_activeIndex === context.index,
-          'text-primary-500 dark:text-primary-400': parent.state.d_activeIndex === context.index
+          'text-secondary-500 dark:text-secondary-400': parent.state.d_activeIndex === context.index
         },
 
         // States
         'focus-visible:outline-none focus-visible:outline-offset-0 focus-visible:ring focus-visible:ring-inset',
-        'focus-visible:ring-primary-400/50 dark:focus-visible:ring-primary-300/50',
+        'focus-visible:ring-secondary-400/50 dark:focus-visible:ring-secondary-300/50',
         {
           'hover:bg-surface-0 dark:hover:bg-surface-800/80':
             parent.state.d_activeIndex !== context.index,
-          'hover:border-surface-400 dark:hover:border-primary-400':
+          'hover:border-surface-400 dark:hover:border-secondary-400':
             parent.state.d_activeIndex !== context.index,
           'hover:text-surface-900 dark:hover:text-surface-0':
             parent.state.d_activeIndex !== context.index
