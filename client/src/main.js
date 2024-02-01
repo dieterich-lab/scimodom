@@ -10,6 +10,7 @@ import WindScm from '@/presets/windscm'
 // UI components
 import 'primeicons/primeicons.css'
 import Button from 'primevue/button'
+import Card from 'primevue/card'
 import Column from 'primevue/column'
 import ColumnGroup from 'primevue/columngroup'
 import DataTable from 'primevue/datatable'
@@ -41,6 +42,7 @@ app.use(ToastService)
 app.use(router)
 
 app.component('Button', Button)
+app.component('Card', Card)
 app.component('Column', Column)
 app.component('ColumnGroup', ColumnGroup)
 app.component('DataTable', DataTable)

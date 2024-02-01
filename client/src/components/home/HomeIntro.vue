@@ -1,13 +1,13 @@
 <template>
-  <SectionLayout>
+  <SectionLayout :secondary="true">
     <div class="text-center m-6">
-      <h1 class="font-ham text-4xl font-semibold m-auto p-4">
+      <h1 class="font-ham text-4xl font-semibold m-auto p-4 dark:text-white/80">
         <span>Sci-ModoM</span>
       </h1>
-      <p class="text-xl font-medium text-gray-600 pt-4 pb-2">
+      <p class="text-xl font-medium text-gray-600 pt-4 pb-2 dark:text-surface-400">
         Data availability and usability remain a critical challenge in Life Sciences.
       </p>
-      <p class="text-xl font-medium text-gray-600 pb-4">
+      <p class="text-xl font-medium text-gray-600 pb-4 dark:text-surface-400">
         In coordination with the epitranscriptomics community, we aim to establish a pan-European
         roadmap to facilitate access to and sharing of high-throughput transcriptome-wide RNA
         modification data, to harmonize data exchange formats and interoperability standards.

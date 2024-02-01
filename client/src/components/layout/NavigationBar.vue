@@ -1,5 +1,5 @@
 <template>
-  <nav class="flex flex-wrap font-ham text-4xl [&>*]:mr-6">
+  <nav class="flex flex-wrap font-ham text-4xl [&>*]:mr-6 dark:text-white/80">
     <RouterLink :to="{ name: 'search' }">
       <span>Search</span>
     </RouterLink>

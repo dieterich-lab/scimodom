@@ -4,7 +4,9 @@ import NavigationBar from './NavigationBar.vue'
 </script>
 
 <template>
-  <header class="top-0 z-20 sticky bg-white opacity-90 border-b border-surface-200">
+  <header
+    class="top-0 z-20 sticky bg-white opacity-90 border-b border-surface-200 dark:bg-surface-900 dark:opacity-100 dark:border-surface-800"
+  >
     <div
       class="p-1 bg-gradient-to-r from-gg-2 from-10% via-gg-1 via-40% via-gb-2 via-60% to-gb-4 to-100%"
     />
