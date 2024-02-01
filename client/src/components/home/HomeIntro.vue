@@ -1,6 +1,6 @@
 <template>
   <SectionLayout :secondary="true">
-    <div class="text-center m-6">
+    <div class="px-4 py-8 md:px-6 lg:px-8 text-center">
       <h1 class="font-ham text-4xl font-semibold m-auto p-4 dark:text-white/80">
         <span>Sci-ModoM</span>
       </h1>

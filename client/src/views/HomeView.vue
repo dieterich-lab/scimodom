@@ -4,7 +4,6 @@ import HomeViews from '@/components/home/HomeViews.vue'
 import HomeIntro from '@/components/home/HomeIntro.vue'
 import HomeFeatures from '@/components/home/HomeFeatures.vue'
 import HomeRoadmap from '@/components/home/HomeRoadmap.vue'
-import Test from '@/components/home/test.vue'
 </script>
 
 <template>
@@ -13,7 +12,6 @@ import Test from '@/components/home/test.vue'
     <HomeViews />
     <HomeIntro />
     <HomeFeatures />
-    <Test />
     <HomeRoadmap />
   </DefaultLayout>
 </template>

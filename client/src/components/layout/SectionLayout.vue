@@ -23,7 +23,7 @@ function sectionClass() {
 
 <style scoped>
 .section {
-  @apply p-[calc(2%+25px)] relative w-full flex-1 bg-surface-0 dark:bg-surface-900;
+  @apply p-[calc(2%+25px)] relative w-full flex-1 bg-transparent dark:bg-surface-900;
 }
 .section--secondary {
   @apply mt-px bg-gradient-to-t from-surface-50 to-transparent dark:from-surface-800 dark:to-surface-900 border-b border-solid border-surface-50 dark:border-surface-900;
