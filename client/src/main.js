@@ -5,7 +5,8 @@ import App from './App.vue'
 import '@/assets/style/index.css'
 // presets
 import PrimeVue from 'primevue/config'
-import LaraScm from '@/presets/larascm'
+// import LaraScm from '@/presets/larascm'
+import WindScm from '@/presets/windscm'
 // UI components
 import 'primeicons/primeicons.css'
 import Button from 'primevue/button'
@@ -33,7 +34,8 @@ import router from '@/router'
 
 const app = createApp(App)
 
-app.use(PrimeVue, { unstyled: true, pt: LaraScm, ripple: true })
+// app.use(PrimeVue, { unstyled: true, pt: LaraScm, ripple: true })
+app.use(PrimeVue, { unstyled: true, pt: WindScm, ripple: true })
 
 app.use(ToastService)
 app.use(router)

@@ -28,8 +28,13 @@ Draft or long-running issues, WIP, triage, and additional references or context 
 - [ ] design :: For ~DataTable~, ~Paginator~, and ~tabView~, default preset color is secondary (to document).
 - [ ] design :: Adapt sections (custom components) or move to PrimeVue blocks and/or use presets, /e.g./ ~CardLink~ /vs./
   PrimeVue ~Card~.
-
+- [ ] design :: ~TreeSelect~, ~MultiSelect~, and ~Dropdown~ root class shape commented out, using local ~pt~, as I couldn't get it to work,
+  in particular in grid (Compare), but we should leave this untouched.
 - [ ] urgent :: What to do with missing ~VirtualScroll~ and ~FileUpload~?
+
+- [ ] design :: (Browse) ~InputText~ and ~Dialog~ local ~pt~ has no effect with alpha modifier for secondary color using **Wind** preset.
+  Temporarily removed ~/50~ for ~dialog~ and ~inputtext~ (focus). Local ~pt~ description currently follows the **Lara** preset.
+
 
 
 *** FEATURE REQUEST

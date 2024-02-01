@@ -131,15 +131,13 @@ onMounted(() => {
                       v-model="filters['global'].value"
                       placeholder="Search"
                       :pt="{
-                        root: ({ props, context, parent }) => ({
+                        root: ({ context }) => ({
                           class: [
                             {
                               'hover:border-secondary-500 dark:hover:border-secondary-400':
                                 !context.disabled,
-                              'focus:outline-none focus:outline-offset-0 focus:ring focus:ring-secondary-500/50 dark:focus:ring-secondary-400/50':
-                                !context.disabled,
-                              'opacity-60 select-none pointer-events-none cursor-default':
-                                context.disabled
+                              'focus:outline-none focus:outline-offset-0 focus:ring focus:ring-secondary-500 dark:focus:ring-secondary-400':
+                                !context.disabled
                             }
                           ]
                         })
@@ -297,7 +295,7 @@ onMounted(() => {
           :modal="true"
           :pt="{
             root: { class: 'w-fit' },
-            closeButton: { class: 'focus:ring-secondary-400/50 dark:focus:ring-secondary-300/50' }
+            closeButton: { class: 'focus:ring-secondary-400 dark:focus:ring-secondary-300' }
           }"
           :ptOptions="{ mergeProps: true }"
         >
