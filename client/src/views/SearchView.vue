@@ -160,7 +160,9 @@ onMounted(() => {
   <DefaultLayout>
     <!-- SECTION -->
     <SectionLayout>
-      <h1 class="font-ham mb-4 text-3xl font-extrabold text-gray-900 md:text-5xl lg:text-6xl">
+      <h1
+        class="font-ham mb-4 text-3xl font-extrabold text-gray-900 dark:text-white/80 md:text-5xl lg:text-6xl"
+      >
         <span
           class="text-transparent bg-clip-text bg-gradient-to-r from-gg-2 from-10% via-gg-1 via-40% via-gb-2 via-60% to-gb-4 to-100"
         >
@@ -168,7 +170,7 @@ onMounted(() => {
         </span>
         RNA modifications
       </h1>
-      <p class="text-lg font-normal text-gray-500 lg:text-xl">
+      <p class="text-lg font-normal text-gray-500 dark:text-surface-400 lg:text-xl">
         Select filters and query the database
       </p>
       <!-- FILTER 1 -->
@@ -218,7 +220,6 @@ onMounted(() => {
           />
         </div>
       </div>
-
       <div class="pt-8">
         <Button
           type="button"

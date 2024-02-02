@@ -70,6 +70,8 @@ import progressbar from './progressbar'
 import ripple from './ripple'
 import tag from './tag'
 import terminal from './terminal'
+import fileupload from './fileupload'
+import virtualscroller from './virtualscroller'
 
 export default {
   global,
@@ -145,5 +147,7 @@ export default {
   skeleton,
   progressbar,
   tag,
-  terminal
+  terminal,
+  fileupload,
+  virtualscroller
 }

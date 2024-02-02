@@ -8,7 +8,7 @@ import Logo from '@/assets/images/rmap-logo.svg'
       <div class="md:flex md:justify-between">
         <div class="mb-6 md:mb-0">
           <a href="https://www.trr319-rmap.de/" class="flex items-center">
-            <Logo class="h-auto mr-6" alt="RMaP Logo" />
+            <Logo class="h-auto mr-6 dark:filter dark:grayscale dark:invert" alt="RMaP Logo" />
             <!-- <span class="self-center text-2xl font-medium whitespace-nowrap">TRR 319 RMaP</span> -->
           </a>
         </div>

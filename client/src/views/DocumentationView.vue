@@ -1,16 +1,20 @@
 <template>
   <DefaultLayout>
     <SectionLayout>
-      <h1 class="font-ham mb-4 text-3xl font-extrabold text-gray-900 md:text-5xl lg:text-6xl">
+      <h1
+        class="font-ham mb-4 text-3xl font-extrabold text-gray-900 dark:text-white/80 md:text-5xl lg:text-6xl"
+      >
         <span
           class="text-transparent bg-clip-text bg-gradient-to-r from-gg-2 from-10% via-gg-1 via-40% via-gb-2 via-60% to-gb-4 to-100"
         >
           Documentation
         </span>
       </h1>
-      <p class="text-lg font-normal text-gray-500 lg:text-xl">General information and how-to</p>
+      <p class="text-lg font-normal text-gray-500 dark:text-surface-400 lg:text-xl">
+        General information and how-to
+      </p>
       <Divider />
-      <div class="text-justify m-6">
+      <div class="text-justify m-6 dark:text-white/80">
         <h1 class="font-ham text-4xl font-semibold m-auto pt-4 pb-4">
           <span>Introduction</span>
         </h1>
@@ -104,7 +108,7 @@
         </p>
       </div>
       <!-- HOW TO ----  -->
-      <div class="text-justify m-6">
+      <div class="text-justify m-6 dark:text-white/80">
         <h1 class="font-ham text-4xl font-semibold m-auto pt-4 pb-4">
           <span>Search</span>
         </h1>

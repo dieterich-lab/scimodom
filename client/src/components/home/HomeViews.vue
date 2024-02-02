@@ -3,7 +3,7 @@ import CardLink from '@/components/ui/CardLink.vue'
 </script>
 
 <template>
-  <SectionLayout :secondary="true">
+  <SectionLayout>
     <div class="grid grid-flow-row gap-6 lg:grid-flow-col xl:gap-0 justify-items-center">
       <div>
         <CardLink icon="pi pi-database dark:text-white/80" route="search">
