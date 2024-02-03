@@ -3,52 +3,86 @@
 
 Draft or long-running issues, WIP, triage, and additional references or context re open issues.
 
-* DRAFT ISSUES
+* TODO SCIMODOM DRAFT ISSUES
 
-** MAINTENANCE
+** TODO MAINTENANCE [0/1]
 
 - [ ] ~pre-commit run --all-files~ under server (.pre-commit-config.yaml) runs for all files incl. client.
 
-** GENERAL
+** TODO STYLE [0/12]
 
-- [ ] dependencies :: replace pandas in SetupService
+- [ ] DEADLINE: <2024-08-30 Fri> To harmonize CSS vars across views, components, and presets (colours, behaviour, /etc./), to do
+  when addressing [[https://github.com/dieterich-lab/scimodom/issues/14][responsive design]] and accessibility in Q3.
+- [ ] Add dark mode
+  - [ ] Logos are displayed in greyscale in dark mode, as invert also inverts the colors. Otherwise, we may have to use 2 logos.
+  - [ ] Component color, /e.g./ ~TreeSelect~ in Search /vs./ Compare (~TabView~ has a different bg color). We could
+  add a custom ~Panel~ to Search, /etc./
+  - [ ] ~DataTable~: ~stripedRows~ removed, it doesn't work well with dark mode. Modify the preset?
+- [ ] URGENT :: Missing presets: draft ~FileUpload~ only for Wind, ~VirtualScroll~ not working, see also [[https://github.com/primefaces/primevue-tailwind/issues/108][Missing preset for VirtualScroller.]]
+- [ ] Placeholder text color ~TreeSelect~ /vs./ ~MultiSelect~.
+- [ ] Default preset color is secondary for ~DataTable~, ~Paginator~, and ~tabView~. Why not use a local ~ptOptions~
+  with ~mergeSections="false"~? Else this has to be documented.
+- [ ] Use fill and stroke for svg/icons, instead of text color.
+- [ ] Button presets adapted for /primary/ and /secondary/ by redefining the API for severity. Should we redefine the API
+  or add another option?
+- [ ] ~DataTable~ filters /e.g./ ~filterMatchModeDropdown~ show a mix of primary and default green colors (where is this
+  defined in presets? Can we use ~pt~?)
+- [-] [[https://github.com/dieterich-lab/scimodom/issues/18][Customize UI components]]: additional items
+  - [X] ~CardLink~ /vs./ PrimeVue ~Card~.
+  - [X] Clean ~SectionLayout~.
+  - [ ] Why ~SectionLayout~ with ~secondary="true"~ in dark mode have a white border at the top?
+- [ ] ~TreeSelect~, ~MultiSelect~, and ~Dropdown~ root class shape commented out, using local ~pt~, as I couldn't get it to work,
+  in particular in grid (Compare), but we should leave this untouched.
+- [ ] (Browse) ~InputText~ and ~Dialog~ local ~pt~ has no effect with alpha modifier for secondary color using **Wind** preset.
+  Temporarily removed ~/50~ for ~dialog~ and ~inputtext~ (focus). Local ~pt~ description currently follows the **Lara** preset.
+- [ ] To harmonize ~DataTable~ header across views.
 
-- [ ] models :: ~contact_email~ nullable
+** TODO PEP [0/7]
+
+- Note taken on [2024-02-03 Sat 07:51] \\
+  Check [[https://github.com/dieterich-lab/scimodom/issues/28][Add type hints, docstrings]], there are some long-term impovements. See [[https://docs.sqlalchemy.org/en/20/orm/extensions/mypy.html][Mypy / Pep-484 Support for ORM Mappings]] for SQLAlchemy-related, also [[https://realpython.com/python-type-checking/][type checking]] in general. \\
+  Mypy to pre-commit, check examples https://lyz-code.github.io/blue-book/devops/mypy/, https://pre-commit.com/hooks.html, https://github.com/pre-commit/mirrors-mypy, https://jaredkhan.com/blog/mypy-pre-commit. \\
+  Other resources that I found useful: https://adamj.eu/tech/2021/06/14/python-type-hints-3-somewhat-unexpected-uses-of-typing-any-in-pythons-standard-library/, https://quantlane.com/blog/type-checking-large-codebase/, https://docs.joshuatz.com/cheatsheets/python/types/.
+
+- [ ] [2024-02-03 Sat]
+  [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/src/scimodom/utils/operations.py::import pybedtools # type: ignore]]
+- [ ] [2024-02-03 Sat] Uncomment and fix errors.
+  [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/pyproject.toml::strict = "True"]]
+- [ ] [2024-02-03 Sat] ~# type: ignore~ top level does not work for scimodom.api.models. I don't know how to handle these. File excluded in pyproject.toml.
+  [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/pyproject.toml::"scimodom.utils.models.py"]]
+- [ ] [2024-02-03 Sat]
+  [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/src/scimodom/services/annotation.py::import requests # type: ignore]]
+- [ ] Check [[https://docs.sqlalchemy.org/en/20/changelog/whatsnew_20.html#migrating-an-existing-mapping][Migrating an Existing Mapping]], go beyond step 3, although typing is supported from step 3 onwards:
+  Step one - declarative_base() is superseded by DeclarativeBase
+  Step two - replace Declarative use of Column with mapped_column()
+  Step three - apply exact Python types as needed using Mapped.
+  Step four - remove mapped_column() directives where no longer needed
+  Step five - make use of pep-593 Annotated to package common directives into types
+- [ ] In setup, we use pandas. Type check is disabled. The problem is that there is in fact no type casting, tables are read and values
+  are bulk upserted.
+
+- [ ] [2024-02-03 Sat] [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/src/scimodom/api/__init__.py::E402 module level import not at top of file]]
+
+
+** TODO GENERAL [0/4]
+
+- [ ] dependencies :: replace pandas in ~SetupService~.
+
+- [ ] models :: ~contact_email~ nullable.
 - [ ] models :: ~assembly_id: Mapped[int] = mapped_column(ForeignKey("assembly.id"))~ in ~Dataset~ (and relationships) is redundant,
   we don't need to know the assembly, as there is only one in the DB!
-- [ ] models :: RNA type nomenclature enforcement
+- [ ] models :: RNA type nomenclature enforcement.
 
-- [ ] design :: Button presets adapted for /primary/ and /secondary/ by redefining the API for severity. Should we redefine the API
-  or add another option?
-- [ ] design :: ~DataTable~: ~bodyrow~ dark mode difficult to test before we fix sections. ~stripedRows~ removed, it doesn't work well
-  with dark mode, maybe we can modify the preset?
-- [ ] design :: ~DataTable~ harmonize header.
-- [ ] design :: ~DataTable~ filters /e.g./ ~filterMatchModeDropdown~ show a mix of primary and default Lara green colors (where in presets?
-  can we use ~pt~?).
-- [ ] design :: For ~DataTable~, ~Paginator~, and ~tabView~, default preset color is secondary (to document).
-- [ ] design :: Adapt sections (custom components) or move to PrimeVue blocks and/or use presets, /e.g./ ~CardLink~ /vs./
-  PrimeVue ~Card~.
-- [ ] design :: ~TreeSelect~, ~MultiSelect~, and ~Dropdown~ root class shape commented out, using local ~pt~, as I couldn't get it to work,
-  in particular in grid (Compare), but we should leave this untouched.
-- [ ] urgent :: What to do with missing ~VirtualScroll~ and ~FileUpload~?
-
-- [ ] design :: (Browse) ~InputText~ and ~Dialog~ local ~pt~ has no effect with alpha modifier for secondary color using **Wind** preset.
-  Temporarily removed ~/50~ for ~dialog~ and ~inputtext~ (focus). Local ~pt~ description currently follows the **Lara** preset.
-
-
-
-*** FEATURE REQUEST
+*** TODO FEATURE REQUEST [0/2]
 
 - [ ] Vueuse (title)
 - [ ] Loading bar at the top
 
-* RUNNING ISSUES
-
-** CLOSED
-
-* OPEN ISSUES
+* SCIMODOM OPEN ISSUES
 
 ** REFERENCES
+
+* SCIMODOM CLOSED ISSUES
 
 * LONG-TERM
 
