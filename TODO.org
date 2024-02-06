@@ -9,7 +9,7 @@ Draft or long-running issues, WIP, triage, and additional references or context 
 
 - [ ] ~pre-commit run --all-files~ under server (.pre-commit-config.yaml) runs for all files incl. client.
 
-** TODO STYLE [0/12]
+** TODO STYLE [0/14]
 
 - [ ] DEADLINE: <2024-08-30 Fri> To harmonize CSS vars across views, components, and presets (colours, behaviour, /etc./), to do
   when addressing [[https://github.com/dieterich-lab/scimodom/issues/14][responsive design]] and accessibility in Q3.
@@ -36,6 +36,8 @@ Draft or long-running issues, WIP, triage, and additional references or context 
 - [ ] (Browse) ~InputText~ and ~Dialog~ local ~pt~ has no effect with alpha modifier for secondary color using **Wind** preset.
   Temporarily removed ~/50~ for ~dialog~ and ~inputtext~ (focus). Local ~pt~ description currently follows the **Lara** preset.
 - [ ] To harmonize ~DataTable~ header across views.
+- [ ] p-float-label
+- [ ] ~Divider~ styling, thickness and color.
 
 ** TODO PEP [0/7]
 
@@ -63,8 +65,7 @@ Draft or long-running issues, WIP, triage, and additional references or context 
 
 - [ ] [2024-02-03 Sat] [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/src/scimodom/api/__init__.py::E402 module level import not at top of file]]
 
-
-** TODO GENERAL [0/4]
+** TODO GENERAL [0/6]
 
 - [ ] dependencies :: replace pandas in ~SetupService~.
 
@@ -73,14 +74,19 @@ Draft or long-running issues, WIP, triage, and additional references or context 
   we don't need to know the assembly, as there is only one in the DB!
 - [ ] models :: RNA type nomenclature enforcement.
 
+- [ ] ~Datatable dataKey="id"~
+- [ ] Default ordering of data (Search, Browse, Compare). What if EUF file is not sorted?
+
 *** TODO FEATURE REQUEST [0/2]
 
 - [ ] Vueuse (title)
 - [ ] Loading bar at the top
 
+
 * SCIMODOM OPEN ISSUES
 
 ** REFERENCES
+
 
 * SCIMODOM CLOSED ISSUES
 
