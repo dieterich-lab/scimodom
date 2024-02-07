@@ -34,10 +34,6 @@ def Session():
     init(engine, lambda: session)
     Base.metadata.create_all(engine)
 
-    # from sqlalchemy import inspect
-    # insp = inspect(engine)
-    # print(f"TABLES CONFTEST={insp.get_table_names()}")
-
     yield session
 
     session().rollback()
@@ -48,52 +44,81 @@ def Session():
 def setup():
     modomics = [
         Modomics(
-            id="6A", name="N6-methyladenosine", short_name="m6A", moiety="nucleoside"
+            id="2000000006A",
+            name="N6-methyladenosine",
+            short_name="m6A",
+            moiety="nucleoside",
         ),
         Modomics(
-            id="5C", name="5-methylcytidine", short_name="m5C", moiety="nucleoside"
+            id="2000000005C",
+            name="5-methylcytidine",
+            short_name="m5C",
+            moiety="nucleoside",
         ),
-        Modomics(id="9U", name="pseudouridine", short_name="Y", moiety="nucleoside"),
+        Modomics(
+            id="2000000009U", name="pseudouridine", short_name="Y", moiety="nucleoside"
+        ),
     ]
 
     taxonomy = [
-        Taxonomy(domain="Eukarya", kingdom="Animalia", phylum="Chordata"),
-        Taxonomy(domain="Eukarya", kingdom="Animalia", phylum="Arthropoda"),
-        Taxonomy(domain="Eukarya", kingdom="Animalia", phylum="Nematoda"),
-        Taxonomy(domain="Eukarya", kingdom="Fungi"),
-        Taxonomy(domain="Eukarya", kingdom="Plantae"),
-        Taxonomy(domain="Bacteria"),
-        Taxonomy(domain="Vira"),
+        Taxonomy(
+            id="a1b240af", domain="Eukarya", kingdom="Animalia", phylum="Chordata"
+        ),
+        Taxonomy(
+            id="455a3823", domain="Eukarya", kingdom="Animalia", phylum="Arthropoda"
+        ),
+        Taxonomy(
+            id="427991ab", domain="Eukarya", kingdom="Animalia", phylum="Nematoda"
+        ),
+        Taxonomy(id="857daa07", domain="Eukarya", kingdom="Fungi"),
+        Taxonomy(id="3f094e88", domain="Eukarya", kingdom="Plantae"),
+        Taxonomy(id="100da424", domain="Bacteria"),
+        Taxonomy(id="c92e5c49", domain="Vira"),
     ]
 
     taxa = [
-        Taxa(id=9606, name="Homo sapiens", short_name="H. sapiens", taxonomy_id=1),
-        Taxa(id=10090, name="Mus musculus", short_name="M. musculus", taxonomy_id=1),
+        Taxa(
+            id=9606,
+            name="Homo sapiens",
+            short_name="H. sapiens",
+            taxonomy_id="a1b240af",
+        ),
+        Taxa(
+            id=10090,
+            name="Mus musculus",
+            short_name="M. musculus",
+            taxonomy_id="a1b240af",
+        ),
         Taxa(
             id=7227,
             name="Drosophila melanogaster",
             short_name="D. melanogaster",
-            taxonomy_id=2,
+            taxonomy_id="455a3823",
         ),
         Taxa(
             id=6239,
             name="Caenorhabditis elegans",
             short_name="C. elegans",
-            taxonomy_id=3,
+            taxonomy_id="427991ab",
         ),
         Taxa(
             id=4932,
             name="Saccharomyces cerevisiae",
             short_name="S. cerevisiae",
-            taxonomy_id=4,
+            taxonomy_id="857daa07",
         ),
         Taxa(
             id=3702,
             name="Arabidopsis thaliana",
             short_name="A. thaliana",
-            taxonomy_id=5,
+            taxonomy_id="3f094e88",
         ),
-        Taxa(id=562, name="Escherichia coli", short_name="E. coli", taxonomy_id=6),
+        Taxa(
+            id=562,
+            name="Escherichia coli",
+            short_name="E. coli",
+            taxonomy_id="100da424",
+        ),
     ]
 
     assembly = [
@@ -115,20 +140,32 @@ def setup():
     ]
 
     method = [
-        DetectionMethod(cls="Quantification", meth="2D-TLC"),
-        DetectionMethod(cls="Quantification", meth="LC–MS"),
-        DetectionMethod(cls="Locus-specific", meth="Primer extension"),
-        DetectionMethod(cls="Locus-specific", meth="RNase H-based"),
-        DetectionMethod(cls="Locus-specific", meth="ESI-MS"),
-        DetectionMethod(cls="Locus-specific", meth="qPCR-based"),
-        DetectionMethod(cls="NGS 2nd generation", meth="Direct sequencing"),
-        DetectionMethod(cls="NGS 2nd generation", meth="Chemical-assisted sequencing"),
-        DetectionMethod(cls="NGS 2nd generation", meth="Antibody-based sequencing"),
+        DetectionMethod(id="a9a2c002", cls="Quantification", meth="2D-TLC"),
+        DetectionMethod(id="94dc433b", cls="Quantification", meth="LC–MS"),
+        DetectionMethod(id="2daf07c3", cls="Locus-specific", meth="Primer extension"),
+        DetectionMethod(id="1f8bd266", cls="Locus-specific", meth="RNase H-based"),
+        DetectionMethod(id="a0329e7e", cls="Locus-specific", meth="ESI-MS"),
+        DetectionMethod(id="c63f05d3", cls="Locus-specific", meth="qPCR-based"),
         DetectionMethod(
-            cls="NGS 2nd generation", meth="Enzyme/protein-assisted sequencing"
+            id="bc7f263a", cls="NGS 2nd generation", meth="Direct sequencing"
         ),
-        DetectionMethod(cls="NGS 3rd generation", meth="Native RNA sequencing"),
-        DetectionMethod(cls="NGS 3rd generation", meth="cDNA sequencing"),
+        DetectionMethod(
+            id="0ee048bc", cls="NGS 2nd generation", meth="Chemical-assisted sequencing"
+        ),
+        DetectionMethod(
+            id="91b145ea", cls="NGS 2nd generation", meth="Antibody-based sequencing"
+        ),
+        DetectionMethod(
+            id="01d26feb",
+            cls="NGS 2nd generation",
+            meth="Enzyme/protein-assisted sequencing",
+        ),
+        DetectionMethod(
+            id="7e30836a", cls="NGS 3rd generation", meth="Native RNA sequencing"
+        ),
+        DetectionMethod(
+            id="1112a99a", cls="NGS 3rd generation", meth="cDNA sequencing"
+        ),
     ]
 
     add = []
@@ -182,23 +219,23 @@ def project_template():
     project["metadata"] = [
         {
             "rna": "mRNA",
-            "modomics_id": "6A",
+            "modomics_id": "2000000006A",
             "tech": "Technology 1",
-            "method_id": 1,
+            "method_id": "01d26feb",
             "organism": {"taxa_id": 9606, "cto": "Cell Type 1", "assembly": "GRCh38"},
         },
         {
             "rna": "mRNA",
-            "modomics_id": "6A",
+            "modomics_id": "2000000006A",
             "tech": "Technology 1",
-            "method_id": 1,
+            "method_id": "01d26feb",
             "organism": {"taxa_id": 9606, "cto": "Cell Type 2", "assembly": "GRCh38"},
         },
         {
             "rna": "mRNA",
-            "modomics_id": "5C",
+            "modomics_id": "2000000005C",
             "tech": "Technology 2",
-            "method_id": 1,
+            "method_id": "01d26feb",
             "organism": {"taxa_id": 9606, "cto": "Organ 1", "assembly": "GRCh38"},
         },
     ]

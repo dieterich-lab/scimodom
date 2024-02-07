@@ -167,7 +167,7 @@ class ProjectService:
 
             # technology
             tech = d["tech"]
-            method_id = int(d["method_id"])
+            method_id = d["method_id"]
             query = queries.query_column_where(
                 DetectionTechnology,
                 "id",

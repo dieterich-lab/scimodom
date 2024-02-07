@@ -190,6 +190,7 @@ def test_importer_read_version(fmt, Session, EUF_version):
         9606,
         1,
         False,
+        {1: "m6A"},
     )
     if fmt == "version":
         with pytest.raises(SpecsError) as excinfo:
@@ -224,6 +225,7 @@ def test_importer_read_header(fmt, Session, EUF_version):
         9606,
         1,
         False,
+        {1: "m6A"},
     )
     importer._lino = 1
     importer._read_version()
@@ -276,6 +278,7 @@ def test_importer_validate_columns(fmt, Session, EUF_version):
         9606,
         1,
         False,
+        {1: "m6A"},
     )
     importer._lino = 1
     importer._read_version()
@@ -307,6 +310,7 @@ def test_importer_read_line(fmt, Session, caplog, EUF_version):
         9606,
         1,
         False,
+        {1: "m6A"},
     )
     importer._lino = 1
     importer._read_version()
@@ -386,6 +390,7 @@ def test_importer(Session, setup, project_template, EUF_version, data_path):
         taxa_id,
         assembly_id,
         False,
+        {1: "m6A"},
     )
     importer._chroms = ["1"]
     importer.parseEUF()

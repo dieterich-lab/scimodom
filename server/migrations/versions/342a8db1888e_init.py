@@ -1,8 +1,8 @@
-"""setup
+"""init
 
-Revision ID: 71054e891d6e
+Revision ID: 342a8db1888e
 Revises:
-Create Date: 2024-02-07 14:14:31.681427
+Create Date: 2024-02-07 21:00:42.512770
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = "71054e891d6e"
+revision = "342a8db1888e"
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -190,37 +190,6 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id", name=op.f("pk_project_source")),
     )
     op.create_table(
-        "data",
-        sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("association_id", sa.String(length=12), nullable=False),
-        sa.Column("chrom", sa.String(length=128), nullable=False),
-        sa.Column("start", sa.Integer(), nullable=False),
-        sa.Column("end", sa.Integer(), nullable=False),
-        sa.Column("name", sa.String(length=32), nullable=False),
-        sa.Column("score", sa.Integer(), nullable=False),
-        sa.Column("strand", sa.String(length=1), nullable=False),
-        sa.Column("thick_start", sa.Integer(), nullable=False),
-        sa.Column("thick_end", sa.Integer(), nullable=False),
-        sa.Column("item_rgb", sa.String(length=128), nullable=False),
-        sa.Column("coverage", sa.Integer(), nullable=False),
-        sa.Column("frequency", sa.Integer(), nullable=False),
-        sa.ForeignKeyConstraint(
-            ["association_id"],
-            ["dataset.id"],
-            name=op.f("fk_data_association_id_dataset"),
-        ),
-        sa.PrimaryKeyConstraint("id", name=op.f("pk_data")),
-    )
-    op.create_index(
-        "idx_data_sort",
-        "data",
-        ["chrom", "start", "score", "coverage", "frequency"],
-        unique=False,
-    )
-    op.create_index(
-        op.f("ix_data_association_id"), "data", ["association_id"], unique=False
-    )
-    op.create_table(
         "genomic_annotation",
         sa.Column("id", sa.String(length=128), autoincrement=False, nullable=False),
         sa.Column("annotation_id", sa.Integer(), nullable=False),
@@ -292,6 +261,37 @@ def upgrade() -> None:
         "idx_assoc", "association", ["dataset_id", "selection_id"], unique=True
     )
     op.create_table(
+        "data",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("association_id", sa.Integer(), nullable=False),
+        sa.Column("chrom", sa.String(length=128), nullable=False),
+        sa.Column("start", sa.Integer(), nullable=False),
+        sa.Column("end", sa.Integer(), nullable=False),
+        sa.Column("name", sa.String(length=32), nullable=False),
+        sa.Column("score", sa.Integer(), nullable=False),
+        sa.Column("strand", sa.String(length=1), nullable=False),
+        sa.Column("thick_start", sa.Integer(), nullable=False),
+        sa.Column("thick_end", sa.Integer(), nullable=False),
+        sa.Column("item_rgb", sa.String(length=128), nullable=False),
+        sa.Column("coverage", sa.Integer(), nullable=False),
+        sa.Column("frequency", sa.Integer(), nullable=False),
+        sa.ForeignKeyConstraint(
+            ["association_id"],
+            ["association.id"],
+            name=op.f("fk_data_association_id_association"),
+        ),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_data")),
+    )
+    op.create_index(
+        "idx_data_sort",
+        "data",
+        ["chrom", "start", "score", "coverage", "frequency"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_data_association_id"), "data", ["association_id"], unique=False
+    )
+    op.create_table(
         "data_annotation",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("gene_id", sa.String(length=128), nullable=False),
@@ -328,6 +328,9 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_data_annotation_feature"), table_name="data_annotation")
     op.drop_index(op.f("ix_data_annotation_data_id"), table_name="data_annotation")
     op.drop_table("data_annotation")
+    op.drop_index(op.f("ix_data_association_id"), table_name="data")
+    op.drop_index("idx_data_sort", table_name="data")
+    op.drop_table("data")
     op.drop_index("idx_assoc", table_name="association")
     op.drop_table("association")
     op.drop_index("idx_select", table_name="selection")
@@ -337,9 +340,6 @@ def downgrade() -> None:
         op.f("ix_genomic_annotation_biotype"), table_name="genomic_annotation"
     )
     op.drop_table("genomic_annotation")
-    op.drop_index(op.f("ix_data_association_id"), table_name="data")
-    op.drop_index("idx_data_sort", table_name="data")
-    op.drop_table("data")
     op.drop_table("project_source")
     op.drop_index(op.f("ix_organism_taxa_id"), table_name="organism")
     op.drop_index(op.f("ix_organism_cto"), table_name="organism")

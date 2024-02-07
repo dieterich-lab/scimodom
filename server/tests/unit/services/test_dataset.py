@@ -53,7 +53,7 @@ def _get_project(project_template, case=None):
     # set selection 2 to m5C, but same cell type as 1
     project = project_template.copy()
     if case == "two":
-        project["metadata"][1]["modomics_id"] = "5C"
+        project["metadata"][1]["modomics_id"] = "2000000005C"
         project["metadata"][1]["organism"]["cto"] = "Cell Type 1"
     return project
 
@@ -234,13 +234,9 @@ def test_dataset_validate_existing_entry(Session, setup, project_template):
             id="123456789ABC",
             project_id=smid,
             title=title,
-            file_format="bedRModv1.6",
-            modification_type="RNA",
-            taxa_id=taxa_id,
-            assembly_id=assembly_id,
             lifted=False,
-            annotation_source="source",
-            annotation_version="version",
+            file_format="bedRModv1.7",
+            modification_type="RNA",
         )
         association = Association(dataset_id="123456789ABC", selection_id=1)
         session.add_all([dataset, association])

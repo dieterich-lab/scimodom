@@ -176,15 +176,16 @@ class DataService:
         """Validate new dataset using SMID, title, assembly, and selection."""
         for selection_id, selection in self._selection_ids.items():
             query = (
-                select(func.distinct(Dataset.id)).join(
-                    Association, Association.inst_dataset, isouter=True
+                select(func.distinct(Dataset.id)).join_from(
+                    Dataset, Association, Dataset.associations, isouter=True
                 )
                 # .outerjoin(Association, Dataset.id == Association.dataset_id)
                 .where(
                     Association.selection_id == selection_id,
                     Dataset.project_id == self._smid,
                     Dataset.title == self._title,
-                    Dataset.assembly_id == self._assembly_id,
+                    # TODO
+                    # Dataset.assembly_id == self._assembly_id,
                 )
             )
             eufid = self._session.execute(query).scalar()  # most likely none or one?

@@ -99,7 +99,6 @@ class Taxa(Base):
     organisms: Mapped[List["Organism"]] = relationship(back_populates="inst_taxa")
     assemblies: Mapped[List["Assembly"]] = relationship(back_populates="inst_taxa")
     annotations: Mapped[List["Annotation"]] = relationship(back_populates="inst_taxa")
-    datasets: Mapped[List["Dataset"]] = relationship(back_populates="inst_taxa")
 
 
 class Organism(Base):
@@ -310,7 +309,9 @@ class Data(Base):
     __tablename__ = "data"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    association_id: Mapped[str] = mapped_column(ForeignKey("dataset.id"), index=True)
+    association_id: Mapped[str] = mapped_column(
+        ForeignKey("association.id"), index=True
+    )
     # bedRMod fields - order must match bedRMod columns?
     chrom: Mapped[str] = mapped_column(String(128), nullable=False)
     start: Mapped[int] = mapped_column(nullable=False)
