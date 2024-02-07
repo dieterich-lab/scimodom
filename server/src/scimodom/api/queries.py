@@ -450,10 +450,13 @@ def get_comparison(step):
                 Data.name,
                 Data.score,
                 Data.strand,
-                Data.dataset_id,
+                Association.dataset_id,
+                # Data.dataset_id,
                 Data.coverage,
                 Data.frequency,
-            ).where(Data.dataset_id.in_(dataset_ids_a))
+            )
+            .join_from(Data, Association, Data.inst_association)
+            .where(Association.dataset_id.in_(dataset_ids_a))
             # .order_by(Data.chrom.asc(), Data.start.asc())
         )
         a_records = get_session().execute(query).all()
@@ -469,17 +472,23 @@ def get_comparison(step):
         else:
             b_records = []
             for idx in dataset_ids_b:
-                query = select(
-                    Data.chrom,
-                    Data.start,
-                    Data.end,
-                    Data.name,
-                    Data.score,
-                    Data.strand,
-                    Data.dataset_id,
-                    Data.coverage,
-                    Data.frequency,
-                ).where(Data.dataset_id == idx)
+                query = (
+                    select(
+                        Data.chrom,
+                        Data.start,
+                        Data.end,
+                        Data.name,
+                        Data.score,
+                        Data.strand,
+                        Association.dataset_id,
+                        # Data.dataset_id,
+                        Data.coverage,
+                        Data.frequency,
+                    )
+                    .join_from(Data, Association, Data.inst_association)
+                    .where(Association.dataset_id == idx)
+                    # .where(Data.dataset_id == idx)
+                )
                 b_records.append(get_session().execute(query).all())
 
         op, strand = query_operation.split("S")

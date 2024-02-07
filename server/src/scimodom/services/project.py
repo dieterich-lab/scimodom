@@ -195,24 +195,24 @@ class ProjectService:
                 self._session.commit()
                 organism_id = organism.id
 
-            # assembly
-            # TODO: liftover (here or at data upload)
-            name = d_organism["assembly"]
-            query = queries.query_column_where(
-                Assembly, "id", filters={"name": name, "taxa_id": taxa_id}
-            )
-            assembly_id = self._session.execute(query).scalar()
-            if not assembly_id:
-                # add new version for new entry, presumably a lower assembly
-                # that will not be used (i.e. data must be lifted)
-                query = select(Assembly.version)
-                version_nums = self._session.execute(query).scalars().all()
-                version_num = utils.gen_short_uuid(
-                    self.ASSEMBLY_NUM_LENGTH, version_nums
-                )
-                assembly = Assembly(name=name, taxa_id=taxa_id, version=version_num)
-                self._session.add(assembly)
-                self._session.commit()
+            # # assembly
+            # # TODO: liftover (here or at data upload)
+            # name = d_organism["assembly"]
+            # query = queries.query_column_where(
+            #     Assembly, "id", filters={"name": name, "taxa_id": taxa_id}
+            # )
+            # assembly_id = self._session.execute(query).scalar()
+            # if not assembly_id:
+            #     # add new version for new entry, presumably a lower assembly
+            #     # that will not be used (i.e. data must be lifted)
+            #     query = select(Assembly.version)
+            #     version_nums = self._session.execute(query).scalars().all()
+            #     version_num = utils.gen_short_uuid(
+            #         self.ASSEMBLY_NUM_LENGTH, version_nums
+            #     )
+            #     assembly = Assembly(name=name, taxa_id=taxa_id, version=version_num)
+            #     self._session.add(assembly)
+            #     self._session.commit()
 
             # selection
             query = queries.query_column_where(

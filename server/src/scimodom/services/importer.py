@@ -65,6 +65,8 @@ class EUFImporter:
     :type assembly_id: int
     :param lifted: Is Assembly ID (version) different from DB assembly version? (dataset marked for liftover)
     :type lifted: bool
+    :param association: Association ids and modification short names
+    :type association: dict
     :param data_path: DATA_PATH (AnnotationService)
     :type data_path: str | Path | None
     :param SPECS: Default specs
@@ -114,6 +116,7 @@ class EUFImporter:
         taxa_id: int,
         assembly_id: int,
         lifted: bool,
+        association: dict,
         data_path: str | Path | None = None,
     ) -> None:
         """Initializer method."""
@@ -145,6 +148,7 @@ class EUFImporter:
         self._taxa_id = taxa_id
         self._assembly_id = assembly_id
         self._lifted = lifted
+        self._association = association
         self._data_path = data_path
 
         if self._data_path is None:
@@ -247,6 +251,7 @@ class EUFImporter:
         self._header["project_id"] = self._smid
         self._header["title"] = self._title
         self._header["file_format"] = self._version
+        # TODO
         if not self._header["taxa_id"] == self._taxa_id:
             msg = (
                 f"Organism={self._header['taxa_id']} from {self._filen} differs "
@@ -254,18 +259,18 @@ class EUFImporter:
                 f"Data import will continue with {self._taxa_id}..."
             )
             logger.warning(msg)
-            self._header["taxa_id"] = self._taxa_id
-        query = queries.query_column_where(
-            "Assembly", "name", filters={"id": self._assembly_id}
-        )
-        assembly_name = self._session.execute(query).scalar()
-        msg = (
-            f"Overwriting header: assembly={assembly} from {self._filen} "
-            f"with {assembly_name} given at upload. Data import will continue..."
-        )
-        logger.warning(msg)
-        # assign id now
-        self._header["assembly_id"] = self._assembly_id
+            # self._header["taxa_id"] = self._taxa_id
+        # query = queries.query_column_where(
+        #     "Assembly", "name", filters={"id": self._assembly_id}
+        # )
+        # assembly_name = self._session.execute(query).scalar()
+        # msg = (
+        #     f"Overwriting header: assembly={assembly} from {self._filen} "
+        #     f"with {assembly_name} given at upload. Data import will continue..."
+        # )
+        # logger.warning(msg)
+        # # assign id now
+        # self._header["assembly_id"] = self._assembly_id
         self._header["lifted"] = self._lifted
 
     def _munge_header(self, lines: list[str]) -> str:
@@ -309,7 +314,8 @@ class EUFImporter:
                 raise SpecsError(f" Missing or misformatted header: {h} ")
             return s[0]
 
-        skip_header = ["fileformat", "assembly"]
+        skip_header = ["fileformat", "organism", "assembly"]
+        # skip_header = ["fileformat", "assembly"]
         self._header = {
             mapped_header: self._dtypes["Dataset"][mapped_header].__call__(
                 _get_header(header)
@@ -438,7 +444,16 @@ class EUFImporter:
             c: self._dtypes["Data"][c].__call__(cvalues[i])
             for i, c in enumerate(self._specs["columns"].values())
         }
-        data["dataset_id"] = self._eufid
+        # TODO
+        # clean validation done in DataService
+        # data["dataset_id"] = self._eufid
+        try:
+            data["association_id"] = self._association[data["name"]]
+        except:
+            raise ValueError(
+                f"Skipping line {self._lino}, unrecognized modification {data['name']}"
+            )
+
         # format chrom field
         match = chrom_pattern.match(data["chrom"])
         if match:
@@ -663,7 +678,10 @@ class BEDImporter:
                 itertools.islice(self._specs["columns"].values(), self._num_col)
             )
         }
-        data["dataset_id"] = self._dataset_id
+        # TODO
+        data["association_id"] = 1  # DOES IT MATTER???
+        # data["dataset_id"] = self._dataset_id
+
         # AD HOC * fill remaining columns based on query order *
         # ignore columns that are not queried!
         if self._num_col < 11:

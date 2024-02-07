@@ -408,8 +408,9 @@ class AnnotationService:
         msg = "... done! Now inserting into DB."
         logger.debug(msg)
 
-        annotated = [
-            records_factory("GenomicAnnotation", r)._asdict() for r in annotated
-        ]
-        self._session.execute(insert(GenomicAnnotation), annotated)
-        self._session.commit()
+        # TODO
+        # annotated = [
+        #     records_factory("GenomicAnnotation", r)._asdict() for r in annotated
+        # ]
+        # self._session.execute(insert(GenomicAnnotation), annotated)
+        # self._session.commit()

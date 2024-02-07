@@ -123,16 +123,22 @@ class DataService:
                 .join_from(
                     Selection,
                     Modification,
-                    Selection.modification_id == Modification.id,
+                    Selection.inst_modification,
+                    # Selection.modification_id == Modification.id,
                 )
                 .join_from(
                     Selection,
                     DetectionTechnology,
-                    Selection.technology_id == DetectionTechnology.id,
+                    Selection.inst_technology,
+                    # Selection.technology_id == DetectionTechnology.id,
                 )
-                .join_from(Selection, Organism, Selection.organism_id == Organism.id)
+                .join_from(Selection, Organism, Selection.inst_organism)
+                # .join_from(Selection, Organism, Selection.organism_id == Organism.id)
                 .join_from(
-                    Modification, Modomics, Modification.modomics_id == Modomics.id
+                    Modification,
+                    Modomics,
+                    Modification.inst_modomics
+                    # Modification, Modomics, Modification.modomics_id == Modomics.id
                 )
                 .where(Selection.id == selection_id)
             )
@@ -170,8 +176,10 @@ class DataService:
         """Validate new dataset using SMID, title, assembly, and selection."""
         for selection_id, selection in self._selection_ids.items():
             query = (
-                select(func.distinct(Dataset.id))
-                .outerjoin(Association, Dataset.id == Association.dataset_id)
+                select(func.distinct(Dataset.id)).join(
+                    Association, Association.inst_dataset, isouter=True
+                )
+                # .outerjoin(Association, Dataset.id == Association.dataset_id)
                 .where(
                     Association.selection_id == selection_id,
                     Dataset.project_id == self._smid,
@@ -202,49 +210,6 @@ class DataService:
             self._lifted = True
             print("Some message... do something when?")
 
-    def _create_eufid(self) -> None:
-        """Create new dataset using EUFimporter class."""
-        query = select(Dataset.id)
-        eufids = self._session.execute(query).scalars().all()
-        self._eufid = utils.gen_short_uuid(self.EUFID_LENGTH, eufids)
-
-        importer = EUFImporter(
-            self._session,
-            self._filen,
-            self._handle,
-            self._smid,
-            self._eufid,
-            self._title,
-            self._taxa_id,
-            self._assembly_id,
-            self._lifted,
-            data_path=self._data_path,
-        )
-        importer.parseEUF()
-
-        modifications = {s[0] for s in self._selection_ids.values()}
-        modifications = {m.lower() for m in modifications}
-        modifications_from_file = importer.get_modifications_from_file()
-        modifications_from_file = {m.lower() for m in modifications_from_file}
-        symdiff = modifications.symmetric_difference(modifications_from_file)
-        if symdiff:
-            msg = (
-                f"Selection for modification and modifications read from {self._filen} "
-                f"differ: {symdiff}. Aborting transaction!"
-            )
-            raise Exception(msg)
-
-        selection_str = " and ".join(
-            [", ".join(map(str, s)) for s in self._selection_ids.values()]
-        )
-        msg = (
-            f"Adding dataset {self._eufid} to project {self._smid} with title = {self._title}, "
-            f"and the following selection: {selection_str}."
-        )
-        logger.info(msg)
-        # confirm ?
-        importer.close()
-
     def _add_association(self) -> None:
         """Create new association entry for dataset.
 
@@ -253,7 +218,63 @@ class DataService:
         for selection_id in self._selection_ids.keys():
             association = Association(dataset_id=self._eufid, selection_id=selection_id)
             self._session.add(association)
-            self._session.commit()
+            self._session.flush()
+
+    def _create_eufid(self) -> None:
+        """Create new dataset using EUFimporter class."""
+
+        try:
+            query = select(Dataset.id)
+            eufids = self._session.execute(query).scalars().all()
+            self._eufid = utils.gen_short_uuid(self.EUFID_LENGTH, eufids)
+
+            self._add_association()
+
+            importer = EUFImporter(
+                self._session,
+                self._filen,
+                self._handle,
+                self._smid,
+                self._eufid,
+                self._title,
+                self._taxa_id,
+                self._assembly_id,
+                self._lifted,
+                # TODO assume modification is unique for any combination of RNA, tech, and cto...
+                # i.e. a dataset can have 1+ modification, but only 1 RNA type, 1 technology, and 1 cto
+                # so we cannot have e.g. twice m6A
+                {k: v[0] for k, v in self._selection_ids.items()},
+                data_path=self._data_path,
+            )
+            importer.parseEUF()
+
+            # TODO
+            # modifications = {s[0] for s in self._selection_ids.values()}
+            # modifications = {m.lower() for m in modifications}
+            # modifications_from_file = importer.get_modifications_from_file()
+            # modifications_from_file = {m.lower() for m in modifications_from_file}
+            # symdiff = modifications.symmetric_difference(modifications_from_file)
+            # if symdiff:
+            #     msg = (
+            #         f"Selection for modification and modifications read from {self._filen} "
+            #         f"differ: {symdiff}. Aborting transaction!"
+            #     )
+            #     raise Exception(msg)
+
+            selection_str = " and ".join(
+                [", ".join(map(str, s)) for s in self._selection_ids.values()]
+            )
+            msg = (
+                f"Adding dataset {self._eufid} to project {self._smid} with title = {self._title}, "
+                f"and the following selection: {selection_str}."
+            )
+            logger.info(msg)
+        except:
+            self._session.rollback()
+            raise
+        else:
+            # confirm ?
+            importer.close()
 
     def create_dataset(self) -> str:
         """Dataset constructor.
@@ -266,7 +287,6 @@ class DataService:
         self._validate_assembly()
 
         self._create_eufid()
-        self._add_association()
 
         return self._eufid
 
