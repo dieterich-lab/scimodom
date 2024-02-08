@@ -310,3 +310,17 @@ def get_genomic_annotation(
         all_records.append(itrx_records)
     pybedtools.helpers.set_tempdir(tmpdir)
     return flatten_list(all_records)
+
+
+# ----------------
+# annotation = _to_bedtool(annotation_file)
+# stream = annotation.filter(lambda a: a.fields[2] == "gene")
+# b = stream.each(check_f)
+# c = [(x[6], x[3], x[7]) for x in b] <- in fact we just need to redefine func aboce , and here x for x
+
+# def check_f(feature):
+# ...     return feature.chrom, feature.start, feature.end, feature.name, feature.score, feature.strand, feature.attrs["gene_id"], feature.attrs["gene_biotype"]
+
+# Q: do we need to check for duplicates?
+
+# Then these records (list of tups) can be bulk inserted into the model.

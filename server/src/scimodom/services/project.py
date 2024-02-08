@@ -39,7 +39,7 @@ class ProjectService:
 
     :param session: SQLAlchemy ORM session
     :type session: Session
-    :param project: Project description
+    :param project: Project description (json template)
     :type project: dict
     :param SMID_LENGTH: Length of Sci-ModoM ID (SMID)
     :type SMID_LENGTH: int
@@ -61,7 +61,7 @@ class ProjectService:
         self._session = session
         self._project = project
         self._smid: str
-        self._taxa_ids: set[int] = set()
+        self._assemblies: set[tuple[int, str]] = set()
 
     def __new__(cls, session: Session, project: dict):
         """Constructor method."""
@@ -134,16 +134,15 @@ class ProjectService:
         """Validate project using title and sources."""
         query = (
             select(func.distinct(Project.id))
-            .outerjoin(ProjectSource, Project.id == ProjectSource.project_id)
+            .join_from(Project, ProjectSource, Project.sources, isouter=True)
             .where(Project.title == self._project["title"])
         )
         query = query.where(self._get_prj_src())
-        smid = self._session.execute(query).scalar()  # most likely none or one?
+        smid = self._session.execute(query).scalar()
         if smid:
             msg = (
-                f"A similar record with SMID = {smid} already exists. "
-                f"Query based on a combination of title = {self._project['title']}, "
-                f"and published sources, where available. Aborting transaction!"
+                f"At least one similar record exists with SMID = {smid} and "
+                f"title = {self._project['title']}. Aborting transaction!"
             )
             raise DuplicateProjectError(msg)
 
@@ -158,7 +157,7 @@ class ProjectService:
             query = queries.query_column_where(
                 Modification, "id", filters={"rna": rna, "modomics_id": modomics_id}
             )
-            modification_id = self._session.execute(query).scalar()
+            modification_id = self._session.execute(query).scalar_one_or_none()
             if not modification_id:
                 modification = Modification(rna=rna, modomics_id=modomics_id)
                 self._session.add(modification)
@@ -173,7 +172,7 @@ class ProjectService:
                 "id",
                 filters={"tech": tech, "method_id": method_id},
             )
-            technology_id = self._session.execute(query).scalar()
+            technology_id = self._session.execute(query).scalar_one_or_none()
             if not technology_id:
                 technology = DetectionTechnology(tech=tech, method_id=method_id)
                 self._session.add(technology)
@@ -184,35 +183,16 @@ class ProjectService:
             d_organism = d["organism"]
             cto = d_organism["cto"]
             taxa_id = int(d_organism["taxa_id"])
-            self._taxa_ids.add(taxa_id)
+            self._assemblies.add((taxa_id, d_organism["assembly"]))
             query = queries.query_column_where(
                 Organism, "id", filters={"cto": cto, "taxa_id": taxa_id}
             )
-            organism_id = self._session.execute(query).scalar()
+            organism_id = self._session.execute(query).scalar_one_or_none()
             if not organism_id:
                 organism = Organism(cto=cto, taxa_id=taxa_id)
                 self._session.add(organism)
                 self._session.commit()
                 organism_id = organism.id
-
-            # # assembly
-            # # TODO: liftover (here or at data upload)
-            # name = d_organism["assembly"]
-            # query = queries.query_column_where(
-            #     Assembly, "id", filters={"name": name, "taxa_id": taxa_id}
-            # )
-            # assembly_id = self._session.execute(query).scalar()
-            # if not assembly_id:
-            #     # add new version for new entry, presumably a lower assembly
-            #     # that will not be used (i.e. data must be lifted)
-            #     query = select(Assembly.version)
-            #     version_nums = self._session.execute(query).scalars().all()
-            #     version_num = utils.gen_short_uuid(
-            #         self.ASSEMBLY_NUM_LENGTH, version_nums
-            #     )
-            #     assembly = Assembly(name=name, taxa_id=taxa_id, version=version_num)
-            #     self._session.add(assembly)
-            #     self._session.commit()
 
             # selection
             query = queries.query_column_where(
@@ -224,7 +204,7 @@ class ProjectService:
                     "organism_id": organism_id,
                 },
             )
-            selection_id = self._session.execute(query).scalar()
+            selection_id = self._session.execute(query).scalar_one_or_none()
             if not selection_id:
                 selection = Selection(
                     modification_id=modification_id,
@@ -233,7 +213,6 @@ class ProjectService:
                 )
                 self._session.add(selection)
                 self._session.commit()
-                selection_id = selection.id
 
     def _add_contact(self):
         """Add new contact."""
@@ -249,7 +228,7 @@ class ProjectService:
                 "contact_email": contact_email,
             },
         )
-        contact_id = self._session.execute(query).scalar()
+        contact_id = self._session.execute(query).scalar_one_or_none()
         if not contact_id:
             contact = ProjectContact(
                 contact_name=contact_name,
@@ -296,19 +275,24 @@ class ProjectService:
         with open(Path(parent, f"{self._smid}.json"), "w") as f:
             json.dump(self._project, f, indent="\t")
 
-    def create_project(self) -> None:
+    def create_project(self, wo_assembly: bool = False) -> None:
         """Project constructor."""
         self._validate_keys()
         self._validate_entry()
         self._add_selection()
         self._create_smid()
-
         self._write_metadata()
 
-        msg = "Preparing annotation for selected organisms"
-        logger.info(msg)
-        for taxid in self._taxa_ids:
-            service = AnnotationService.from_taxid(self._session, taxid=taxid)
+        if not wo_assembly:
+            pass
+            # instantiate AssemblyService
+            # one per species/assembly
+
+            # TODO
+            # msg = "Preparing annotation for selected organisms"
+            # logger.info(msg)
+            # for taxid in self._taxa_ids:
+            #     service = AnnotationService.from_taxid(self._session, taxid=taxid)
 
     def get_smid(self) -> str:
         return self._smid

@@ -1,3 +1,4 @@
+from collections import namedtuple
 import os
 from pathlib import Path
 
@@ -20,6 +21,8 @@ from scimodom.database.models import (
 
 # EUF version - columns must match "ORM Data model"
 EUF_VERSION = "1.7"
+# data path
+DataPath = namedtuple("DataPath", "ASSEMBLY_PATH ANNOTATION_PATH META_PATH")
 
 
 @pytest.fixture()
@@ -266,4 +269,4 @@ def data_path(tmp_path_factory):
     with open(Path(path, chrom_file), "w") as f:
         f.write("1\t1000000")
 
-    yield ASSEMBLY_PATH, ANNOTATION_PATH, META_PATH
+    yield DataPath(ASSEMBLY_PATH, ANNOTATION_PATH, META_PATH)

@@ -1,5 +1,7 @@
 from datetime import date, datetime, timezone
 from itertools import chain
+import json
+from pathlib import Path
 import uuid
 
 import pytest
@@ -240,7 +242,10 @@ def test_project_create_project(Session, setup, project_template, data_path):
         metadata_fmt="list",
         missing_key=None,
     )
-    ProjectService(Session(), project).create_project()
+    # AssemblyService tested in test_assembly.py
+    project_instance = ProjectService(Session(), project)
+    project_instance.create_project(wo_assembly=True)
+    project_smid = project_instance.get_smid()
 
     with Session() as session, session.begin():
         records = session.execute(select(Project)).scalar()
@@ -251,6 +256,7 @@ def test_project_create_project(Session, setup, project_template, data_path):
         assert records.date_added.month == stamp.month
         assert records.date_added.day == stamp.day
         smid = records.id
+        assert smid == project_smid
         contact_id = records.contact_id
         records = session.execute(select(ProjectContact)).scalar()
         assert records.contact_name == "Contact Name"
@@ -263,3 +269,6 @@ def test_project_create_project(Session, setup, project_template, data_path):
             assert record.project_id == smid
             assert record.doi == source[0]
             assert record.pmid == source[1]
+
+    project_template = json.load(open(Path(data_path.META_PATH, f"{smid}.json")))
+    assert project_template == project
