@@ -15,7 +15,7 @@ class Modomics(Base):
     id: Mapped[str] = mapped_column(
         String(128), primary_key=True, autoincrement=False
     )  # MODOMICS code
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
     short_name: Mapped[str] = mapped_column(String(32), nullable=False)
     moiety: Mapped[str] = mapped_column(String(32), nullable=False)
 
@@ -48,7 +48,7 @@ class DetectionMethod(Base):
 
     id: Mapped[str] = mapped_column(String(8), primary_key=True, autoincrement=False)
     cls: Mapped[str] = mapped_column(String(32), nullable=False)
-    meth: Mapped[str] = mapped_column(String(128), nullable=False)
+    meth: Mapped[str] = mapped_column(String(128), nullable=False, unique=True)
 
     technologies: Mapped[List["DetectionTechnology"]] = relationship(
         back_populates="inst_method"
@@ -91,8 +91,8 @@ class Taxa(Base):
     __tablename__ = "ncbi_taxa"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=False)  # NCBI Taxid
-    name: Mapped[str] = mapped_column(String(128), nullable=False)
-    short_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    name: Mapped[str] = mapped_column(String(128), nullable=False, unique=True)
+    short_name: Mapped[str] = mapped_column(String(128), nullable=False, unique=True)
     taxonomy_id: Mapped[int] = mapped_column(ForeignKey("taxonomy.id"))
 
     inst_taxonomy: Mapped["Taxonomy"] = relationship(back_populates="taxa")
@@ -151,13 +151,13 @@ class Assembly(Base):
     __tablename__ = "assembly"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    name: Mapped[str] = mapped_column(String(128), nullable=False, unique=True)
     taxa_id: Mapped[int] = mapped_column(ForeignKey("ncbi_taxa.id"))
     version: Mapped[str] = mapped_column(
         String(12), nullable=False
     )  # current is assembly_version.version_num
 
-    __table_args__ = (UniqueConstraint(name, taxa_id, version),)
+    __table_args__ = (UniqueConstraint(name, taxa_id, version, name="uq_assembly_ntv"),)
 
     inst_taxa: Mapped["Taxa"] = relationship(back_populates="assemblies")
 
@@ -182,7 +182,9 @@ class Annotation(Base):
         String(12), nullable=False
     )  # current is annotation_version.version_num
 
-    __table_args__ = (UniqueConstraint(release, taxa_id, version),)
+    __table_args__ = (
+        UniqueConstraint(release, taxa_id, version, name="uq_annotation_rtv"),
+    )
 
     inst_taxa: Mapped["Taxa"] = relationship(back_populates="annotations")
     annotations: Mapped[List["GenomicAnnotation"]] = relationship(

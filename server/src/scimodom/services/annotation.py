@@ -68,6 +68,7 @@ class AnnotationService:
             )
             self._taxa_id = self._session.execute(query).scalar()
         else:
+            # TODO validate if not None/or type
             self._taxa_id = taxa_id
 
         query = queries.get_assembly_version()
@@ -129,9 +130,10 @@ class AnnotationService:
             msg = f"DATA PATH {Path(cls.DATA_PATH, cls.DATA_SUB_PATH)} not found! Terminating!"
             raise FileNotFoundError(msg)
         else:
-            if not all(key in ["eufid", "taxid"] for key in kwargs):
-                msg = "Missing keyword argument eufid or taxid to class! Terminating!"
-                raise ValueError(msg)
+            # TODO
+            # if not all(key in ["eufid", "taxid"] for key in kwargs):
+            #     msg = "Missing keyword argument eufid or taxid to class! Terminating!"
+            #     raise ValueError(msg)
             return super(AnnotationService, cls).__new__(cls)
 
     @classmethod
@@ -312,6 +314,7 @@ class AnnotationService:
             parent.mkdir(parents=True, exist_ok=True)
         annotation_path = Path(parent, annotation_file)
 
+        # TODO check assembly...
         def decompress_stream(stream):
             o = zlib.decompressobj(16 + zlib.MAX_WBITS)
             for chunk in stream:

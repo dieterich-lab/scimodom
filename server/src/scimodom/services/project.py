@@ -43,8 +43,6 @@ class ProjectService:
     :type project: dict
     :param SMID_LENGTH: Length of Sci-ModoM ID (SMID)
     :type SMID_LENGTH: int
-    :param ASSEMBLY_NUM_LENGTH: Length of assembly ID
-    :type ASSEMBLY_NUM_LENGTH: int
     :param DATA_PATH: Data path
     :type DATA_PATH: str | Path | None
     :param DATA_SUB_PATH: Data sub path
@@ -52,7 +50,6 @@ class ProjectService:
     """
 
     SMID_LENGTH: ClassVar[int] = specs.SMID_LENGTH
-    ASSEMBLY_NUM_LENGTH: ClassVar[int] = specs.ASSEMBLY_NUM_LENGTH
     DATA_PATH: ClassVar[str | Path] = Config.DATA_PATH
     DATA_SUB_PATH: ClassVar[str] = "metadata"
 

@@ -89,7 +89,9 @@ SPECS_EUF = {
 # Annotation
 ENSEMBL_FTP = "https://ftp.ensembl.org/pub"
 ENSEMBL_SERVER = "http://rest.ensembl.org"
+ENSEMBL_DATA = "info/data"
 ENSEMBL_ASM = "info/assembly"
+ENSEMBL_ASM_MAPPING = "assembly_mapping"
 
 BIOTYPES = {
     "IG_C_gene": "Ig coding",

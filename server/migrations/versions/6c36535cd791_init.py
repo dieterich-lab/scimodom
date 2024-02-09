@@ -1,8 +1,8 @@
 """init
 
-Revision ID: 342a8db1888e
+Revision ID: 6c36535cd791
 Revises:
-Create Date: 2024-02-07 21:00:42.512770
+Create Date: 2024-02-09 10:58:38.843528
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = "342a8db1888e"
+revision = "6c36535cd791"
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -34,6 +34,7 @@ def upgrade() -> None:
         sa.Column("cls", sa.String(length=32), nullable=False),
         sa.Column("meth", sa.String(length=128), nullable=False),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_method")),
+        sa.UniqueConstraint("meth", name=op.f("uq_method_meth")),
     )
     op.create_table(
         "modomics",
@@ -42,6 +43,7 @@ def upgrade() -> None:
         sa.Column("short_name", sa.String(length=32), nullable=False),
         sa.Column("moiety", sa.String(length=32), nullable=False),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_modomics")),
+        sa.UniqueConstraint("name", name=op.f("uq_modomics_name")),
     )
     op.create_table(
         "project_contact",
@@ -86,6 +88,8 @@ def upgrade() -> None:
             name=op.f("fk_ncbi_taxa_taxonomy_id_taxonomy"),
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_ncbi_taxa")),
+        sa.UniqueConstraint("name", name=op.f("uq_ncbi_taxa_name")),
+        sa.UniqueConstraint("short_name", name=op.f("uq_ncbi_taxa_short_name")),
     )
     op.create_table(
         "project",
@@ -124,9 +128,7 @@ def upgrade() -> None:
             ["taxa_id"], ["ncbi_taxa.id"], name=op.f("fk_annotation_taxa_id_ncbi_taxa")
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_annotation")),
-        sa.UniqueConstraint(
-            "release", "taxa_id", "version", name=op.f("uq_annotation_release")
-        ),
+        sa.UniqueConstraint("release", "taxa_id", "version", name="uq_annotation_rtv"),
     )
     op.create_table(
         "assembly",
@@ -138,9 +140,8 @@ def upgrade() -> None:
             ["taxa_id"], ["ncbi_taxa.id"], name=op.f("fk_assembly_taxa_id_ncbi_taxa")
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_assembly")),
-        sa.UniqueConstraint(
-            "name", "taxa_id", "version", name=op.f("uq_assembly_name")
-        ),
+        sa.UniqueConstraint("name", "taxa_id", "version", name="uq_assembly_ntv"),
+        sa.UniqueConstraint("name", name=op.f("uq_assembly_name")),
     )
     op.create_table(
         "dataset",
