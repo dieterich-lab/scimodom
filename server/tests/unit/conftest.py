@@ -127,6 +127,7 @@ def setup():
     assembly = [
         Assembly(name="GRCh38", taxa_id=9606, version="GcatSmFcytpU"),
         Assembly(name="GRCm38", taxa_id=10090, version="GcatSmFcytpU"),
+        Assembly(name="GRCh37", taxa_id=9606, version="J9dit7Tfc6Sb"),
     ]
 
     assembly_version = [
@@ -256,6 +257,7 @@ def data_path(tmp_path_factory):
     META_PATH = loc / "metadata"
     META_PATH.mkdir()
 
+    # TODO
     # release 110 see above
     path, annotation_file = AnnotationService.get_annotation_path(
         ANNOTATION_PATH, "Homo_sapiens", "GRCh38", 110, "gtf"

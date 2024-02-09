@@ -36,8 +36,6 @@ class AssemblyService:
     :type name: str
     :param taxa_id: Taxa ID
     :type taxa_id: int
-    :param is_new: Assembly data exists or not
-    :type is_new: Bool
     :param ASSEMBLY_NUM_LENGTH: Length of assembly ID
     :type ASSEMBLY_NUM_LENGTH: int
     :param DATA_PATH: Path to assembly
@@ -50,10 +48,10 @@ class AssemblyService:
     DATA_PATH: ClassVar[str | Path] = Config.DATA_PATH
     DATA_SUB_PATH: ClassVar[str] = "assembly"
 
-    def __init__(self, session: Session, is_new: bool = False, **kwargs) -> None:
+    def __init__(self, session: Session, **kwargs) -> None:
         """Initializer method."""
         self._session = session
-        self._is_new = is_new
+        self._is_new: bool = False
 
         self._assembly_id: int
         self._db_version: str
@@ -91,15 +89,7 @@ class AssemblyService:
                 raise TypeError(f"Expected str; got {type(self._name).__name__}")
             if not isinstance(self._taxid, int):
                 raise TypeError(f"Expected int; got {type(self._taxid).__name__}")
-            query = select(Assembly.name)
-            names = session.execute(query).scalars().all()
-            lowers = [name.lower() for name in names]
-            if self._name.lower() in lowers and self._name not in names:
-                msg = (
-                    f"Assembly name {self._name} was not found, but a "
-                    "similar record was found. Continuing..."
-                )
-                logger.warning(msg)
+            # difficult to validate name, or combination of (name, taxa_id)...
             # use select(func.dictinct(Organism.taxa_id)) for available IDs
             query = select(Taxa.id)
             if self._taxid not in session.execute(query).scalars().all():
@@ -126,7 +116,7 @@ class AssemblyService:
                 self._assembly_id = assembly.id
                 self._is_new = True
 
-    def __new__(cls, session: Session, is_new: bool = False, **kwargs):
+    def __new__(cls, session: Session, **kwargs):
         """Constructor method."""
         if cls.DATA_PATH is None:
             msg = "Missing environment variable: DATA_PATH. Terminating!"
@@ -268,18 +258,15 @@ class AssemblyService:
         chain_file = Path(parent, filen)
 
         url = urljoin(
-            specs.ENSEMBL_FTP,
-            specs.ENSEMBL_ASM_MAPPING,
-            organism.lower(),
+            specs.ENSEMBL_FTP, specs.ENSEMBL_ASM_MAPPING, organism.lower(), filen
         )
         with requests.get(url, stream=True) as request:
             if not request.ok:
                 request.raise_for_status()
             try:
                 with open(chain_file, "wb") as f:
-                    for chunk in request.raw.stream(10 * 1024, decode_content=False):
-                        if chunk:
-                            f.write(chunk)
+                    for chunk in request.iter_content(chunk_size=10 * 1024):
+                        f.write(chunk)
             except FileExistsError:
                 msg = f"File at {chain_file} exists. Skipping!"
                 logger.warning(msg)
