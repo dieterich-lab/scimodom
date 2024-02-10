@@ -18,10 +18,9 @@ from scimodom.database.models import (
     DetectionTechnology,
     Organism,
     Selection,
-    Assembly,
 )
 import scimodom.database.queries as queries
-from scimodom.services.annotation import AnnotationService
+from scimodom.services.assembly import AssemblyService
 import scimodom.utils.specifications as specs
 import scimodom.utils.utils as utils
 
@@ -281,15 +280,11 @@ class ProjectService:
         self._write_metadata()
 
         if not wo_assembly:
-            pass
-            # instantiate AssemblyService
-            # one per species/assembly
-
-            # TODO
-            # msg = "Preparing annotation for selected organisms"
-            # logger.info(msg)
-            # for taxid in self._taxa_ids:
-            #     service = AnnotationService.from_taxid(self._session, taxid=taxid)
+            for assembly in self._assemblies:
+                taxid, name = assembly
+                msg = f"Calling AssemblyService for {name} ({taxid})"
+                logger.debug(msg)
+                AssemblyService.from_new(self._session, name=name, taxa_id=taxid)
 
     def get_smid(self) -> str:
         return self._smid
