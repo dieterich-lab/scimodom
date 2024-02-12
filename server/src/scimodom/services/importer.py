@@ -218,6 +218,8 @@ class EUFImporter:
         except KeyError:
             raise SpecsError(f" Unknown version: {self._version}.")
 
+    # TODO only validate specs against model, casting is done in importer
+    # we do not pass specs in imopoter, this belongs to Dataset
     def _validate_attributes(self, model, specs: Iterable[str]) -> None:
         """Validate specifications against model attributes.
 
