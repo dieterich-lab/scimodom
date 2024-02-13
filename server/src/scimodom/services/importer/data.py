@@ -36,6 +36,8 @@ class EUFDataImporter(BaseImporter):
     one used with Ensembl, e.g. standard Ensembl chromosome name w/o
     the "chr" prefix. Only records with seqid in seqids will be imported.
     :type seqids: list of str
+    :param specs_ver: Version of EUF specs to use
+    :type specs_ver: str
     :param SPECS: Default specs
     :type SPECS: dict
     """
@@ -49,41 +51,87 @@ class EUFDataImporter(BaseImporter):
         handle: TextIO,
         association: dict[str, int],
         seqids: list[str],
+        specs_ver: str,
     ) -> None:
         """Initializer method."""
-        # self._sep: str = self.SPECS["delimiter"]
-        # self._htag: str = self.SPECS["header"]["comment"]
-        # self._hsep: str = self.SPECS["header"]["delimiter"]
-        # self._hrequired: list[str]
-        # self._version: str | None = None
-        # self._specs: dict
-        # self._int_types: list
 
-        self._model: Base = Data
-        self._dtypes: dict[str, dict[str, Any]] = dict()
+        # TODO: lift or not no_flush
 
         self._session = session
         self._filen = filen
         self._handle = handle
         self._association = association
         self._seqids = seqids
+        self._specs_ver = specs_ver
+
+        self._model: Base = Data
+        self._sep: str = self.SPECS["delimiter"]
+        self._comment: str = self.SPECS["header"]["comment"]
+        self._constraints: dict[str, str | list[str]] = self.SPECS["constraints"]
+        self._specs: dict[str, dict[str, str] | list[str]] = self.SPECS[self._specs_ver]
+
+        self._dtypes: dict[str, Any]
+        self._itypes: list[str]
+
+        self._cast_types()
+
+        super().__init__(
+            session=session,
+            filen=filen,
+            handle=handle,
+            model=self._model,
+            header=self._specs["columns"].values(),
+            sep=self._sep,
+            comment=self._comment,
+        )
 
     def parse_record(self, record: dict[str, str]) -> dict[str, Any]:
-        pass
+        """Data parser.
+
+        :param record: A data record (line) as a dictionary
+        :type record: dict of {str: str}
+        :return: A data record as a dictionary, with value
+        typecasted to that required by the model. A record can
+        contain additonal entries for the model table columns.
+        :rtype: dict of {str: Any}
+        """
+
+        # cast to float numerical types, to avoid ValueError for
+        # non "integer-like" input records. NOTE: data loss may occur!
+        frecord = {k: float(v) if k in self._itypes else v for k, v in record.items()}
+        crecord = {k: self._dtypes[k].__call__(v) for k, v in frecord.items()}
+        # validate record
+        for itype in self._itypes:
+            if crecord[itype] < 0:
+                raise ValueError(f"Value {itype}: {crecord['itype']} out of range.")
+        if crecord["chrom"] not in self._seqids:
+            raise ValueError(
+                f"Unrecognized chrom: {crecord['chrom']}. Ignore this warning"
+                "for scaffolds and contigs, otherwise this could be due to misformatting!"
+            )
+        if crecord["strand"] not in self._constraints["strand"]:
+            raise ValueError(f"Unrecognized strand: {crecord['strand']}.")
+        for c in ["score", "frequency"]:
+            if not eval(self._constraints[c], {}, {c: crecord[c]}):
+                raise ValueError(f"Value score: {crecord[c]} out of range.")
+        # add missing columns for model table
+        try:
+            crecord["association_id"] = self._association[crecord["name"]]
+        except:
+            raise ValueError(f"Unrecognized name: {crecord['name']}.")
+
+        return crecord
 
     def _cast_types(self) -> None:
-        """Validate attributes and cast column types for input."""
-        # assume order of __table__.columns is consistent...
+        """Cast column types for input."""
+        # order of __table__.columns always the same...?
         mapped_columns = utils.get_table_columns(self._model)
         mapped_types = utils.get_table_column_python_types(self._model)
-        _dtypes = dict()
-        for c in self._header:
-            if c not in mapped_columns:
-                msg = (
-                    f"Column name {c} doesn't match any of the ORM mapped attribute names "
-                    f"for {self._model.__name__}. This is likely due to a change in model declaration."
-                )
-                raise Exception(msg)
-            idx = mapped_columns.index(c)
-            _dtypes[c] = mapped_types[idx]
-        self._dtypes[self._model.__name__] = _dtypes
+        self._dtypes = {
+            c: mapped_types[mapped_columns.index(c)] for c in mapped_columns
+        }
+        self._itypes = [
+            k
+            for k, v in self._dtypes.items()
+            if k in self._specs["columns"].values() and v.__name__ == "int"
+        ]

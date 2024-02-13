@@ -37,7 +37,7 @@ class BaseImporter(ABC):
     If header is None, column names are inferred and must match
     the corresponding model columns.
     :type header: Sequence of str | None
-    :param sep: Delimiter
+    :param sep: Character pattern to treat as the delimiter.
     :type sep: str
     :param skiprows: Number of lines to skip at the start of the
     file. If header is None (infer), the first line that is not
@@ -66,6 +66,7 @@ class BaseImporter(ABC):
             """Initializer method."""
             self._session = session
             self._model = model
+
             self._buffer: list = []
 
         def buffer_data(self, d: dict[str | Any]) -> None:
@@ -100,25 +101,31 @@ class BaseImporter(ABC):
         self._header = header
         self._sep = sep
         self._skiprows = skiprows
+        if comment is not None and len(comment) > 1:
+            raise ValueError(
+                f"Maximum length of 1 expected, got {len(comment)} for comment."
+            )
         self._comment = comment
+
+        self._buffer: BaseImporter._Buffer
+        self._dtypes: dict[str, dict[str, Any]] = dict()
 
         self._lino: int
         self._num_cols: int
-        self._buffer: BaseImporter._Buffer
-        self._dtypes: dict[str, dict[str, Any]] = dict()
 
     @abstractmethod
     def parse_record(self, record: dict[str, str]) -> dict[str, Any]:
         """Parser. Receives a dict {column: value}, and returns a
-        dict {column: value} where value is type converted. Length of
-        records are checked before calling this function, allowing to
-        return additional values to be inserted into the model table.
+        dict {column: value} where value is type converted. The length of
+        a record is checked against that of header before calling this
+        function, allowing to return additional values to be inserted
+        into the model table.
 
         Raises ValueError(message).
         """
         pass
 
-    def parse_records(self):
+    def parse_records(self) -> None:
         """Import file."""
         self._lino = self._skiprows
         if self._header is None:
@@ -131,7 +138,13 @@ class BaseImporter(ABC):
             if not self._comment.startswith(line):
                 self._read_line(line)
 
-    def _get_header(self):
+    def close(self) -> None:
+        """Close handle, flush buffer, commit."""
+        self._handle.close()
+        self._buffer.flush()
+        self._session.commit()
+
+    def _get_header(self) -> None:
         """Infer header from file."""
         for line in itertools.islice(self._handle, self._skiprows, None):
             self._lino += 1
@@ -158,6 +171,15 @@ class BaseImporter(ABC):
                 )
                 raise Exception(msg)
 
+    def _validate(self, values: list[str]) -> list[str]:
+        """Validate value count at row."""
+        num_values = len(values)
+        if num_values != self._num_cols:
+            raise ValueError(
+                f"Column count doesn't match value count at row {self._lino}"
+            )
+        return {self._header[col]: values[col] for col in range(self._num_cols)}
+
     def _read_line(self, line: str) -> None:
         """Read a line, buffer data for insert."""
         if line.strip() == "":
@@ -168,20 +190,5 @@ class BaseImporter(ABC):
             records = self.parse_record(validated)
             self._buffer.buffer_data(records)
         except ValueError as error:
-            msg = f"Warning: Failed to parse {self._filen} at row {self._lino}: {str(error)} - skipping!"
+            msg = f"Skipping: Failed to parse {self._filen} at row {self._lino}: {str(error)}"
             logger.warning(msg)
-
-    def _validate(self, values: list[str]) -> list[str]:
-        """Validate value count at row."""
-        num_values = len(values)
-        if num_values != self._num_cols:
-            raise ValueError(
-                f"Column count doesn't match value count at row {self._lino}"
-            )
-        return {self._header[col]: values[col] for col in range(self._num_cols)}
-
-    def close(self) -> None:
-        """Close handle, flush buffer, commit."""
-        self._handle.close()
-        self._buffer.flush()
-        self._session.commit()

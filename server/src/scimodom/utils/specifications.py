@@ -11,6 +11,13 @@ SPECS_EUF = {
     "format": "bedRMod",
     "header": {"comment": "#", "delimiter": "="},
     "delimiter": "\t",
+    # to avoid violating CheckConstraint - check all int types > 0 (default)
+    "constraints": {
+        "score": "score <= 1000",
+        "frequency": "frequency <= 100",
+        "strand": ["+", "-", "."],
+    },
+    "versions": ["1.6", "1.7"],
     "1.6": {
         "headers": {
             "fileformat": "file_format",
