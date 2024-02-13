@@ -3,7 +3,6 @@ from typing import TextIO, Iterable, ClassVar, Any
 
 from sqlalchemy.orm import Session
 
-from scimodom.database.database import Base
 from scimodom.database.models import Data
 from scimodom.services.importer.base import BaseImporter
 import scimodom.utils.specifications as specs
@@ -64,11 +63,11 @@ class EUFDataImporter(BaseImporter):
         self._seqids = seqids
         self._specs_ver = specs_ver
 
-        self._model: Base = Data
+        self._model = Data
         self._sep: str = self.SPECS["delimiter"]
         self._comment: str = self.SPECS["header"]["comment"]
-        self._constraints: dict[str, str | list[str]] = self.SPECS["constraints"]
-        self._specs: dict[str, dict[str, str] | list[str]] = self.SPECS[self._specs_ver]
+        self._constraints: dict[str, Any] = self.SPECS["constraints"]
+        self._specs: dict[str, Any] = self.SPECS[self._specs_ver]
 
         self._dtypes: dict[str, Any]
         self._itypes: list[str]
@@ -80,8 +79,8 @@ class EUFDataImporter(BaseImporter):
             filen=filen,
             handle=handle,
             model=self._model,
-            header=self._specs["columns"].values(),
             sep=self._sep,
+            header=self._specs["columns"].values(),
             comment=self._comment,
         )
 

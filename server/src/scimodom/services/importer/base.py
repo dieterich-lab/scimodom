@@ -7,8 +7,6 @@ from typing import TextIO, Iterable, ClassVar, Any
 from sqlalchemy import insert
 from sqlalchemy.orm import Session
 
-
-from scimodom.database.database import Base
 import scimodom.utils.utils as utils
 
 logger = logging.getLogger(__name__)
@@ -62,14 +60,14 @@ class BaseImporter(ABC):
 
         MAX_BUFFER: ClassVar[int] = 1000
 
-        def __init__(self, session: Session, model: Base) -> None:
+        def __init__(self, session: Session, model) -> None:
             """Initializer method."""
             self._session = session
             self._model = model
 
             self._buffer: list = []
 
-        def buffer_data(self, d: dict[str | Any]) -> None:
+        def buffer_data(self, d: dict[str, Any]) -> None:
             """Buffers data and flush."""
             self._buffer.append(d)
             if len(self._buffer) >= self.MAX_BUFFER:
@@ -87,9 +85,9 @@ class BaseImporter(ABC):
         session: Session,
         filen: str,
         handle: TextIO,
-        model: Base,
-        header: list[str] | None,
+        model,
         sep: str,
+        header: list[str] | None,
         skiprows: int = 0,
         comment: str | None = None,
     ) -> None:
@@ -98,20 +96,25 @@ class BaseImporter(ABC):
         self._filen = filen
         self._handle = handle
         self._model = model
-        self._header = header
         self._sep = sep
         self._skiprows = skiprows
+
+        self._buffer: BaseImporter._Buffer
+        self._dtypes: dict[str, dict[str, Any]] = dict()
+        self._lino: int = self._skiprows
+
+        self._num_cols: int
+
+        if header is None:
+            self._header = self._get_header()
+        else:
+            self._header = header
+        self._num_cols = len(self._header)
         if comment is not None and len(comment) > 1:
             raise ValueError(
                 f"Maximum length of 1 expected, got {len(comment)} for comment."
             )
         self._comment = comment
-
-        self._buffer: BaseImporter._Buffer
-        self._dtypes: dict[str, dict[str, Any]] = dict()
-
-        self._lino: int
-        self._num_cols: int
 
     @abstractmethod
     def parse_record(self, record: dict[str, str]) -> dict[str, Any]:
@@ -127,15 +130,11 @@ class BaseImporter(ABC):
 
     def parse_records(self) -> None:
         """Import file."""
-        self._lino = self._skiprows
-        if self._header is None:
-            self._get_header()
         self._validate_columns()
-        self._num_cols = len(self._header)
         self._buffer = BaseImporter._Buffer(session=self._session, model=self._model)
         for line in itertools.islice(self._handle, self._skiprows, None):
             self._lino += 1
-            if not self._comment.startswith(line):
+            if self._comment is not None and not self._comment.startswith(line):
                 self._read_line(line)
 
     def close(self) -> None:
@@ -144,19 +143,26 @@ class BaseImporter(ABC):
         self._buffer.flush()
         self._session.commit()
 
-    def _get_header(self) -> None:
-        """Infer header from file."""
+    def _get_header(self) -> list[str]:
+        """Infer header from file.
+
+        :return: Header
+        :rtype: list of str
+        """
         for line in itertools.islice(self._handle, self._skiprows, None):
             self._lino += 1
-            if not self._comment.startswith(line):
-                self._header = [l.strip() for l in line.split(self._sep)]
+            if self._comment is not None and not self._comment.startswith(line):
+                header = [l.strip() for l in line.split(self._sep)]
                 break
         # empty file...
-        if self._header is None:
+        try:
+            header
+        except:
             raise MissingHeaderError(
-                f"{self._file}: Header missing. Aborting transaction!"
+                f"{self._filen}: Header missing. Aborting transaction!"
             )
         self._skiprows = 0
+        return header
 
     def _validate_columns(self) -> None:
         """Validate model attributes."""
@@ -171,8 +177,14 @@ class BaseImporter(ABC):
                 )
                 raise Exception(msg)
 
-    def _validate(self, values: list[str]) -> list[str]:
-        """Validate value count at row."""
+    def _validate(self, values: list[str]) -> dict[str, str]:
+        """Format values and validate value count at row.
+
+        :param values: Input values from line
+        :type values: list of str
+        :return: Formatted values
+        :rtype: dict of {str: str}
+        """
         num_values = len(values)
         if num_values != self._num_cols:
             raise ValueError(

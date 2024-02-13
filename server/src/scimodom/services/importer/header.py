@@ -5,7 +5,6 @@ from typing import TextIO, Iterable, ClassVar, Any
 from sqlalchemy import insert
 from sqlalchemy.orm import Session
 
-from scimodom.database.database import Base
 from scimodom.database.models import Dataset
 import scimodom.utils.specifications as specs
 import scimodom.utils.utils as utils
@@ -57,14 +56,14 @@ class EUFHeaderImporter:
         self._title = title
 
         self.checkpoint = self._session.begin_nested()
-        self._model: Base = Dataset
+        self._model = Dataset
         self._sep: str = self.SPECS["header"]["delimiter"]
         self._tag: str = self.SPECS["header"]["comment"]
 
         self.taxid: int
         self.assembly: str
         self._specs_ver: str
-        self._specs: dict[str, dict[str, str] | list[str]]
+        self._specs: dict[str, Any]
         self._required: list[str]
         self._num_cols: int
         self._dtypes: dict[str, Any]
@@ -77,7 +76,6 @@ class EUFHeaderImporter:
         self._lino = 1
         self._read_version()
         self._parse_lines()
-        self._lino += 1
         self._validate_columns()
 
     def close(self) -> None:
@@ -116,7 +114,7 @@ class EUFHeaderImporter:
         while self._lino < self._num_cols:
             lines.append(next(self._handle))
             self._lino += 1
-        self._munge_values()
+        self._munge_values(lines)
 
     def _munge_values(self, lines: list[str]) -> None:
         """Read header lines into a dictionary, cast
@@ -139,7 +137,7 @@ class EUFHeaderImporter:
             :rtype: bool
             """
             skip = False
-            if header in self._hrequired and not s:
+            if header in self._required and not s:
                 skip = True
             return skip
 
@@ -169,23 +167,22 @@ class EUFHeaderImporter:
         self._header["project_id"] = self._dtypes["id"].__call__(self._smid)
         self._header["title"] = self._dtypes["id"].__call__(self._title)
         # unassigned, but used to validate association
-        self.taxid = _get_header("organism")
-        self.assembly = _get_header("assembly")
+        self.taxid = int(_get_header("organism"))
+        self.assembly = str(_get_header("assembly"))
         # unused, but required according to EUF specs
         _ = _get_header("annotation_source")
         _ = _get_header("annotation_version")
         # for non-required headers, nullify empty strings
         self._header = dict((k, None if not v else v) for k, v in self._header.items())
 
-    def _validate_columns(self, line: str) -> None:
+    def _validate_columns(self) -> None:
         """Validate bedRMod/EUF columns definition. Names
         are not used, this is a safety check before reading
         the data, cf. EUFDataImporter.
-
-        :param line: Header columns definition
-        :type line: str
         """
+        self._lino += 1
         num_cols = len(self._specs["columns"])
+        line = next(self._handle)
         cols = [l.strip() for l in line.split(self.SPECS["delimiter"])]
         # silently ignore extra cols
         cols = cols[:num_cols]
