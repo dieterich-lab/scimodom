@@ -18,16 +18,18 @@ from scimodom.database.models import (
     AnnotationVersion,
     DetectionMethod,
 )
+from scimodom.utils.specifications import SPECS_EUF
 
-# EUF version - columns must match "ORM Data model"
-EUF_VERSION = "1.7"
 # data path
 DataPath = namedtuple("DataPath", "ASSEMBLY_PATH ANNOTATION_PATH META_PATH")
 
 
 @pytest.fixture()
-def EUF_version():
-    return EUF_VERSION
+def EUF_specs():
+    # columns must match "ORM Data/Dataset model"
+    FMT = SPECS_EUF["format"]
+    VERSION = SPECS_EUF["versions"][-1]
+    return FMT, VERSION, SPECS_EUF[VERSION]
 
 
 @pytest.fixture()

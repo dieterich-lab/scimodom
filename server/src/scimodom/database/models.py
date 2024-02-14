@@ -285,10 +285,7 @@ class Dataset(Base):
         ForeignKey("project.id"), index=True
     )  # SMID
     title: Mapped[str] = mapped_column(String(255), nullable=False)
-    # TODO
-    lifted: Mapped[Optional[bool]] = mapped_column(default=False, nullable=False)
     # bedRMod header
-    file_format: Mapped[str] = mapped_column(String(32), nullable=False)
     modification_type: Mapped[str] = mapped_column(
         String(32), nullable=False
     )  # DNA or RNA

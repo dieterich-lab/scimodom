@@ -109,7 +109,9 @@ class EUFHeaderImporter:
         self._required = self._specs["required"][1:]
 
     def _parse_lines(self) -> None:
-        """Read and munge header lines."""
+        """Read and munge header lines.
+        Additional lines are ignored.
+        """
         lines = []
         while self._lino < self._num_cols:
             lines.append(next(self._handle))
@@ -164,8 +166,8 @@ class EUFHeaderImporter:
         }
         # add model columns that are not read from the header
         self._header["id"] = self._dtypes["id"].__call__(self._eufid)
-        self._header["project_id"] = self._dtypes["id"].__call__(self._smid)
-        self._header["title"] = self._dtypes["id"].__call__(self._title)
+        self._header["project_id"] = self._dtypes["project_id"].__call__(self._smid)
+        self._header["title"] = self._dtypes["title"].__call__(self._title)
         # unassigned, but used to validate association
         self.taxid = int(_get_header("organism"))
         self.assembly = str(_get_header("assembly"))
@@ -176,9 +178,11 @@ class EUFHeaderImporter:
         self._header = dict((k, None if not v else v) for k, v in self._header.items())
 
     def _validate_columns(self) -> None:
-        """Validate bedRMod/EUF columns definition. Names
-        are not used, this is a safety check before reading
-        the data, cf. EUFDataImporter.
+        """Validate if the file has the minimum number
+        of columns, but does not validate the column names.
+        Since a header is not explicitely required, this
+        function either reads the header, or the first
+        data record, cf. EUFDataImporter.
         """
         self._lino += 1
         num_cols = len(self._specs["columns"])
