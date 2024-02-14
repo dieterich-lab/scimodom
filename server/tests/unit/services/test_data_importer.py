@@ -50,6 +50,7 @@ def _get_data(EUF_specs):
     A\t0\t10\tm6A\t1000\t+\t0\t10\t0,0,0\t10\t1
     1\t0\t10\tm6A\t1000\t\t0\t10\t0,0,0\t10\t1
     1\t0\t10\tm5C\t1000\t+\t0\t10\t0,0,0\t10\t1
+    1\t0\t10\tm5C\t1000\t+
     1\t0\t10\tm6A\t1000\t+\t0\t10\t0,0,0\t10\t200"""
     return StringIO(string)
 
@@ -76,6 +77,9 @@ def _get_data_with_header(fmt):
         chrom\tstart\tend\tname\tscore\tstrand\tthick_start\tthick_end\titem_rgb\tcoverage\tfrequency
         1\t0\t10\tm6A\t1000\t+\t0\t10\t0,0,0\t10\t1"""
         comment = "@"
+    elif fmt == "wrong":
+        string = """chrom\tchromStart\tchromEnd\tname\tscore\tstrand\tthickStart\tthickEnd\titemRgb\tcoverage\tfrequency
+        1\t0\t10\tm6A\t1000\t+\t0\t10\t0,0,0\t10\t1"""
     return skiprows, comment, StringIO(string)
 
 
@@ -176,12 +180,11 @@ def test_importer_parse_records(Session, EUF_specs):
     "fmt",
     [("first"), ("second"), ("third"), ("comment")],
 )
-def test_base_importer(fmt, Session):
+def test_base_importer_header(fmt, Session):
     skiprows, comment, handle = _get_data_with_header(fmt)
 
     class TestBaseImporter(BaseImporter):
         def __init__(self):
-            # self._comment = comment
             super().__init__(
                 session=Session(),
                 filen="filen",
@@ -197,4 +200,42 @@ def test_base_importer(fmt, Session):
             return record
 
     importer = TestBaseImporter()
-    print(importer._header)
+    importer._validate_columns()
+    expected_header = [
+        "chrom",
+        "start",
+        "end",
+        "name",
+        "score",
+        "strand",
+        "thick_start",
+        "thick_end",
+        "item_rgb",
+        "coverage",
+        "frequency",
+    ]
+    assert importer._header == expected_header
+
+
+def test_base_importer_columns_fail(Session):
+    skiprows, comment, handle = _get_data_with_header("wrong")
+
+    class TestBaseImporter(BaseImporter):
+        def __init__(self):
+            super().__init__(
+                session=Session(),
+                filen="filen",
+                handle=handle,
+                model=Data,
+                sep="\t",
+                header=None,
+                skiprows=skiprows,
+                comment=comment,
+            )
+
+        def parse_record(record):
+            return record
+
+    importer = TestBaseImporter()
+    with pytest.raises(Exception) as excinfo:
+        importer._validate_columns()

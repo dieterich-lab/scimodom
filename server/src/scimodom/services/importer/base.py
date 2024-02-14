@@ -118,16 +118,16 @@ class BaseImporter(ABC):
         self._buffer: BaseImporter._Buffer
         self._dtypes: dict[str, dict[str, Any]] = dict()
         self._lino: int = skiprows
-        if header is None:
-            self._header = self._get_header()
-        else:
-            self._header = header
-        self._num_cols: int = len(self._header)
         if comment is not None and len(comment) > 1:
             raise ValueError(
                 f"Maximum length of 1 expected, got {len(comment)} for comment."
             )
         self._comment = comment
+        if header is None:
+            self._header = self._get_header()
+        else:
+            self._header = header
+        self._num_cols: int = len(self._header)
 
     @abstractmethod
     def parse_record(self, record: dict[str, str]) -> dict[str, Any]:

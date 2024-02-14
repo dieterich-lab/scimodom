@@ -21,7 +21,7 @@ from scimodom.database.models import (
 from scimodom.utils.specifications import SPECS_EUF
 
 # data path
-DataPath = namedtuple("DataPath", "ASSEMBLY_PATH ANNOTATION_PATH META_PATH")
+DataPath = namedtuple("DataPath", "LOC ASSEMBLY_PATH ANNOTATION_PATH META_PATH")
 
 
 @pytest.fixture()
@@ -251,6 +251,9 @@ def project_template():
 
 @pytest.fixture(scope="session")
 def data_path(tmp_path_factory):
+    format = SPECS_EUF["format"]
+    version = SPECS_EUF["versions"][-1]
+
     loc = tmp_path_factory.mktemp("data")
     ASSEMBLY_PATH = loc / "assembly"
     ASSEMBLY_PATH.mkdir()
@@ -273,4 +276,21 @@ def data_path(tmp_path_factory):
     with open(Path(path, chrom_file), "w") as f:
         f.write("1\t1000000")
 
-    yield DataPath(ASSEMBLY_PATH, ANNOTATION_PATH, META_PATH)
+    with open(Path(loc, "test.bed"), "w") as f:
+        f.write(f"#fileformat={format}v{version}\n")
+        f.write("#organism=9606\n")
+        f.write("#modification_type=RNA\n")
+        f.write("#assembly=GRCh38\n")
+        f.write("#annotation_source=Annotation\n")
+        f.write("#annotation_version=Version\n")
+        f.write("#sequencing_platform=Sequencing platform\n")
+        f.write("#basecalling=\n")
+        f.write("#bioinformatics_workflow=Workflow\n")
+        f.write("#experiment=Description of experiment.\n")
+        f.write("#external_source=\n")
+        f.write(
+            "#chrom\tchromstart\tchromEnd\tname\tscore\tstrand\tthickstart\tthickEnd\titermRgb\tcoverage\tfrequency\n"
+        )
+        f.write("1\t0\t10\tm6A\t1000\t+\t0\t10\t0,0,0\t10\t1\n")
+
+    yield DataPath(loc, ASSEMBLY_PATH, ANNOTATION_PATH, META_PATH)
