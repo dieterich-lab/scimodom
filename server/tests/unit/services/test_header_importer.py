@@ -8,6 +8,8 @@ from scimodom.services.importer.header import EUFHeaderImporter, SpecsError
 
 
 def _get_header(EUF_specs, fmt=None):
+    # format and version are taken from specs
+    # but string is hard coded!
     format, version, specs = EUF_specs
     if fmt == "string":
         string = f"completelyWrongHeaderButVersionIs Ok{version}"

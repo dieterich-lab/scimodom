@@ -71,17 +71,17 @@ class EUFDataImporter(BaseImporter):
         self._dtypes: dict[str, Any]
         self._itypes: list[str]
 
-        self._cast_types()
-
         super().__init__(
             session=session,
             filen=filen,
             handle=handle,
             model=self._model,
             sep=self._sep,
-            header=self._specs["columns"].values(),
+            header=list(self._specs["columns"].values()),
             comment=self._comment,
         )
+
+        self._cast_types()
 
     def parse_record(self, record: dict[str, str]) -> dict[str, Any]:
         """Data parser.
@@ -101,7 +101,7 @@ class EUFDataImporter(BaseImporter):
         # validate record
         for itype in self._itypes:
             if crecord[itype] < 0:
-                raise ValueError(f"Value {itype}: {crecord['itype']} out of range.")
+                raise ValueError(f"Value {itype}: {crecord[itype]} out of range.")
         if crecord["chrom"] not in self._seqids:
             raise ValueError(
                 f"Unrecognized chrom: {crecord['chrom']}. Ignore this warning"

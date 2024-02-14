@@ -117,7 +117,7 @@ class BaseImporter(ABC):
 
         self._buffer: BaseImporter._Buffer
         self._dtypes: dict[str, dict[str, Any]] = dict()
-        self._lino: int = self._skiprows
+        self._lino: int = skiprows
         if header is None:
             self._header = self._get_header()
         else:
@@ -149,7 +149,7 @@ class BaseImporter(ABC):
         )
         for line in itertools.islice(self._handle, self._skiprows, None):
             self._lino += 1
-            if self._comment is not None and not self._comment.startswith(line):
+            if self._comment is not None and not line.strip().startswith(self._comment):
                 self._read_line(line)
 
     def close(self) -> None:
@@ -175,7 +175,7 @@ class BaseImporter(ABC):
         """
         for line in itertools.islice(self._handle, self._skiprows, None):
             self._lino += 1
-            if self._comment is not None and not self._comment.startswith(line):
+            if self._comment is not None and not line.strip().startswith(self._comment):
                 header = [l.strip() for l in line.split(self._sep)]
                 break
         # empty file...
