@@ -21,6 +21,9 @@ class MissingHeaderError(Exception):
 class BaseImporter(ABC):
     """Abstract base class for an importer. Reads data from
     file rowwise, buffer records, and perform bulk inserts.
+    The importer is tied to a given ORM model in that it
+    (1) validates the input columns against the model columns,
+    and (2) insert values into the model table.
 
     :param session: SQLAlchemy ORM session
     :type session: Session
@@ -47,6 +50,11 @@ class BaseImporter(ABC):
     alltogether. Commented lines are not ignored by skiprows (see
     parameter skiprows).
     :type comment: str | None
+    :param no_flush: Imported data is flushed and committed by
+    default. This parameters prevents flush and commit, allowing
+    to access the records before they are eventually inserted
+    into the database.
+    :type no_flush: bool
     """
 
     class _Buffer:
@@ -56,21 +64,27 @@ class BaseImporter(ABC):
         :type session: Session
         :param model: SQLAlchemy model
         :type model: Base
+        :param no_flush: Imported data is flushed and committed by
+        default. This parameters prevents flush and commit, allowing
+        to access the records before they are eventually inserted
+        into the database.
+        :type no_flush: bool
         """
 
         MAX_BUFFER: ClassVar[int] = 1000
 
-        def __init__(self, session: Session, model) -> None:
+        def __init__(self, session: Session, model, no_flush: bool) -> None:
             """Initializer method."""
             self._session = session
             self._model = model
+            self._no_flush = no_flush
 
-            self._buffer: list = []
+            self._buffer: list[dict[str, Any]] = []
 
         def buffer_data(self, d: dict[str, Any]) -> None:
             """Buffers data and flush."""
             self._buffer.append(d)
-            if len(self._buffer) >= self.MAX_BUFFER:
+            if not self._no_flush and len(self._buffer) >= self.MAX_BUFFER:
                 self.flush()
 
         def flush(self) -> None:
@@ -90,6 +104,7 @@ class BaseImporter(ABC):
         header: list[str] | None,
         skiprows: int = 0,
         comment: str | None = None,
+        no_flush: bool = False,
     ) -> None:
         """Initializer method."""
         self._session = session
@@ -98,18 +113,16 @@ class BaseImporter(ABC):
         self._model = model
         self._sep = sep
         self._skiprows = skiprows
+        self._no_flush = no_flush
 
         self._buffer: BaseImporter._Buffer
         self._dtypes: dict[str, dict[str, Any]] = dict()
         self._lino: int = self._skiprows
-
-        self._num_cols: int
-
         if header is None:
             self._header = self._get_header()
         else:
             self._header = header
-        self._num_cols = len(self._header)
+        self._num_cols: int = len(self._header)
         if comment is not None and len(comment) > 1:
             raise ValueError(
                 f"Maximum length of 1 expected, got {len(comment)} for comment."
@@ -131,7 +144,9 @@ class BaseImporter(ABC):
     def parse_records(self) -> None:
         """Import file."""
         self._validate_columns()
-        self._buffer = BaseImporter._Buffer(session=self._session, model=self._model)
+        self._buffer = BaseImporter._Buffer(
+            session=self._session, model=self._model, no_flush=self._no_flush
+        )
         for line in itertools.islice(self._handle, self._skiprows, None):
             self._lino += 1
             if self._comment is not None and not self._comment.startswith(line):
@@ -140,8 +155,17 @@ class BaseImporter(ABC):
     def close(self) -> None:
         """Close handle, flush buffer, commit."""
         self._handle.close()
-        self._buffer.flush()
-        self._session.commit()
+        if not self._no_flush:
+            self._buffer.flush()
+            self._session.commit()
+
+    def get_buffer(self) -> list[dict[str, Any]]:
+        """Return buffer with records.
+
+        :return: Buffer with records
+        :rtype: list of dict of {str: Any}
+        """
+        return self._buffer._buffer
 
     def _get_header(self) -> list[str]:
         """Infer header from file.
@@ -196,7 +220,8 @@ class BaseImporter(ABC):
         """Read a line, buffer data for insert."""
         if line.strip() == "":
             return
-        values = [l.strip() for l in line.split(self._sep)]
+        # cut to header
+        values = [l.strip() for l in line.split(self._sep)][: self._num_cols]
         try:
             validated = self._validate(values)
             records = self.parse_record(validated)
