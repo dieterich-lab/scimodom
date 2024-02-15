@@ -127,9 +127,12 @@ class EUFHeaderImporter:
         """
 
         def _is_required(header: str, s: str) -> bool:
-            """Check if required header string is not
-            empty, but does not validate content.
-            Type casting occurs later.
+            """Check non-empty required header string.
+            There is no content validation. Values
+            for organism, assembly, annotation_source,
+            and annotation_version are discarded.
+            Organism and assembly are checked in
+            DataService. Type casting occurs later.
 
             :param header: Header line
             :type header: str

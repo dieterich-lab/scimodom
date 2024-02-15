@@ -46,8 +46,6 @@ class BEDImporter(BaseImporter):
         self._dtypes: dict[str, Any]
         self._itypes: list[str]
 
-        self._cast_types()
-
         super().__init__(
             session=session,
             filen=filen,
@@ -58,6 +56,8 @@ class BEDImporter(BaseImporter):
             comment=self.COMMENT,
             no_flush=True,
         )
+
+        self._cast_types()
 
     def parse_record(self, record: dict[str, str]) -> dict[str, Any]:
         """Data parser.

@@ -96,6 +96,7 @@ class EUFDataImporter(BaseImporter):
 
         # cast to float numerical types, to avoid ValueError for
         # non "integer-like" input records. NOTE: data loss may occur!
+        # raises ValueError: could not convert string to float if value is non numerical
         frecord = {k: float(v) if k in self._itypes else v for k, v in record.items()}
         crecord = {k: self._dtypes[k].__call__(v) for k, v in frecord.items()}
         # validate record

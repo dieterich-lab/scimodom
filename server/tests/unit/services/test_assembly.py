@@ -44,7 +44,7 @@ def test_init_from_new_exists(Session, setup, data_path):
         ("GRCh38", 0000),
     ],
 )
-def test_init_from_new_fails(name, taxid, Session, setup):
+def test_init_from_new_fail(name, taxid, Session, setup):
     with Session() as session, session.begin():
         session.add_all(setup)
     error = TypeError
@@ -80,7 +80,7 @@ def test_create_new(Session, setup, data_path):
     assert Path(parent, "release.json").is_file()
 
 
-def test_create_new_fails(Session, setup, data_path):
+def test_create_new_fail(Session, setup, data_path):
     with Session() as session, session.begin():
         session.add_all(setup)
 

@@ -239,3 +239,23 @@ def test_base_importer_columns_fail(Session):
     importer = TestBaseImporter()
     with pytest.raises(Exception) as excinfo:
         importer._validate_columns()
+
+
+def test_base_importer_comment_fail(Session):
+    class TestBaseImporter(BaseImporter):
+        def __init__(self):
+            super().__init__(
+                session=Session(),
+                filen="filen",
+                handle=StringIO("filen"),
+                model=Data,
+                sep="\t",
+                header=None,
+                comment="##",
+            )
+
+        def parse_record(record):
+            return record
+
+    with pytest.raises(ValueError) as excinfo:
+        importer = TestBaseImporter()
