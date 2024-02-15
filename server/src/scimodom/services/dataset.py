@@ -6,19 +6,21 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 
 from scimodom.database.models import (
+    Assembly,
+    Association,
     # Data,
     Dataset,
-    Association,
-    Selection,
+    DetectionTechnology,
     Modomics,
     Modification,
-    DetectionTechnology,
     Organism,
-    # Assembly,
+    Selection,
+    Taxa,
 )
 import scimodom.database.queries as queries
 
-# from scimodom.services.importer import EUFImporter
+from scimodom.services.assembly import AssemblyService, AssemblyVersionError
+from scimodom.services.importer import get_importer
 import scimodom.utils.specifications as specs
 import scimodom.utils.utils as utils
 
@@ -80,6 +82,8 @@ class DataService:
         self._title = title
         self._filen = filen
         self._assembly_id = assembly_id
+
+        self._is_liftover: bool = False
 
         self._selection_id: list[int]
         self._modification_id: list[int]
@@ -211,12 +215,86 @@ class DataService:
         )
         return service
 
+    def create_dataset(self) -> str:
+        """Dataset constructor.
+
+        :returns: EUFID
+        :rtype: str
+        """
+        self._validate_entry()
+        query = queries.query_column_where(
+            Assembly, ["name", "taxa_id"], filters={"id": self._assembly_id}
+        )
+        assembly_name, taxa_id = self._session.execute(query).all()[0]
+        query = queries.query_column_where(Taxa, "name", filters={"id": taxa_id})
+        organism_name = self._session.execute(query).scalar_one()
+        try:
+            assembly_service = AssemblyService.from_id(
+                self._session, assembly_id=self._assembly_id
+            )
+        except AssemblyVersionError:
+            assembly_service = AssemblyService.from_new(
+                self._session, name=assembly_name, taxa_id=taxa_id
+            )
+            if assembly_service._assembly_id != self._assembly_id:
+                msg = (
+                    f"Mismatch in assembly versions: {self._assembly_id} and "
+                    f"{assembly_service._assembly_id}. Aborting transaction!"
+                )
+                raise AssemblyVersionError(msg)
+            self._is_liftover = True
+        finally:
+            filen = assembly_service.get_chrom_path(organism_name, assembly_name)
+            with open(filen, "r") as f:
+                lines = f.readlines()
+            seqids = [l.split()[0] for l in lines]
+
+        self._create_eufid()
+        self._add_association()
+        try:
+            try:
+                filen = self._filen.as_posix()  # type: ignore
+            except:
+                filen = self._filen
+            importer = get_importer(
+                filen=filen,
+                smid=self._smid,
+                eufid=self._eufid,
+                title=self._title,
+            )
+            checkpoint = importer.header.checkpoint
+            importer.header.parse_header()
+
+            # about here we need to do some checks,
+            # compare taxa_id and assembly as given here and from file, etc.
+            # self._validate_assembly()
+
+            importer.header.close()
+            # where do we pass no_flush if liftover?
+            importer.init_data_importer(association=self._association, seqids=seqids)
+            importer.data.parse_records()
+            # if liftover, we need to call an additional function
+            # get buffer, then pass it woth chaoi file to a staticmethod
+            # to be implemented in AssemblyService
+            # this method calls operations (pybedtool), returns lifted records
+            # the new records can then be bulk inserted (w or w/o buffering?)
+            # in a method to be implemented in data importer (or base?)
+        except:
+            checkpoint.rollback()
+            raise
+        else:
+            importer.data.close()
+
+        # finallly, handle annotation
+
+        return self._eufid
+
     def _set_ids(self) -> None:
         """Set modification_id, technology_id,
         and organism_id from selection_id."""
-        modification_id = []
-        technology_id = None
-        organism_id = None
+        modification_id: list = []
+        technology_id: int
+        organism_id: int
         for selection_id in self._selection_id:
             query = (
                 select(
@@ -241,7 +319,9 @@ class DataService:
             )
             selection = self._session.execute(query).one()
             modification_id.append(selection[0])
-            if technology_id is None:
+            try:
+                technology_id  # noqa: F821
+            except:
                 technology_id = selection[2]
             if technology_id != selection[2]:
                 msg = (
@@ -250,7 +330,9 @@ class DataService:
                     "Aborting transaction!"
                 )
                 raise InstantiationError(msg)
-            if organism_id is None:
+            try:
+                organism_id  # noqa: F821
+            except:
                 organism_id = selection[3]
             if organism_id != selection[3]:
                 msg = (
@@ -302,65 +384,54 @@ class DataService:
         self._selection_id = selection_id
 
     def _validate_entry(self) -> None:
-        """Validate new dataset using SMID, title, assembly, and selection."""
-        pass
-        # for selection_id, selection in self._selection_ids.items():
-        #     query = (
-        #         select(func.distinct(Dataset.id)).join_from(
-        #             Dataset, Association, Dataset.associations, isouter=True
-        #         )
-        #         # .outerjoin(Association, Dataset.id == Association.dataset_id)
-        #         .where(
-        #             Association.selection_id == selection_id,
-        #             Dataset.project_id == self._smid,
-        #             Dataset.title == self._title,
-        #             # TODO
-        #             # Dataset.assembly_id == self._assembly_id,
-        #         )
-        #     )
-        #     eufid = self._session.execute(query).scalar()  # most likely none or one?
-        #     if eufid:
-        #         msg = (
-        #             f"A similar record with EUFID = {eufid} already exists for project {self._smid} "
-        #             f"with title = {self._title}, and the following selection: {selection[0]}, "
-        #             f"{selection[1]}, and {selection[2]}. Aborting transaction!"
-        #         )
-        #         raise DuplicateDatasetError(msg)
+        """Tentatively check if dataset already exists using
+        SMID, title, and selection."""
+        for selection_id in self._selection_id:
+            query = (
+                select(func.distinct(Dataset.id))
+                .join_from(Dataset, Association, Dataset.associations, isouter=True)
+                .where(
+                    Association.selection_id == selection_id,
+                    Dataset.project_id == self._smid,
+                    Dataset.title == self._title,
+                )
+            )
+            eufid = self._session.execute(query).scalar_one_or_none()
+            if eufid:
+                msg = (
+                    f"A similar record with EUFID = {eufid} already exists for project {self._smid} "
+                    f"with title = {self._title}, and the following selection ID {selection_id}. "
+                    f"Aborting transaction!"
+                )
+                raise DuplicateDatasetError(msg)
 
-    def _validate_assembly(self) -> None:
-        """Validate assembly and mark dataset for liftover"""
-        query = queries.get_assembly_version()
-        db_assembly_version = self._session.execute(query).scalar()
+    # def _validate_assembly(self) -> None:
+    #     """Validate assembly and mark dataset for liftover."""
+    #     query = queries.get_assembly_version()
+    #     db_assembly_version = self._session.execute(query).scalar()
 
-        query = queries.query_column_where(
-            "Assembly", "version", filters={"id": self._assembly_id}
-        )
-        assembly_version = self._session.execute(query).scalar()
+    #     query = queries.query_column_where(
+    #         "Assembly", "version", filters={"id": self._assembly_id}
+    #     )
+    #     assembly_version = self._session.execute(query).scalar()
 
-        if not assembly_version == db_assembly_version:
-            self._lifted = True
-            print("Some message... do something when?")
+    #     if not assembly_version == db_assembly_version:
+    #         self._lifted = True
+    #         print("Some message... do something when?")
 
     def _add_association(self) -> None:
-        """Create new association entry for dataset.
-
-        Note: An association is made up of dataset_id and selection_id
-        """
-        pass
-        # for selection_id in self._selection_ids.keys():
-        #     association = Association(dataset_id=self._eufid, selection_id=selection_id)
-        #     self._session.add(association)
-        #     self._session.flush()
+        """Create new association entry for dataset."""
+        for name, selection_id in self._association.items():
+            association = Association(dataset_id=self._eufid, selection_id=selection_id)
+            self._session.add(association)
+            self._session.flush()
+            self._association[name] = association.id
 
     def _create_eufid(self) -> None:
-        """Create new dataset using EUFimporter class."""
-        pass
-        # try:
-        #     query = select(Dataset.id)
-        #     eufids = self._session.execute(query).scalars().all()
-        #     self._eufid = utils.gen_short_uuid(self.EUFID_LENGTH, eufids)
-
-        #     self._add_association()
+        """Create new dataset ID."""
+        query = select(Dataset.id)
+        eufids = self._session.execute(query).scalars().all()
+        self._eufid = utils.gen_short_uuid(self.EUFID_LENGTH, eufids)
 
         #     importer = EUFImporter(
         #         self._session,
@@ -407,20 +478,3 @@ class DataService:
         # else:
         #     # confirm ?
         #     importer.close()
-
-    def create_dataset(self) -> str:
-        """Dataset constructor.
-
-        :returns: EUFID
-        :rtype: str
-        """
-        self._get_selection()
-        self._validate_entry()
-        self._validate_assembly()
-
-        self._create_eufid()
-
-        return self._eufid
-
-        # if self._lifted, upsert table records for this newly added dataset with "lifted" data...
-        # what for annotations?
