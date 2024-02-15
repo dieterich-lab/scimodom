@@ -185,8 +185,8 @@ def get_table_column_python_types(model, remove: list[str] = []) -> list[Any]:
     return [c.type.python_type for c in cols if c.key not in remove]
 
 
-def to_list(i: str | list | set | None):
-    """Converts string, list, set, and None to list,
+def to_list(i: int | float | str | list | set | None):
+    """Converts numerical, string, list, set, and None to list,
     but does not unpack tuple or dict.
 
     :param i: String, list, set, or None

@@ -47,9 +47,9 @@ def test_init_from_new_exists(Session, setup, data_path):
 def test_init_from_new_fail(name, taxid, Session, setup):
     with Session() as session, session.begin():
         session.add_all(setup)
-    error = TypeError
-    if taxid == 0000:
-        error = ValueError
+    error = ValueError
+    if name is None:
+        error = TypeError
     with pytest.raises(error) as excinfo:
         service = AssemblyService.from_new(Session(), name=name, taxa_id=taxid)
 
@@ -73,7 +73,7 @@ def test_create_new(Session, setup, data_path):
     service.create_new()
     organism = service._get_organism()
     assembly = service._name
-    parent, _ = service.get_chrom_path(data_path.ASSEMBLY_PATH, organism, assembly)
+    parent, _ = service.get_chrom_path(organism, assembly)
     # check if files exist, not content
     assert service._chrom_file.is_file()
     assert Path(parent, "info.json").is_file()
@@ -96,7 +96,7 @@ def test_create_new_exists(Session, setup, data_path):
     service = AssemblyService.from_id(Session(), assembly_id=1)
     organism = service._get_organism()
     assembly = service._name
-    parent, _ = service.get_chrom_path(data_path.ASSEMBLY_PATH, organism, assembly)
+    parent, _ = service.get_chrom_path(organism, assembly)
     parent.mkdir(parents=True, exist_ok=True)
     with pytest.raises(Exception) as excinfo:
         service.create_new()
