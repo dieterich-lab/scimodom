@@ -4,7 +4,7 @@ import json
 import logging
 from pathlib import Path
 from posixpath import join as urljoin
-from typing import ClassVar, Callable
+from typing import ClassVar, Callable, Any
 
 import requests  # type: ignore
 from sqlalchemy.orm import Session
@@ -13,6 +13,7 @@ from sqlalchemy import select, func
 from scimodom.config import Config
 from scimodom.database.models import Assembly, Taxa
 import scimodom.database.queries as queries
+from scimodom.utils.operations import _liftover
 import scimodom.utils.specifications as specs
 import scimodom.utils.utils as utils
 
@@ -290,6 +291,19 @@ class AssemblyService:
         release = request.json()
         with open(Path(parent, "release.json"), "w") as f:
             json.dump(release, f, indent="\t")
+
+    def liftover(self, records: list[dict[str, Any]]) -> str:
+        """Liftover records to current assembly.
+        Unmapped features are discarded.
+
+        :param records: Records to be lifted over
+        :type records: dict of {str: Any}
+        :returns: File pointing to the liftedOver features
+        :rtype: str
+        """
+        parent, filen = self.get_chain_path()
+        chain_file = Path(parent, filen).as_posix()
+        return _liftover(records, chain_file)
 
     def _get_current_name(self) -> str:
         """Get current assembly name. This methods

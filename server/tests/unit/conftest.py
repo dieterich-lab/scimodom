@@ -244,6 +244,13 @@ def project_template():
             "method_id": "01d26feb",
             "organism": {"taxa_id": 9606, "cto": "Organ 1", "assembly": "GRCh38"},
         },
+        {
+            "rna": "mRNA",
+            "modomics_id": "2000000005C",
+            "tech": "Technology 1",
+            "method_id": "01d26feb",
+            "organism": {"taxa_id": 9606, "cto": "Cell Type 1", "assembly": "GRCh38"},
+        },
     ]
 
     return project

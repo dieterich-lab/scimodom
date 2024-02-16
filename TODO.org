@@ -65,7 +65,7 @@ Draft or long-running issues, WIP, triage, and additional references or context 
 
 - [ ] [2024-02-03 Sat] [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/src/scimodom/api/__init__.py::E402 module level import not at top of file]]
 
-** TODO GENERAL [0/6]
+** TODO GENERAL [0/7]
 
 - [ ] dependencies :: replace pandas in ~SetupService~.
 
@@ -74,6 +74,8 @@ Draft or long-running issues, WIP, triage, and additional references or context 
   we don't need to know the assembly, as there is only one in the DB!
 - [ ] models :: RNA type nomenclature enforcement.
 
+- [ ] [2024-02-16 Fri] Add exception if /e.g./ more than 30% of features are unmapped.
+  [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/src/scimodom/services/assembly.py::Unmapped features are discarded.]]
 - [ ] ~Datatable dataKey="id"~
 - [ ] Default ordering of data (Search, Browse, Compare). What if EUF file is not sorted?
 

@@ -50,11 +50,9 @@ class EUFDataImporter(BaseImporter):
         association: dict[str, int],
         seqids: list[str],
         specs_ver: str,
+        **kwargs,
     ) -> None:
         """Initializer method."""
-
-        # TODO: lift or not no_flush
-
         self._session = session
         self._filen = filen
         self._handle = handle
@@ -79,6 +77,7 @@ class EUFDataImporter(BaseImporter):
             sep=self._sep,
             header=list(self._specs["columns"].values()),
             comment=self._comment,
+            **kwargs,
         )
 
         self._cast_types()

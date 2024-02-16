@@ -155,7 +155,7 @@ def test_project_add_selection(Session, setup, project_template, data_path):
     )
     ProjectService(Session(), project)._add_selection()
 
-    expected_records = [(1, 1, 1, 1), (2, 1, 1, 2), (3, 2, 2, 3)]
+    expected_records = [(1, 1, 1, 1), (2, 1, 1, 2), (3, 2, 2, 3), (4, 2, 1, 1)]
     with Session() as session, session.begin():
         records = session.execute(select(Selection)).scalars().all()
         records = [

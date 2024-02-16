@@ -8,19 +8,19 @@ from sqlalchemy.orm import Session
 from scimodom.database.models import (
     Assembly,
     Association,
-    # Data,
     Dataset,
     DetectionTechnology,
     Modomics,
     Modification,
     Organism,
+    Project,
     Selection,
     Taxa,
 )
 import scimodom.database.queries as queries
 
 from scimodom.services.assembly import AssemblyService, AssemblyVersionError
-from scimodom.services.importer import get_importer
+from scimodom.services.importer import get_importer, get_bed_importer
 import scimodom.utils.specifications as specs
 import scimodom.utils.utils as utils
 
@@ -33,8 +33,10 @@ class InstantiationError(Exception):
     pass
 
 
-class DuplicateDatasetError(Exception):
-    """Exception handling for duplicate dataset."""
+class DatasetError(Exception):
+    """Exception for handling Dataset instantiation,
+    e.g. suspected duplicate entries, mismatch between
+    header and input values, etc."""
 
     pass
 
@@ -83,13 +85,12 @@ class DataService:
         self._filen = filen
         self._assembly_id = assembly_id
 
-        self._is_liftover: bool = False
+        self._association: dict[str, int] = dict()
 
         self._selection_id: list[int]
         self._modification_id: list[int]
         self._technology_id: int
         self._organism_id: int
-        self._association: dict[str, int]
         self._eufid: str
 
         selection_id = kwargs.get("selection_id", None)
@@ -115,7 +116,9 @@ class DataService:
             query = select(DetectionTechnology.id)
             ids = session.execute(query).scalars().all()
             if technology_id not in ids:
-                msg = f"Modification ID = {technology_id} not found! Aborting transaction!"
+                msg = (
+                    f"Technology ID = {technology_id} not found! Aborting transaction!"
+                )
                 raise ValueError(msg)
             self._technology_id = technology_id
             organism_id = kwargs.get("organism_id", None)
@@ -156,6 +159,11 @@ class DataService:
         :returns: DataService class instance
         :rtype: DataService
         """
+        query = select(Project.id)
+        smids = session.execute(query).scalars().all()
+        if smid not in smids:
+            msg = f"Unrecognised SMID {smid}. Cannot instantiate DataService!"
+            raise InstantiationError(msg)
         ids = utils.to_list(selection_id)
         if len(set(ids)) != len(ids):
             msg = "Repeated selection IDs. Cannot instantiate DataService!"
@@ -199,6 +207,11 @@ class DataService:
         :returns: DataService class instance
         :rtype: DataService
         """
+        query = select(Project.id)
+        smids = session.execute(query).scalars().all()
+        if smid not in smids:
+            msg = f"Unrecognised SMID {smid}. Cannot instantiate DataService!"
+            raise InstantiationError(msg)
         ids = utils.to_list(modification_id)
         if len(set(ids)) != len(ids):
             msg = "Repeated modification IDs. Cannot instantiate DataService!"
@@ -215,13 +228,37 @@ class DataService:
         )
         return service
 
+    @staticmethod
+    def validate_imported(name: str, form_value: Any, header_value: Any) -> None:
+        """Compare a given input value to the
+        matching value read from a file.
+
+        :param name: Parameter name
+        :type name: str
+        :param form_value: Input parameter value
+        :type form_value: Any
+        :param header_value: Parameter value
+        read from the file header
+        :type header_value: Any
+        """
+        if not form_value == header_value:
+            msg = (
+                f"Expected {form_value} for {name}; got {header_value} (imported). "
+                f"Aborting transaction!"
+            )
+            raise DatasetError(msg)
+
     def create_dataset(self) -> str:
         """Dataset constructor.
 
         :returns: EUFID
         :rtype: str
         """
+        is_liftover: bool = False
+        # make sure we do not already have a dataset with
+        # the same combination of SMID, selection, and title
         self._validate_entry()
+        # instantiate AssemblyService
         query = queries.query_column_where(
             Assembly, ["name", "taxa_id"], filters={"id": self._assembly_id}
         )
@@ -242,15 +279,18 @@ class DataService:
                     f"{assembly_service._assembly_id}. Aborting transaction!"
                 )
                 raise AssemblyVersionError(msg)
-            self._is_liftover = True
+            is_liftover = True
         finally:
             filen = assembly_service.get_chrom_path(organism_name, assembly_name)
             with open(filen, "r") as f:
                 lines = f.readlines()
             seqids = [l.split()[0] for l in lines]
-
+        # create EUFID
         self._create_eufid()
+        # add association = (EUFID, selection)
+        # update self._association dict
         self._add_association()
+        # import
         try:
             try:
                 filen = self._filen.as_posix()  # type: ignore
@@ -264,26 +304,31 @@ class DataService:
             )
             checkpoint = importer.header.checkpoint
             importer.header.parse_header()
-
-            # about here we need to do some checks,
-            # compare taxa_id and assembly as given here and from file, etc.
-            # self._validate_assembly()
-
+            # compare input vs. values read from file header
+            # for organism (taxa ID) and assembly
+            self.validate_imported("organism", taxa_id, importer.header.taxa_id)
+            self.validate_imported("assembly", assembly_name, importer.header.assembly)
             importer.header.close()
-            # where do we pass no_flush if liftover?
-            importer.init_data_importer(association=self._association, seqids=seqids)
+            importer.init_data_importer(
+                association=self._association, seqids=seqids, no_flush=is_liftover
+            )
             importer.data.parse_records()
-            # if liftover, we need to call an additional function
-            # get buffer, then pass it woth chaoi file to a staticmethod
-            # to be implemented in AssemblyService
-            # this method calls operations (pybedtool), returns lifted records
-            # the new records can then be bulk inserted (w or w/o buffering?)
-            # in a method to be implemented in data importer (or base?)
         except:
             checkpoint.rollback()
             raise
         else:
             importer.data.close()
+            if is_liftover:
+                # data has not been written to database yet
+                records = importer.data.get_buffer()
+                filen = assembly_service.liftover(records)
+                self._liftover(filen)
+
+        msg = (
+            f"Added dataset {self._eufid} to project {self._smid} with title = {self._title}, "
+            f"and the following associations: {', '.join([f'{k}:{v}' for k, v in self._association.items()])}."
+        )
+        logger.debug(msg)
 
         # finallly, handle annotation
 
@@ -342,6 +387,7 @@ class DataService:
                 )
                 raise InstantiationError(msg)
             self._association[selection[1]] = selection_id
+        # this cannot actually happen...
         if len(set(modification_id)) != len(modification_id):
             msg = (
                 f"Repeated modification IDs {','.join([i for i in modification_id])} are "
@@ -365,7 +411,14 @@ class DataService:
                     "organism_id": self._organism_id,
                 },
             )
-            selection_id.append(self._session.execute(query).scalar_one())
+            try:
+                selection_id.append(self._session.execute(query).scalar_one())
+            except Exception as exc:
+                msg = (
+                    f"Selection (mod={modification_id}, tech={self._technology_id}, "
+                    f"organism={self._organism_id}) does not exists. Aborting transaction!"
+                )
+                raise InstantiationError(msg) from exc
             query = (
                 select(
                     Modomics.short_name,
@@ -375,6 +428,7 @@ class DataService:
             )
             name = self._session.execute(query).one()
             self._association[name] = selection_id[-1]
+        # this cannot actually happen...
         if len(set(selection_id)) != len(selection_id):
             msg = (
                 f"Repeated selection IDs {','.join([i for i in selection_id])} are "
@@ -403,21 +457,7 @@ class DataService:
                     f"with title = {self._title}, and the following selection ID {selection_id}. "
                     f"Aborting transaction!"
                 )
-                raise DuplicateDatasetError(msg)
-
-    # def _validate_assembly(self) -> None:
-    #     """Validate assembly and mark dataset for liftover."""
-    #     query = queries.get_assembly_version()
-    #     db_assembly_version = self._session.execute(query).scalar()
-
-    #     query = queries.query_column_where(
-    #         "Assembly", "version", filters={"id": self._assembly_id}
-    #     )
-    #     assembly_version = self._session.execute(query).scalar()
-
-    #     if not assembly_version == db_assembly_version:
-    #         self._lifted = True
-    #         print("Some message... do something when?")
+                raise DatasetError(msg)
 
     def _add_association(self) -> None:
         """Create new association entry for dataset."""
@@ -425,6 +465,7 @@ class DataService:
             association = Association(dataset_id=self._eufid, selection_id=selection_id)
             self._session.add(association)
             self._session.flush()
+            # update dict
             self._association[name] = association.id
 
     def _create_eufid(self) -> None:
@@ -433,48 +474,13 @@ class DataService:
         eufids = self._session.execute(query).scalars().all()
         self._eufid = utils.gen_short_uuid(self.EUFID_LENGTH, eufids)
 
-        #     importer = EUFImporter(
-        #         self._session,
-        #         self._filen,
-        #         self._handle,
-        #         self._smid,
-        #         self._eufid,
-        #         self._title,
-        #         self._taxa_id,
-        #         self._assembly_id,
-        #         self._lifted,
-        #         # TODO assume modification is unique for any combination of RNA, tech, and cto...
-        #         # i.e. a dataset can have 1+ modification, but only 1 RNA type, 1 technology, and 1 cto
-        #         # so we cannot have e.g. twice m6A
-        #         {k: v[0] for k, v in self._selection_ids.items()},
-        #         data_path=self._data_path,
-        #     )
-        #     importer.parseEUF()
+    def _liftover(self, filen) -> None:
+        """Import liftedOver data records.
 
-        #     # TODO
-        #     # modifications = {s[0] for s in self._selection_ids.values()}
-        #     # modifications = {m.lower() for m in modifications}
-        #     # modifications_from_file = importer.get_modifications_from_file()
-        #     # modifications_from_file = {m.lower() for m in modifications_from_file}
-        #     # symdiff = modifications.symmetric_difference(modifications_from_file)
-        #     # if symdiff:
-        #     #     msg = (
-        #     #         f"Selection for modification and modifications read from {self._filen} "
-        #     #         f"differ: {symdiff}. Aborting transaction!"
-        #     #     )
-        #     #     raise Exception(msg)
-
-        #     selection_str = " and ".join(
-        #         [", ".join(map(str, s)) for s in self._selection_ids.values()]
-        #     )
-        #     msg = (
-        #         f"Adding dataset {self._eufid} to project {self._smid} with title = {self._title}, "
-        #         f"and the following selection: {selection_str}."
-        #     )
-        #     logger.info(msg)
-        # except:
-        #     self._session.rollback()
-        #     raise
-        # else:
-        #     # confirm ?
-        #     importer.close()
+        :param filen: File to liftedOver data records
+        :type filen: str
+        """
+        importer = get_bed_importer(filen, is_euf=True)
+        importer.parse_records()
+        importer.close()
+        importer.flush_records()

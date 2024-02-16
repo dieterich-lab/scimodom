@@ -167,6 +167,12 @@ class BaseImporter(ABC):
         """
         return self._buffer._buffer
 
+    def flush_records(self) -> None:
+        """Force flush and commit records."""
+        records = self.get_buffer()
+        self._session.execute(insert(self._model), records)
+        self._session.commit()
+
     def _get_header(self) -> list[str]:
         """Infer header from file.
 

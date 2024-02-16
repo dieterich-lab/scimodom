@@ -24,7 +24,7 @@ class Importer:
         self.data = data
 
     def init_data_importer(
-        self, association: dict[str, int], seqids: list[str]
+        self, association: dict[str, int], seqids: list[str], **kwargs
     ) -> None:
         """Instantiate EUFDataImporter.
 
@@ -52,6 +52,7 @@ class Importer:
                 association=association,
                 seqids=seqids,
                 specs_ver=version,
+                **kwargs,
             )
 
 
@@ -82,9 +83,7 @@ def get_importer(filen: str, smid: str, eufid: str, title: str):
     )
 
 
-def get_bed_importer(
-    filen: str,
-):
+def get_bed_importer(filen: str, **kwargs):
     """Instantiate BED Importer.
 
     :param filen: File path
@@ -93,7 +92,5 @@ def get_bed_importer(
     session = get_session()
 
     return BEDImporter(
-        session=session(),
-        filen=filen,
-        handle=open(filen, "r"),
+        session=session(), filen=filen, handle=open(filen, "r"), **kwargs
     )
