@@ -7,6 +7,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from scimodom.services.annotation import AnnotationService
+from scimodom.services.assembly import AssemblyService
 from scimodom.database.database import init, Base
 from scimodom.database.models import (
     Modomics,
@@ -270,15 +271,14 @@ def data_path(tmp_path_factory):
     META_PATH.mkdir()
 
     # TODO
-    # release 110 see above
-    path, annotation_file = AnnotationService.get_annotation_path(
-        ANNOTATION_PATH, "Homo_sapiens", "GRCh38", 110, "gtf"
+    # release 110 see above - constructed here
+    path = AnnotationService.get_annotation_path()  # should match above
+    annotation_file = AnnotationService.ANNOTATION_FILE(
+        organism="Homo_sapiens", assembly="GRCh38", release=110, fmt="gtf"
     )
     path.mkdir(parents=True, exist_ok=True)
     Path(path, annotation_file).touch()
-    path, chrom_file = AnnotationService.get_chrom_path(
-        ANNOTATION_PATH, "Homo_sapiens", "GRCh38"
-    )
+    path, chrom_file = AssemblyService.get_chrom_path("Homo_sapiens", "GRCh38")
     path.mkdir(parents=True, exist_ok=True)
     with open(Path(path, chrom_file), "w") as f:
         f.write("1\t1000000")

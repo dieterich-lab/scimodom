@@ -1,5 +1,3 @@
-#! /usr/bin/env python3
-
 import json
 import logging
 from pathlib import Path
@@ -69,7 +67,7 @@ class AssemblyService:
 
         # current DB assembly version
         query = queries.get_assembly_version()
-        self._db_version = self._session.execute(query).scalar()
+        self._db_version = self._session.execute(query).scalar_one()
 
         assembly_id = kwargs.get("assembly_id", None)
         if assembly_id is not None:
