@@ -84,10 +84,19 @@ def _get_data_with_header(fmt):
 
 
 @pytest.mark.parametrize(
-    "fmt",
-    [("minimum"), ("chrom"), ("strand"), ("maximum"), ("association")],
+    "fmt,msg",
+    [
+        ("minimum", "Value start: -1 out of range."),
+        (
+            "chrom",
+            "Unrecognized chrom: A. Ignore this warningfor scaffolds and contigs, otherwise this could be due to misformatting!",
+        ),
+        ("strand", "Unrecognized strand: ."),
+        ("maximum", "Value score: 200 out of range."),
+        ("association", "Unrecognized name: m5C."),
+    ],
 )
-def test_importer_parse_record_fail(fmt, Session, EUF_specs):
+def test_importer_parse_record_fail(fmt, msg, Session, EUF_specs):
     format, version, specs = EUF_specs
     expected_record = _get_record(fmt)
     importer = EUFDataImporter(
@@ -98,8 +107,10 @@ def test_importer_parse_record_fail(fmt, Session, EUF_specs):
         seqids=["1"],
         specs_ver=version,
     )
-    with pytest.raises(ValueError) as excinfo:
+    with pytest.raises(ValueError) as exc:
         importer.parse_record(expected_record)
+    assert str(exc.value) == msg
+    assert exc.type == ValueError
 
 
 def test_importer_parse_record(Session, EUF_specs):
@@ -237,8 +248,12 @@ def test_base_importer_columns_fail(Session):
             return record
 
     importer = TestBaseImporter()
-    with pytest.raises(Exception) as excinfo:
+    with pytest.raises(Exception) as exc:
         importer._validate_columns()
+    assert (
+        str(exc.value)
+        == "Column name chromStart doesn't match any of the ORM mapped attribute names for Data. This can be caused by a file header with wrong column names, or a change in model declaration. Aborting transaction!"
+    )
 
 
 def test_base_importer_comment_fail(Session):
@@ -257,5 +272,7 @@ def test_base_importer_comment_fail(Session):
         def parse_record(record):
             return record
 
-    with pytest.raises(ValueError) as excinfo:
+    with pytest.raises(ValueError) as exc:
         importer = TestBaseImporter()
+    assert str(exc.value) == "Maximum length of 1 expected, got 2 for comment."
+    assert exc.type == ValueError

@@ -92,12 +92,38 @@ def _get_header(EUF_specs, fmt=None):
 
 
 @pytest.mark.parametrize(
+    "fmt,error,msg",
+    [
+        (
+            "version",
+            SpecsError,
+            "Unknown or outdated version bedRModv0.0.",
+        ),  # wrong version
+        ("EOF", EOFError, "filen"),  # empty
+    ],
+)
+def test_importer_read_version_fail(fmt, error, msg, Session, EUF_specs):
+    format, version, specs = EUF_specs
+    handle = _get_header(EUF_specs, fmt)
+    importer = EUFHeaderImporter(
+        Session(),
+        filen="filen",
+        handle=handle,
+        smid="ABCDEFGH",
+        eufid="123456789ABC",
+        title="Title",
+    )
+    with pytest.raises(error) as exc:
+        importer._read_version()
+    assert str(exc.value) == msg
+    assert exc.type == error
+
+
+@pytest.mark.parametrize(
     "fmt",
     [
         (None),  # expected version
         ("string"),  # wrong format but right version
-        ("version"),  # wrong version
-        ("EOF"),  # empty
     ],
 )
 def test_importer_read_version(fmt, Session, EUF_specs):
@@ -111,26 +137,42 @@ def test_importer_read_version(fmt, Session, EUF_specs):
         eufid="123456789ABC",
         title="Title",
     )
-    if fmt == "version":
-        with pytest.raises(SpecsError) as excinfo:
-            importer._read_version()
-    elif fmt == "EOF":
-        with pytest.raises(EOFError) as excinfo:
-            importer._read_version()
-    else:
-        importer._read_version()
-        assert version == importer._specs_ver
-        assert len(specs["headers"]) == importer._num_cols
-        # ignore fileformat
-        assert specs["required"][1:] == importer._required
+    importer._read_version()
+    assert version == importer._specs_ver
+    assert len(specs["headers"]) == importer._num_cols
+    # ignore fileformat
+    assert specs["required"][1:] == importer._required
+
+
+@pytest.mark.parametrize(
+    "fmt,msg",
+    [
+        ("misformatted", "#organism=."),
+        ("missing", "#annotation_version=."),
+    ],
+)
+def test_importer_parse_lines_fail(fmt, msg, Session, EUF_specs):
+    handle = _get_header(EUF_specs, fmt)
+    importer = EUFHeaderImporter(
+        Session(),
+        filen="filen",
+        handle=handle,
+        smid="ABCDEFGH",
+        eufid="123456789ABC",
+        title="Title",
+    )
+    importer._lino = 1
+    importer._read_version()
+    with pytest.raises(SpecsError) as exc:
+        importer._parse_lines()
+    assert str(exc.value) == f"Missing or misformatted header: {msg}"
+    assert exc.type == SpecsError
 
 
 @pytest.mark.parametrize(
     "fmt",
     [
         ("full"),
-        ("misformatted"),
-        ("missing"),
         ("longer"),
         ("disordered"),
     ],
@@ -147,23 +189,19 @@ def test_importer_parse_lines(fmt, Session, EUF_specs):
     )
     importer._lino = 1
     importer._read_version()
-    if fmt in ["full", "longer", "disordered"]:
-        importer._parse_lines()
-        assert importer._lino == importer._num_cols
-        assert importer.taxid == 9606
-        assert importer.assembly == "GRCh38"
-        assert importer._header["id"] == "123456789ABC"
-        assert importer._header["project_id"] == "ABCDEFGH"
-        assert importer._header["title"] == "Title"
-        assert importer._header["modification_type"] == "RNA"
-        assert importer._header["sequencing_platform"] == "Sequencing platform"
-        assert importer._header["basecalling"] is None
-        assert importer._header["bioinformatics_workflow"] == "Workflow"
-        assert importer._header["experiment"] == "Description of experiment."
-        assert importer._header["external_source"] is None
-    else:
-        with pytest.raises(SpecsError) as excinfo:
-            importer._parse_lines()
+    importer._parse_lines()
+    assert importer._lino == importer._num_cols
+    assert importer.taxid == 9606
+    assert importer.assembly == "GRCh38"
+    assert importer._header["id"] == "123456789ABC"
+    assert importer._header["project_id"] == "ABCDEFGH"
+    assert importer._header["title"] == "Title"
+    assert importer._header["modification_type"] == "RNA"
+    assert importer._header["sequencing_platform"] == "Sequencing platform"
+    assert importer._header["basecalling"] is None
+    assert importer._header["bioinformatics_workflow"] == "Workflow"
+    assert importer._header["experiment"] == "Description of experiment."
+    assert importer._header["external_source"] is None
 
 
 @pytest.mark.parametrize(
@@ -188,8 +226,13 @@ def test_importer_validate_columns(fmt, Session, EUF_specs):
     if fmt == "columns_extra":
         importer._validate_columns()
     else:
-        with pytest.raises(SpecsError) as excinfo:
+        with pytest.raises(SpecsError) as exc:
             importer._validate_columns()
+        assert (
+            str(exc.value)
+            == "Column count (header) doesn't match required count at row 2 for bedRModv1.7."
+        )
+        assert exc.type == SpecsError
 
 
 def test_importer(Session, EUF_specs):

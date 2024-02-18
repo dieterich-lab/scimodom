@@ -10,7 +10,6 @@ import os
 def test_init_from_id_wrong_version(Session, setup, data_path):
     with Session() as session, session.begin():
         session.add_all(setup)
-    # excinfo.value contains msg
     with pytest.raises(AssemblyVersionError) as exc:
         service = AssemblyService.from_id(Session(), assembly_id=3)
     assert (

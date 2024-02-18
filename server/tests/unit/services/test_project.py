@@ -139,8 +139,10 @@ def test_project_validate_keys_error(
         metadata_fmt=metadata_fmt,
         missing_key=missing_key,
     )
-    with pytest.raises(KeyError):
+    with pytest.raises(KeyError) as exc:
         ProjectService(Session(), project)._validate_keys()
+    assert str(exc.value) == f"'Keys not found: {missing_key}.'"
+    assert exc.type == KeyError
 
 
 def test_project_add_selection(Session, setup, project_template, data_path):
@@ -216,9 +218,12 @@ def test_project_validate_existing_entry(
         missing_key=missing_key,
     )
 
-    # excinfo.value contains msg
-    with pytest.raises(DuplicateProjectError) as excinfo:
+    with pytest.raises(DuplicateProjectError) as exc:
         ProjectService(Session(), project)._validate_entry()
+    assert (
+        str(exc.value)
+        == f"At least one similar record exists with SMID = {smid} and title = Title. Aborting transaction!"
+    )
 
 
 def test_project_validate_entry(Session, project_template, data_path):
