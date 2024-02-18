@@ -79,6 +79,12 @@ Draft or long-running issues, WIP, triage, and additional references or context 
 - [ ] ~Datatable dataKey="id"~
 - [ ] Default ordering of data (Search, Browse, Compare). What if EUF file is not sorted?
 
+- [ ] test :: [2024-02-18 Sun] [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/tests/unit/conftest.py::def data_path(tmp_path_factory, monkeypatch):]]
+  I see no other choice than using ~scope=sesion~, with either *pytest-dotenv* or setting a global env (=pyproject.toml=) for all tests, and
+  using a single directory. What I would like to is to use ~monkeypatch.setenv~ to /dynamically/ set ~DATA_PATH~ to ~loc~ (tmp directory for test),
+  to isolate each test, but calling ~AssemblyService~ or ~AnnotationService~ overrides ~DATA_PATH~, as this loads the config, which in turn
+  loads the dotenv file.
+
 *** TODO FEATURE REQUEST [0/2]
 
 - [ ] Vueuse (title)

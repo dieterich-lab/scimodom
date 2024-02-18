@@ -4,13 +4,20 @@ import pytest
 
 from scimodom.services.assembly import AssemblyService, AssemblyVersionError
 
+import os
+
 
 def test_init_from_id_wrong_version(Session, setup, data_path):
     with Session() as session, session.begin():
         session.add_all(setup)
     # excinfo.value contains msg
-    with pytest.raises(AssemblyVersionError) as excinfo:
+    with pytest.raises(AssemblyVersionError) as exc:
         service = AssemblyService.from_id(Session(), assembly_id=3)
+    assert (
+        (str(exc.value))
+        == "Mismatch between current DB assembly version (GcatSmFcytpU) and version (J9dit7Tfc6Sb) from assembly ID = 3. Aborting transaction!"
+    )
+    assert exc.type == AssemblyVersionError
 
 
 def test_init_from_id(Session, setup, data_path):
@@ -37,21 +44,30 @@ def test_init_from_new_exists(Session, setup, data_path):
 
 
 @pytest.mark.parametrize(
-    "name,taxid",
+    "name,taxid,error,msg",
     [
-        ("GRCh38", None),
-        (None, 9606),
-        ("GRCh38", 0000),
+        (
+            "GRCh38",
+            None,
+            ValueError,
+            "Taxonomy ID = None not found! Aborting transaction!",
+        ),
+        (None, 9606, TypeError, "Expected str; got NoneType"),
+        (
+            "GRCh38",
+            0000,
+            ValueError,
+            "Taxonomy ID = 0 not found! Aborting transaction!",
+        ),
     ],
 )
-def test_init_from_new_fail(name, taxid, Session, setup):
+def test_init_from_new_fail(name, taxid, error, msg, Session, setup, data_path):
     with Session() as session, session.begin():
         session.add_all(setup)
-    error = ValueError
-    if name is None:
-        error = TypeError
-    with pytest.raises(error) as excinfo:
+    with pytest.raises(error) as exc:
         service = AssemblyService.from_new(Session(), name=name, taxa_id=taxid)
+    assert str(exc.value) == msg
+    assert exc.type == error
 
 
 def test_init_from_new(Session, setup, data_path):
@@ -84,9 +100,14 @@ def test_create_new_fail(Session, setup, data_path):
     with Session() as session, session.begin():
         session.add_all(setup)
 
-    with pytest.raises(AssemblyVersionError) as excinfo:
+    with pytest.raises(AssemblyVersionError) as exc:
         service = AssemblyService.from_new(Session(), name="GRCh37", taxa_id=9606)
         service.create_new()
+    assert (
+        (str(exc.value))
+        == "Mismatch between current DB assembly version (GcatSmFcytpU) and version (J9dit7Tfc6Sb). Cannot call this function! Aborting transaction!"
+    )
+    assert exc.type == AssemblyVersionError
 
 
 def test_create_new_exists(Session, setup, data_path):
@@ -98,5 +119,9 @@ def test_create_new_exists(Session, setup, data_path):
     assembly = service._name
     parent, _ = service.get_chrom_path(organism, assembly)
     parent.mkdir(parents=True, exist_ok=True)
-    with pytest.raises(Exception) as excinfo:
+    with pytest.raises(Exception) as exc:
         service.create_new()
+    assert (
+        str(exc.value)
+        == f"Assembly directory at {parent} already exists... Aborting transaction!"
+    )
