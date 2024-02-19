@@ -295,3 +295,18 @@ def confirm(msg: str) -> bool:
         prompt = f"{msg}\nConfirm to continue [Y/N]? "
         answer = input(prompt).lower()
     return answer == "y"
+
+
+def get_ensembl_prefix(gene_id: str) -> str:
+    """Extract Ensembl prefix for gene identifier.
+
+    :param gene_id: Gene identifier
+    :type gene_id: str
+    :returns: Prefix
+    :rtype: str
+    """
+    tmp = gene_id[:7]
+    if tmp[-1].isdigit():
+        return tmp[:3]
+    else:
+        return tmp[:6]

@@ -1,4 +1,5 @@
 from scimodom.database.database import get_session
+from scimodom.services.importer.base import BaseImporter
 from scimodom.services.importer.data import EUFDataImporter
 from scimodom.services.importer.generic import BEDImporter
 from scimodom.services.importer.header import EUFHeaderImporter
@@ -94,3 +95,20 @@ def get_bed_importer(filen: str, **kwargs):
     return BEDImporter(
         session=session(), filen=filen, handle=open(filen, "r"), **kwargs
     )
+
+
+def get_buffer(model, no_flush: bool = False):
+    """Returns a buffer to import data.
+    There is no commit method implemented, this
+    must be called separately. There is no check
+    on the data.
+
+    :param model: SQLAlchemy model
+    :type model: Base
+    :param no_flush: Data is flushed by default,
+    otherwise there is no flush on calling "buffer_data".
+    This does not affect calls to "flush"
+    :type no_flush: bool
+    """
+    session = get_session()
+    return BaseImporter._Buffer(session=session(), model=model, no_flush=no_flush)

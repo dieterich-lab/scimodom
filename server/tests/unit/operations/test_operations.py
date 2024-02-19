@@ -312,52 +312,52 @@ def test_get_intersect(operation):
     assert records == expected_records
 
 
-def test_get_annotation():
-    records = [
-        ("2", 15940573, 15940574, "m6A", 1, "+"),
-        ("2", 15940606, 15940607, "m6A", 2, "+"),
-        ("2", 15942303, 15942304, "m6A", 3, "+"),
-        ("2", 15943582, 15943583, "m6A", 4, "+"),
-        ("2", 15946237, 15946238, "m6A", 5, "+"),
-        ("2", 15940993, 15940994, "m6A", 6, "+"),
-        ("2", 15940994, 15940995, "m6A", 7, "-"),
-        ("2", 15941742, 15941743, "m6A", 8, "+"),
-        ("2", 15942160, 15942161, "m6A", 9, "+"),
-        ("2", 15942161, 15942162, "m6A", 10, "-"),
-    ]
+# def test_get_annotation():
+#     records = [
+#         ("2", 15940573, 15940574, "m6A", 1, "+"),
+#         ("2", 15940606, 15940607, "m6A", 2, "+"),
+#         ("2", 15942303, 15942304, "m6A", 3, "+"),
+#         ("2", 15943582, 15943583, "m6A", 4, "+"),
+#         ("2", 15946237, 15946238, "m6A", 5, "+"),
+#         ("2", 15940993, 15940994, "m6A", 6, "+"),
+#         ("2", 15940994, 15940995, "m6A", 7, "-"),
+#         ("2", 15941742, 15941743, "m6A", 8, "+"),
+#         ("2", 15942160, 15942161, "m6A", 9, "+"),
+#         ("2", 15942161, 15942162, "m6A", 10, "-"),
+#     ]
 
-    expected_annotated = [
-        ("1", "1", "Exon", "B", "ENSG2", "protein_coding"),
-        ("1", "1", "5'UTR", "B", "ENSG2", "protein_coding"),
-        ("2", "1", "Exon", "B", "ENSG2", "protein_coding"),
-        ("2", "1", "5'UTR", "B", "ENSG2", "protein_coding"),
-        ("2", "1", "CDS", "B", "ENSG2", "protein_coding"),
-        ("3", "1", "CDS", "B", "ENSG2", "protein_coding"),
-        ("3", "1", "Exon", "B", "ENSG2", "protein_coding"),
-        ("4", "1", "Exon", None, None, "protein_coding"),
-        ("5", "1", "Exon", "B", "ENSG2", "protein_coding"),
-        ("5", "1", "3'UTR", "B", "ENSG2", "protein_coding"),
-        ("6", "1", "Intron", "B", "ENSG2", "protein_coding"),
-        ("7", "1", "Exon", "A", "ENSG1", "lncRNA"),
-        ("8", "1", "Intron", "B", "ENSG2", "protein_coding"),
-        ("9", "1", "Exon", "B", "ENSG2", "protein_coding"),
-        ("9", "1", "CDS", "B", "ENSG2", "protein_coding"),
-        ("10", "1", "Exon", "A", "ENSG1", "lncRNA"),
-    ]
+#     expected_annotated = [
+#         ("1", "1", "Exon", "B", "ENSG2", "protein_coding"),
+#         ("1", "1", "5'UTR", "B", "ENSG2", "protein_coding"),
+#         ("2", "1", "Exon", "B", "ENSG2", "protein_coding"),
+#         ("2", "1", "5'UTR", "B", "ENSG2", "protein_coding"),
+#         ("2", "1", "CDS", "B", "ENSG2", "protein_coding"),
+#         ("3", "1", "CDS", "B", "ENSG2", "protein_coding"),
+#         ("3", "1", "Exon", "B", "ENSG2", "protein_coding"),
+#         ("4", "1", "Exon", None, None, "protein_coding"),
+#         ("5", "1", "Exon", "B", "ENSG2", "protein_coding"),
+#         ("5", "1", "3'UTR", "B", "ENSG2", "protein_coding"),
+#         ("6", "1", "Intron", "B", "ENSG2", "protein_coding"),
+#         ("7", "1", "Exon", "A", "ENSG1", "lncRNA"),
+#         ("8", "1", "Intron", "B", "ENSG2", "protein_coding"),
+#         ("9", "1", "Exon", "B", "ENSG2", "protein_coding"),
+#         ("9", "1", "CDS", "B", "ENSG2", "protein_coding"),
+#         ("10", "1", "Exon", "A", "ENSG1", "lncRNA"),
+#     ]
 
-    annotation_file = _get_annotation_file()
-    annotation_iterable = [
-        tuple(i.strip().split("\t")) for i in annotation_file.splitlines()
-    ]
-    annotation_id = 1
+#     annotation_file = _get_annotation_file()
+#     annotation_iterable = [
+#         tuple(i.strip().split("\t")) for i in annotation_file.splitlines()
+#     ]
+#     annotation_id = 1
 
-    with tempfile.TemporaryDirectory(dir="/tmp/") as tempdir:
-        chrom_file = Path(tempdir, "chrom.sizes")
-        string = "2\t242193529\n"
-        with open(chrom_file, "w") as f:
-            f.write(string)
+#     with tempfile.TemporaryDirectory(dir="/tmp/") as tempdir:
+#         chrom_file = Path(tempdir, "chrom.sizes")
+#         string = "2\t242193529\n"
+#         with open(chrom_file, "w") as f:
+#             f.write(string)
 
-        annotated = get_genomic_annotation(
-            annotation_iterable, chrom_file, annotation_id, records
-        )
-        assert set(annotated) == set(expected_annotated)
+#         annotated = get_genomic_annotation(
+#             annotation_iterable, chrom_file, annotation_id, records
+#         )
+#         assert set(annotated) == set(expected_annotated)

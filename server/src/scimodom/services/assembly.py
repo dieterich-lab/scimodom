@@ -71,6 +71,10 @@ class AssemblyService:
 
         assembly_id = kwargs.get("assembly_id", None)
         if assembly_id is not None:
+            query = select(Assembly.id)
+            if assembly_id not in self._session.execute(query).scalars().all():
+                msg = f"Assembly ID = {assembly_id} not found! Aborting transaction!"
+                raise ValueError(msg)
             self._assembly_id = assembly_id
             query = queries.query_column_where(
                 Assembly,
@@ -96,7 +100,7 @@ class AssemblyService:
             # difficult to validate name, or combination of (name, taxa_id)...
             # use select(func.dictinct(Organism.taxa_id)) for available IDs
             query = select(Taxa.id)
-            if self._taxid not in session.execute(query).scalars().all():
+            if self._taxid not in self._session.execute(query).scalars().all():
                 msg = f"Taxonomy ID = {self._taxid} not found! Aborting transaction!"
                 raise ValueError(msg)
             query = queries.query_column_where(
@@ -104,8 +108,11 @@ class AssemblyService:
             )
             assembly_id = self._session.execute(query).scalar_one_or_none()
             if assembly_id:
+                # can be any version, if not current database version
+                # there may be limitations to what can be done
                 self._assembly_id = assembly_id
             else:
+                # this version number is unused, no DB version upgrade
                 query = select(func.distinct(Assembly.version))
                 version_nums = self._session.execute(query).scalars().all()
                 version_num = utils.gen_short_uuid(
@@ -185,7 +192,7 @@ class AssemblyService:
         one file per organism, for the current Assembly
         version, assembly must also match the current
         Assembly, but this method cannot check this.
-        This method attempst to format organism.
+        This method attempts to format organism.
 
         :param organism: Organism name
         :type organism: str
@@ -215,7 +222,7 @@ class AssemblyService:
 
     def create_new(self):
         """Creates a new assembly for current DB version, mostly for
-        maintenance/initial setup."""
+        maintenance/initial setup. Does not upgrade DB version."""
 
         msg = "Setting directories up for new assembly for current version..."
         logger.debug(msg)
@@ -306,8 +313,9 @@ class AssemblyService:
     def _get_current_name(self) -> str:
         """Get current assembly name. This methods
         allows to get the assembly name for the current
-        version, e.g. if the class has been instantiated
-        with a different assembly name/version."""
+        database version, i.e. not necessarily the
+        name for the class instance, which could be for
+        a different version."""
         query = queries.query_column_where(
             "Assembly",
             "name",
@@ -328,16 +336,20 @@ class AssemblyService:
 
     def _set_chrom_path(self) -> None:
         """Assign chrom file path. This is the same
-        irrespective of assembly."""
+        irrespective of assembly version, i.e. there
+        is only one chrom file for the current version."""
         organism = self._get_organism()
         name = self._get_current_name()
         parent, filen = self.get_chrom_path(organism, name)
         self._chrom_file = Path(parent, filen)
 
     def _new(self):
-        """Prepare new assembly, i.e. get chain files, but this
-        does not create an assembly for the current DB assembly version,
-        see create_new().
+        """Prepares a "new" assembly. This assembly is new in the
+        sense that it does not yet exists, but is not necessarily
+        a newer assembly version. This method essentially downloads
+        the chain file (from assembly to current database version).
+        To create an assembly for the current database assembly
+        version, see create_new().
         """
 
         msg = "Setting directories up for new assembly..."

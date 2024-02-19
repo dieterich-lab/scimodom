@@ -1,10 +1,19 @@
 from pathlib import Path
 
 import pytest
+import requests  # type: ignore
 
 from scimodom.services.assembly import AssemblyService, AssemblyVersionError
+from scimodom.utils.specifications import ENSEMBL_FTP, ENSEMBL_ASM_MAPPING
 
-import os
+
+def test_init_from_id_wrong_id(Session, setup, data_path):
+    with Session() as session, session.begin():
+        session.add_all(setup)
+    with pytest.raises(ValueError) as exc:
+        service = AssemblyService.from_id(Session(), assembly_id=99)
+    assert (str(exc.value)) == "Assembly ID = 99 not found! Aborting transaction!"
+    assert exc.type == ValueError
 
 
 def test_init_from_id_wrong_version(Session, setup, data_path):
@@ -78,6 +87,33 @@ def test_init_from_new(Session, setup, data_path):
     chain_file = Path(parent, filen)
     # check if file exists, not content
     assert chain_file.is_file()
+
+
+def test_init_from_new_newer(Session, setup, data_path):
+    with Session() as session, session.begin():
+        session.add_all(setup)
+
+    service = AssemblyService.from_new(Session(), name="GRCm39", taxa_id=10090)
+    parent, filen = service.get_chain_path()
+    chain_file = Path(parent, filen)
+    # check if file exists, not content
+    assert chain_file.is_file()
+
+
+def test_init_from_new_wrong_name(Session, setup, data_path):
+    # e.g. typo, inexisting, etc.
+    # there cannot be a wrong combination of a correct name
+    # and existing taxa_id, since name is unique, but a wrong
+    # name and wrong combination is possible
+    with Session() as session, session.begin():
+        session.add_all(setup)
+    # statement depends on requests...
+    with pytest.raises(requests.exceptions.HTTPError) as exc:
+        service = AssemblyService.from_new(Session(), name="GRCH38", taxa_id=10090)
+    assert (
+        str(exc.value)
+        == f"404 Client Error: Not Found for url: {ENSEMBL_FTP}/{ENSEMBL_ASM_MAPPING}/mus_musculus/GRCH38_to_GRCm38.chain.gz"
+    )
 
 
 def test_create_new(Session, setup, data_path):

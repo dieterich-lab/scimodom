@@ -11,9 +11,7 @@ from typing import Any
 
 import pybedtools  # type: ignore
 
-from scimodom.utils.utils import flatten_list
-from scimodom.utils.utils import parse_gtf_attributes
-
+import scimodom.utils.utils as utils
 
 if os.getenv("APP_TEMPDIR"):
     tempdir = os.environ["APP_TEMPDIR"]
@@ -203,7 +201,9 @@ def get_subtract(
     # file number index
     offset = 6 + n_fields
 
-    a_bedtool, b_bedtool = _to_bedtool(a_records), _to_bedtool(flatten_list(b_records))
+    a_bedtool, b_bedtool = _to_bedtool(a_records), _to_bedtool(
+        utils.flatten_list(b_records)
+    )
     c_bedtool = a_bedtool.subtract(b_bedtool, s=s, sorted=sorted)
     # c_records = [(i.fields[:offset]) for i in c_bedtool]
     c_records = [tuple(i.fields[:offset]) for i in c_bedtool]
@@ -232,100 +232,132 @@ def get_genomic_annotation(
     :returns: Records for GenomicAnnotation
     :rtype: list of tuples
     """
+    pass
+    # features = {
+    #     "exon": "Exon",
+    #     "five_prime_utr": "5'UTR",
+    #     "three_prime_utr": "3'UTR",
+    #     "CDS": "CDS",
+    # }
 
-    features = {
-        "exon": "Exon",
-        "five_prime_utr": "5'UTR",
-        "three_prime_utr": "3'UTR",
-        "CDS": "CDS",
-    }
+    # def _gtf_to_records(bedtool):
+    #     return [
+    #         tuple(
+    #             sum(
+    #                 (
+    #                     [i.chrom, i.start, i.end, i.name, annotation_id, i.strand],
+    #                     [
+    #                         parse_gtf_attributes(i.fields[8]).get(k)
+    #                         for k in ["gene_id", "gene_biotype"]
+    #                     ],
+    #                 ),
+    #                 [],
+    #             )
+    #         )
+    #         for i in bedtool
+    #     ]
 
-    def _gtf_to_records(bedtool):
-        return [
-            tuple(
-                sum(
-                    (
-                        [i.chrom, i.start, i.end, i.name, annotation_id, i.strand],
-                        [
-                            parse_gtf_attributes(i.fields[8]).get(k)
-                            for k in ["gene_id", "gene_biotype"]
-                        ],
-                    ),
-                    [],
-                )
-            )
-            for i in bedtool
-        ]
+    # def _clean_fields(field, delim=","):
+    #     for f in field:
+    #         if delim not in f:
+    #             yield f
+    #             continue
+    #         yield None
 
-    def _clean_fields(field, delim=","):
-        for f in field:
-            if delim not in f:
-                yield f
-                continue
-            yield None
+    # def _to_records(bedtool, feature):
+    #     return [
+    #         tuple(
+    #             sum(
+    #                 (
+    #                     [i.fields[4], i.fields[10], feature],
+    #                     [
+    #                         k
+    #                         for k in _clean_fields(
+    #                             [i.fields[9], i.fields[12], i.fields[13]]
+    #                         )
+    #                     ],
+    #                 ),
+    #                 [],
+    #             )
+    #         )
+    #         for i in bedtool
+    #     ]
 
-    def _to_records(bedtool, feature):
-        return [
-            tuple(
-                sum(
-                    (
-                        [i.fields[4], i.fields[10], feature],
-                        [
-                            k
-                            for k in _clean_fields(
-                                [i.fields[9], i.fields[12], i.fields[13]]
-                            )
-                        ],
-                    ),
-                    [],
-                )
-            )
-            for i in bedtool
-        ]
+    # def _intersect(data, stream, feature):
+    #     bedtool = _to_bedtool(_gtf_to_records(stream))
+    #     merged = bedtool.merge(s=True, c=[4, 5, 6, 7, 8], o="distinct")
+    #     itrx = data.intersect(b=merged, wa=True, wb=True, s=True, sorted=True)
+    #     return _to_records(itrx, feature)
 
-    def _intersect(data, stream, feature):
-        bedtool = _to_bedtool(_gtf_to_records(stream))
-        merged = bedtool.merge(s=True, c=[4, 5, 6, 7, 8], o="distinct")
-        itrx = data.intersect(b=merged, wa=True, wb=True, s=True, sorted=True)
-        return _to_records(itrx, feature)
-
-    all_records = []
-    tmpdir = pybedtools.helpers.get_tempdir()
-    with tempfile.TemporaryDirectory(dir=tmpdir) as tempdir:
-        pybedtools.helpers.set_tempdir(tempdir)
-        annotation = _to_bedtool(annotation_file)  # as gtf
-        data_bedtool = _to_bedtool(records)
-        for key, val in features.items():
-            stream = annotation.filter(lambda a: a.fields[2] == key)
-            all_records.append(_intersect(data_bedtool, stream, val))
-        genes = annotation.filter(
-            lambda a: a.fields[2] == "gene"
-        ).saveas()  # "complement" see issue #49 for more
-        exons = annotation.filter(lambda a: a.fields[2] == "exon")
-        introns = genes.subtract(exons, s=True, sorted=True)
-        all_records.append(_intersect(data_bedtool, introns, "Intron"))
-        inter = genes.complement(g=chrom_file)
-        itrx = data_bedtool.intersect(b=inter, wa=True, wb=True, s=False, sorted=True)
-        itrx_records = [
-            (i.fields[4], annotation_id, "Intergenic", None, None, None) for i in itrx
-        ]
-        all_records.append(itrx_records)
-    pybedtools.helpers.set_tempdir(tmpdir)
-    return flatten_list(all_records)
+    # all_records = []
+    # tmpdir = pybedtools.helpers.get_tempdir()
+    # with tempfile.TemporaryDirectory(dir=tmpdir) as tempdir:
+    #     pybedtools.helpers.set_tempdir(tempdir)
+    #     annotation = _to_bedtool(annotation_file)  # as gtf
+    #     data_bedtool = _to_bedtool(records)
+    #     for key, val in features.items():
+    #         stream = annotation.filter(lambda a: a.fields[2] == key)
+    #         all_records.append(_intersect(data_bedtool, stream, val))
+    #     genes = annotation.filter(
+    #         lambda a: a.fields[2] == "gene"
+    #     ).saveas()  # "complement" see issue #49 for more
+    #     exons = annotation.filter(lambda a: a.fields[2] == "exon")
+    #     introns = genes.subtract(exons, s=True, sorted=True)
+    #     all_records.append(_intersect(data_bedtool, introns, "Intron"))
+    #     inter = genes.complement(g=chrom_file)
+    #     itrx = data_bedtool.intersect(b=inter, wa=True, wb=True, s=False, sorted=True)
+    #     itrx_records = [
+    #         (i.fields[4], annotation_id, "Intergenic", None, None, None) for i in itrx
+    #     ]
+    #     all_records.append(itrx_records)
+    # pybedtools.helpers.set_tempdir(tmpdir)
+    # return utils.flatten_list(all_records)
 
 
-# ----------------
-# annotation = _to_bedtool(annotation_file)
-# stream = annotation.filter(lambda a: a.fields[2] == "gene")
-# b = stream.each(check_f)
-# c = [(x[6], x[3], x[7]) for x in b] <- in fact we just need to redefine func aboce , and here x for x
+def _get_annotation_from_file(
+    annotation_file: Path, annotation_id: int, fmt: str, error
+) -> list[tuple[str, int, str, str]]:
+    """Create records for GenomicAnnotation from annotation file.
+    Adds a "dummy" record for intergenic annotation.
 
-# def check_f(feature):
-# ...     return feature.chrom, feature.start, feature.end, feature.name, feature.score, feature.strand, feature.attrs["gene_id"], feature.attrs["gene_biotype"]
+    :param annotation_file: Annotation file
+    :type annotation_file: Path
+    :param annotation_id: Annotation ID
+    :type annotation_id: int
+    :param fmt: Annotation format
+    :type fmt: str
+    :param error: Format error to raise
+    :type error: AnnotationFormatError
+    :returns: Annotation as tuple of columns
+    :rtype: list of tuples of (str,int,str,str)
+    """
+    suffixes = [s.replace(".", "") for s in annotation_file.suffixes]
+    if fmt not in suffixes:
+        msg = (
+            f"Annotation file {annotation_file} does not appear to be in "
+            f"the {fmt} format. Aborting transaction!"
+        )
+        raise error(msg)
 
-# Q: do we need to check for duplicates?
+    def _get_attrs(feature):
+        # requires at least BED4 to avoid MalformedBedLineError...
+        # return feature.attrs["gene_id"], annotation_id, feature.name, feature.attrs["gene_biotype"]
+        return (
+            feature.chrom,
+            feature.start,
+            feature.end,
+            feature.name,
+            feature.attrs["gene_id"],
+            feature.attrs["gene_biotype"],
+        )
 
-# Then these records (list of tups) can be bulk inserted into the model.
+    annotation = _to_bedtool(annotation_file)
+    stream = annotation.filter(lambda f: f.fields[2] == "gene")
+    stream = stream.each(_get_attrs)
+    records = [(s[4], annotation_id, s[3], s[5]) for s in stream]
+    prefix = utils.get_ensembl_prefix(records[0][0])
+    records.append((f"{prefix}INTER", annotation_id, None, None))
+    return records
 
 
 def _liftover(

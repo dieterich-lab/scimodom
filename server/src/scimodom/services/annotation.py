@@ -16,15 +16,23 @@ from scimodom.config import Config
 import scimodom.database.queries as queries
 from scimodom.database.models import Annotation, Assembly, GenomicAnnotation, Taxa
 
+from scimodom.services.importer import get_buffer
+
 # from scimodom.utils.models import records_factory
-# from scimodom.utils.operations import get_genomic_annotation
+from scimodom.utils.operations import _get_annotation_from_file
 import scimodom.utils.specifications as specs
 
 logger = logging.getLogger(__name__)
 
 
 class AnnotationVersionError(Exception):
-    """Exception handling for Annotatoin version mismatch."""
+    """Exception handling for Annotation version mismatch."""
+
+    pass
+
+
+class AnnotationFormatError(Exception):
+    """Exception handling for Annotation format mismatch."""
 
     pass
 
@@ -38,8 +46,6 @@ class AnnotationService:
     :type annotation_id: str
     :param taxid: Taxa ID
     :type taxid: int
-    :param release: Taxa ID
-    :type release: int
     :param DATA_PATH: Path to annotation
     :type DATA_PATH: str | Path | None
     :param DATA_SUB_PATH: Subpath to annotation file
@@ -65,17 +71,23 @@ class AnnotationService:
         self._release: int
         self._annotation_file: Path
 
-        # current DB assembly version
+        # current DB annotation version
         query = queries.get_annotation_version()
         self._db_version = self._session.execute(query).scalar()
 
         annotation_id = kwargs.get("annotation_id", None)
         taxa_id = kwargs.get("taxa_id", None)
         if annotation_id is not None:
+            query = select(Annotation.id)
+            if annotation_id not in self._session.execute(query).scalars().all():
+                msg = (
+                    f"Annotation ID = {annotation_id} not found! Aborting transaction!"
+                )
+                raise ValueError(msg)
             self._annotation_id = annotation_id
             query = queries.query_column_where(
                 Annotation,
-                ["release", "taxa_id", "version"],
+                ["version", "release", "taxa_id"],
                 filters={"id": self._annotation_id},
             )
             records = [r._asdict() for r in self._session.execute(query)][0]
@@ -87,39 +99,22 @@ class AnnotationService:
                     f"version ({version}) from annotation ID = {self._annotation_id}. Aborting transaction!"
                 )
                 raise AnnotationVersionError(msg)
-            self._taxid = records["taxa_id"]
             self._release = records["release"]
+            self._taxid = records["taxa_id"]
         elif taxa_id is not None:
+            query = select(Taxa.id)
+            if taxa_id not in self._session.execute(query).scalars().all():
+                msg = f"Taxonomy ID = {taxa_id} not found! Aborting transaction!"
+                raise ValueError(msg)
             self._taxid = taxa_id
-            release = kwargs.get("release", None)
-            if release is not None:
-                self._release = release
-                query = queries.query_column_where(
-                    Annotation,
-                    "version",
-                    filters={"taxa_id": self._taxid, "release": self._release},
-                )
-                version = self._session.execute(query).scalar_one()
-                if not version == self._db_version:
-                    pass
-                    # TODO do we allow creating a new version?
-            else:
-                query = queries.query_column_where(
-                    Annotation,
-                    "release",
-                    filters={"taxa_id": self._taxid, "version": self._db_version},
-                )
-                self._release = self._session.execute(query).scalar_one()
             query = queries.query_column_where(
                 Annotation,
-                "id",
-                filters={
-                    "taxa_id": self._taxid,
-                    "release": self._release,
-                    "version": self._db_version,
-                },
+                ["id", "release"],
+                filters={"taxa_id": self._taxid, "version": self._db_version},
             )
-            self._annotation_id = self._session.execute(query).scalar_one()
+            records = [r._asdict() for r in self._session.execute(query)][0]
+            self._annotation_id = records["id"]
+            self._release = records["release"]
 
         self._get_annotation_file_path()
 
@@ -145,14 +140,41 @@ class AnnotationService:
 
     def create_annotation(self) -> None:
         """Create destination, download gene annotation,
-        and write to database. If the destination already
+        and write to database.
+        """
+        self._download_annotation()
+        self._create_annotation()
+
+    def _get_annotation_file_path(self) -> None:
+        """Construct file path (annotation file) for
+        the current annotation."""
+        query = queries.query_column_where(Taxa, "name", filters={"id": self._taxid})
+        organism_name = self._session.execute(query).scalar_one()
+        organism_name = "_".join(organism_name.lower().split()).capitalize()
+        query = queries.get_assembly_version()
+        version = self._session.execute(query).scalar_one()
+        query = queries.query_column_where(
+            Assembly, "name", filters={"taxa_id": self._taxid, "version": version}
+        )
+        assembly_name = self._session.execute(query).scalar_one()
+        path = self.get_annotation_path()
+        parent = Path(path, organism_name, assembly_name, str(self._release))
+        filen = self.ANNOTATION_FILE(
+            organism=organism_name,
+            assembly=assembly_name,
+            release=self._release,
+            fmt=self.FMT,
+        )
+        self._annotation_file = Path(parent, filen)
+
+    def _download_annotation(self) -> None:
+        """Download gene annotation. If the destination already
         exists, the first record for the current annotation
         is queried. If None, this raises a FileExistsError
         (annotation file exists, but the database does not
         appear to have been updated). If not None, nothing
         is done, there is no further check. If the destination
-        does not exist, it is created, and the annotation
-        is written to the database.
+        does not exist, it is created.
         """
         parent = self._annotation_file.parent
         filen = self._annotation_file.name
@@ -191,36 +213,19 @@ class AnnotationService:
                 for chunk in request.iter_content(chunk_size=10 * 1024):
                     f.write(chunk)
 
-        self._create_annotation()
-
-    def _get_annotation_file_path(self) -> None:
-        """Construct file path (annotation file) for
-        the current annotation."""
-        query = queries.query_column_where(Taxa, "name", filters={"id": self._taxid})
-        organism_name = self._session.execute(query).scalar_one()
-        query = queries.get_assembly_version()
-        version = self._session.execute(query).scalar_one()
-        query = queries.query_column_where(
-            Assembly, "name", filters={"taxa_id": self._taxid, "version": version}
-        )
-        assembly_name = self._session.execute(query).scalar_one()
-        organism_name = "_".join(organism_name.lower().split()).capitalize()
-        path = self.get_annotation_path()
-        parent = Path(path, organism_name, assembly_name, str(self._release))
-        filen = self.ANNOTATION_FILE(
-            organism=organism_name,
-            assembly=assembly_name,
-            release=self._release,
-            fmt=self.FMT,
-        )
-        self._annotation_file = Path(parent, filen)
-
     def _create_annotation(self) -> None:
         """Reads annotation file to records and
-        insert to GenomicAnnotation."""
-        pass
-        # call operations, this returns all the records
-        # find a way to bulk insert (w or w/o buffering, check import buffer maybe)
+        insert to GenomicAnnotation. There is no type
+        coercion."""
+        # type coercion should not be necessary
+        records = _get_annotation_from_file(
+            self._annotation_file, self._annotation_id, self.FMT, AnnotationFormatError
+        )
+        buffer = get_buffer(GenomicAnnotation)
+        for record in records:
+            buffer.buffer_data(record)
+        buffer.flush()
+        self._session.commit()
 
     def annotate_data(self):
         """Annotate Data: add entries to GenomicAnnotation

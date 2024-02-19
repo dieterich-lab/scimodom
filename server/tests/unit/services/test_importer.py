@@ -5,7 +5,7 @@ import pytest
 from sqlalchemy import func, select
 
 from scimodom.database.models import Data, Dataset
-from scimodom.services.importer import get_importer, get_bed_importer
+from scimodom.services.importer import get_importer, get_bed_importer, get_buffer
 
 
 # WHY WAS I ABLE TO ADD ASSOCIATION ID TO DATA IF THERE IS NO VALUE IN THE DB (FK)???
@@ -254,6 +254,112 @@ def test_bed_importer(Session, data_path):
         stmt = select(func.count()).select_from(Dataset)
         num_records = session.execute(stmt).scalar()
         assert num_records == 0
+        stmt = select(func.count()).select_from(Data)
+        num_records = session.execute(stmt).scalar()
+        assert num_records == 0
+
+
+def test_buffer(Session):
+    # test with Data model, but could be any model
+    # there is no check on type, data, etc.
+    expected_records = [
+        {
+            "chrom": "1",
+            "start": 0,
+            "end": 10,
+            "name": "m6A",
+            "score": 1000,
+            "strand": "+",
+            "thick_start": 0,
+            "thick_end": 10,
+            "item_rgb": "0,0,0",
+            "coverage": 10,
+            "frequency": 1,
+            "association_id": 1,
+        },
+        {
+            "chrom": "1",
+            "start": 10,
+            "end": 20,
+            "name": "m6A",
+            "score": 500,
+            "strand": "-",
+            "thick_start": 10,
+            "thick_end": 20,
+            "item_rgb": "10,10,10",
+            "coverage": 20,
+            "frequency": 2,
+            "association_id": 2,
+        },
+    ]
+    buffer = get_buffer(Data)
+    for r in expected_records:
+        buffer.buffer_data(r)
+    buffer.flush()
+    Session().commit()
+    assert buffer._buffer == []
+
+    with Session() as session, session.begin():
+        stmt = select(func.count()).select_from(Data)
+        num_records = session.execute(stmt).scalar()
+        assert num_records == 2
+        records = session.execute(select(Data)).scalars().all()
+        for idx, record in enumerate(records):
+            assert record.id == idx + 1
+            assert record.association_id == expected_records[idx]["association_id"]
+            assert record.chrom == expected_records[idx]["chrom"]
+            assert record.start == expected_records[idx]["start"]
+            assert record.end == expected_records[idx]["end"]
+            assert record.name == expected_records[idx]["name"]
+            assert record.score == expected_records[idx]["score"]
+            assert record.strand == expected_records[idx]["strand"]
+            assert record.thick_start == expected_records[idx]["thick_start"]
+            assert record.thick_end == expected_records[idx]["thick_end"]
+            assert record.item_rgb == expected_records[idx]["item_rgb"]
+            assert record.coverage == expected_records[idx]["coverage"]
+            assert record.frequency == expected_records[idx]["frequency"]
+
+
+def test_buffer_no_flush(Session):
+    # test with Data model, but could be any model
+    # there is no check on type, data, etc.
+    expected_records = [
+        {
+            "chrom": "1",
+            "start": 0,
+            "end": 10,
+            "name": "m6A",
+            "score": 1000,
+            "strand": "+",
+            "thick_start": 0,
+            "thick_end": 10,
+            "item_rgb": "0,0,0",
+            "coverage": 10,
+            "frequency": 1,
+            "association_id": 1,
+        },
+        {
+            "chrom": "1",
+            "start": 10,
+            "end": 20,
+            "name": "m6A",
+            "score": 500,
+            "strand": "-",
+            "thick_start": 10,
+            "thick_end": 20,
+            "item_rgb": "10,10,10",
+            "coverage": 20,
+            "frequency": 2,
+            "association_id": 2,
+        },
+    ]
+    buffer = get_buffer(Data, no_flush=True)
+    for r in expected_records:
+        buffer.buffer_data(r)
+    Session().commit()
+    assert buffer._buffer == expected_records
+
+    with Session() as session, session.begin():
         stmt = select(func.count()).select_from(Data)
         num_records = session.execute(stmt).scalar()
         assert num_records == 0

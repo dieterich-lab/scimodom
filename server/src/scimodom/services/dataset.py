@@ -96,7 +96,7 @@ class DataService:
         selection_id = kwargs.get("selection_id", None)
         if selection_id is not None:
             query = select(Selection.id)
-            ids = session.execute(query).scalars().all()
+            ids = self._session.execute(query).scalars().all()
             for sid in selection_id:
                 if sid not in ids:
                     msg = f"Selection ID = {sid} not found! Aborting transaction!"
@@ -106,7 +106,7 @@ class DataService:
         else:
             modification_id = kwargs.get("modification_id", None)
             query = select(Modification.id)
-            ids = session.execute(query).scalars().all()
+            ids = self._session.execute(query).scalars().all()
             for mid in modification_id:
                 if mid not in ids:
                     msg = f"Modification ID = {mid} not found! Aborting transaction!"
@@ -114,7 +114,7 @@ class DataService:
             self._modification_id = modification_id
             technology_id = kwargs.get("technology_id", None)
             query = select(DetectionTechnology.id)
-            ids = session.execute(query).scalars().all()
+            ids = self._session.execute(query).scalars().all()
             if technology_id not in ids:
                 msg = (
                     f"Technology ID = {technology_id} not found! Aborting transaction!"
@@ -123,7 +123,7 @@ class DataService:
             self._technology_id = technology_id
             organism_id = kwargs.get("organism_id", None)
             query = select(Organism.id)
-            ids = session.execute(query).scalars().all()
+            ids = self._session.execute(query).scalars().all()
             if organism_id not in ids:
                 msg = f"Organism ID = {organism_id} not found! Aborting transaction!"
                 raise ValueError(msg)

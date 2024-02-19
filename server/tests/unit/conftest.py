@@ -140,6 +140,7 @@ def setup():
     annotation = [
         Annotation(release=110, taxa_id=9606, version="EyRBnPeVwbzW"),
         Annotation(release=110, taxa_id=10090, version="EyRBnPeVwbzW"),
+        Annotation(release=109, taxa_id=9606, version="A8syx5TzWlK0"),
     ]
 
     annotation_version = [

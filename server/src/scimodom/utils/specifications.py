@@ -98,7 +98,8 @@ ENSEMBL_FTP = "https://ftp.ensembl.org/pub"
 ENSEMBL_SERVER = "http://rest.ensembl.org"
 ENSEMBL_DATA = "info/data"
 ENSEMBL_ASM = "info/assembly"
-ENSEMBL_ASM_MAPPING = "assembly_mapping"
+# ENSEMBL_ASM_MAPPING = "assembly_mapping"
+ENSEMBL_ASM_MAPPING = "current_assembly_chain"
 
 BIOTYPES = {
     "IG_C_gene": "Ig coding",
