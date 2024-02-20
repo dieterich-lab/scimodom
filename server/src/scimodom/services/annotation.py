@@ -19,7 +19,7 @@ from scimodom.database.models import Annotation, Assembly, GenomicAnnotation, Ta
 from scimodom.services.importer import get_buffer
 
 # from scimodom.utils.models import records_factory
-from scimodom.utils.operations import _get_annotation_from_file
+from scimodom.utils.operations import get_annotation_to_records
 import scimodom.utils.specifications as specs
 
 logger = logging.getLogger(__name__)
@@ -217,8 +217,8 @@ class AnnotationService:
         """Reads annotation file to records and
         insert to GenomicAnnotation. There is no type
         coercion."""
-        # type coercion should not be necessary
-        records = _get_annotation_from_file(
+        # type coercion should not be necessary...
+        records = get_annotation_to_records(
             self._annotation_file, self._annotation_id, self.FMT, AnnotationFormatError
         )
         buffer = get_buffer(GenomicAnnotation)
@@ -235,6 +235,8 @@ class AnnotationService:
 
         """
         pass
+
+        # TODO need to filter chrom in create_annotation, but also in annotate_data!
         # query = select(
         #     Data.chrom,
         #     Data.start,

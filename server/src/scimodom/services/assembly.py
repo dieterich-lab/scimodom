@@ -11,7 +11,7 @@ from sqlalchemy import select, func
 from scimodom.config import Config
 from scimodom.database.models import Assembly, Taxa
 import scimodom.database.queries as queries
-from scimodom.utils.operations import _liftover
+from scimodom.utils.operations import liftover_to_file
 import scimodom.utils.specifications as specs
 import scimodom.utils.utils as utils
 
@@ -308,7 +308,7 @@ class AssemblyService:
         """
         parent, filen = self.get_chain_path()
         chain_file = Path(parent, filen).as_posix()
-        return _liftover(records, chain_file)
+        return liftover_to_file(records, chain_file)
 
     def _get_current_name(self) -> str:
         """Get current assembly name. This methods

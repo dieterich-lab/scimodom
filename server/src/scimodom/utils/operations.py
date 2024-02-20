@@ -210,35 +210,34 @@ def get_subtract(
     return c_records
 
 
-def get_genomic_annotation(
-    annotation_file: str | Path,
-    chrom_file: str | Path,
-    annotation_id: int,
+def annotate_data_to_records(
+    annotation_file: Path,
+    chrom_file: Path,
     records: Sequence[Any],
-) -> list[Any]:
-    """Create records for genomic annotation
+) -> Sequence[Any]:
+    """Annotate data records, i.e. create
+    records for DataAnnotation. Since this
+    function is only called after creating
+    annotation (GenomicAnnotation), the
+    annotation file is implicitely assumed
+    to be GTF-formatted.
 
-    NOTE: 06.12.2023 GTF only! fields indices hard coded!
-          Requires > ~3GB /tmp disk space
-
-    :param annotation_file: Path to annotation (gtf)
-    :type annotation_file: str | Path
-    :param chrom_file: Path to chrom sizes
-    :type chrom_file: str | Path
-    :param annotation_id: Current annotation id (taxa, release, version)
-    :type annotation_id: int
-    :param records: DB records
+    :param annotation_file: Path to annotation (GTF)
+    :type annotation_file: Path
+    :param chrom_file: Path to chrom file
+    :type chrom_file: Path
+    :param records: Data records
     :type records: Sequence (list of tuples)
-    :returns: Records for GenomicAnnotation
-    :rtype: list of tuples
+    :returns: Records for DataAnnotation
+    :rtype: Sequence (list of tuples)
     """
-    pass
-    # features = {
-    #     "exon": "Exon",
-    #     "five_prime_utr": "5'UTR",
-    #     "three_prime_utr": "3'UTR",
-    #     "CDS": "CDS",
-    # }
+    # GTF features
+    features = {
+        "exon": "Exon",
+        "five_prime_utr": "5'UTR",
+        "three_prime_utr": "3'UTR",
+        "CDS": "CDS",
+    }
 
     # def _gtf_to_records(bedtool):
     #     return [
@@ -283,38 +282,61 @@ def get_genomic_annotation(
     #         for i in bedtool
     #     ]
 
-    # def _intersect(data, stream, feature):
-    #     bedtool = _to_bedtool(_gtf_to_records(stream))
-    #     merged = bedtool.merge(s=True, c=[4, 5, 6, 7, 8], o="distinct")
-    #     itrx = data.intersect(b=merged, wa=True, wb=True, s=True, sorted=True)
-    #     return _to_records(itrx, feature)
+    def _intersect(data, annotation, feature):
+        # delim (collapse) Default: ","
+        stream = data.intersect(b=annotation, wa=True, wb=True, s=True, sorted=True)
+        return [
+            (gene_id, s[6], feature)
+            for s in stream
+            for gene_id in s[13].split(",")
+            if gene_id is not None
+        ]
 
-    # all_records = []
-    # tmpdir = pybedtools.helpers.get_tempdir()
-    # with tempfile.TemporaryDirectory(dir=tmpdir) as tempdir:
-    #     pybedtools.helpers.set_tempdir(tempdir)
-    #     annotation = _to_bedtool(annotation_file)  # as gtf
-    #     data_bedtool = _to_bedtool(records)
-    #     for key, val in features.items():
-    #         stream = annotation.filter(lambda a: a.fields[2] == key)
-    #         all_records.append(_intersect(data_bedtool, stream, val))
-    #     genes = annotation.filter(
-    #         lambda a: a.fields[2] == "gene"
-    #     ).saveas()  # "complement" see issue #49 for more
-    #     exons = annotation.filter(lambda a: a.fields[2] == "exon")
-    #     introns = genes.subtract(exons, s=True, sorted=True)
-    #     all_records.append(_intersect(data_bedtool, introns, "Intron"))
-    #     inter = genes.complement(g=chrom_file)
-    #     itrx = data_bedtool.intersect(b=inter, wa=True, wb=True, s=False, sorted=True)
-    #     itrx_records = [
-    #         (i.fields[4], annotation_id, "Intergenic", None, None, None) for i in itrx
-    #     ]
-    #     all_records.append(itrx_records)
-    # pybedtools.helpers.set_tempdir(tmpdir)
-    # return utils.flatten_list(all_records)
+    def _annotation_to_stream(feature):
+        # cannot stream merge...
+        return annotation_bedtool.filter(lambda a: a.fields[2] == feature).each(
+            _get_gtf_attrs
+        )
+
+    all_records = []
+    tempdir = pybedtools.helpers.get_tempdir()
+    try:
+        with tempfile.TemporaryDirectory(dir=tempdir) as workdir:
+            pybedtools.helpers.set_tempdir(workdir)
+            annotation_bedtool = pybedtools.BedTool(annotation_file.as_posix()).sort()
+            data_bedtool = _to_bedtool(records)
+            for k, v in features.items():
+                merged = _annotation_to_stream(k).merge(
+                    s=True, c=[4, 5, 6, 7, 8], o="distinct"
+                )
+                all_records.extend(_intersect(data_bedtool, merged, v))
+                print(f"DONE WITH {v}")
+            exons = _annotation_to_stream("exon")
+            # why is the sort order lost after subtract?
+            introns = (
+                _annotation_to_stream("gene")
+                .subtract(exons, s=True, sorted=True)
+                .sort()
+                .merge(s=True, c=[4, 5, 6, 7, 8], o="distinct")
+            )
+            all_records.extend(_intersect(data_bedtool, introns, "Intron"))
+            print("DONE WITH Introns")
+            prefix = utils.get_ensembl_prefix(annotation_bedtool[0].attrs["gene_id"])
+            gene_id = f"{prefix}INTER"
+            inter = _annotation_to_stream("gene").complement(g=chrom_file.as_posix())
+            stream = data_bedtool.intersect(
+                b=inter, wa=True, wb=True, s=False, sorted=True
+            )
+            all_records.extend([(gene_id, s[6], "Intergenic") for s in stream])
+            print("DONE WITH Intergenic")
+    except:
+        raise
+    finally:
+        pybedtools.helpers.set_tempdir(tempdir)
+    return all_records
 
 
-def _get_annotation_from_file(
+def get_annotation_to_records(
     annotation_file: Path, annotation_id: int, fmt: str, error
 ) -> list[tuple[str, int, str, str]]:
     """Create records for GenomicAnnotation from annotation file.
@@ -338,29 +360,15 @@ def _get_annotation_from_file(
             f"the {fmt} format. Aborting transaction!"
         )
         raise error(msg)
-
-    def _get_attrs(feature):
-        # requires at least BED4 to avoid MalformedBedLineError...
-        # return feature.attrs["gene_id"], annotation_id, feature.name, feature.attrs["gene_biotype"]
-        return (
-            feature.chrom,
-            feature.start,
-            feature.end,
-            feature.name,
-            feature.attrs["gene_id"],
-            feature.attrs["gene_biotype"],
-        )
-
-    annotation = _to_bedtool(annotation_file)
-    stream = annotation.filter(lambda f: f.fields[2] == "gene")
-    stream = stream.each(_get_attrs)
-    records = [(s[4], annotation_id, s[3], s[5]) for s in stream]
+    bedtool = pybedtools.BedTool(annotation_file.as_posix()).sort()
+    stream = bedtool.filter(lambda f: f.fields[2] == "gene").each(_get_gtf_attrs)
+    records = [(s[6], annotation_id, s[3], s[7]) for s in stream]
     prefix = utils.get_ensembl_prefix(records[0][0])
     records.append((f"{prefix}INTER", annotation_id, None, None))
     return records
 
 
-def _liftover(
+def liftover_to_file(
     records: list[dict[str, Any]],
     chain_file: str,
     unmapped: str | None = None,
@@ -397,3 +405,33 @@ def _liftover(
         raise Exception(msg) from exc
     # except subprocess.TimeoutExpired as exc:
     return result
+
+
+def _get_gtf_attrs(feature):
+    """This function is to be passed
+    as argument to BedTool.each(), to
+    generate a BED-like Interval. The
+    format is BED6+2, where 2 additional
+    fields are "gene_id", "gene_biotype".
+
+    Note: The value in Interval.start will
+    always contain the 0-based start position,
+    even if it came from a GFF or other 1-based
+    feature. The contents of Interval.fields
+    will always be strings, which in turn always
+    represent the original line in the file.
+
+    :param feature: A feature from a GTF file.
+    :type feature: pybedtools.Interval
+    """
+    line = [
+        feature.chrom,
+        feature.start,
+        feature.end,
+        feature.name,
+        feature.score,
+        feature.strand,
+        feature.attrs["gene_id"],
+        feature.attrs["gene_biotype"],
+    ]
+    return pybedtools.cbedtools.create_interval_from_list(line)
