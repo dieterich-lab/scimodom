@@ -1,5 +1,6 @@
 from logging.config import dictConfig
 
+import click
 from flask_cors import CORS
 from sqlalchemy.orm import scoped_session
 
@@ -7,6 +8,7 @@ from scimodom.api import api
 from scimodom.app_singleton import create_app_singleton
 from scimodom.database.database import make_session, init
 from scimodom.frontend import frontend
+from scimodom.plugins.cli import add_project
 
 
 def create_app():
@@ -25,6 +27,17 @@ def create_app():
 
     app.register_blueprint(api, url_prefix="/api/v0")
     app.register_blueprint(frontend, url_prefix="/")
+
+    @app.cli.command(
+        "project", epilog="Check docs at https://dieterich-lab.github.io/scimodom/."
+    )
+    @click.argument("template", type=click.Path(exists=True))
+    def project(template):
+        """Add a new project to the database.
+
+        TEMPLATE is the path to a project template (json).
+        """
+        add_project(template)
 
     # does this goes here?
     @app.teardown_appcontext

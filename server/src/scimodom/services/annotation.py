@@ -81,7 +81,7 @@ class AnnotationService:
         self._session = session
 
         self._annotation_id: int
-        self._db_versiob: str
+        self._db_version: str
         self._taxid: int
         self._release: int
         self._annotation_file: Path
