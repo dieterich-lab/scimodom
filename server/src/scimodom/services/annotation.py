@@ -1,12 +1,8 @@
-# import gzip
 import logging
-
-# import os
 from pathlib import Path
 from posixpath import join as urljoin
 from typing import ClassVar, Callable
 
-# import zlib
 import requests  # type: ignore
 from sqlalchemy.orm import Session
 from sqlalchemy import select, insert
@@ -172,6 +168,7 @@ class AnnotationService:
 
     def annotate_data(self, eufid: str) -> None:
         """Annotate Data: add entries to DataAnnotation
+        for a given dataset.
 
         :param eufid: EUF ID
         :type eufid: str
@@ -231,7 +228,7 @@ class AnnotationService:
         parent, filen = AssemblyService.get_chrom_path(organism_name, assembly_name)
         self._chrom_file = Path(parent, filen)
 
-    def _download_annotation(self) -> None:
+    def _download_annotation(self) -> int:
         """Download gene annotation. If the destination already
         exists, the first record for the current annotation
         is queried. If None, this raises a FileExistsError
@@ -239,6 +236,10 @@ class AnnotationService:
         appear to have been updated). If not None, nothing
         is done, there is no further check. If the destination
         does not exist, it is created.
+
+        :returns: Success code. A 1 means that the
+        annotation already exists.
+        :rtype: int
         """
         parent = self._annotation_file.parent
         filen = self._annotation_file.name

@@ -142,6 +142,19 @@ def _mock_project_service(session, project):
     return smid
 
 
+def test_validate_imported_fail():
+    with pytest.raises(DatasetError) as exc:
+        DataService.validate_imported("test", "a", "b")
+    assert (
+        str(exc.value) == "Expected a for test; got b (imported). Aborting transaction!"
+    )
+    assert exc.type == DatasetError
+
+
+def test_validate_imported():
+    assert DataService.validate_imported("test", "a", "a") is None
+
+
 def test_instantiation_from_selection_no_smid_fail(Session):
     with pytest.raises(InstantiationError) as exc:
         DataService.from_selection(
@@ -422,170 +435,3 @@ def test_add_association(Session, setup, project_template):
     service._add_association()
     expected_association = {"m6A": 1, "m5C": 2}
     assert service._association == expected_association
-
-
-# ------------------------
-
-# @pytest.mark.parametrize(
-#     "selection",
-#     [
-#         ("one"),
-#         ("two"),
-#         ("none"),
-#     ],
-# )
-# def test_dataset_get_selection(selection, Session, setup, project_template, caplog):
-#     project = _get_project(project_template, case=selection)
-
-#     with Session() as session, session.begin():
-#         session.add_all(setup)
-#         smid = _mock_project_service(session, project)
-#         session.commit()
-
-#     modification_ids = [1, 2]
-#     if selection == "one":
-#         _ = modification_ids.pop(1)
-#     taxa_id = 9606
-#     assembly_id = 1
-#     technology_id = 1
-#     organism_id = 1
-
-#     service = DataService(
-#         Session(),
-#         smid,
-#         "Dataset title",
-#         "filename",
-#         StringIO("filename"),
-#         taxa_id,
-#         assembly_id,
-#         modification_ids,
-#         technology_id,
-#         organism_id,
-#     )
-#     # for some cases we have "sqlalchemy.exc.NoResultFound: No row was found when one was required"
-#     # that "bypasses" the except?
-#     if selection == "none":
-#         with pytest.raises(Exception) as excinfo:
-#             service._get_selection()
-#         # assert caplog.record_tuples == [('scimodom.services.dataset', 40, 'Selection for m5C (mRNA), Technology 1, and Cell Type 1 not found! This is likely due to database corruption or a bug.')]
-#     else:
-#         service._get_selection()
-
-
-# def test_dataset_validate_assembly(Session, setup, project_template):
-#     taxa_id = 9606
-#     modification_ids = [1]
-#     technology_id = 1
-#     organism_id = 1
-
-#     with Session() as session, session.begin():
-#         session.add_all(setup)
-#         smid = _mock_project_service(session, project_template)
-#         assembly = Assembly(name="GRCh19", taxa_id=taxa_id, version="123456789ABC")
-#         session.add(assembly)
-#         session.flush()
-#         query = queries.query_column_where("Assembly", "id", filters={"name": "GRCh19"})
-#         assembly_id = session.execute(query).scalar()
-#         session.commit()
-
-#     service = DataService(
-#         Session(),
-#         smid,
-#         "Dataset title",
-#         "filename",
-#         StringIO("filename"),
-#         taxa_id,
-#         assembly_id,
-#         modification_ids,
-#         technology_id,
-#         organism_id,
-#     )
-#     service._validate_assembly()
-#     assert service._lifted is True
-
-
-# @pytest.mark.parametrize(
-#     "selection",
-#     [
-#         ("one"),
-#         ("two"),
-#     ],
-# )
-# def test_dataset_create_eufid(
-#     selection, Session, setup, project_template, caplog, EUF_version, data_path
-# ):
-#     # two modifications for the same dataset, same technology, same organism
-#     project = _get_project(project_template, case=selection)
-
-#     with Session() as session, session.begin():
-#         session.add_all(setup)
-#         smid = _mock_project_service(session, project)
-#         session.commit()
-
-#     taxa_id = 9606
-#     assembly_id = 1  # GRCh38
-#     modification_ids = [1, 2]
-#     if selection == "one":
-#         _ = modification_ids.pop(1)
-#     technology_id = 1
-#     organism_id = 1  # Homo sapiens
-
-#     service = DataService(
-#         Session(),
-#         smid,
-#         "Dataset title",
-#         "filename",
-#         _get_file(EUF_version),
-#         taxa_id,
-#         assembly_id,
-#         modification_ids,
-#         technology_id,
-#         organism_id,
-#     )
-#     service._get_selection()
-#     if selection == "one":
-#         with pytest.raises(Exception) as excinfo:
-#             service._create_eufid()
-#         # assert caplog.record_tuples == [('scimodom.services.importer', 30, 'Overwriting header: assembly=GRCh38 from filename with GRCh38 given at upload. Data import will continue...'), ('scimodom.services.dataset', 40, "Selection for modification and modifications read from filename differ: {'m5c'}. Aborting transaction!")]
-#     else:
-#         service._create_eufid()
-
-
-# def test_dataset_add_association(Session, setup, project_template):
-#     with Session() as session, session.begin():
-#         session.add_all(setup)
-#         smid = _mock_project_service(session, project_template)
-#         session.commit()
-
-#     taxa_id = 9606
-#     assembly_id = 1
-#     modification_ids = [1]
-#     technology_id = 1
-#     organism_id = 1
-
-#     service = DataService(
-#         Session(),
-#         smid,
-#         "Dataset title",
-#         "filename",
-#         StringIO("filename"),
-#         taxa_id,
-#         assembly_id,
-#         modification_ids,
-#         technology_id,
-#         organism_id,
-#     )
-#     service._get_selection()
-#     service._eufid = "123456789ABC"
-#     service._add_association()
-
-#     with Session() as session, session.begin():
-#         records = session.execute(select(Association)).scalar()
-#         assert records.id == 1
-#         assert records.dataset_id == "123456789ABC"
-#         assert records.selection_id == 1
-#         records = session.execute(select(Selection)).scalar()
-#         assert records.id == 1
-#         assert records.modification_id == modification_ids[0]
-#         assert records.technology_id == technology_id
-#         assert records.organism_id == organism_id

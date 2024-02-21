@@ -125,18 +125,18 @@ def test_importer_parse_record(Session, EUF_specs):
         specs_ver=version,
     )
     record = importer.parse_record(expected_record)
-    assert expected_record["chrom"] == record["chrom"]
-    assert expected_record["start"] == record["start"]
-    assert expected_record["end"] == record["end"]
-    assert expected_record["name"] == record["name"]
-    assert expected_record["score"] == record["score"]
-    assert expected_record["strand"] == record["strand"]
-    assert expected_record["thick_start"] == record["thick_start"]
-    assert expected_record["thick_end"] == record["thick_end"]
-    assert expected_record["item_rgb"] == record["item_rgb"]
-    assert expected_record["coverage"] == record["coverage"]
-    assert expected_record["frequency"] == record["frequency"]
-    assert expected_record["association_id"] == record["association_id"]
+    assert record["chrom"] == expected_record["chrom"]
+    assert record["start"] == expected_record["start"]
+    assert record["end"] == expected_record["end"]
+    assert record["name"] == expected_record["name"]
+    assert record["score"] == expected_record["score"]
+    assert record["strand"] == expected_record["strand"]
+    assert record["thick_start"] == expected_record["thick_start"]
+    assert record["thick_end"] == expected_record["thick_end"]
+    assert record["item_rgb"] == expected_record["item_rgb"]
+    assert record["coverage"] == expected_record["coverage"]
+    assert record["frequency"] == expected_record["frequency"]
+    assert record["association_id"] == expected_record["association_id"]
     # types
     dtypes = {c.name: c.type.python_type for c in Data.__table__.columns}
     assert type(record["chrom"]) == dtypes["chrom"]

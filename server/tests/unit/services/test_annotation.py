@@ -6,22 +6,6 @@ from scimodom.database.models import GenomicAnnotation
 from scimodom.services.annotation import AnnotationService, AnnotationVersionError
 
 
-# for now simple
-# gtf_records = """#!genome-build GRCh38
-# #!genome-version GRCh38
-# 1\thavana\tgene\t1\t1000\t.\t+\t.\tgene_id "ENSG00001"; gene_version "1"; gene_name "GENE1"; gene_source "havana"; gene_biotype "non_coding";
-# 1\thavana\ttranscript\t1\t1000\t.\t+\t.\tgene_id "ENSG00001"; gene_version "1"; transcript_id "ENST00001"; transcript_version "1"; gene_name "GENE1"; gene_source "havana"; gene_biotype "non_coding"; transcript_name "TRX1"; transcript_source "havana"; transcript_biotype "non_coding";
-# 1\thavana\texon\t1\t1000\t.\t+\t.\tgene_id "ENSG00001"; gene_version "1"; transcript_id "ENST00001"; transcript_version "1"; exon_number "1"; gene_name "GENE1"; gene_source "havana"; gene_biotype "non_coding"; transcript_name "TRX1"; transcript_source "havana"; transcript_biotype "non_coding";
-# 1\thavana\tgene\t2000\t3000\t.\t-\t.\tgene_id "ENSG00002"; gene_version "1"; gene_name "GENE2"; gene_source "havana"; gene_biotype "protein_coding";"""
-
-
-# def test_init(Session, setup, data_path):
-#     with Session() as session, session.begin():
-#         session.add_all(setup)
-#     with pytest.raises(AssemblyVersionError) as exc:
-#         service = AssemblyService.from_id(Session(), assembly_id=3)
-
-
 def test_init_from_id_wrong_id(Session, setup, data_path):
     with Session() as session, session.begin():
         session.add_all(setup)
@@ -44,7 +28,7 @@ def test_init_from_id_wrong_version(Session, setup, data_path):
 
 
 def test_init_from_id(Session, setup, data_path):
-    # taxid is wrong but does not matter as id as priority
+    # taxid is wrong but does not matter as id has priority
     # annotation file path is available, but file does not yet exists
     with Session() as session, session.begin():
         session.add_all(setup)
@@ -71,13 +55,14 @@ def test_init_from_taxid(Session, setup, data_path):
     assert service._release == 110
 
 
-# due to scope of data_path thi smust be called before
+# due to scope of data_path this must be called before the rest...
 def test_download_annotation(Session, setup, data_path):
     with Session() as session, session.begin():
         session.add_all(setup)
     service = AnnotationService(Session(), annotation_id=1)
-    service._download_annotation()
+    ret_code = service._download_annotation()
     # only assert if created
+    assert ret_code == 0
     assert service._annotation_file.is_file()
 
 
@@ -110,4 +95,5 @@ def test_download_annotation_exists(Session, setup, data_path):
     dest = Path(data_path.ANNOTATION_PATH, "Homo_sapiens", "GRCh38", "110")
     dest.mkdir(parents=True, exist_ok=True)
     service = AnnotationService(Session(), annotation_id=1)
-    service._download_annotation()
+    ret_code = service._download_annotation()
+    assert ret_code == 1

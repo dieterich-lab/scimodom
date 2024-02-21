@@ -19,6 +19,7 @@ from scimodom.database.models import (
 )
 import scimodom.database.queries as queries
 
+from scimodom.services.annotation import AnnotationService
 from scimodom.services.assembly import AssemblyService, AssemblyVersionError
 from scimodom.services.importer import get_importer, get_bed_importer
 import scimodom.utils.specifications as specs
@@ -255,9 +256,11 @@ class DataService:
         :rtype: str
         """
         is_liftover: bool = False
+
         # make sure we do not already have a dataset with
         # the same combination of SMID, selection, and title
         self._validate_entry()
+
         # instantiate AssemblyService
         query = queries.query_column_where(
             Assembly, ["name", "taxa_id"], filters={"id": self._assembly_id}
@@ -285,11 +288,15 @@ class DataService:
             with open(filen, "r") as f:
                 lines = f.readlines()
             seqids = [l.split()[0] for l in lines]
+
         # create EUFID
         self._create_eufid()
+
         # add association = (EUFID, selection)
         # update self._association dict
+        # commit on successful header.close()
         self._add_association()
+
         # import
         try:
             try:
@@ -308,7 +315,7 @@ class DataService:
             # for organism (taxa ID) and assembly
             self.validate_imported("organism", taxa_id, importer.header.taxa_id)
             self.validate_imported("assembly", assembly_name, importer.header.assembly)
-            importer.header.close()
+            importer.header.close()  # commit
             importer.init_data_importer(
                 association=self._association, seqids=seqids, no_flush=is_liftover
             )
@@ -317,20 +324,23 @@ class DataService:
             checkpoint.rollback()
             raise
         else:
-            importer.data.close()
+            importer.data.close()  # commit unless...
             if is_liftover:
-                # data has not been written to database yet
+                # ... data has not been written to database yet
                 records = importer.data.get_buffer()
                 filen = assembly_service.liftover(records)
-                self._liftover(filen)
+                self._liftover(filen)  # commit
 
         msg = (
             f"Added dataset {self._eufid} to project {self._smid} with title = {self._title}, "
-            f"and the following associations: {', '.join([f'{k}:{v}' for k, v in self._association.items()])}."
+            f"and the following associations: {', '.join([f'{k}:{v}' for k, v in self._association.items()])}. "
+            "Annotating data now..."
         )
         logger.debug(msg)
 
-        # finallly, handle annotation
+        # annotate newly imported data
+        annotation_service = AnnotationService(session=self._session, taxa_id=taxa_id)
+        annotation_service.annotate_data(self._eufid)
 
         return self._eufid
 
@@ -483,4 +493,4 @@ class DataService:
         importer = get_bed_importer(filen, is_euf=True)
         importer.parse_records()
         importer.close()
-        importer.flush_records()
+        importer.flush_records()  # commit

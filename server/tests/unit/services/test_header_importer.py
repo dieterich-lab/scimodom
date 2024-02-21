@@ -138,10 +138,10 @@ def test_importer_read_version(fmt, Session, EUF_specs):
         title="Title",
     )
     importer._read_version()
-    assert version == importer._specs_ver
-    assert len(specs["headers"]) == importer._num_cols
+    assert importer._specs_ver == version
+    assert importer._num_cols == len(specs["headers"])
     # ignore fileformat
-    assert specs["required"][1:] == importer._required
+    assert importer._required == specs["required"][1:]
 
 
 @pytest.mark.parametrize(

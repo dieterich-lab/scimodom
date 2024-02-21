@@ -3,7 +3,6 @@ import tempfile
 
 import pytest
 
-from scimodom.utils.operations import get_genomic_annotation
 from scimodom.utils.operations import get_op
 
 

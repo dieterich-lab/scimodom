@@ -20,6 +20,7 @@ from scimodom.database.models import (
     Selection,
 )
 import scimodom.database.queries as queries
+from scimodom.services.annotation import AnnotationService
 from scimodom.services.assembly import AssemblyService
 import scimodom.utils.specifications as specs
 import scimodom.utils.utils as utils
@@ -282,9 +283,14 @@ class ProjectService:
         if not wo_assembly:
             for assembly in self._assemblies:
                 taxid, name = assembly
-                msg = f"Calling AssemblyService for {name} ({taxid})"
+                msg = f"Calling AssemblyService for {name} ({taxid})..."
                 logger.debug(msg)
                 AssemblyService.from_new(self._session, name=name, taxa_id=taxid)
+                msg = f"Calling AnnotationService for {taxid}..."
+                logger.debug(msg)
+                AnnotationService(
+                    session=self._session, taxa_id=taxid
+                ).create_annotation()
 
     def get_smid(self) -> str:
         return self._smid

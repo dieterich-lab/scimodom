@@ -9,6 +9,8 @@ from scimodom.services.importer import get_importer, get_bed_importer, get_buffe
 
 
 # WHY WAS I ABLE TO ADD ASSOCIATION ID TO DATA IF THERE IS NO VALUE IN THE DB (FK)???
+# IN FACT, NONE OF THESE TESTS USES setup... SO THE DB IS IN PRINCIPLE EMPTY...
+# WHY IS THIS WORKING?
 
 
 @pytest.mark.parametrize(
