@@ -3,6 +3,7 @@
 
 from collections.abc import Sequence
 import os
+import logging
 from pathlib import Path
 import shlex
 import subprocess
@@ -12,6 +13,9 @@ from typing import Any
 import pybedtools  # type: ignore
 
 import scimodom.utils.utils as utils
+
+logger = logging.getLogger(__name__)
+
 
 if os.getenv("APP_TEMPDIR"):
     tempdir = os.environ["APP_TEMPDIR"]
@@ -211,80 +215,32 @@ def get_subtract(
 
 
 def annotate_data_to_records(
-    annotation_file: Path,
-    chrom_file: Path,
-    records: Sequence[Any],
+    annotation_path: Path, features: dict[str, str], records: Sequence[Any], error
 ) -> Sequence[Any]:
     """Annotate data records, i.e. create
-    records for DataAnnotation. Since this
-    function is only called after creating
-    annotation (GenomicAnnotation), the
-    annotation file is implicitely assumed
-    to be GTF-formatted.
+    records for DataAnnotation. Columns
+    order is (gene_id, data_id, feature).
+    There is no type coercion.
 
-    :param annotation_file: Path to annotation (GTF)
-    :type annotation_file: Path
-    :param chrom_file: Path to chrom file
-    :type chrom_file: Path
-    :param records: Data records
+    :param annotation_path: Path to annotation
+    :type annotation_path: Path
+    :param records: Data records as BED6+1-like,
+    where the additional field is the "data_id".
     :type records: Sequence (list of tuples)
+    :param features: Genomic features for which
+    annotation must be created.
+    :type features: dict of {str: str}
+    :param error: Format error to raise
+    :type error: AnnotationFormatError
     :returns: Records for DataAnnotation
     :rtype: Sequence (list of tuples)
     """
-    # GTF features
-    features = {
-        "exon": "Exon",
-        "five_prime_utr": "5'UTR",
-        "three_prime_utr": "3'UTR",
-        "CDS": "CDS",
-    }
 
-    # def _gtf_to_records(bedtool):
-    #     return [
-    #         tuple(
-    #             sum(
-    #                 (
-    #                     [i.chrom, i.start, i.end, i.name, annotation_id, i.strand],
-    #                     [
-    #                         parse_gtf_attributes(i.fields[8]).get(k)
-    #                         for k in ["gene_id", "gene_biotype"]
-    #                     ],
-    #                 ),
-    #                 [],
-    #             )
-    #         )
-    #         for i in bedtool
-    #     ]
-
-    # def _clean_fields(field, delim=","):
-    #     for f in field:
-    #         if delim not in f:
-    #             yield f
-    #             continue
-    #         yield None
-
-    # def _to_records(bedtool, feature):
-    #     return [
-    #         tuple(
-    #             sum(
-    #                 (
-    #                     [i.fields[4], i.fields[10], feature],
-    #                     [
-    #                         k
-    #                         for k in _clean_fields(
-    #                             [i.fields[9], i.fields[12], i.fields[13]]
-    #                         )
-    #                     ],
-    #                 ),
-    #                 [],
-    #             )
-    #         )
-    #         for i in bedtool
-    #     ]
-
-    def _intersect(data, annotation, feature):
+    def _intersect(annotation, feature):
         # delim (collapse) Default: ","
-        stream = data.intersect(b=annotation, wa=True, wb=True, s=True, sorted=True)
+        stream = data_bedtool.intersect(
+            b=annotation, wa=True, wb=True, s=True, sorted=True
+        )
         return [
             (gene_id, s[6], feature)
             for s in stream
@@ -292,79 +248,142 @@ def annotate_data_to_records(
             if gene_id is not None
         ]
 
+    data_bedtool = _to_bedtool(records)
+    try:
+        intergenic_feature = features.pop("intergenic")
+    except KeyError as exc:
+        msg = (
+            "Missing feature intergenic from specs. This is due to a change "
+            "in definition. Aborting transaction!"
+        )
+        raise error(msg) from exc
+    all_records = []
+    for feature, pretty_feature in features.items():
+        filen = Path(annotation_path, f"{feature}.bed").as_posix()
+        feature_bedtool = pybedtools.BedTool(filen)
+        all_records.extend(_intersect(feature_bedtool, pretty_feature))
+
+    # any feature_bedtool, exc. intergenic has a gene_id at fields 6...
+    prefix = utils.get_ensembl_prefix(feature_bedtool[0].fields[6].split(",")[0])
+    gene_id = f"{prefix}{intergenic_feature}"
+    filen = Path(annotation_path, "intergenic.bed").as_posix()
+    feature_bedtool = pybedtools.BedTool(filen)
+    stream = data_bedtool.intersect(
+        b=feature_bedtool, wa=True, wb=True, s=False, sorted=True
+    )
+    all_records.extend([(gene_id, s[6], intergenic_feature) for s in stream])
+    return all_records
+
+
+def write_annotation_to_bed(
+    annotation_file: Path, chrom_file: Path, features: dict[str, list[str]], error
+) -> None:
+    """Prepare annotation in BED format for genomic
+    features given in "features". The files are
+    written to the parent directory of "annotation_file"
+    using "features" as stem, and bed as extension.
+
+    :param annotation_file: Path to annotation file.
+    The format is implicitely assumed to be GTF.
+    :type annotation_file: Path
+    :param chrom_file: Path to chrom file
+    :type chrom_file: Path
+    :param features: Genomic features for which
+    annotation must be created.
+    :type features: dict of {str: list of str}
+    :param error: Format error to raise
+    :type error: AnnotationFormatError
+    """
+    parent = annotation_file.parent
+    annotation_bedtool = pybedtools.BedTool(annotation_file.as_posix()).sort()
+
+    msg = (
+        f"Preparing annotation and writing to {parent}. This can take a few minutes..."
+    )
+    logger.debug(msg)
+
     def _annotation_to_stream(feature):
-        # cannot stream merge...
         return annotation_bedtool.filter(lambda a: a.fields[2] == feature).each(
             _get_gtf_attrs
         )
 
-    all_records = []
     tempdir = pybedtools.helpers.get_tempdir()
     try:
         with tempfile.TemporaryDirectory(dir=tempdir) as workdir:
             pybedtools.helpers.set_tempdir(workdir)
-            annotation_bedtool = pybedtools.BedTool(annotation_file.as_posix()).sort()
-            data_bedtool = _to_bedtool(records)
-            for k, v in features.items():
-                merged = _annotation_to_stream(k).merge(
-                    s=True, c=[4, 5, 6, 7, 8], o="distinct"
+            for feature in features["conventional"]:
+                filen = Path(parent, f"{feature}.bed").as_posix()
+                _ = (
+                    _annotation_to_stream(feature)
+                    .merge(s=True, c=[4, 5, 6, 7, 8], o="distinct")
+                    .moveto(filen)
                 )
-                all_records.extend(_intersect(data_bedtool, merged, v))
-                print(f"DONE WITH {v}")
-            exons = _annotation_to_stream("exon")
+            feature = "intron"
+            if feature not in features["extended"]:
+                msg = (
+                    f"Missing feature {feature} from specs. This is due to a change "
+                    "in definition. Aborting transaction!"
+                )
+                raise error(msg)
+            filen = Path(parent, "exon.bed").as_posix()
+            exons = pybedtools.BedTool(filen)
+            filen = Path(parent, f"{feature}.bed").as_posix()
             # why is the sort order lost after subtract?
-            introns = (
+            _ = (
                 _annotation_to_stream("gene")
                 .subtract(exons, s=True, sorted=True)
                 .sort()
                 .merge(s=True, c=[4, 5, 6, 7, 8], o="distinct")
+            ).moveto(filen)
+            feature = "intergenic"
+            if feature not in features["extended"]:
+                msg = (
+                    f"Missing feature {feature} from specs. This is due to a change "
+                    "in definition. Aborting transaction!"
+                )
+                raise error(msg)
+            filen = Path(parent, f"{feature}.bed").as_posix()
+            _ = (
+                _annotation_to_stream("gene")
+                .complement(g=chrom_file.as_posix())
+                .moveto(filen)
             )
-            all_records.extend(_intersect(data_bedtool, introns, "Intron"))
-            print("DONE WITH Introns")
-            prefix = utils.get_ensembl_prefix(annotation_bedtool[0].attrs["gene_id"])
-            gene_id = f"{prefix}INTER"
-            inter = _annotation_to_stream("gene").complement(g=chrom_file.as_posix())
-            stream = data_bedtool.intersect(
-                b=inter, wa=True, wb=True, s=False, sorted=True
-            )
-            all_records.extend([(gene_id, s[6], "Intergenic") for s in stream])
-            print("DONE WITH Intergenic")
     except:
         raise
     finally:
         pybedtools.helpers.set_tempdir(tempdir)
-    return all_records
 
 
-def get_annotation_to_records(
-    annotation_file: Path, annotation_id: int, fmt: str, error
+def get_annotation_records(
+    annotation_file: Path, annotation_id: int, intergenic_feature: str
 ) -> list[tuple[str, int, str, str]]:
-    """Create records for GenomicAnnotation from annotation file.
-    Adds a "dummy" record for intergenic annotation.
+    """Create records for GenomicAnnotation from
+    annotation file. Columns order is
+    (gene_id, annotation_id, gene_name, gene_biotype).
+    There is no type coercion.
 
-    :param annotation_file: Annotation file
+    :param annotation_file: Path to annotation file.
+    The format is implicitely assumed to be GTF.
     :type annotation_file: Path
     :param annotation_id: Annotation ID
     :type annotation_id: int
-    :param fmt: Annotation format
-    :type fmt: str
-    :param error: Format error to raise
-    :type error: AnnotationFormatError
-    :returns: Annotation as tuple of columns
-    :rtype: list of tuples of (str,int,str,str)
+    :param intergenic_feature: Name for intergenic
+    feature. This name must come from Annotation
+    specifications, as it must match that used
+    when creating annotation for data records.
+    :type intergenic_feature: str
+    :returns: Annotation records as tuple of columns
+    :rtype: list of tuples of (str, int, str, str)
     """
-    suffixes = [s.replace(".", "") for s in annotation_file.suffixes]
-    if fmt not in suffixes:
-        msg = (
-            f"Annotation file {annotation_file} does not appear to be in "
-            f"the {fmt} format. Aborting transaction!"
-        )
-        raise error(msg)
+    msg = f"Creating annotation for {annotation_file}..."
+    logger.debug(msg)
+
     bedtool = pybedtools.BedTool(annotation_file.as_posix()).sort()
     stream = bedtool.filter(lambda f: f.fields[2] == "gene").each(_get_gtf_attrs)
     records = [(s[6], annotation_id, s[3], s[7]) for s in stream]
+    # add a "dummy" record for intergenic annotation
     prefix = utils.get_ensembl_prefix(records[0][0])
-    records.append((f"{prefix}INTER", annotation_id, None, None))
+    records.append((f"{prefix}{intergenic_feature}", annotation_id, None, None))
     return records
 
 
@@ -375,7 +394,7 @@ def liftover_to_file(
     chrom_id: str = "s",
 ) -> str:
     """Liftover records. Handles conversion to BedTool, but not from,
-    of the liftedOver features. Instead, a file is returned pointing
+    of the liftedOver features. A file is returned pointing
     to the liftedOver features. The unmapped ones are saved as
     "unmapped", or discarded.
 
@@ -386,7 +405,9 @@ def liftover_to_file(
     :param unmapped: File to write unmapped features
     :type unmapped: str or None
     :param chrom_id: The style of chromosome IDs (default s).
-    :typoe chrom_id: str
+    :type chrom_id: str
+    :returns: File with liftedOver features
+    :rtype: str
     """
     tmp = [tuple(r.values()) for r in records]
     bedtool = _to_bedtool(tmp)

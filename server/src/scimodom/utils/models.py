@@ -1,5 +1,8 @@
 """Data classes mostly for type casting and "serialization"
-of records returned from operations (pybedtools).
+of records returned from operations (pybedtools). This should
+probably be implemented directly as a method for each
+ORM model defined in database.models...
+
 NOTE: Order of definition is important (should be guaranteed)!
 """
 
@@ -152,42 +155,50 @@ class Closest(NamedTuple):
     distance: int
 
 
-# class GenomicAnnotation(NamedTuple):
-#     """Named tuple for GenomicAnnotation records.
+class GenomicAnnotation(NamedTuple):
+    """Named tuple for GenomicAnnotation records.
 
-#     :param chrom: Chromosome
-#     :type chrom: Inferred from Data (str)
-#     :param start: start
-#     :type start: Inferred from Data (int)
-#     :param end: end
-#     :type end: Inferred from Data (int)
-#     :param score: score
-#     :type score: Inferred from Data (int)
-#     :param strand: strand
-#     :type strand: Inferred from Data (str)
-#     :param dataset_id: dataset_id
-#     :type dataset_id: Inferred from Data (str)
-#     :param coverage: coverage
-#     :type coverage: Inferred from Data (int)
-#     :param frequency: frequency
-#     :type frequency: Inferred from Data (int)
-#     """
+    :param id: Gene ID
+    :type id: Inferred from GenomicAnnotation
+    :param annotation_id: Annotation ID
+    :type annotation_id: Inferred from GenomicAnnotation
+    :param name: Feature name
+    :type name: Inferred from GenomiAnnotation
+    :param biotype: Feature biotype
+    :type biotype: Inferred from GenomicsAnnotation
+    """
 
-#     _dtypes = get_types("GenomicAnnotation")
+    _dtypes = get_types("GenomicAnnotation")
 
-#     data_id: _dtypes["data_id"]
-#     annotation_id: _dtypes["annotation_id"]
-#     feature: _dtypes["feature"]
-#     gene_name: _dtypes["gene_name"]  # | None
-#     gene_id: _dtypes["gene_id"]  # | None
-#     gene_biotype: _dtypes["gene_biotype"]  # | None
+    id: _dtypes["id"]
+    annotation_id: _dtypes["annotation_id"]
+    name: _dtypes["name"]  # | None
+    biotype: _dtypes["biotype"]  # | None
+
+
+class DataAnnotation(NamedTuple):
+    """Named tuple for DataAnnotation records.
+
+    :param gene_id: Gene ID
+    :type gene_id: Inferred from DataAnnotation
+    :param data_id: Data ID
+    :type data_id: Inferred from DataAnnotation
+    :param feature: Name of genomic feature
+    :type feature: Inferred from DataAnnotation
+    """
+
+    _dtypes = get_types("DataAnnotation")
+
+    gene_id: _dtypes["gene_id"]
+    data_id: _dtypes["data_id"]
+    feature: _dtypes["feature"]
 
 
 def records_factory(instance_str: str, vals: Sequence[Any]):
     """Factory to conditionally instantiate records class
 
-    :param op: instance_str (Subtract, Intersect, Closest, etc.)
-    :type op: str
+    :param instance_str: Class name
+    :type instance_str: str
     :param vals: records
     :type vals: Sequence[Any]
     :returns: TypedRecords instance
@@ -201,7 +212,7 @@ def records_factory(instance_str: str, vals: Sequence[Any]):
         def __new__(cls, *vals):
             super_obj = super(instance, cls)
             superclass = super_obj.__thisclass__
-            typed_vals = [  # is it safe? to accomodate for nullable columns e.g. GenomicAnnotation
+            typed_vals = [
                 _dtype.__call__(val) if val is not None else None
                 for val, _dtype in zip(vals, superclass.__annotations__.values())
             ]

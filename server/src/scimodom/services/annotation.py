@@ -7,19 +7,29 @@ from posixpath import join as urljoin
 from typing import ClassVar, Callable
 
 # import zlib
-
 import requests  # type: ignore
 from sqlalchemy.orm import Session
 from sqlalchemy import select, insert
 
 from scimodom.config import Config
 import scimodom.database.queries as queries
-from scimodom.database.models import Annotation, Assembly, GenomicAnnotation, Taxa
-
+from scimodom.database.models import (
+    Annotation,
+    Assembly,
+    Association,
+    Data,
+    DataAnnotation,
+    GenomicAnnotation,
+    Taxa,
+)
+from scimodom.services.assembly import AssemblyService
 from scimodom.services.importer import get_buffer
-
-# from scimodom.utils.models import records_factory
-from scimodom.utils.operations import get_annotation_to_records
+from scimodom.utils.operations import (
+    write_annotation_to_bed,
+    get_annotation_records,
+    annotate_data_to_records,
+)
+from scimodom.utils.models import records_factory
 import scimodom.utils.specifications as specs
 
 logger = logging.getLogger(__name__)
@@ -60,6 +70,15 @@ class AnnotationService:
     ANNOTATION_FILE: ClassVar[
         Callable
     ] = "{organism}.{assembly}.{release}.chr.{fmt}.gz".format
+    FEATURES: ClassVar[dict[str, dict[str, str]]] = {
+        "conventional": {
+            "exon": "Exonic",
+            "five_prime_utr": "5'UTR",
+            "three_prime_utr": "3'UTR",
+            "CDS": "CDS",
+        },
+        "extended": {"intron": "Intronic", "intergenic": "Intergenic"},
+    }
 
     def __init__(self, session: Session, **kwargs) -> None:
         """Initializer method."""
@@ -70,6 +89,7 @@ class AnnotationService:
         self._taxid: int
         self._release: int
         self._annotation_file: Path
+        self._chrom_file: Path
 
         # current DB annotation version
         query = queries.get_annotation_version()
@@ -116,7 +136,7 @@ class AnnotationService:
             self._annotation_id = records["id"]
             self._release = records["release"]
 
-        self._get_annotation_file_path()
+        self._get_files_path()
 
     def __new__(cls, session: Session, **kwargs):
         """Constructor method."""
@@ -140,13 +160,55 @@ class AnnotationService:
 
     def create_annotation(self) -> None:
         """Create destination, download gene annotation,
-        and write to database.
+        wrangle and write annotation to disk and to database.
         """
-        self._download_annotation()
-        self._create_annotation()
+        ret_code = self._download_annotation()
+        if ret_code == 0:
+            features = {k: list(v.keys()) for k, v in self.FEATURES.items()}
+            write_annotation_to_bed(
+                self._annotation_file, self._chrom_file, features, AnnotationFormatError
+            )
+            self._create_annotation()
 
-    def _get_annotation_file_path(self) -> None:
-        """Construct file path (annotation file) for
+    def annotate_data(self, eufid: str) -> None:
+        """Annotate Data: add entries to DataAnnotation
+
+        :param eufid: EUF ID
+        :type eufid: str
+        """
+        query = (
+            select(
+                Data.chrom,
+                Data.start,
+                Data.end,
+                Data.name,
+                Data.score,
+                Data.strand,
+                Data.id,
+            )
+            .join_from(Data, Association, Data.inst_association)
+            .where(Association.dataset_id == eufid)
+        )
+        records = self._session.execute(query).all()
+
+        msg = f"Annotating records for EUFID {eufid}..."
+        logger.debug(msg)
+
+        features = {**self.FEATURES["conventional"], **self.FEATURES["extended"]}
+        annotated_records = annotate_data_to_records(
+            self._annotation_file.parent, features, records, AnnotationFormatError
+        )
+        typed_annotated_records = [
+            records_factory("DataAnnotation", r)._asdict() for r in annotated_records
+        ]
+        buffer = get_buffer(DataAnnotation)
+        for record in typed_annotated_records:
+            buffer.buffer_data(record)
+        buffer.flush()
+        self._session.commit()
+
+    def _get_files_path(self) -> None:
+        """Construct file path (annotation and chrom files) for
         the current annotation."""
         query = queries.query_column_where(Taxa, "name", filters={"id": self._taxid})
         organism_name = self._session.execute(query).scalar_one()
@@ -166,6 +228,8 @@ class AnnotationService:
             fmt=self.FMT,
         )
         self._annotation_file = Path(parent, filen)
+        parent, filen = AssemblyService.get_chrom_path(organism_name, assembly_name)
+        self._chrom_file = Path(parent, filen)
 
     def _download_annotation(self) -> None:
         """Download gene annotation. If the destination already
@@ -194,7 +258,7 @@ class AnnotationService:
                     "Aborting transaction!"
                 )
                 raise Exception(msg) from exc
-            return
+            return 1
 
         msg = "Downloading annotation info..."
         logger.debug(msg)
@@ -209,57 +273,27 @@ class AnnotationService:
         with requests.get(url, stream=True) as request:
             if not request.ok:
                 request.raise_for_status()
-            with open(self._annotation_file, "wb") as f:
+            with open(self._annotation_file, "wb") as fh:
                 for chunk in request.iter_content(chunk_size=10 * 1024):
-                    f.write(chunk)
+                    fh.write(chunk)
+        return 0
 
     def _create_annotation(self) -> None:
         """Reads annotation file to records and
-        insert to GenomicAnnotation. There is no type
-        coercion."""
-        # type coercion should not be necessary...
-        records = get_annotation_to_records(
-            self._annotation_file, self._annotation_id, self.FMT, AnnotationFormatError
+        insert to GenomicAnnotation."""
+        query = select(GenomicAnnotation).where(
+            GenomicAnnotation.annotation_id == self._annotation_id
         )
+        records = get_annotation_records(
+            self._annotation_file,
+            self._annotation_id,
+            self.FEATURES["extended"]["intergenic"],
+        )
+        typed_records = [
+            records_factory("GenomicAnnotation", r)._asdict() for r in records
+        ]
         buffer = get_buffer(GenomicAnnotation)
-        for record in records:
+        for record in typed_records:
             buffer.buffer_data(record)
         buffer.flush()
         self._session.commit()
-
-    def annotate_data(self):
-        """Annotate Data: add entries to GenomicAnnotation
-
-        NOTE: 06.12.2023 GTF only!
-        See scimodom.utils.operations.get_genomic_annotation
-
-        """
-        pass
-
-        # TODO need to filter chrom in create_annotation, but also in annotate_data!
-        # query = select(
-        #     Data.chrom,
-        #     Data.start,
-        #     Data.end,
-        #     Data.name,
-        #     Data.id,
-        #     Data.strand,
-        # ).where(Data.dataset_id == self._eufid)
-        # records = self._session.execute(query).all()
-
-        # msg = "Annotating records may take a few minutes..."
-        # logger.debug(msg)
-
-        # annotated = get_genomic_annotation(
-        #     self._annotation_file, self._chrom_file, self._annotation_id, records
-        # )
-
-        # msg = "... done! Now inserting into DB."
-        # logger.debug(msg)
-
-        # TODO
-        # annotated = [
-        #     records_factory("GenomicAnnotation", r)._asdict() for r in annotated
-        # ]
-        # self._session.execute(insert(GenomicAnnotation), annotated)
-        # self._session.commit()
