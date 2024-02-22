@@ -8,7 +8,13 @@ from scimodom.api import api
 from scimodom.app_singleton import create_app_singleton
 from scimodom.database.database import make_session, init
 from scimodom.frontend import frontend
-from scimodom.plugins.cli import add_project
+from scimodom.plugins.cli import (
+    add_assembly,
+    add_project,
+    add_dataset,
+    add_all,
+    validate_dataset_title,
+)
 
 
 def create_app():
@@ -29,6 +35,17 @@ def create_app():
     app.register_blueprint(frontend, url_prefix="/")
 
     @app.cli.command(
+        "assembly", epilog="Check docs at https://dieterich-lab.github.io/scimodom/."
+    )
+    @click.argument("id", type=click.INT)
+    def assembly(id):
+        """Prepare assembly.
+
+        ID is the assembly_id (must already exists).
+        """
+        add_assembly(id)
+
+    @app.cli.command(
         "project", epilog="Check docs at https://dieterich-lab.github.io/scimodom/."
     )
     @click.argument("template", type=click.Path(exists=True))
@@ -38,6 +55,90 @@ def create_app():
         TEMPLATE is the path to a project template (json).
         """
         add_project(template)
+
+    @app.cli.command(
+        "dataset", epilog="Check docs at https://dieterich-lab.github.io/scimodom/."
+    )
+    @click.argument("smid", type=click.STRING)
+    @click.argument("title", type=click.UNPROCESSED, callback=validate_dataset_title)
+    @click.argument("filename", type=click.Path(exists=True))
+    @click.option("--assembly", required=True, type=click.INT, help="Assembly ID.")
+    @click.option(
+        "-s",
+        "--selection",
+        default=[],
+        multiple=True,
+        type=click.INT,
+        help="Selection ID(s). Repeat parameter to pass multiple selection IDs. This parameter, if given, overrides all other options.",
+    )
+    @click.option(
+        "-m",
+        "--modification",
+        default=[],
+        multiple=True,
+        type=click.INT,
+        help="Modification ID(s). Repeat parameter to pass multiple selection IDs. This options must be used with [--technology] and [--organism].",
+    )
+    @click.option(
+        "-t",
+        "--technology",
+        default=None,
+        type=click.INT,
+        help="Technology ID. This options must be used with [--modification] and [--organism].",
+    )
+    @click.option(
+        "-o",
+        "--organism",
+        default=None,
+        type=click.INT,
+        help="Organism ID. This options must be used with [--modification] and [--technology].",
+    )
+    def dataset(
+        smid, title, filename, assembly, selection, modification, technology, organism
+    ):
+        """Add a new dataset to the database.
+
+        \b
+        SMID is the project ID to which this dataset is to be added.
+        TITLE is the title of this dataset. String must be quoted.
+        FILENAME is the path to the bedRMod (EU-formatted) file.
+        """
+        if selection:
+            kwargs = {"selection_id": list(selection)}
+        else:
+            if not modification:
+                raise NameError(
+                    "Name [--modification] is not defined. One of [--selection] or [--modification] is required."
+                )
+            if technology is None:
+                raise NameError(
+                    "Name [--technology] is not defined. It is required with [--modification]."
+                )
+            if organism is None:
+                raise NameError(
+                    "Name [--organism] is not defined. It is required with [--modification]."
+                )
+            kwargs = {
+                "modification_id": list(modification),
+                "technology_id": technology,
+                "organism_id": organism,
+            }
+        add_dataset(smid, title, filename, assembly, **kwargs)
+
+    @app.cli.command(
+        "batch", epilog="Check docs at https://dieterich-lab.github.io/scimodom/."
+    )
+    @click.argument("directory", type=click.Path(exists=True))
+    @click.argument("templates", nargs=-1, type=click.STRING)
+    def batch(directory, templates):
+        """Add projects and dataset to the database
+        in batch. All files must be under DIRECTORY.
+
+        \b
+        DIRECTORY is the path to templates and bedRMod (EU-formatted) files.
+        TEMPLATES is the name (w/o extension) of one or more project templates.
+        """
+        add_all(directory, templates)
 
     # does this goes here?
     @app.teardown_appcontext

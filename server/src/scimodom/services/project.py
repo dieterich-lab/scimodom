@@ -71,6 +71,34 @@ class ProjectService:
         else:
             return super(ProjectService, cls).__new__(cls)
 
+    def create_project(self, wo_assembly: bool = False) -> None:
+        """Project constructor."""
+        self._validate_keys()
+        self._validate_entry()
+        self._add_selection()
+        self._create_smid()
+        self._write_metadata()
+
+        if not wo_assembly:
+            for assembly in self._assemblies:
+                taxid, name = assembly
+                msg = f"Calling AssemblyService for {name} ({taxid})..."
+                logger.debug(msg)
+                AssemblyService.from_new(self._session, name=name, taxa_id=taxid)
+                msg = f"Calling AnnotationService for {taxid}..."
+                logger.debug(msg)
+                AnnotationService(
+                    session=self._session, taxa_id=taxid
+                ).create_annotation()
+
+    def get_smid(self) -> str:
+        """Return newly created SMID.
+
+        :returns: SMID
+        :rtype: str
+        """
+        return self._smid
+
     def _validate_keys(self) -> None:
         """Validate keys from project description (dictionary)."""
         from itertools import chain
@@ -271,26 +299,3 @@ class ProjectService:
         parent = Path(self.DATA_PATH, self.DATA_SUB_PATH)
         with open(Path(parent, f"{self._smid}.json"), "w") as f:
             json.dump(self._project, f, indent="\t")
-
-    def create_project(self, wo_assembly: bool = False) -> None:
-        """Project constructor."""
-        self._validate_keys()
-        self._validate_entry()
-        self._add_selection()
-        self._create_smid()
-        self._write_metadata()
-
-        if not wo_assembly:
-            for assembly in self._assemblies:
-                taxid, name = assembly
-                msg = f"Calling AssemblyService for {name} ({taxid})..."
-                logger.debug(msg)
-                AssemblyService.from_new(self._session, name=name, taxa_id=taxid)
-                msg = f"Calling AnnotationService for {taxid}..."
-                logger.debug(msg)
-                AnnotationService(
-                    session=self._session, taxa_id=taxid
-                ).create_annotation()
-
-    def get_smid(self) -> str:
-        return self._smid

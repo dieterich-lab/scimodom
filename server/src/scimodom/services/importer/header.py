@@ -59,6 +59,7 @@ class EUFHeaderImporter:
         self._model = Dataset
         self._sep: str = self.SPECS["header"]["delimiter"]
         self._tag: str = self.SPECS["header"]["comment"]
+        self._lino = 0
 
         self.taxid: int
         self.assembly: str
@@ -73,7 +74,7 @@ class EUFHeaderImporter:
 
     def parse_header(self):
         """Header parser."""
-        self._lino = 1
+        self._lino += 1
         self._read_version()
         self._parse_lines()
         self._validate_columns()
@@ -182,15 +183,17 @@ class EUFHeaderImporter:
 
     def _validate_columns(self) -> None:
         """Validate if the file has the minimum number
-        of columns, but does not validate the column names.
-        Since a header is not explicitely required, this
-        function either reads the header, or the first
-        data record, cf. EUFDataImporter.
+        of columns. This does not validate the column names,
+        as there can be any number of additional rows in
+        the header. An empty record will raise the same error.
         """
-        self._lino += 1
         num_cols = len(self._specs["columns"])
-        line = next(self._handle)
-        cols = [l.strip() for l in line.split(self.SPECS["delimiter"])]
+        cols = []
+        for line in self._handle:
+            self._lino += 1
+            if not line.strip().startswith(self._tag):
+                cols = [l.strip() for l in line.split(self.SPECS["delimiter"])]
+                break
         # silently ignore extra cols
         cols = cols[:num_cols]
         if len(cols) != num_cols:

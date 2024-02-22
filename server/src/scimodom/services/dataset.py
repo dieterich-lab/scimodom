@@ -249,12 +249,8 @@ class DataService:
             )
             raise DatasetError(msg)
 
-    def create_dataset(self) -> str:
-        """Dataset constructor.
-
-        :returns: EUFID
-        :rtype: str
-        """
+    def create_dataset(self) -> None:
+        """Dataset constructor."""
         is_liftover: bool = False
 
         # make sure we do not already have a dataset with
@@ -284,18 +280,16 @@ class DataService:
                 raise AssemblyVersionError(msg)
             is_liftover = True
         finally:
-            filen = assembly_service.get_chrom_path(organism_name, assembly_name)
-            with open(filen, "r") as f:
+            parent, filen = assembly_service.get_chrom_path(
+                organism_name, assembly_name
+            )
+            chrom_file = Path(parent, filen)
+            with open(chrom_file, "r") as f:
                 lines = f.readlines()
             seqids = [l.split()[0] for l in lines]
 
         # create EUFID
         self._create_eufid()
-
-        # add association = (EUFID, selection)
-        # update self._association dict
-        # commit on successful header.close()
-        self._add_association()
 
         # import
         try:
@@ -309,13 +303,18 @@ class DataService:
                 eufid=self._eufid,
                 title=self._title,
             )
+            # TODO if importer fails, then checkpoint does not exists...
             checkpoint = importer.header.checkpoint
             importer.header.parse_header()
             # compare input vs. values read from file header
             # for organism (taxa ID) and assembly
-            self.validate_imported("organism", taxa_id, importer.header.taxa_id)
+            self.validate_imported("organism", taxa_id, importer.header.taxid)
             self.validate_imported("assembly", assembly_name, importer.header.assembly)
             importer.header.close()  # commit
+            # add association = (EUFID, selection)
+            # update self._association dict
+            self._add_association()  # flush
+            # instantiate data importer
             importer.init_data_importer(
                 association=self._association, seqids=seqids, no_flush=is_liftover
             )
@@ -342,6 +341,12 @@ class DataService:
         annotation_service = AnnotationService(session=self._session, taxa_id=taxa_id)
         annotation_service.annotate_data(self._eufid)
 
+    def get_eufid(self) -> str:
+        """Return newly created EUFID.
+
+        :returns: EUFID
+        :rtype: str
+        """
         return self._eufid
 
     def _set_ids(self) -> None:
@@ -436,7 +441,7 @@ class DataService:
                 .join_from(Modification, Modomics, Modification.inst_modomics)
                 .where(Modification.id == modification_id)
             )
-            name = self._session.execute(query).one()
+            name = self._session.execute(query).scalar_one()
             self._association[name] = selection_id[-1]
         # this cannot actually happen...
         if len(set(selection_id)) != len(selection_id):

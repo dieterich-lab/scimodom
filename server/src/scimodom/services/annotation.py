@@ -188,6 +188,11 @@ class AnnotationService:
         )
         records = self._session.execute(query).all()
 
+        if len(records) == 0:
+            msg = f"No records found for {eufid}... "
+            logger.warning(msg)
+            return
+
         msg = f"Annotating records for EUFID {eufid}..."
         logger.debug(msg)
 

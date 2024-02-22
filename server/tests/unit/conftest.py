@@ -319,9 +319,9 @@ def data_path(tmp_path_factory):
         f.write(
             "#chrom\tchromstart\tchromEnd\tname\tscore\tstrand\tthickstart\tthickEnd\titermRgb\tcoverage\tfrequency\textra1\textra2\n"
         )
-        f.write("\n")
         f.write("1\t0\t10\tm6A\t1000\t+\t0\t10\t0,0,0\t10\t1\n")
         f.write("1\t0\t10\tm6A\t1000\t+\t0\t10\t0,0,0\t10\t1\textra1\textra2\n")
+        f.write("\n")
         f.write("1\ta\t10\tm6A\t1000\t+\t0\t10\t0,0,0\t10\t1\n")
         f.write("\t-1\t10\tm6A\t1000\t+\t0\t10\t0,0,0\t10\t1\n")
         f.write("A\t0\t10\tm6A\t1000\t+\t0\t10\t0,0,0\t10\t1\n")

@@ -29,7 +29,8 @@ def _get_header(EUF_specs, fmt=None):
         #bioinformatics_workflow=Workflow
         #experiment=Description of experiment.
         #external_source=
-        #chrom\tchromstart\tchromEnd\tname\tscore\tstrand\tthickstart\tthickEnd\titermRgb\tcoverage\tfrequency\n"""
+        #chrom\tchromstart\tchromEnd\tname\tscore\tstrand\tthickstart\tthickEnd\titermRgb\tcoverage\tfrequency
+        chrom\tchromstart\tchromEnd\tname\tscore\tstrand\tthickstart\tthickEnd\titermRgb\tcoverage\tfrequency"""
     elif fmt == "misformatted":
         string = f"""#fileformat={format}v{version}
         #organism 9606
@@ -80,12 +81,20 @@ def _get_header(EUF_specs, fmt=None):
         #basecalling=
         #bioinformatics_workflow=Workflow
         #external_source="""
-    elif fmt == "columns_extra":  # some are misformatted (names are not checked)
+    elif (
+        fmt == "columns_extra"
+    ):  # values are not checked, picks only the first record w/o #
         string = f"""#fileformat={format}v{version}
-        #chrom\tchromstart\tchromEnd\tname\tscore\tstrand\tthickstart\tthickEnd\trgb\tcoverage\tfrequency\textra"""
+        #chrom\tchromstart\tchromEnd\tname\tscore\tstrand\tthickstart\tthickEnd\trgb\tcoverage\tfrequency\textra
+        chrom\tchromstart\tchromEnd\tname\tscore\tstrand\tthickstart\tthickEnd\trgb\tcoverage\tfrequency\textra"""
     elif fmt == "columns_short":
         string = f"""#fileformat={format}v{version}
-        #chrom\tchromStart\tchromEnd\tname\tscore\tstrand\tthickStart\tthickEnd\titemRgb\tcoverage"""
+        #chrom\tchromStart\tchromEnd\tname\tscore\tstrand\tthickStart\tthickEnd\titemRgb\tcoverage
+        chrom\tchromStart\tchromEnd\tname\tscore\tstrand\tthickStart\tthickEnd\titemRgb\tcoverage"""
+    elif fmt == "columns_none":
+        string = f"""#fileformat={format}v{version}
+        #chrom\tchromStart\tchromEnd\tname\tscore\tstrand\tthickStart\tthickEnd\titemRgb\tcoverage
+        \n"""
     else:
         string = version
     return StringIO(string)
@@ -209,6 +218,7 @@ def test_importer_parse_lines(fmt, Session, EUF_specs):
     [
         ("columns_extra"),
         ("columns_short"),
+        ("columns_none"),
     ],
 )
 def test_importer_validate_columns(fmt, Session, EUF_specs):
@@ -230,7 +240,7 @@ def test_importer_validate_columns(fmt, Session, EUF_specs):
             importer._validate_columns()
         assert (
             str(exc.value)
-            == "Column count (header) doesn't match required count at row 2 for bedRModv1.7."
+            == "Column count (header) doesn't match required count at row 3 for bedRModv1.7."
         )
         assert exc.type == SpecsError
 

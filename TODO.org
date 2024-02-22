@@ -65,7 +65,7 @@ Draft or long-running issues, WIP, triage, and additional references or context 
 
 - [ ] [2024-02-03 Sat] [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/src/scimodom/api/__init__.py::E402 module level import not at top of file]]
 
-** TODO GENERAL [0/7]
+** TODO GENERAL [0/9]
 
 - [ ] dependencies :: replace pandas in ~SetupService~.
 
@@ -84,6 +84,9 @@ Draft or long-running issues, WIP, triage, and additional references or context 
   using a single directory. What I would like to is to use ~monkeypatch.setenv~ to /dynamically/ set ~DATA_PATH~ to ~loc~ (tmp directory for test),
   to isolate each test, but calling ~AssemblyService~ or ~AnnotationService~ overrides ~DATA_PATH~, as this loads the config, which in turn
   loads the dotenv file.
+
+- [ ] [2024-02-22 Thu] [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/src/scimodom/plugins/cli.py::session.rollback()]]
+  Session does not rollback. Why?
 
 *** TODO FEATURE REQUEST [0/2]
 
