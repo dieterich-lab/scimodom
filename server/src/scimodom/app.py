@@ -9,6 +9,7 @@ from scimodom.app_singleton import create_app_singleton
 from scimodom.database.database import make_session, init
 from scimodom.frontend import frontend
 from scimodom.plugins.cli import (
+    add_annotation,
     add_assembly,
     add_project,
     add_dataset,
@@ -44,6 +45,17 @@ def create_app():
         ID is the assembly_id (must already exists).
         """
         add_assembly(id)
+
+    @app.cli.command(
+        "annotation", epilog="Check docs at https://dieterich-lab.github.io/scimodom/."
+    )
+    @click.argument("id", type=click.INT)
+    def annotation(id):
+        """Prepare annotation.
+
+        ID is the annotation_id (must already exists).
+        """
+        add_annotation(id)
 
     @app.cli.command(
         "project", epilog="Check docs at https://dieterich-lab.github.io/scimodom/."

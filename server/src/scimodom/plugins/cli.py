@@ -16,6 +16,7 @@ from scimodom.database.models import (
     Assembly,
 )
 import scimodom.database.queries as queries
+from scimodom.services.annotation import AnnotationService
 from scimodom.services.assembly import AssemblyService
 from scimodom.services.project import ProjectService
 from scimodom.services.dataset import DataService
@@ -48,6 +49,29 @@ def add_assembly(assembly_id: int) -> None:
     if c not in ["y", "Y"]:
         return
     service.create_new()
+    click.secho("Successfully created.", fg="green")
+    session.close()
+
+
+def add_annotation(annotation_id: int) -> None:
+    """Provides a CLI function to set up a new annotation.
+    This function does not add a new annotation to the database,
+    but merely creates the data structure.
+
+    :param annotation_id: Annotation ID, must exists.
+    :type annotation_id: int
+    """
+    session = get_session()
+    service = AnnotationService(session, annotation_id=annotation_id)
+    click.secho(
+        f"Preparing annotation for {service._taxid} ({service._release}) to {Config.DATABASE_URI}...",
+        fg="green",
+    )
+    click.secho("Continue [y/n]?", fg="green")
+    c = click.getchar()
+    if c not in ["y", "Y"]:
+        return
+    service.create_annotation()
     click.secho("Successfully created.", fg="green")
     session.close()
 
@@ -269,7 +293,7 @@ def add_all(directory: Path, templates: list[str]) -> None:
 def _get_single(metadata, title):
     return (
         metadata["rna"],
-        metadata["modomics_id"],
+        [metadata["modomics_id"]],
         metadata["method_id"],
         metadata["tech"],
         int(metadata["organism"]["taxa_id"]),

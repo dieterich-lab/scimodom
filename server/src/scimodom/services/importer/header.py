@@ -185,7 +185,8 @@ class EUFHeaderImporter:
         """Validate if the file has the minimum number
         of columns. This does not validate the column names,
         as there can be any number of additional rows in
-        the header. An empty record will raise the same error.
+        the header, only the first row without tag is validated.
+        An empty first record will raise the same error.
         """
         num_cols = len(self._specs["columns"])
         cols = []
