@@ -1,8 +1,8 @@
 """init
 
-Revision ID: fe1b36ea3437
+Revision ID: 5c61624059dc
 Revises:
-Create Date: 2024-02-14 15:12:49.776544
+Create Date: 2024-02-23 16:16:23.521260
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = "fe1b36ea3437"
+revision = "5c61624059dc"
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -305,9 +305,9 @@ def upgrade() -> None:
             name=op.f("fk_data_annotation_gene_id_genomic_annotation"),
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_data_annotation")),
-        sa.UniqueConstraint(
-            "gene_id", "data_id", "feature", name=op.f("uq_data_annotation_gene_id")
-        ),
+    )
+    op.create_index(
+        "idx_data_ann", "data_annotation", ["gene_id", "data_id"], unique=False
     )
     op.create_index(
         op.f("ix_data_annotation_data_id"), "data_annotation", ["data_id"], unique=False
@@ -326,6 +326,7 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_data_annotation_gene_id"), table_name="data_annotation")
     op.drop_index(op.f("ix_data_annotation_feature"), table_name="data_annotation")
     op.drop_index(op.f("ix_data_annotation_data_id"), table_name="data_annotation")
+    op.drop_index("idx_data_ann", table_name="data_annotation")
     op.drop_table("data_annotation")
     op.drop_index(op.f("ix_data_association_id"), table_name="data")
     op.drop_index("idx_data_sort", table_name="data")

@@ -364,7 +364,7 @@ class DataAnnotation(Base):
     data_id: Mapped[int] = mapped_column(ForeignKey("data.id"), index=True)
     feature: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
 
-    # __table_args__ = (Index("idx_data_ann", "gene_id", "data_id", "feature", unique=True),)
+    __table_args__ = (Index("idx_data_ann", "gene_id", "data_id"),)
     __table_args__ = (UniqueConstraint(gene_id, data_id, feature),)
 
     inst_genomic: Mapped["GenomicAnnotation"] = relationship(

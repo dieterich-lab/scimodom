@@ -5,9 +5,10 @@ Draft or long-running issues, WIP, triage, and additional references or context 
 
 * TODO SCIMODOM DRAFT ISSUES
 
-** TODO MAINTENANCE [0/1]
+** TODO MAINTENANCE [0/2]
 
 - [ ] ~pre-commit run --all-files~ under server (.pre-commit-config.yaml) runs for all files incl. client.
+- [ ] Add *CrossMap* to requirements.
 
 ** TODO STYLE [0/14]
 
@@ -65,17 +66,29 @@ Draft or long-running issues, WIP, triage, and additional references or context 
 
 - [ ] [2024-02-03 Sat] [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/src/scimodom/api/__init__.py::E402 module level import not at top of file]]
 
-** TODO GENERAL [0/9]
+** TODO GENERAL [0/17]
 
 - [ ] dependencies :: replace pandas in ~SetupService~.
+
+- [ ] refactor :: Move ~upsert.py~ to importer (get_ function), call at startup, so we don't have to call it manually.
+- [ ] refactor :: Can we add type casting methods directly in each ORM model class?
 
 - [ ] models :: ~contact_email~ nullable.
 - [ ] models :: ~assembly_id: Mapped[int] = mapped_column(ForeignKey("assembly.id"))~ in ~Dataset~ (and relationships) is redundant,
   we don't need to know the assembly, as there is only one in the DB!
 - [ ] models :: RNA type nomenclature enforcement.
 
-- [ ] [2024-02-16 Fri] Add exception if /e.g./ more than 30% of features are unmapped.
+- [ ] import :: [2024-02-16 Fri] Add exception if /e.g./ more than 30% of features are unmapped.
   [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/src/scimodom/services/assembly.py::Unmapped features are discarded.]]
+- [ ] import :: ~_validate_columns~ (EUFHeaderImporter) adjusted to check first /non-comment/ row, and raises a ~SpecsError~ if the column
+  count does not match (or if emtpy). On the other hand, EUFDataImporter ignore bad rows. Maybe it would make more sense to NOT
+  validate the column count in EUFHEaderImporter, leave it to EUFDataImporter to handle it, and add a test to check how
+  many rows were skipped (/e.g./ if a file has chrom long format style, it will be skipped entirely), or if the file was empty,
+  before writing to the database.
+- [ ] import :: Buffer by chunk (no flush)?
+
+- [ ] Biotype mapping: how to? Write into table, and use only mapping, or map on the fly?
+
 - [ ] ~Datatable dataKey="id"~
 - [ ] Default ordering of data (Search, Browse, Compare). What if EUF file is not sorted?
 
@@ -85,8 +98,13 @@ Draft or long-running issues, WIP, triage, and additional references or context 
   to isolate each test, but calling ~AssemblyService~ or ~AnnotationService~ overrides ~DATA_PATH~, as this loads the config, which in turn
   loads the dotenv file.
 
+- [ ] docs :: Only Ensembl short format for chrom.
+- [ ] docs :: Only GTF format (annotation).
+- [ ] docs :: The header in bedRMod and selection must match exactly /e.g./ GRCh38 and hg38 will throw an exception.
+- [ ] docs :: Flask CLI.
+
 - [ ] [2024-02-22 Thu] [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/src/scimodom/plugins/cli.py::session.rollback()]]
-  Session does not rollback. Why?
+  Session does not rollback. Why? Does this also happens somewhere else?
 
 *** TODO FEATURE REQUEST [0/2]
 
