@@ -20,10 +20,13 @@ from scimodom.database.models import (
     Taxonomy,
     Taxa,
     Organism,
+    Annotation,
+    DataAnnotation,
     Association,
     Selection,
     GenomicAnnotation,
 )
+import scimodom.database.queries as queries
 from scimodom.services.importer import BEDImporter
 from scimodom.utils.models import records_factory
 from scimodom.utils.operations import get_op
@@ -122,6 +125,96 @@ def get_selection():
     )
 
     return _dump(query)
+
+
+@api.route("/newsearch", methods=["GET"])
+@cross_origin(supports_credentials=True)
+def get_newsearch():
+    """Retrieve conditional selections."""
+    selection_ids = request.args.getlist("selection", type=int)
+    taxa_id = request.args.get("taxid", type=int)
+    chrom = request.args.get("chrom", type=str)
+    start = request.args.get("start", type=int)
+    end = request.args.get("end", type=int)
+    features = request.args.getlist("feature", type=str)
+    biotypes = request.args.getlist("biotype", type=str)
+    name = request.args.get("name", type=str)
+    first_record = request.args.get("firstRecord", type=int)
+    max_records = request.args.get("maxRecords", type=int)
+    multi_sort = request.args.getlist("multiSort", type=str)
+    # table_filter = request.args.getlist("tableFilter", type=str)
+
+    query = (
+        select(
+            Data.chrom,
+            Data.start,
+            Data.end,
+            Data.name,
+            Data.score,
+            Data.strand,
+            Data.coverage,
+            Data.frequency,
+            func.group_concat(DataAnnotation.feature.distinct()).label("feature"),
+            func.group_concat(GenomicAnnotation.biotype.distinct()).label(
+                "gene_biotype"
+            ),
+            func.group_concat(GenomicAnnotation.name.distinct()).label("gene_name"),
+            DetectionTechnology.tech,
+            Association.dataset_id,
+        )
+        .join_from(DataAnnotation, Data, DataAnnotation.inst_data)
+        .join_from(DataAnnotation, GenomicAnnotation, DataAnnotation.inst_genomic)
+        .join_from(Data, Association, Data.inst_association)
+        .join_from(Association, Selection, Association.inst_selection)
+        .join_from(Selection, DetectionTechnology, Selection.inst_technology)
+        .where(Association.selection_id.in_(selection_ids))
+    )
+
+    # coordinate filter
+    if chrom:
+        query = (
+            query.where(Data.chrom == chrom)
+            .where(Data.start >= start)
+            .where(Data.end < end)
+        )
+
+    # annotation filter
+    query = query.where(DataAnnotation.feature.in_(features))
+
+    version_query = queries.get_annotation_version()
+    version = get_session().execute(version_query).scalar_one()
+    annotation_query = queries.query_column_where(
+        Annotation,
+        "id",
+        filters={"taxa_id": taxa_id, "version": version},
+    )
+    annotation = get_session().execute(annotation_query).scalar_one()
+    query = query.where(GenomicAnnotation.annotation_id == annotation).where(
+        GenomicAnnotation.biotype.in_(biotypes)
+    )
+
+    if name:
+        query = query.where(GenomicAnnotation.name.ilike(f"{name}%"))
+
+    query = query.group_by(DataAnnotation.data_id)
+
+    # get length
+    length = get_session().scalar(
+        select(func.count()).select_from(query.with_only_columns(Data.id))
+    )
+
+    # sort filter
+    query = query.order_by(Data.chrom.asc(), Data.start.asc())
+    # score, coverage, frequency
+
+    # paginate
+    query = query.offset(first_record).limit(max_records)
+
+    response_object = dict()
+    response_object["totalRecords"] = length
+    response_object["records"] = _dump(query)
+
+    return response_object
 
 
 @api.route("/search", methods=["GET"])

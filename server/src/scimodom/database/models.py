@@ -16,7 +16,7 @@ class Modomics(Base):
         String(128), primary_key=True, autoincrement=False
     )  # MODOMICS code
     name: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
-    short_name: Mapped[str] = mapped_column(String(32), nullable=False)
+    short_name: Mapped[str] = mapped_column(String(32), nullable=False, unique=True)
     moiety: Mapped[str] = mapped_column(String(32), nullable=False)
 
     modifications: Mapped[List["Modification"]] = relationship(
@@ -30,7 +30,7 @@ class Modification(Base):
     __tablename__ = "modification"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    modomics_id: Mapped[str] = mapped_column(ForeignKey("modomics.id"))
+    modomics_id: Mapped[str] = mapped_column(ForeignKey("modomics.id"), index=True)
     rna: Mapped[str] = mapped_column(String(32), nullable=False)
 
     __table_args__ = (UniqueConstraint(modomics_id, rna),)
@@ -61,7 +61,7 @@ class DetectionTechnology(Base):
     __tablename__ = "technology"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    method_id: Mapped[int] = mapped_column(ForeignKey("method.id"))
+    method_id: Mapped[int] = mapped_column(ForeignKey("method.id"), index=True)
     tech: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
 
     __table_args__ = (UniqueConstraint(method_id, tech),)
@@ -93,7 +93,7 @@ class Taxa(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=False)  # NCBI Taxid
     name: Mapped[str] = mapped_column(String(128), nullable=False, unique=True)
     short_name: Mapped[str] = mapped_column(String(128), nullable=False, unique=True)
-    taxonomy_id: Mapped[int] = mapped_column(ForeignKey("taxonomy.id"))
+    taxonomy_id: Mapped[int] = mapped_column(ForeignKey("taxonomy.id"), index=True)
 
     inst_taxonomy: Mapped["Taxonomy"] = relationship(back_populates="taxa")
     organisms: Mapped[List["Organism"]] = relationship(back_populates="inst_taxa")
@@ -122,13 +122,15 @@ class Selection(Base):
     __tablename__ = "selection"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    modification_id: Mapped[int] = mapped_column(ForeignKey("modification.id"))
-    technology_id: Mapped[int] = mapped_column(ForeignKey("technology.id"))
-    organism_id: Mapped[int] = mapped_column(ForeignKey("organism.id"))
+    modification_id: Mapped[int] = mapped_column(
+        ForeignKey("modification.id"), index=True
+    )
+    organism_id: Mapped[int] = mapped_column(ForeignKey("organism.id"), index=True)
+    technology_id: Mapped[int] = mapped_column(ForeignKey("technology.id"), index=True)
 
     __table_args__ = (
         Index(
-            "idx_select", "modification_id", "technology_id", "organism_id", unique=True
+            "idx_select", "modification_id", "organism_id", "technology_id", unique=True
         ),
     )
 
@@ -152,7 +154,7 @@ class Assembly(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(128), nullable=False, unique=True)
-    taxa_id: Mapped[int] = mapped_column(ForeignKey("ncbi_taxa.id"))
+    taxa_id: Mapped[int] = mapped_column(ForeignKey("ncbi_taxa.id"), index=True)
     version: Mapped[str] = mapped_column(
         String(12), nullable=False
     )  # current is assembly_version.version_num
@@ -177,7 +179,7 @@ class Annotation(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     release: Mapped[int] = mapped_column(nullable=False)
-    taxa_id: Mapped[int] = mapped_column(ForeignKey("ncbi_taxa.id"))
+    taxa_id: Mapped[int] = mapped_column(ForeignKey("ncbi_taxa.id"), index=True)
     version: Mapped[str] = mapped_column(
         String(12), nullable=False
     )  # current is annotation_version.version_num
@@ -208,13 +210,13 @@ class GenomicAnnotation(Base):
     id: Mapped[str] = mapped_column(
         String(128), primary_key=True, autoincrement=False
     )  # Ensembl ID
-    annotation_id: Mapped[int] = mapped_column(ForeignKey("annotation.id"))
-    name: Mapped[str] = mapped_column(
-        String(128), nullable=True, index=True
-    )  # Ensembl gene name
+    annotation_id: Mapped[int] = mapped_column(ForeignKey("annotation.id"), index=True)
+    name: Mapped[str] = mapped_column(String(128), nullable=True)  # Ensembl gene name
     biotype: Mapped[str] = mapped_column(
-        String(255), nullable=True, index=True
+        String(255), nullable=True
     )  # Ensembl gene biotype
+
+    __table_args__ = (Index("idx_genomic", "annotation_id", "biotype", "name"),)
 
     inst_annotation: Mapped["Annotation"] = relationship(back_populates="annotations")
 
@@ -235,7 +237,9 @@ class Project(Base):
     )  # SMID
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     summary: Mapped[str] = mapped_column(Text)  # TEXT ?
-    contact_id: Mapped[int] = mapped_column(ForeignKey("project_contact.id"))
+    contact_id: Mapped[int] = mapped_column(
+        ForeignKey("project_contact.id"), index=True
+    )
     date_published: Mapped[datetime] = mapped_column(
         DateTime, nullable=False
     )  # datetime declaration/default format ?  YYYY-MM-DD ISO 8601
@@ -266,7 +270,9 @@ class ProjectSource(Base):
     __tablename__ = "project_source"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    project_id: Mapped[str] = mapped_column(ForeignKey("project.id"))  # SMID
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("project.id"), index=True
+    )  # SMID
     doi: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     pmid: Mapped[Optional[int]] = mapped_column(nullable=True)
 
@@ -316,17 +322,15 @@ class Data(Base):
     start: Mapped[int] = mapped_column(nullable=False)
     end: Mapped[int] = mapped_column(nullable=False)
     name: Mapped[str] = mapped_column(String(32), nullable=False)
-    score: Mapped[int] = mapped_column(nullable=False)
+    score: Mapped[int] = mapped_column(nullable=False, index=True)
     strand: Mapped[str] = mapped_column(String(1), nullable=False)
     thick_start: Mapped[int] = mapped_column(nullable=False)
     thick_end: Mapped[int] = mapped_column(nullable=False)
     item_rgb: Mapped[str] = mapped_column(String(128), nullable=False)
-    coverage: Mapped[int] = mapped_column(nullable=False)
-    frequency: Mapped[int] = mapped_column(nullable=False)
+    coverage: Mapped[int] = mapped_column(nullable=False, index=True)
+    frequency: Mapped[int] = mapped_column(nullable=False, index=True)
 
-    __table_args__ = (
-        Index("idx_data_sort", "chrom", "start", "score", "coverage", "frequency"),
-    )
+    __table_args__ = (Index("idx_data_sort", "chrom", "start", "end"),)
 
     annotations: Mapped[List["DataAnnotation"]] = relationship(
         back_populates="inst_data"
@@ -341,10 +345,10 @@ class Association(Base):
     __tablename__ = "association"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    dataset_id: Mapped[str] = mapped_column(ForeignKey("dataset.id"))
-    selection_id: Mapped[int] = mapped_column(ForeignKey("selection.id"))
+    selection_id: Mapped[int] = mapped_column(ForeignKey("selection.id"), index=True)
+    dataset_id: Mapped[str] = mapped_column(ForeignKey("dataset.id"), index=True)
 
-    __table_args__ = (Index("idx_assoc", "dataset_id", "selection_id", unique=True),)
+    __table_args__ = (Index("idx_assoc", "selection_id", "dataset_id", unique=True),)
 
     inst_dataset: Mapped["Dataset"] = relationship(back_populates="associations")
     inst_selection: Mapped["Selection"] = relationship(back_populates="associations")
@@ -358,14 +362,14 @@ class DataAnnotation(Base):
     __tablename__ = "data_annotation"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    data_id: Mapped[int] = mapped_column(ForeignKey("data.id"), index=True)
     gene_id: Mapped[str] = mapped_column(
         ForeignKey("genomic_annotation.id"), index=True
     )
-    data_id: Mapped[int] = mapped_column(ForeignKey("data.id"), index=True)
     feature: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
 
-    __table_args__ = (Index("idx_data_ann", "gene_id", "data_id"),)
-    __table_args__ = (UniqueConstraint(gene_id, data_id, feature),)
+    # __table_args__ = (Index("idx_data_ann", "data_id", "gene_id"),)
+    __table_args__ = (UniqueConstraint(data_id, gene_id, feature),)
 
     inst_genomic: Mapped["GenomicAnnotation"] = relationship(
         back_populates="annotations"

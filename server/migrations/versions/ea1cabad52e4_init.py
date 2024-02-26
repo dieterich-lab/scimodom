@@ -1,8 +1,8 @@
 """init
 
-Revision ID: 5c61624059dc
+Revision ID: ea1cabad52e4
 Revises:
-Create Date: 2024-02-23 16:16:23.521260
+Create Date: 2024-02-26 15:54:53.828616
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = "5c61624059dc"
+revision = "ea1cabad52e4"
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -44,6 +44,7 @@ def upgrade() -> None:
         sa.Column("moiety", sa.String(length=32), nullable=False),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_modomics")),
         sa.UniqueConstraint("name", name=op.f("uq_modomics_name")),
+        sa.UniqueConstraint("short_name", name=op.f("uq_modomics_short_name")),
     )
     op.create_table(
         "project_contact",
@@ -76,6 +77,12 @@ def upgrade() -> None:
             "modomics_id", "rna", name=op.f("uq_modification_modomics_id")
         ),
     )
+    op.create_index(
+        op.f("ix_modification_modomics_id"),
+        "modification",
+        ["modomics_id"],
+        unique=False,
+    )
     op.create_table(
         "ncbi_taxa",
         sa.Column("id", sa.Integer(), autoincrement=False, nullable=False),
@@ -90,6 +97,9 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id", name=op.f("pk_ncbi_taxa")),
         sa.UniqueConstraint("name", name=op.f("uq_ncbi_taxa_name")),
         sa.UniqueConstraint("short_name", name=op.f("uq_ncbi_taxa_short_name")),
+    )
+    op.create_index(
+        op.f("ix_ncbi_taxa_taxonomy_id"), "ncbi_taxa", ["taxonomy_id"], unique=False
     )
     op.create_table(
         "project",
@@ -106,6 +116,9 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_project")),
     )
+    op.create_index(
+        op.f("ix_project_contact_id"), "project", ["contact_id"], unique=False
+    )
     op.create_table(
         "technology",
         sa.Column("id", sa.Integer(), nullable=False),
@@ -116,6 +129,9 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_technology")),
         sa.UniqueConstraint("method_id", "tech", name=op.f("uq_technology_method_id")),
+    )
+    op.create_index(
+        op.f("ix_technology_method_id"), "technology", ["method_id"], unique=False
     )
     op.create_index(op.f("ix_technology_tech"), "technology", ["tech"], unique=False)
     op.create_table(
@@ -130,6 +146,9 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id", name=op.f("pk_annotation")),
         sa.UniqueConstraint("release", "taxa_id", "version", name="uq_annotation_rtv"),
     )
+    op.create_index(
+        op.f("ix_annotation_taxa_id"), "annotation", ["taxa_id"], unique=False
+    )
     op.create_table(
         "assembly",
         sa.Column("id", sa.Integer(), nullable=False),
@@ -143,6 +162,7 @@ def upgrade() -> None:
         sa.UniqueConstraint("name", "taxa_id", "version", name="uq_assembly_ntv"),
         sa.UniqueConstraint("name", name=op.f("uq_assembly_name")),
     )
+    op.create_index(op.f("ix_assembly_taxa_id"), "assembly", ["taxa_id"], unique=False)
     op.create_table(
         "dataset",
         sa.Column("id", sa.String(length=12), autoincrement=False, nullable=False),
@@ -188,6 +208,12 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_project_source")),
     )
+    op.create_index(
+        op.f("ix_project_source_project_id"),
+        "project_source",
+        ["project_id"],
+        unique=False,
+    )
     op.create_table(
         "genomic_annotation",
         sa.Column("id", sa.String(length=128), autoincrement=False, nullable=False),
@@ -202,20 +228,23 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id", name=op.f("pk_genomic_annotation")),
     )
     op.create_index(
-        op.f("ix_genomic_annotation_biotype"),
+        "idx_genomic",
         "genomic_annotation",
-        ["biotype"],
+        ["annotation_id", "biotype", "name"],
         unique=False,
     )
     op.create_index(
-        op.f("ix_genomic_annotation_name"), "genomic_annotation", ["name"], unique=False
+        op.f("ix_genomic_annotation_annotation_id"),
+        "genomic_annotation",
+        ["annotation_id"],
+        unique=False,
     )
     op.create_table(
         "selection",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("modification_id", sa.Integer(), nullable=False),
-        sa.Column("technology_id", sa.Integer(), nullable=False),
         sa.Column("organism_id", sa.Integer(), nullable=False),
+        sa.Column("technology_id", sa.Integer(), nullable=False),
         sa.ForeignKeyConstraint(
             ["modification_id"],
             ["modification.id"],
@@ -236,14 +265,26 @@ def upgrade() -> None:
     op.create_index(
         "idx_select",
         "selection",
-        ["modification_id", "technology_id", "organism_id"],
+        ["modification_id", "organism_id", "technology_id"],
         unique=True,
+    )
+    op.create_index(
+        op.f("ix_selection_modification_id"),
+        "selection",
+        ["modification_id"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_selection_organism_id"), "selection", ["organism_id"], unique=False
+    )
+    op.create_index(
+        op.f("ix_selection_technology_id"), "selection", ["technology_id"], unique=False
     )
     op.create_table(
         "association",
         sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("dataset_id", sa.String(length=12), nullable=False),
         sa.Column("selection_id", sa.Integer(), nullable=False),
+        sa.Column("dataset_id", sa.String(length=12), nullable=False),
         sa.ForeignKeyConstraint(
             ["dataset_id"],
             ["dataset.id"],
@@ -257,7 +298,16 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id", name=op.f("pk_association")),
     )
     op.create_index(
-        "idx_assoc", "association", ["dataset_id", "selection_id"], unique=True
+        "idx_assoc", "association", ["selection_id", "dataset_id"], unique=True
+    )
+    op.create_index(
+        op.f("ix_association_dataset_id"), "association", ["dataset_id"], unique=False
+    )
+    op.create_index(
+        op.f("ix_association_selection_id"),
+        "association",
+        ["selection_id"],
+        unique=False,
     )
     op.create_table(
         "data",
@@ -281,20 +331,18 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_data")),
     )
-    op.create_index(
-        "idx_data_sort",
-        "data",
-        ["chrom", "start", "score", "coverage", "frequency"],
-        unique=False,
-    )
+    op.create_index("idx_data_sort", "data", ["chrom", "start", "end"], unique=False)
     op.create_index(
         op.f("ix_data_association_id"), "data", ["association_id"], unique=False
     )
+    op.create_index(op.f("ix_data_coverage"), "data", ["coverage"], unique=False)
+    op.create_index(op.f("ix_data_frequency"), "data", ["frequency"], unique=False)
+    op.create_index(op.f("ix_data_score"), "data", ["score"], unique=False)
     op.create_table(
         "data_annotation",
         sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("gene_id", sa.String(length=128), nullable=False),
         sa.Column("data_id", sa.Integer(), nullable=False),
+        sa.Column("gene_id", sa.String(length=128), nullable=False),
         sa.Column("feature", sa.String(length=32), nullable=False),
         sa.ForeignKeyConstraint(
             ["data_id"], ["data.id"], name=op.f("fk_data_annotation_data_id_data")
@@ -305,9 +353,9 @@ def upgrade() -> None:
             name=op.f("fk_data_annotation_gene_id_genomic_annotation"),
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_data_annotation")),
-    )
-    op.create_index(
-        "idx_data_ann", "data_annotation", ["gene_id", "data_id"], unique=False
+        sa.UniqueConstraint(
+            "data_id", "gene_id", "feature", name=op.f("uq_data_annotation_data_id")
+        ),
     )
     op.create_index(
         op.f("ix_data_annotation_data_id"), "data_annotation", ["data_id"], unique=False
@@ -326,32 +374,46 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_data_annotation_gene_id"), table_name="data_annotation")
     op.drop_index(op.f("ix_data_annotation_feature"), table_name="data_annotation")
     op.drop_index(op.f("ix_data_annotation_data_id"), table_name="data_annotation")
-    op.drop_index("idx_data_ann", table_name="data_annotation")
     op.drop_table("data_annotation")
+    op.drop_index(op.f("ix_data_score"), table_name="data")
+    op.drop_index(op.f("ix_data_frequency"), table_name="data")
+    op.drop_index(op.f("ix_data_coverage"), table_name="data")
     op.drop_index(op.f("ix_data_association_id"), table_name="data")
     op.drop_index("idx_data_sort", table_name="data")
     op.drop_table("data")
+    op.drop_index(op.f("ix_association_selection_id"), table_name="association")
+    op.drop_index(op.f("ix_association_dataset_id"), table_name="association")
     op.drop_index("idx_assoc", table_name="association")
     op.drop_table("association")
+    op.drop_index(op.f("ix_selection_technology_id"), table_name="selection")
+    op.drop_index(op.f("ix_selection_organism_id"), table_name="selection")
+    op.drop_index(op.f("ix_selection_modification_id"), table_name="selection")
     op.drop_index("idx_select", table_name="selection")
     op.drop_table("selection")
-    op.drop_index(op.f("ix_genomic_annotation_name"), table_name="genomic_annotation")
     op.drop_index(
-        op.f("ix_genomic_annotation_biotype"), table_name="genomic_annotation"
+        op.f("ix_genomic_annotation_annotation_id"), table_name="genomic_annotation"
     )
+    op.drop_index("idx_genomic", table_name="genomic_annotation")
     op.drop_table("genomic_annotation")
+    op.drop_index(op.f("ix_project_source_project_id"), table_name="project_source")
     op.drop_table("project_source")
     op.drop_index(op.f("ix_organism_taxa_id"), table_name="organism")
     op.drop_index(op.f("ix_organism_cto"), table_name="organism")
     op.drop_table("organism")
     op.drop_index(op.f("ix_dataset_project_id"), table_name="dataset")
     op.drop_table("dataset")
+    op.drop_index(op.f("ix_assembly_taxa_id"), table_name="assembly")
     op.drop_table("assembly")
+    op.drop_index(op.f("ix_annotation_taxa_id"), table_name="annotation")
     op.drop_table("annotation")
     op.drop_index(op.f("ix_technology_tech"), table_name="technology")
+    op.drop_index(op.f("ix_technology_method_id"), table_name="technology")
     op.drop_table("technology")
+    op.drop_index(op.f("ix_project_contact_id"), table_name="project")
     op.drop_table("project")
+    op.drop_index(op.f("ix_ncbi_taxa_taxonomy_id"), table_name="ncbi_taxa")
     op.drop_table("ncbi_taxa")
+    op.drop_index(op.f("ix_modification_modomics_id"), table_name="modification")
     op.drop_table("modification")
     op.drop_table("taxonomy")
     op.drop_table("project_contact")
