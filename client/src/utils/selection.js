@@ -1,28 +1,44 @@
-import { toTree, toIds } from '@/utils/index.js'
+import { toTree, toCascade, toIds } from '@/utils/index.js'
 
 // selection utilities for Search and Compare Views
 
 // Search View
 export const updModification = (selection) => {
   // update modification
+  // grouped Dropdown works with one child tree
   return toTree(selection, ['rna', 'modomics_sname'], 'modification_id')
 }
 
-export const updTechnologyFromMod = (selection, slctMod) => {
-  // update technology from modification
-  var idsMod = toIds(slctMod, [])
-  var opts = selection.filter((item) => idsMod.includes(item.modification_id))
-  return toTree(opts, ['cls', 'meth', 'tech'], 'technology_id')
+export const updOrganismFromMod = (selection, slctMod) => {
+  // update organism from modification
+  let opts = selection.map((item) => {
+    const kingdom = Object.is(item.kingdom, null) ? item.domain : item.kingdom
+    return { ...item, kingdom }
+  })
+  opts = selection.filter((item) => item.modification_id == slctMod.key)
+  let tree = toTree(opts, ['kingdom', 'taxa_sname', 'cto'], 'organism_id')
+  return toCascade(tree)
 }
 
-export const updOrganismFromModAndTech = (selection, slctMod, slctTech) => {
-  // update organism from modification and technology
-  var idsMod = toIds(slctMod, [])
-  var idsTech = toIds(slctTech, [])
-  var opts = selection.filter(
-    (item) => idsMod.includes(item.modification_id) && idsTech.includes(item.technology_id)
+export const updTechnologyFromModAndOrg = (selection, slctMod, slctOrg) => {
+  // update technology from modification and organism
+  let opts = selection.filter(
+    (item) => item.modification_id == slctMod.key && item.organism_id == slctOrg.key
   )
-  return toTree(opts, ['domain', 'kingdom', 'phylum', 'taxa_sname', 'cto'], 'organism_id')
+  return toTree(opts, ['meth', 'tech'], 'technology_id')
+}
+
+export const updSelectionFromAll = (selection, slctMod, slctOrg, slctTech) => {
+  let idsTech = toIds(slctTech, [])
+  let opts = selection.filter(
+    (item) =>
+      item.modification_id == slctMod.key &&
+      item.organism_id == slctOrg.key &&
+      idsTech.includes(item.technology_id)
+  )
+  let selection_id = opts.map((item) => item.selection_id)
+  let taxid = [...new Set(opts.map((item) => item.taxa_id))]
+  return { selection: selection_id, taxid: taxid }
 }
 
 // Compare View

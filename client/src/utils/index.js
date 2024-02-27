@@ -14,6 +14,15 @@ export function toTree(data, keys, id) {
   return tree
 }
 
+export function toCascade(tree) {
+  // replace children with child1 and child2
+  // tree depth = 2
+  return tree.map((item) => {
+    let child1 = JSON.parse(JSON.stringify(item.children).replaceAll('children', 'child2'))
+    return { key: item.key, label: item.label, child1: child1 }
+  })
+}
+
 export function toIds(array, defaultArray) {
   if (!(array === undefined || Object.keys(array).length === 0)) {
     return Object.keys(array)

@@ -4,8 +4,9 @@ import { toIds, fmtOrder, fmtFilter } from '@/utils/index.js'
 import { FilterMatchMode, FilterOperator } from 'primevue/api'
 import {
   updModification,
-  updTechnologyFromMod,
-  updOrganismFromModAndTech
+  updOrganismFromMod,
+  updTechnologyFromModAndOrg,
+  updSelectionFromAll
 } from '@/utils/selection.js'
 import service from '@/services/index.js'
 
@@ -19,6 +20,8 @@ const technology = ref()
 const selectedTechnology = ref()
 const organism = ref()
 const selectedOrganism = ref()
+const taxid = ref()
+const selection = ref()
 
 const disabled = computed(() => isAllSelected())
 
@@ -30,10 +33,9 @@ const loadingButton = ref(false)
 const totalRecords = ref(0)
 const lazyParams = ref({})
 const filters = ref({
-  gene_name_gc: { value: null, matchMode: 'contains' },
-  gene_id_gc: { value: null, matchMode: 'contains' },
-  gene_biotype_gc: { value: null, matchMode: 'in' },
-  feature_gc: { value: null, matchMode: 'in' }
+  gene_name: { value: null, matchMode: FilterMatchMode.STARTS_WITH },
+  gene_biotype: { value: null, matchMode: FilterMatchMode.IN },
+  feature: { value: null, matchMode: FilterMatchMode.IN }
   // name: { value: null, matchMode: FilterMatchMode.IN }
   // name: { value: null, matchMode: 'in' }
   // name: {
@@ -45,10 +47,10 @@ const filters = ref({
 const submitQuery = () => {
   loadingButton.value = true
   lazyLoad()
-  //   loadingButton.value = false
-  setTimeout(() => {
-    loadingButton.value = false
-  }, 2500)
+  loadingButton.value = false
+  // setTimeout(() => {
+  //     loadingButton.value = false
+  // }, 2500)
 }
 
 function isAllSelected() {
@@ -75,7 +77,8 @@ const onFilter = (event) => {
   // console.log('FILTER NAME:', lazyParams.value.filters['gene_name_gc'])
   // console.log('FILTER BIOTYPE:', lazyParams.value.filters['gene_biotype_gc'])
   // console.log('FILTER FEATURE:', lazyParams.value.filters['feature_gc'])
-  // console.log('FMT FILTER:', fmtFilter(lazyParams.value.filters))
+  console.log('FILTER:', lazyParams.value.filters)
+  console.log('FMT FILTER:', fmtFilter(lazyParams.value.filters))
   lazyLoad(event)
 }
 
@@ -83,21 +86,32 @@ const onExport = () => {
   dt.value.exportCSV()
 }
 
-const updateTechnology = () => {
-  selectedTechnology.value = undefined
-  selectedOrganism.value = undefined
-  technology.value = updTechnologyFromMod(options.value, selectedModification.value)
-  // lazyLoad()
-}
-
 const updateOrganism = () => {
   selectedOrganism.value = undefined
-  organism.value = updOrganismFromModAndTech(
+  selectedTechnology.value = undefined
+  technology.value = undefined
+  organism.value = updOrganismFromMod(options.value, selectedModification.value)
+}
+
+const updateTechnology = () => {
+  selectedTechnology.value = undefined
+  technology.value = updTechnologyFromModAndOrg(
     options.value,
     selectedModification.value,
+    selectedOrganism.value
+  )
+}
+
+const updateSelection = () => {
+  let result = updSelectionFromAll(
+    options.value,
+    selectedModification.value,
+    selectedOrganism.value,
     selectedTechnology.value
   )
-  // lazyLoad()
+  taxid.value = result.taxid
+  selection.value = result.selection
+  // get chrom.sizes
 }
 
 const updateTmp = () => {
@@ -112,9 +126,8 @@ function lazyLoad(event) {
   service
     .get('/search', {
       params: {
-        modification: toIds(selectedModification.value, []),
-        technology: toIds(selectedTechnology.value, []),
-        organism: toIds(selectedOrganism.value, []),
+        selection: selection.value,
+        taxid: taxid.value[0],
         firstRecord: lazyParams.value.first,
         maxRecords: lazyParams.value.rows,
         multiSort: fmtOrder(lazyParams.value.multiSortMeta),
@@ -178,13 +191,29 @@ onMounted(() => {
       <!-- <div class="flex flex-row flex-wrap justify-start place-items-center [&>*]:mr-6"> -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div>
-          <TreeSelect
-            @change="updateTechnology()"
+          <Dropdown
+            @change="updateOrganism()"
             v-model="selectedModification"
             :options="modification"
-            selectionMode="checkbox"
-            :metaKeySelection="false"
-            placeholder="1. Select RNA modifications"
+            optionLabel="label"
+            optionGroupLabel="label"
+            optionGroupChildren="children"
+            placeholder="1. Select RNA modification"
+            :pt="{
+              root: { class: 'w-full md:w-full' }
+            }"
+            :ptOptions="{ mergeProps: true }"
+          />
+        </div>
+        <div>
+          <CascadeSelect
+            @change="updateTechnology()"
+            v-model="selectedOrganism"
+            :options="organism"
+            optionLabel="label"
+            optionGroupLabel="label"
+            :optionGroupChildren="['child1', 'child2']"
+            placeholder="2. Select organism"
             :pt="{
               root: { class: 'w-full md:w-full' }
             }"
@@ -193,26 +222,12 @@ onMounted(() => {
         </div>
         <div>
           <TreeSelect
-            @change="updateOrganism()"
+            @change="updateSelection()"
             v-model="selectedTechnology"
             :options="technology"
             selectionMode="checkbox"
             :metaKeySelection="false"
-            placeholder="2. Select technologies"
-            :pt="{
-              root: { class: 'w-full md:w-full' }
-            }"
-            :ptOptions="{ mergeProps: true }"
-          />
-        </div>
-        <div>
-          <TreeSelect
-            @change="updateTmp()"
-            v-model="selectedOrganism"
-            :options="organism"
-            selectionMode="checkbox"
-            :metaKeySelection="false"
-            placeholder="3. Select organisms"
+            placeholder="3. Select technology"
             :pt="{
               root: { class: 'w-full md:w-full' }
             }"
@@ -233,6 +248,10 @@ onMounted(() => {
 
       <!-- FILTER 2 -->
     </SectionLayout>
+    <div>
+      "MODIFICATION IS:" {{ selectedModification }} "ORGANISM IS:" {{ selectedOrganism }} "TECH IS:"
+      {{ selectedTechnology }} "TAXID:" {{ taxid }} "SELECTION:" {{ selection }}
+    </div>
     <!-- SECTION -->
     <SectionLayout>
       <!-- TABLE -->
@@ -280,78 +299,63 @@ onMounted(() => {
                  :maxSelectedLabels="1"
                  >
                  </MultiSelect>
-                 </template> -->
+                 </template><!--  -->
+            -->
           </Column>
           <Column field="score" header="Score" sortable exportHeader="score"></Column>
           <Column field="strand" header="Strand" exportHeader="strand"></Column>
           <Column field="coverage" header="Coverage" sortable exportHeader="coverage"></Column>
           <Column field="frequency" header="Frequency" sortable exportHeader="frequency"></Column>
           <Column
-            field="gene_name_gc"
-            header="Gene"
-            exportHeader="geneName"
-            filterMatchMode="startsWith"
-          >
-            <!-- <template #filter="{ filterModel, filterCallback }">
-                 <InputText
-                 type="text"
-                 v-model="filterModel.value"
-                 @keydown.enter="filterCallback()"
-                 class="p-column-filter"
-                 placeholder="Search"
-                 />
-                 </template> -->
-          </Column>
-          <Column
-            field="gene_id_gc"
-            header="Gene ID"
-            exportHeader="geneId"
-            FilterMatchMode="startsWith"
-          >
-            <!-- <template #filter="{ filterModel, filterCallback }">
-                 <InputText
-                 type="text"
-                 v-model="filterModel.value"
-                 @keydown.enter="filterCallback()"
-                 class="p-column-filter"
-                 placeholder="Search"
-                 />
-                 </template> -->
-          </Column>
-          <Column
-            field="gene_biotype_gc"
-            header="Biotype"
-            exportHeader="biotype"
-            :showFilterMenu="false"
-          >
-            <!-- <template #filter="{ filterModel, filterCallback }">
-                 <MultiSelect
-                 v-model="filterModel.value"
-                 @change="filterCallback()"
-                 :options="biotypes"
-                 placeholder="Any"
-                 :maxSelectedLabels="1"
-                 >
-                 </MultiSelect>
-                 </template> -->
-          </Column>
-          <Column
-            field="feature_gc"
+            field="feature"
             header="Feature"
             exportHeader="feature"
+            filterField="feature"
             :showFilterMenu="false"
           >
-            <!-- <template #filter="{ filterModel, filterCallback }">
-                 <MultiSelect
-                 v-model="filterModel.value"
-                 @change="filterCallback()"
-                 :options="features"
-                 placeholder="Any"
-                 :maxSelectedLabels="1"
-                 >
-                 </MultiSelect>
-                 </template> -->
+            <template #filter="{ filterModel, filterCallback }">
+              <MultiSelect
+                v-model="filterModel.value"
+                @change="filterCallback()"
+                :options="features"
+                placeholder="Any"
+                :maxSelectedLabels="1"
+                :disabled="disabled"
+              >
+              </MultiSelect>
+            </template>
           </Column>
+          <Column
+            field="gene_biotype"
+            header="Biotype"
+            exportHeader="biotype"
+            filterField="gene_biotype"
+            :showFilterMenu="false"
+          >
+            <template #filter="{ filterModel, filterCallback }">
+              <MultiSelect
+                v-model="filterModel.value"
+                @change="filterCallback()"
+                :options="biotypes"
+                placeholder="Any"
+                :maxSelectedLabels="1"
+                :disabled="disabled"
+              >
+              </MultiSelect>
+            </template>
+          </Column>
+          <Column field="gene_name" header="Gene" exportHeader="geneName" :showFilterMenu="false">
+            <template #filter="{ filterModel, filterCallback }">
+              <InputText
+                type="text"
+                v-model="filterModel.value"
+                @input="filterCallback()"
+                placeholder="Search"
+              />
+            </template>
+          </Column>
+          <Column field="tech" header="Technology" exportHeader="technology"></Column>
+          <Column field="dataset_id" header="EUFID" exportHeader="dataset_id"></Column>
         </DataTable>
       </div>
     </SectionLayout>
