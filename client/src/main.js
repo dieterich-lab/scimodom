@@ -18,6 +18,7 @@ import Dialog from 'primevue/dialog'
 import Divider from 'primevue/divider'
 import Dropdown from 'primevue/dropdown'
 import FileUpload from 'primevue/fileupload'
+import InputNumber from 'primevue/inputnumber'
 import InputText from 'primevue/inputtext'
 import MultiSelect from 'primevue/multiselect'
 import Panel from 'primevue/panel'
@@ -51,6 +52,7 @@ app.component('Dialog', Dialog)
 app.component('Divider', Divider)
 app.component('Dropdown', Dropdown)
 app.component('FileUpload', FileUpload)
+app.component('InputNumber', InputNumber)
 app.component('InputText', InputText)
 app.component('MultiSelect', MultiSelect)
 app.component('Panel', Panel)

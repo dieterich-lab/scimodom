@@ -28,15 +28,19 @@ export default {
   labelContainer: {
     class: ['overflow-hidden flex flex-auto cursor-pointer']
   },
-  label: {
+  label: ({ props }) => ({
     class: [
-      'block leading-5',
+      'block leading-5 sm:text-sm',
 
       // Space
       'py-1.5 px-3',
 
       // Color
-      'text-surface-800 dark:text-white/80',
+      // 'text-surface-400 dark:text-white/80',
+      {
+        'text-surface-800 dark:text-white/80': props.modelValue != undefined,
+        'text-surface-400 dark:text-surface-500': props.modelValue == undefined
+      },
 
       // Transition
       'transition duration-200',
@@ -44,7 +48,7 @@ export default {
       // Misc
       'overflow-hidden whitespace-nowrap cursor-pointer overflow-ellipsis'
     ]
-  },
+  }),
   trigger: {
     class: [
       //Font
@@ -68,6 +72,9 @@ export default {
   },
   panel: {
     class: [
+      //Font
+      'sm:text-sm',
+
       // Position
       'absolute top-0 left-0',
       'mt-2',
@@ -130,7 +137,7 @@ export default {
         'rounded-md',
 
         // Spacing
-        'p-2',
+        'p-1',
 
         // Colors
         'text-surface-700 dark:text-surface-0',

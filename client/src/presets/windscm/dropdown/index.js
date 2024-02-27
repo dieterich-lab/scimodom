@@ -130,7 +130,8 @@ export default {
 
       // Shape
       'border-0',
-      'rounded-none',
+      // 'rounded-none',
+      'rounded-md',
 
       // Spacing
       'm-0',

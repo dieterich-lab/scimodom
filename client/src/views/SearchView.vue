@@ -23,6 +23,11 @@ const selectedOrganism = ref()
 const taxid = ref()
 const selection = ref()
 
+const chroms = ref()
+const selectedChrom = ref()
+const start = ref()
+const end = ref()
+
 const disabled = computed(() => isAllSelected())
 
 const dt = ref()
@@ -235,6 +240,49 @@ onMounted(() => {
           />
         </div>
       </div>
+      <!-- FILTER 2 -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+        <div>
+          <Dropdown
+            v-model="selectedChrom"
+            :options="chroms"
+            showClear
+            :disabled="disabled"
+            placeholder="4. Select chromosome"
+            :pt="{
+              root: { class: 'w-full md:w-full' }
+            }"
+            :ptOptions="{ mergeProps: true }"
+          />
+        </div>
+        <InputNumber
+          v-model="start"
+          inputId="minmax"
+          placeholder="5. Select start"
+          :disabled="selectedChrom === undefined"
+          :min="0"
+          :max="100"
+          :pt="{
+            root: { class: 'w-full md:w-full' }
+          }"
+          :ptOptions="{ mergeProps: true }"
+        />
+        <div>
+          <InputNumber
+            v-model="end"
+            inputId="minmax"
+            :disabled="start === undefined"
+            placeholder="6. Select end"
+            :min="0"
+            :max="100"
+            :pt="{
+              root: { class: 'w-full md:w-full' }
+            }"
+            :ptOptions="{ mergeProps: true }"
+          />
+        </div>
+        <div></div>
+      </div>
       <div class="pt-8">
         <Button
           type="button"
@@ -245,14 +293,8 @@ onMounted(() => {
           @click="submitQuery"
         />
       </div>
-
-      <!-- FILTER 2 -->
+      <!-- SECTION -->
     </SectionLayout>
-    <div>
-      "MODIFICATION IS:" {{ selectedModification }} "ORGANISM IS:" {{ selectedOrganism }} "TECH IS:"
-      {{ selectedTechnology }} "TAXID:" {{ taxid }} "SELECTION:" {{ selection }}
-    </div>
-    <!-- SECTION -->
     <SectionLayout>
       <!-- TABLE -->
       <div>
