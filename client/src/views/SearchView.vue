@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { toIds, fmtOrder, fmtFilter } from '@/utils/index.js'
+import { fmtOrder, fmtFilter } from '@/utils/index.js'
 import { FilterMatchMode, FilterOperator } from 'primevue/api'
 import {
   updModification,
@@ -13,16 +13,15 @@ import service from '@/services/index.js'
 const options = ref()
 const biotypes = ref()
 const features = ref()
-const names = ref()
+
 const modification = ref()
 const selectedModification = ref()
 const technology = ref()
 const selectedTechnology = ref()
 const organism = ref()
 const selectedOrganism = ref()
-const taxid = ref()
 const selection = ref()
-
+const taxid = ref()
 const chroms = ref()
 const selectedChrom = ref()
 const selectedChromStart = ref()
@@ -41,29 +40,37 @@ const filters = ref({
   gene_name: { value: null, matchMode: FilterMatchMode.STARTS_WITH },
   gene_biotype: { value: null, matchMode: FilterMatchMode.IN },
   feature: { value: null, matchMode: FilterMatchMode.IN }
-  // name: { value: null, matchMode: FilterMatchMode.IN }
-  // name: { value: null, matchMode: 'in' }
-  // name: {
-  //   operator: FilterOperator.AND,
-  //   constraints: [{ value: null, matchMode: FilterMatchMode.IN }]
-  // },
 })
-
-const submitQuery = () => {
-  loadingButton.value = true
-  lazyLoad()
-  loadingButton.value = false
-  // setTimeout(() => {
-  //     loadingButton.value = false
-  // }, 2500)
-}
 
 function isAllSelected() {
   return (
-    Object.is(selectedModification.value, undefined) ||
-    Object.is(selectedTechnology.value, undefined) ||
-    Object.is(selectedOrganism.value, undefined)
+    selectedModification.value == null ||
+    selectedTechnology.value == null ||
+    selectedOrganism.value == null
   )
+}
+
+const clearCoords = () => {
+  selectedChromStart.value = undefined
+  selectedChromEnd.value = undefined
+}
+
+const getFileName = () => {
+  let sep = '_&_'
+  let fileName = 'scimodom_search'
+  if (!(selectedModification.value == null || selectedOrganism.value == null)) {
+    fileName =
+      fileName +
+      '_mod=' +
+      selectedModification.value.label +
+      sep +
+      'taxid=' +
+      taxid.value +
+      sep +
+      'tissue=' +
+      selectedOrganism.value.label.replaceAll(/ /g, '_')
+  }
+  return fileName
 }
 
 const onPage = (event) => {
@@ -78,12 +85,6 @@ const onSort = (event) => {
 
 const onFilter = (event) => {
   lazyParams.value.filters = filters.value
-  // console.log('FILTER:', lazyParams.value.filters)
-  // console.log('FILTER NAME:', lazyParams.value.filters['gene_name_gc'])
-  // console.log('FILTER BIOTYPE:', lazyParams.value.filters['gene_biotype_gc'])
-  // console.log('FILTER FEATURE:', lazyParams.value.filters['feature_gc'])
-  console.log('FILTER:', lazyParams.value.filters)
-  console.log('FMT FILTER:', fmtFilter(lazyParams.value.filters))
   lazyLoad(event)
 }
 
@@ -96,12 +97,20 @@ const updateOrganism = () => {
   selectedTechnology.value = undefined
   technology.value = undefined
   selection.value = undefined
+  records.value = undefined
+  selectedChrom.value = undefined
+  selectedChromStart.value = undefined
+  selectedChromEnd.value = undefined
   organism.value = updOrganismFromMod(options.value, selectedModification.value)
 }
 
 const updateTechnology = () => {
   selectedTechnology.value = undefined
   selection.value = undefined
+  selectedChrom.value = undefined
+  selectedChromStart.value = undefined
+  selectedChromEnd.value = undefined
+  records.value = undefined
   technology.value = updTechnologyFromModAndOrg(
     options.value,
     selectedModification.value,
@@ -110,6 +119,10 @@ const updateTechnology = () => {
 }
 
 const updateSelection = () => {
+  selectedChrom.value = undefined
+  selectedChromStart.value = undefined
+  selectedChromEnd.value = undefined
+  records.value = undefined
   let result = updSelectionFromAll(
     options.value,
     selectedModification.value,
@@ -118,37 +131,39 @@ const updateSelection = () => {
   )
   taxid.value = result.taxid
   selection.value = result.selection
-  // get chrom.sizes
-  service
-    .getEndpoint(`/chrom/${taxid.value}`)
-    .then(function (response) {
-      chroms.value = response.data
-    })
-    .catch((error) => {
-      console.log(error)
-    })
-}
-
-const updateTmp = () => {
-  // lazyLoad()
+  if (selection.value.length == 0) {
+    // all checkboxes were unticked
+    selectedTechnology.value = undefined
+    selection.value = undefined
+    chroms.value = undefined
+  } else {
+    // get chrom.sizes
+    service
+      .getEndpoint(`/chrom/${taxid.value}`)
+      .then(function (response) {
+        chroms.value = response.data
+      })
+      .catch((error) => {
+        console.log(error)
+      })
+    // lazyLoad()
+  }
 }
 
 function lazyLoad(event) {
   loading.value = true
   lazyParams.value = { ...lazyParams.value, first: event?.first || first.value }
-  // console.log("FIRST", lazyParams.value.first)
-  // console.log("ROWS", lazyParams.value.rows)
   service
     .get('/search', {
       params: {
         selection: selection.value,
         taxid: taxid.value[0],
         chrom: selectedChrom.value == null ? null : selectedChrom.value.chrom,
-        start: selectedChromStart.value == null ? 0 : selectedChromStart.value,
-        end:
+        chromStart: selectedChromStart.value == null ? 0 : selectedChromStart.value,
+        chromEnd:
           selectedChromEnd.value == null
             ? selectedChrom.value == null
-              ? 0
+              ? null
               : selectedChrom.value.size
             : selectedChromEnd.value,
         firstRecord: lazyParams.value.first,
@@ -165,12 +180,11 @@ function lazyLoad(event) {
       totalRecords.value = response.data.totalRecords
       biotypes.value = response.data.biotypes
       features.value = response.data.features
-      // names.value = [...new Set(records.value.map(item => item.name))]
+      loading.value = false
     })
     .catch((error) => {
       console.log(error)
     })
-  loading.value = false
 }
 
 onMounted(() => {
@@ -179,7 +193,6 @@ onMounted(() => {
     rows: 10,
     filters: filters.value
   }
-  // lazyLoad()
   service
     .getEndpoint('/selection')
     .then(function (response) {
@@ -212,8 +225,8 @@ onMounted(() => {
       <!-- FILTER 1 -->
       <Divider />
       <!-- <div class="flex flex-row flex-wrap justify-start place-items-center [&>*]:mr-6"> -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div>
+      <div class="grid grid-cols-1 md:grid-cols-10 gap-6">
+        <div class="col-span-3">
           <Dropdown
             @change="updateOrganism()"
             v-model="selectedModification"
@@ -228,7 +241,7 @@ onMounted(() => {
             :ptOptions="{ mergeProps: true }"
           />
         </div>
-        <div>
+        <div class="col-span-3">
           <CascadeSelect
             @change="updateTechnology()"
             v-model="selectedOrganism"
@@ -243,7 +256,7 @@ onMounted(() => {
             :ptOptions="{ mergeProps: true }"
           />
         </div>
-        <div>
+        <div class="col-span-3">
           <TreeSelect
             @change="updateSelection()"
             v-model="selectedTechnology"
@@ -257,15 +270,14 @@ onMounted(() => {
             :ptOptions="{ mergeProps: true }"
           />
         </div>
+        <div></div>
       </div>
       <!-- FILTER 2 -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-        <div>
+      <!-- <Divider /> -->
+      <div class="grid grid-cols-1 md:grid-cols-10 gap-6 mt-6">
+        <div class="col-span-3">
           <Dropdown
-            @change="
-              selectedChromStart = null
-              selectedChromEnd = null
-            "
+            @change="clearCoords()"
             v-model="selectedChrom"
             :options="chroms"
             optionLabel="chrom"
@@ -278,20 +290,22 @@ onMounted(() => {
             :ptOptions="{ mergeProps: true }"
           />
         </div>
-        <InputNumber
-          @input="selectedChromEnd = null"
-          v-model="selectedChromStart"
-          inputId="minmax"
-          placeholder="5. Enter region start (optional)"
-          :disabled="selectedChrom == null"
-          :min="0"
-          :max="selectedChrom == null ? 0 : selectedChrom.size - 1"
-          :pt="{
-            root: { class: 'w-full md:w-full' }
-          }"
-          :ptOptions="{ mergeProps: true }"
-        />
-        <div>
+        <div class="col-span-3">
+          <InputNumber
+            @input="selectedChromEnd = null"
+            v-model="selectedChromStart"
+            inputId="minmax"
+            placeholder="5. Enter region start (optional)"
+            :disabled="selectedChrom == null"
+            :min="0"
+            :max="selectedChrom == null ? 0 : selectedChrom.size - 1"
+            :pt="{
+              root: { class: 'w-full md:w-full' }
+            }"
+            :ptOptions="{ mergeProps: true }"
+          />
+        </div>
+        <div class="col-span-3">
           <InputNumber
             v-model="selectedChromEnd"
             inputId="minmax"
@@ -305,39 +319,42 @@ onMounted(() => {
             :ptOptions="{ mergeProps: true }"
           />
         </div>
-        <div></div>
+        <div class="place-self-end">
+          <Button
+            type="button"
+            size="small"
+            icon="pi pi-sync"
+            label="Query"
+            :disabled="disabled"
+            :loading="loading"
+            @click="lazyLoad()"
+          />
+        </div>
       </div>
-      <div class="pt-8">
-        <Button
-          type="button"
-          icon="pi pi-sync"
-          label="Submit"
-          :disabled="disabled"
-          :loading="loadingButton"
-          @click="submitQuery"
-        />
-      </div>
-      <!-- SECTION -->
     </SectionLayout>
+    <!-- SECTION -->
     <SectionLayout>
       <!-- TABLE -->
       <div>
         <DataTable
           :value="records"
+          dataKey="id"
+          ref="dt"
+          :exportFilename="getFileName()"
           lazy
           paginator
+          :totalRecords="totalRecords"
+          :loading="loading"
           :first="first"
           :rows="10"
+          @page="onPage($event)"
           v-model:filters="filters"
           @filter="onFilter($event)"
           filterDisplay="row"
-          ref="dt"
-          :totalRecords="totalRecords"
-          :loading="loading"
-          @page="onPage($event)"
           @sort="onSort($event)"
           removableSort
           sortMode="multiple"
+          stripedRows
         >
           <template #header>
             <div style="text-align: right">
@@ -348,8 +365,13 @@ onMounted(() => {
                 severity="secondary"
                 raised
                 @click="onExport($event)"
+                :disabled="disabled"
               />
             </div>
+          </template>
+          <!-- <template #empty> <p class="dark:text-white/80 font-semibold">No records found matching search criteria!</p> </template> -->
+          <template #loading>
+            <ProgressSpinner style="width: 60px; height: 60px" strokeWidth="6" />
           </template>
           <Column field="chrom" header="Chrom" sortable exportHeader="chrom"></Column>
           <Column field="start" header="Start" sortable exportHeader="chromStart"></Column>
@@ -405,11 +427,12 @@ onMounted(() => {
                 @input="filterCallback()"
                 placeholder="Search"
                 :disabled="disabled"
+                style="width: 8rem"
               />
             </template>
           </Column>
           <Column field="tech" header="Technology" exportHeader="technology"></Column>
-          <Column field="dataset_id" header="EUFID" exportHeader="dataset_id"></Column>
+          <Column field="dataset_id" header="EUFID" exportHeader="eufid"></Column>
         </DataTable>
       </div>
     </SectionLayout>

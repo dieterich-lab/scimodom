@@ -22,6 +22,7 @@ import InputNumber from 'primevue/inputnumber'
 import InputText from 'primevue/inputtext'
 import MultiSelect from 'primevue/multiselect'
 import Panel from 'primevue/panel'
+import ProgressSpinner from 'primevue/progressspinner'
 import RadioButton from 'primevue/radiobutton'
 import Row from 'primevue/row'
 import TabPanel from 'primevue/tabpanel'
@@ -56,6 +57,7 @@ app.component('InputNumber', InputNumber)
 app.component('InputText', InputText)
 app.component('MultiSelect', MultiSelect)
 app.component('Panel', Panel)
+app.component('ProgressSpinner', ProgressSpinner)
 app.component('RadioButton', RadioButton)
 app.component('Row', Row)
 app.component('TabPanel', TabPanel)

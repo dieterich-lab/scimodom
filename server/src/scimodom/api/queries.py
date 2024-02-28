@@ -1,31 +1,30 @@
-import json
 import os
 from pathlib import Path
 
 from flask import request
 from flask_cors import cross_origin
-from sqlalchemy import select, func, and_, or_, not_, literal_column
+from sqlalchemy import select, func
 
 from . import api
 from scimodom.database.database import get_session
 from scimodom.database.models import (
-    Modomics,
-    Modification,
+    Annotation,
+    Assembly,
+    Association,
+    Data,
+    DataAnnotation,
+    Dataset,
     DetectionMethod,
     DetectionTechnology,
-    Data,
-    Dataset,
+    GenomicAnnotation,
+    Modification,
+    Modomics,
+    Organism,
     Project,
     ProjectSource,
     Taxonomy,
     Taxa,
-    Organism,
-    Assembly,
-    Annotation,
-    DataAnnotation,
-    Association,
     Selection,
-    GenomicAnnotation,
 )
 import scimodom.database.queries as queries
 from scimodom.services.importer import BEDImporter
@@ -34,16 +33,6 @@ from scimodom.services.assembly import AssemblyService
 from scimodom.utils.models import records_factory
 from scimodom.utils.operations import get_op
 import scimodom.utils.specifications as specs
-
-prop_comparators = {
-    "startsWith": "istartswith",
-    "contains": "icontains",
-    "notContains": "icontains",
-    "endsWith": "iendswith",
-    "equals": "__eq__",
-    "notEquals": "__eq__",
-    "in": "in_",
-}
 
 FEATURES = list(
     {
@@ -55,56 +44,11 @@ BIOTYPES = specs.BIOTYPES
 MAPPED_BIOTYPES = sorted(list(set(BIOTYPES.values())))
 
 
-# ONE = literal_column("1")
-
-
-def _dump(query):
-    return [r._asdict() for r in get_session().execute(query)]
-
-
-def _paginate(query, first, rows):
-    # length = get_session().scalar(select(func.count(ONE)).select_from(query))
-    length = get_session().scalar(
-        select(func.count()).select_from(query.with_only_columns(Data.id))
-    )
-    query = query.offset(first).limit(rows)
-    return (length, query)
-
-
-def _get_arg_sort(string, url_split="%2B"):
-    col, order = string.split(url_split)
-    return f"Data.{col}.{order}()"
-
-
-def _get_flt(string, url_split="%2B"):
-    """Format table filters."""
-    col, val, operator = string.split(url_split)
-    return col, val.split(","), operator
-
-
-def _get_arg_flt(string, url_split="%2B"):
-    col, val, operator = string.split(url_split)
-    arg = (
-        [k for k, v in specs.BIOTYPES.items() if v in val.split(",")]
-        if col == "biotype"
-        else val.split(",")
-        if col == "feature"
-        else val
-    )
-    arg_str = f"({arg})" if operator == "in" else f"('{arg}')"
-    # col will not work - filtering with in_ will not work
-    # expr = f"ga.c.{col}.{prop_comparators[operator]}{arg_str}"
-    expr = f"DataAnnotation.{col}.{prop_comparators[operator]}{arg_str}"
-    if operator.startswith("not"):
-        expr = f"~{expr}"
-    return expr
-
-
 @api.route("/selection", methods=["GET"])
 @cross_origin(supports_credentials=True)
 def get_selection():
-    """Retrieve all available selections."""
-
+    """Get available selection =
+    (modification, organism, technology)."""
     query = (
         select(
             Modification.id.label("modification_id"),
@@ -149,9 +93,8 @@ def get_selection():
 @api.route("/chrom/<taxid>", methods=["GET"])
 @cross_origin(supports_credentials=True)
 def get_chrom(taxid):
-    """Provides access to chrom.sizes for
-    selected organism for current version."""
-
+    """Provides access to chrom.sizes for one
+    selected organism for current database version."""
     query = queries.get_assembly_version()
     version = get_session().execute(query).scalar_one()
 
@@ -164,30 +107,35 @@ def get_chrom(taxid):
     assembly_service = AssemblyService.from_id(get_session(), assembly_id=assembly_id)
     parent, filen = assembly_service.get_chrom_path(organism_name, assembly_name)
     chrom_file = Path(parent, filen)
+
     chroms = []
     with open(chrom_file, "r") as fh:
         for line in fh:
             chrom, size = line.strip().split(None, 1)
             chroms.append({"chrom": chrom, "size": int(size.strip())})
+
     return chroms
 
 
 @api.route("/search", methods=["GET"])
 @cross_origin(supports_credentials=True)
 def get_search():
-    """Retrieve conditional selections."""
+    """Get Data records for conditional selection, add
+    filters and sort."""
     selection_ids = request.args.getlist("selection", type=int)
     taxa_id = request.args.get("taxid", type=int)
     chrom = request.args.get("chrom", type=str)
-    start = request.args.get("start", type=int)
-    end = request.args.get("end", type=int)
+    chrom_start = request.args.get("chromStart", type=int)
+    chrom_end = request.args.get("chromEnd", type=int)
     first_record = request.args.get("firstRecord", type=int)
     max_records = request.args.get("maxRecords", type=int)
     multi_sort = request.args.getlist("multiSort", type=str)
     table_filter = request.args.getlist("tableFilter", type=str)
-    print(f"CHROM {chrom}, START {start}, END {end}")
+
+    # base query
     query = (
         select(
+            Data.id,
             Data.chrom,
             Data.start,
             Data.end,
@@ -214,20 +162,17 @@ def get_search():
 
     # coordinate filter
     if chrom:
-        print("YES>>>>>>>>>>>>>>>>>")
         query = (
             query.where(Data.chrom == chrom)
-            .where(Data.start >= start)
-            .where(Data.end < end)
+            .where(Data.start >= chrom_start)
+            .where(Data.end < chrom_end)
         )
 
     # annotation filter
     feature_flt = next((flt for flt in table_filter if "feature" in flt), None)
     if feature_flt:
         _, features, _ = _get_flt(feature_flt)
-    else:
-        features = FEATURES
-    query = query.where(DataAnnotation.feature.in_(features))
+        query = query.where(DataAnnotation.feature.in_(features))
 
     version_query = queries.get_annotation_version()
     version = get_session().execute(version_query).scalar_one()
@@ -238,6 +183,7 @@ def get_search():
     )
     annotation = get_session().execute(annotation_query).scalar_one()
 
+    # index speed up on annotation_id + biotypes + name
     biotype_flt = next((flt for flt in table_filter if "gene_biotype" in flt), None)
     if biotype_flt:
         _, mapped_biotypes, _ = _get_flt(biotype_flt)
@@ -247,7 +193,6 @@ def get_search():
     query = query.where(GenomicAnnotation.annotation_id == annotation).where(
         GenomicAnnotation.biotype.in_(biotypes)
     )
-
     name_flt = next((flt for flt in table_filter if "gene_name" in flt), None)
     if name_flt:
         _, name, _ = _get_flt(name_flt)
@@ -261,25 +206,15 @@ def get_search():
     )
 
     # sort filter
-    chrom_sort = next((flt for flt in multi_sort if "chrom" in flt), None)
-    if chrom_sort:
-        chrom_expr = _get_arg_sort(chrom_sort)
-    else:
+    # index speed up for chrom + start
+    if not multi_sort:
         chrom_expr = _get_arg_sort("chrom%2Basc")
-    start_sort = next((flt for flt in multi_sort if "start" in flt), None)
-    if start_sort:
-        start_expr = _get_arg_sort(start_sort)
-    else:
         start_expr = _get_arg_sort("start%2Basc")
-    # query = query.order_by(eval(chrom_expr), eval(start_expr))
-
-    # score, coverage, frequency
-    sort_filters = [
-        flt for flt in multi_sort if "chrom" not in flt and "start" not in flt
-    ]
-    for flt in sort_filters:
-        expr = _get_arg_sort(flt)
-        query = query.order_by(eval(expr))
+        query = query.order_by(eval(chrom_expr), eval(start_expr))
+    else:
+        for flt in multi_sort:
+            expr = _get_arg_sort(flt)
+            query = query.order_by(eval(expr))
 
     # paginate
     query = query.offset(first_record).limit(max_records)
@@ -291,200 +226,6 @@ def get_search():
     response_object["biotypes"] = MAPPED_BIOTYPES
 
     return response_object
-
-
-# @api.route("/search", methods=["GET"])
-# @cross_origin(supports_credentials=True)
-# def get_search():
-#     """Retrieve conditional selections."""
-#     modification_ids = request.args.getlist("modification", type=int)
-#     technology_ids = request.args.getlist("technology", type=int)
-#     organism_ids = request.args.getlist("organism", type=int)
-#     first_record = request.args.get("firstRecord", type=int)
-#     max_records = request.args.get("maxRecords", type=int)
-#     multi_sort = request.args.getlist("multiSort", type=str)
-#     table_filter = request.args.getlist("tableFilter", type=str)
-
-#     selection_query = select(Selection.id)
-#     if modification_ids:
-#         selection_query = selection_query.where(
-#             Selection.modification_id.in_(modification_ids)
-#         )
-#     if technology_ids:
-#         selection_query = selection_query.where(
-#             Selection.technology_id.in_(technology_ids)
-#         )
-#     if organism_ids:
-#         selection_query = selection_query.where(Selection.organism_id.in_(organism_ids))
-
-#     selection_ids = get_session().execute(selection_query).scalars().all()
-#     association_query = select(Association.dataset_id).where(
-#         Association.selection_id.in_(selection_ids)
-#     )
-#     association_ids = get_session().execute(association_query).scalars().all()
-
-#     query = (
-#         select(
-#             Data.chrom,
-#             Data.start,
-#             Data.end,
-#             Data.name,
-#             Data.score,
-#             Data.strand,
-#             Data.coverage,
-#             Data.frequency,
-#             func.group_concat(GenomicAnnotation.gene_name.distinct()).label(
-#                 "gene_name_gc"
-#             ),
-#             func.group_concat(GenomicAnnotation.gene_id.distinct()).label("gene_id_gc"),
-#             func.group_concat(GenomicAnnotation.gene_biotype.distinct()).label(
-#                 "gene_biotype_gc"
-#             ),
-#             func.group_concat(GenomicAnnotation.feature.distinct()).label("feature_gc"),
-#         )
-#         .join_from(
-#             GenomicAnnotation, Data, GenomicAnnotation.data_id == Data.id
-#         )  # inner, drop unannotated records...
-#         .where(Data.dataset_id.in_(association_ids))
-#         .group_by(GenomicAnnotation.data_id)
-#     )
-
-#     # ------------------------------
-
-#     # query = (
-#     # select(
-#     # Data.chrom,
-#     # Data.start,
-#     # Data.end,
-#     # Data.name,
-#     # Data.score,
-#     # Data.strand,
-#     # Data.coverage,
-#     # Data.frequency,
-#     # func.group_concat(GenomicAnnotation.gene_name.distinct()).label(
-#     # "gene_name_gc"
-#     # ),
-#     # func.group_concat(GenomicAnnotation.gene_id.distinct()).label("gene_id_gc"),
-#     # func.group_concat(GenomicAnnotation.gene_biotype.distinct()).label(
-#     # "gene_biotype_gc"
-#     # ),
-#     # func.group_concat(GenomicAnnotation.feature.distinct()).label("feature_gc"),
-#     # )
-#     # .join_from(GenomicAnnotation, Data, GenomicAnnotation.data_id == Data.id) # inner, drop unannotated records...
-#     # .join(Association, Association.dataset_id == Data.dataset_id, isouter=True) # problematic, does the outer resolve the issue?
-#     # .join(Selection, Association.selection_id == Selection.id)
-#     # .group_by(GenomicAnnotation.data_id)
-#     # )
-
-#     # ------------------------------
-
-#     # ga = (
-#     # select(
-#     # GenomicAnnotation.data_id,
-#     # func.group_concat(GenomicAnnotation.gene_name.distinct()).label(
-#     # "gene_name_gc"
-#     # ),
-#     # func.group_concat(GenomicAnnotation.gene_id.distinct()).label("gene_id_gc"),
-#     # func.group_concat(GenomicAnnotation.gene_biotype.distinct()).label(
-#     # "gene_biotype_gc"
-#     # ),
-#     # func.group_concat(GenomicAnnotation.feature.distinct()).label("feature_gc"),
-#     # ).group_by(GenomicAnnotation.data_id)
-#     # ).cte("ga")
-
-#     # query = (
-#     # select(
-#     # Data.chrom,
-#     # Data.start,
-#     # Data.end,
-#     # Data.name,
-#     # Data.score,
-#     # Data.strand,
-#     # Data.coverage,
-#     # Data.frequency,
-#     # ga.c.gene_name_gc,
-#     # ga.c.gene_id_gc,
-#     # ga.c.gene_biotype_gc,
-#     # ga.c.feature_gc,
-#     # )
-#     # .join_from(Data, ga, Data.id == ga.c.data_id)
-#     # .join_from(Data, Association, Data.dataset_id == Association.dataset_id)
-#     # .join_from(Association, Selection, Association.selection_id == Selection.id)
-#     ## .order_by(Data.chrom, Data.start)
-#     ## duplicate entries from JOIN Association/Selection where 1+ modification
-#     ## https://github.com/dieterich-lab/scimodom/issues/53 and related
-#     ## .distinct()
-#     # )
-
-#     # query = (
-#     # select(
-#     # Data.chrom,
-#     # Data.start,
-#     # Data.end,
-#     # Data.name,
-#     # Data.score,
-#     # Data.strand,
-#     # Data.coverage,
-#     # Data.frequency,
-#     # func.group_concat(GenomicAnnotation.gene_name.distinct()).label(
-#     # "gene_name_gc"
-#     # ),
-#     # func.group_concat(GenomicAnnotation.gene_id.distinct()).label("gene_id_gc"),
-#     # func.group_concat(GenomicAnnotation.gene_biotype.distinct()).label(
-#     # "gene_biotype_gc"
-#     # ),
-#     # func.group_concat(GenomicAnnotation.feature.distinct()).label("feature_gc"),
-#     # )
-#     # .join_from(Association, Data, Association.dataset_id == Data.dataset_id)
-#     # .join_from(Association, Selection, Association.selection_id == Selection.id)
-#     # .join_from(Data, GenomicAnnotation, Data.id == GenomicAnnotation.data_id)
-#     # .group_by(Data.id)
-#     # )
-#     # ------------------------------
-#     # an empty list would return an empty set...
-#     # if modification_ids:
-#     # query = query.where(Selection.modification_id.in_(modification_ids))
-#     # if technology_ids:
-#     # query = query.where(Selection.technology_id.in_(technology_ids))
-#     # if organism_ids:
-#     # query = query.where(Selection.organism_id.in_(organism_ids))
-#     # ------------------------------
-#     # feature_query = select(GenomicAnnotation.feature.distinct()).where(
-#     # GenomicAnnotation.data_id.in_(query.with_only_columns(Data.id))
-#     # )
-#     # features = get_session().execute(feature_query).scalars().all()
-#     # biotype_query = select(GenomicAnnotation.gene_biotype.distinct()).where(
-#     # GenomicAnnotation.data_id.in_(query.with_only_columns(Data.id))
-#     # )
-#     # biotypes = get_session().execute(biotype_query).scalars().all()
-#     # biotypes = sorted(
-#     # list(
-#     # set(
-#     # [specs.BIOTYPES[biotype] for biotype in biotypes if biotype is not None]
-#     # )
-#     # )
-#     # )
-
-#     # see above
-#     # is this needed?
-#     # query = query.distinct()
-
-#     for sort in multi_sort:
-#         expr = _get_arg_sort(sort)
-#         query = query.order_by(eval(expr))
-
-#     # order of sort and filter????
-#     # for flt in table_filter:
-#     # expr = _get_arg_flt(flt)
-#     # query = query.where(eval(expr))
-
-#     response_object = dict()
-#     response_object["features"] = []  # features
-#     response_object["biotypes"] = []  # biotypes
-#     response_object["totalRecords"], query = _paginate(query, first_record, max_records)
-#     response_object["records"] = _dump(query)
-
-#     return response_object
 
 
 @api.route("/browse", methods=["GET"])
@@ -688,3 +429,37 @@ def upload_file():
     rfile.save(response)
 
     return response.as_posix()
+
+
+def _dump(query):
+    return [r._asdict() for r in get_session().execute(query)]
+
+
+def _get_arg_sort(string: str, url_split: str = "%2B") -> str:
+    """Format Data table sort.
+
+    :param string: Formatted sort string
+    :type string: str
+    :param url_split: Separator
+    :type url_split: str
+    :returns: Query string
+    :rtype: str
+    """
+    col, order = string.split(url_split)
+    return f"Data.{col}.{order}()"
+
+
+def _get_flt(string, url_split="%2B") -> tuple[str, list[str], str]:
+    """Retrieve generic filters. The operator
+    can be used as a key, and may not
+    necessarily match an SQLAlchemy operator.
+
+    :param string: Formatted filter string
+    :type string: str
+    :param url_split: Separator
+    :type url_split: str
+    :returns: Tuple of (column, list of values, operator)
+    :rtype: tuple
+    """
+    col, val, operator = string.split(url_split)
+    return col, val.split(","), operator

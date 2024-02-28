@@ -20,7 +20,7 @@ export default {
       },
 
       {
-        'ring-1 ring-surface-300 dark:ring-surface-700 ring-offset-0':
+        'ring-0 ring-surface-300 dark:ring-surface-700 ring-offset-0':
           parent.instance.$name !== 'InputGroup'
       },
       'shadow-sm',
@@ -68,8 +68,8 @@ export default {
         },
 
         // States
-        'outline-none focus:ring-primary-600 dark:focus:ring-primary-500',
-        'focus:outline-none focus:outline-offset-0 focus:ring-2 focus:ring-inset focus:ring-primary-600 dark:focus:ring-primary-500',
+        'outline-none focus:ring-primary-500 dark:focus:ring-primary-400',
+        'focus:outline-none focus:outline-offset-0 focus:ring-2 focus:ring-inset focus:ring-primary-500 dark:focus:ring-primary-400',
 
         //Position
         {
@@ -126,7 +126,7 @@ export default {
         },
 
         //States
-        'focus:outline-none focus:outline-offset-0 focus:ring-2 focus:ring-inset focus:ring-primary-600 focus:dark:ring-primary-500',
+        'focus:outline-none focus:outline-offset-0 focus:ring-2 focus:ring-inset focus:ring-primary-500 focus:dark:ring-primary-400',
         'hover:bg-surface-50 dark:hover:bg-surface-700',
 
         //Misc
@@ -179,7 +179,7 @@ export default {
         },
 
         //States
-        'focus:outline-none focus:outline-offset-0 focus:ring-2 focus:ring-inset focus:ring-primary-600 focus:dark:ring-primary-500',
+        'focus:outline-none focus:outline-offset-0 focus:ring-2 focus:ring-inset focus:ring-primary-500 focus:dark:ring-primary-400',
         'hover:bg-surface-50 dark:hover:bg-surface-700',
 
         //Misc

@@ -58,7 +58,7 @@ export default {
       'py-3.5 px-3',
 
       // Color
-      'bg-surface-0 dark:bg-surface-800',
+      'bg-surface-50 dark:bg-surface-800',
       'border-surface-300 dark:border-surface-600',
       'text-surface-700 dark:text-white/80'
     ]
@@ -1220,7 +1220,7 @@ export default {
       { 'bg-surface-0 text-surface-600 dark:bg-surface-800': !context.selected },
       { 'bg-surface-0 dark:bg-surface-800': props.frozenRow },
       {
-        'odd:bg-surface-0 odd:text-surface-600 dark:odd:bg-surface-800 even:bg-surface-50 even:text-surface-600 dark:even:bg-surface-900/60':
+        'odd:bg-surface-0 odd:text-surface-600 dark:odd:bg-surface-800 dark:odd:text-white/80 even:bg-surface-50 even:text-surface-600 dark:even:bg-surface-900/60 dark:even:text-white/80':
           context.stripedRows && !context.selected
       },
 
