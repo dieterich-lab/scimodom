@@ -20,6 +20,7 @@ from scimodom.database.models import (
     Taxonomy,
     Taxa,
     Organism,
+    Assembly,
     Annotation,
     DataAnnotation,
     Association,
@@ -29,6 +30,7 @@ from scimodom.database.models import (
 import scimodom.database.queries as queries
 from scimodom.services.importer import BEDImporter
 from scimodom.services.annotation import AnnotationService
+from scimodom.services.assembly import AssemblyService
 from scimodom.utils.models import records_factory
 from scimodom.utils.operations import get_op
 import scimodom.utils.specifications as specs
@@ -144,6 +146,32 @@ def get_selection():
     return _dump(query)
 
 
+@api.route("/chrom/<taxid>", methods=["GET"])
+@cross_origin(supports_credentials=True)
+def get_chrom(taxid):
+    """Provides access to chrom.sizes for
+    selected organism for current version."""
+
+    query = queries.get_assembly_version()
+    version = get_session().execute(query).scalar_one()
+
+    query = queries.query_column_where(
+        Assembly, ["name", "id"], filters={"taxa_id": taxid, "version": version}
+    )
+    assembly_name, assembly_id = get_session().execute(query).all()[0]
+    query = queries.query_column_where(Taxa, "name", filters={"id": taxid})
+    organism_name = get_session().execute(query).scalar_one()
+    assembly_service = AssemblyService.from_id(get_session(), assembly_id=assembly_id)
+    parent, filen = assembly_service.get_chrom_path(organism_name, assembly_name)
+    chrom_file = Path(parent, filen)
+    chroms = []
+    with open(chrom_file, "r") as fh:
+        for line in fh:
+            chrom, size = line.strip().split(None, 1)
+            chroms.append({"chrom": chrom, "size": int(size.strip())})
+    return chroms
+
+
 @api.route("/search", methods=["GET"])
 @cross_origin(supports_credentials=True)
 def get_search():
@@ -153,12 +181,11 @@ def get_search():
     chrom = request.args.get("chrom", type=str)
     start = request.args.get("start", type=int)
     end = request.args.get("end", type=int)
-    name = request.args.get("name", type=str)
     first_record = request.args.get("firstRecord", type=int)
     max_records = request.args.get("maxRecords", type=int)
     multi_sort = request.args.getlist("multiSort", type=str)
     table_filter = request.args.getlist("tableFilter", type=str)
-
+    print(f"CHROM {chrom}, START {start}, END {end}")
     query = (
         select(
             Data.chrom,
@@ -187,6 +214,7 @@ def get_search():
 
     # coordinate filter
     if chrom:
+        print("YES>>>>>>>>>>>>>>>>>")
         query = (
             query.where(Data.chrom == chrom)
             .where(Data.start >= start)

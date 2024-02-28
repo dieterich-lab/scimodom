@@ -25,8 +25,8 @@ const selection = ref()
 
 const chroms = ref()
 const selectedChrom = ref()
-const start = ref()
-const end = ref()
+const selectedChromStart = ref()
+const selectedChromEnd = ref()
 
 const disabled = computed(() => isAllSelected())
 
@@ -95,11 +95,13 @@ const updateOrganism = () => {
   selectedOrganism.value = undefined
   selectedTechnology.value = undefined
   technology.value = undefined
+  selection.value = undefined
   organism.value = updOrganismFromMod(options.value, selectedModification.value)
 }
 
 const updateTechnology = () => {
   selectedTechnology.value = undefined
+  selection.value = undefined
   technology.value = updTechnologyFromModAndOrg(
     options.value,
     selectedModification.value,
@@ -117,6 +119,14 @@ const updateSelection = () => {
   taxid.value = result.taxid
   selection.value = result.selection
   // get chrom.sizes
+  service
+    .getEndpoint(`/chrom/${taxid.value}`)
+    .then(function (response) {
+      chroms.value = response.data
+    })
+    .catch((error) => {
+      console.log(error)
+    })
 }
 
 const updateTmp = () => {
@@ -133,6 +143,14 @@ function lazyLoad(event) {
       params: {
         selection: selection.value,
         taxid: taxid.value[0],
+        chrom: selectedChrom.value == null ? null : selectedChrom.value.chrom,
+        start: selectedChromStart.value == null ? 0 : selectedChromStart.value,
+        end:
+          selectedChromEnd.value == null
+            ? selectedChrom.value == null
+              ? 0
+              : selectedChrom.value.size
+            : selectedChromEnd.value,
         firstRecord: lazyParams.value.first,
         maxRecords: lazyParams.value.rows,
         multiSort: fmtOrder(lazyParams.value.multiSortMeta),
@@ -244,11 +262,16 @@ onMounted(() => {
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
         <div>
           <Dropdown
+            @change="
+              selectedChromStart = null
+              selectedChromEnd = null
+            "
             v-model="selectedChrom"
             :options="chroms"
+            optionLabel="chrom"
             showClear
             :disabled="disabled"
-            placeholder="4. Select chromosome"
+            placeholder="4. Select chromosome (optional)"
             :pt="{
               root: { class: 'w-full md:w-full' }
             }"
@@ -256,12 +279,13 @@ onMounted(() => {
           />
         </div>
         <InputNumber
-          v-model="start"
+          @input="selectedChromEnd = null"
+          v-model="selectedChromStart"
           inputId="minmax"
-          placeholder="5. Select start"
-          :disabled="selectedChrom === undefined"
+          placeholder="5. Enter region start (optional)"
+          :disabled="selectedChrom == null"
           :min="0"
-          :max="100"
+          :max="selectedChrom == null ? 0 : selectedChrom.size - 1"
           :pt="{
             root: { class: 'w-full md:w-full' }
           }"
@@ -269,12 +293,12 @@ onMounted(() => {
         />
         <div>
           <InputNumber
-            v-model="end"
+            v-model="selectedChromEnd"
             inputId="minmax"
-            :disabled="start === undefined"
-            placeholder="6. Select end"
-            :min="0"
-            :max="100"
+            :disabled="selectedChromStart == null"
+            placeholder="6. Enter region end (optional)"
+            :min="selectedChromStart == null ? 0 : selectedChromStart + 1"
+            :max="selectedChrom == null ? 0 : selectedChrom.size"
             :pt="{
               root: { class: 'w-full md:w-full' }
             }"
@@ -330,20 +354,7 @@ onMounted(() => {
           <Column field="chrom" header="Chrom" sortable exportHeader="chrom"></Column>
           <Column field="start" header="Start" sortable exportHeader="chromStart"></Column>
           <Column field="end" header="End" exportHeader="chromEnd"></Column>
-          <Column field="name" header="Name" exportHeader="name">
-            <!-- <Column field="name" header="Name" exportHeader="name" :showFilterMenu="false"> -->
-            <!-- <template #filter="{ filterModel, filterCallback }">
-                 <MultiSelect
-                 v-model="filterModel.value"
-                 @change="filterCallback()"
-                 :options="names"
-                 placeholder="Any"
-                 :maxSelectedLabels="1"
-                 >
-                 </MultiSelect>
-                 </template><!--  -->
-            -->
-          </Column>
+          <Column field="name" header="Name" exportHeader="name"></Column>
           <Column field="score" header="Score" sortable exportHeader="score"></Column>
           <Column field="strand" header="Strand" exportHeader="strand"></Column>
           <Column field="coverage" header="Coverage" sortable exportHeader="coverage"></Column>
@@ -393,6 +404,7 @@ onMounted(() => {
                 v-model="filterModel.value"
                 @input="filterCallback()"
                 placeholder="Search"
+                :disabled="disabled"
               />
             </template>
           </Column>
