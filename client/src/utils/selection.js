@@ -1,4 +1,4 @@
-import { toTree, toCascade, toIds } from '@/utils/index.js'
+import { toTree, toCascade, nestedSort, toIds } from '@/utils/index.js'
 
 // selection utilities for Search and Compare Views
 
@@ -6,7 +6,9 @@ import { toTree, toCascade, toIds } from '@/utils/index.js'
 export const updModification = (selection) => {
   // update modification
   // grouped Dropdown works with one child tree
-  return toTree(selection, ['rna', 'modomics_sname'], 'modification_id')
+  let tree = toTree(selection, ['rna', 'modomics_sname'], 'modification_id')
+  nestedSort(tree, ['children'])
+  return tree
 }
 
 export const updOrganismFromMod = (selection, slctMod) => {
@@ -17,7 +19,9 @@ export const updOrganismFromMod = (selection, slctMod) => {
   })
   opts = selection.filter((item) => item.modification_id == slctMod.key)
   let tree = toTree(opts, ['kingdom', 'taxa_sname', 'cto'], 'organism_id')
-  return toCascade(tree)
+  tree = toCascade(tree)
+  nestedSort(tree, ['child1', 'child2'])
+  return tree
 }
 
 export const updTechnologyFromModAndOrg = (selection, slctMod, slctOrg) => {
@@ -25,7 +29,9 @@ export const updTechnologyFromModAndOrg = (selection, slctMod, slctOrg) => {
   let opts = selection.filter(
     (item) => item.modification_id == slctMod.key && item.organism_id == slctOrg.key
   )
-  return toTree(opts, ['meth', 'tech'], 'technology_id')
+  let tree = toTree(opts, ['meth', 'tech'], 'technology_id')
+  nestedSort(tree, ['children'])
+  return tree
 }
 
 export const updSelectionFromAll = (selection, slctMod, slctOrg, slctTech) => {

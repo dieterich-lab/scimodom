@@ -23,6 +23,19 @@ export function toCascade(tree) {
   })
 }
 
+export function nestedSort(array, keys) {
+  // sort max. 2 levels on "label"
+  array.forEach((obj) => {
+    if (keys.length == 2) {
+      obj[keys[0]].forEach((nestedObj) => {
+        nestedObj[keys[1]].sort((a, b) => a.label.localeCompare(b.label))
+      })
+    }
+    obj[keys[0]].sort((a, b) => a.label.localeCompare(b.label))
+  })
+  array.sort((a, b) => a.label.localeCompare(b.label))
+}
+
 export function toIds(array, defaultArray) {
   if (!(array === undefined || Object.keys(array).length === 0)) {
     return Object.keys(array)

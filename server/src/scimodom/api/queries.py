@@ -34,11 +34,13 @@ from scimodom.utils.models import records_factory
 from scimodom.utils.operations import get_op
 import scimodom.utils.specifications as specs
 
-FEATURES = list(
-    {
-        **AnnotationService.FEATURES["conventional"],
-        **AnnotationService.FEATURES["extended"],
-    }.values()
+FEATURES = sorted(
+    list(
+        {
+            **AnnotationService.FEATURES["conventional"],
+            **AnnotationService.FEATURES["extended"],
+        }.values()
+    )
 )
 BIOTYPES = specs.BIOTYPES
 MAPPED_BIOTYPES = sorted(list(set(BIOTYPES.values())))

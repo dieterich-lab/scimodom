@@ -31,10 +31,11 @@ const disabled = computed(() => isAllSelected())
 
 const dt = ref()
 const first = ref(0)
+const rows = ref(10)
 const records = ref()
 const loading = ref(false)
-const loadingButton = ref(false)
 const totalRecords = ref(0)
+
 const lazyParams = ref({})
 const filters = ref({
   gene_name: { value: null, matchMode: FilterMatchMode.STARTS_WITH },
@@ -75,17 +76,23 @@ const getFileName = () => {
 
 const onPage = (event) => {
   lazyParams.value = event
-  lazyLoad(event)
+  if (!disabled.value) {
+    lazyLoad(event)
+  }
 }
 
 const onSort = (event) => {
   lazyParams.value = event
-  lazyLoad(event)
+  if (!disabled.value) {
+    lazyLoad(event)
+  }
 }
 
 const onFilter = (event) => {
   lazyParams.value.filters = filters.value
-  lazyLoad(event)
+  if (!disabled.value) {
+    lazyLoad(event)
+  }
 }
 
 const onExport = () => {
@@ -95,21 +102,21 @@ const onExport = () => {
 const updateOrganism = () => {
   selectedOrganism.value = undefined
   selectedTechnology.value = undefined
-  technology.value = undefined
-  selection.value = undefined
-  records.value = undefined
   selectedChrom.value = undefined
   selectedChromStart.value = undefined
   selectedChromEnd.value = undefined
+  technology.value = undefined
+  selection.value = undefined
+  records.value = undefined
   organism.value = updOrganismFromMod(options.value, selectedModification.value)
 }
 
 const updateTechnology = () => {
   selectedTechnology.value = undefined
-  selection.value = undefined
   selectedChrom.value = undefined
   selectedChromStart.value = undefined
   selectedChromEnd.value = undefined
+  selection.value = undefined
   records.value = undefined
   technology.value = updTechnologyFromModAndOrg(
     options.value,
@@ -129,10 +136,10 @@ const updateSelection = () => {
     selectedOrganism.value,
     selectedTechnology.value
   )
-  taxid.value = result.taxid
+  taxid.value = result.taxid[0]
   selection.value = result.selection
   if (selection.value.length == 0) {
-    // all checkboxes were unticked
+    // handle the case where all checkboxes are unticked
     selectedTechnology.value = undefined
     selection.value = undefined
     chroms.value = undefined
@@ -146,7 +153,6 @@ const updateSelection = () => {
       .catch((error) => {
         console.log(error)
       })
-    // lazyLoad()
   }
 }
 
@@ -157,7 +163,7 @@ function lazyLoad(event) {
     .get('/search', {
       params: {
         selection: selection.value,
-        taxid: taxid.value[0],
+        taxid: taxid.value,
         chrom: selectedChrom.value == null ? null : selectedChrom.value.chrom,
         chromStart: selectedChromStart.value == null ? 0 : selectedChromStart.value,
         chromEnd:
@@ -189,8 +195,8 @@ function lazyLoad(event) {
 
 onMounted(() => {
   lazyParams.value = {
-    first: 0,
-    rows: 10,
+    first: first.value,
+    rows: rows.value,
     filters: filters.value
   }
   service
@@ -346,7 +352,7 @@ onMounted(() => {
           :totalRecords="totalRecords"
           :loading="loading"
           :first="first"
-          :rows="10"
+          :rows="rows"
           @page="onPage($event)"
           v-model:filters="filters"
           @filter="onFilter($event)"

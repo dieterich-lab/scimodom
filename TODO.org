@@ -66,7 +66,7 @@ Draft or long-running issues, WIP, triage, and additional references or context 
 
 - [ ] [2024-02-03 Sat] [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/src/scimodom/api/__init__.py::E402 module level import not at top of file]]
 
-** TODO GENERAL [0/17]
+** TODO GENERAL [0/19]
 
 - [ ] dependencies :: replace pandas in ~SetupService~.
 
@@ -98,6 +98,10 @@ Draft or long-running issues, WIP, triage, and additional references or context 
   to isolate each test, but calling ~AssemblyService~ or ~AnnotationService~ overrides ~DATA_PATH~, as this loads the config, which in turn
   loads the dotenv file.
 
+- [ ] search :: Export: (1) add additional columns /e.g./ taxa_id, cto, RNA type, /etc./ that are hidden from the table, but that requires adding these
+  to the select query, we need to see if that impacts performance; if not, then (2) add a header with at least modification, taxa_id, and cto; if not
+  then (3) format filename (this is the current solution).
+
 - [ ] docs :: Only Ensembl short format for chrom.
 - [ ] docs :: Only GTF format (annotation).
 - [ ] docs :: The header in bedRMod and selection must match exactly /e.g./ GRCh38 and hg38 will throw an exception.
@@ -122,5 +126,6 @@ Draft or long-running issues, WIP, triage, and additional references or context 
 * LONG-TERM
 
 ** IMPROVEMENTS
+
 
 ** QUESTIONS
