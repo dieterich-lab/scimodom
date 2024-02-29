@@ -58,6 +58,9 @@ module.exports = {
       },
       fontFamily: {
         ham: ["'ham'"]
+      },
+      backgroundImage: {
+        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))'
       }
     }
   },

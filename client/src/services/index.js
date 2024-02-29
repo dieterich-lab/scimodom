@@ -1,6 +1,16 @@
 import axios from 'axios'
 import { API_BASE_URL } from '/config.js?url'
 
+// refactor HTTP public service either export service, or
+// rename exported functions
+
+// const authService = axios.create({
+//     baseURL:
+//     withCredentials: true,
+//     xsrfCookieName: 'csrf_access_token'
+// })
+// export { authService };
+
 const HTTP = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: false,

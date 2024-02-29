@@ -66,7 +66,7 @@ Draft or long-running issues, WIP, triage, and additional references or context 
 
 - [ ] [2024-02-03 Sat] [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/src/scimodom/api/__init__.py::E402 module level import not at top of file]]
 
-** TODO GENERAL [1/20]
+** TODO GENERAL [4/23]
 
 - [ ] dependencies :: replace pandas in ~SetupService~.
 
@@ -74,7 +74,8 @@ Draft or long-running issues, WIP, triage, and additional references or context 
 - [ ] refactor :: Can we add type casting methods directly in each ORM model class?
 
 - [ ] models :: ~contact_email~ nullable.
-- [ ] models :: ~assembly_id: Mapped[int] = mapped_column(ForeignKey("assembly.id"))~ in ~Dataset~ (and relationships) is redundant,
+- [ ] models :: Add ~Dataset~ contact and/or date added?
+- [X] models :: ~assembly_id: Mapped[int] = mapped_column(ForeignKey("assembly.id"))~ in ~Dataset~ (and relationships) is redundant,
   we don't need to know the assembly, as there is only one in the DB!
 - [ ] models :: RNA type nomenclature enforcement.
 
@@ -89,8 +90,10 @@ Draft or long-running issues, WIP, triage, and additional references or context 
 
 - [X] Biotype mapping: how to? Write into table, and use only mapping, or map on the fly?
 
-- [ ] ~Datatable dataKey="id"~
-- [ ] Default ordering of data (Search, Browse, Compare). What if EUF file is not sorted?
+- [X] ~Datatable dataKey="id"~
+- [X] Default ordering of data (Search, Browse, Compare). EUF import does not need to be sorted. Sorting is done on the fly for annotation.
+  Default sort order in Search + sorting enabled. No default sort in Browse. For Compare, data is returned after sorting for intersect,
+  closest, or subtract.
 
 - [ ] test :: [2024-02-18 Sun] [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/tests/unit/conftest.py::def data_path(tmp_path_factory, monkeypatch):]]
   I see no other choice than using ~scope=sesion~, with either *pytest-dotenv* or setting a global env (=pyproject.toml=) for all tests, and
@@ -101,6 +104,8 @@ Draft or long-running issues, WIP, triage, and additional references or context 
 - [ ] search :: Export: (1) add additional columns /e.g./ taxa_id, cto, RNA type, /etc./ that are hidden from the table, but that requires adding these
   to the select query, we need to see if that impacts performance; if not, then (2) add a header with at least modification, taxa_id, and cto; if not
   then (3) format filename (this is the current solution).
+- [ ] browse :: Additional information for the ~Dialog~ or for the export? /e.g./ ~sequencing_platform~, ~basecalling~, ~bioinformatics_workflow~,
+   ~experiment~, and/or ~ProjectContact~ (~Project~ or eventually ~Dataset~ contact).
 
 - [ ] router :: All routes to ~/~ with backward/forward navigation? This does not allow either to open a link in a new tab. Also how would
   that work with route guards, secure routes, /etc./? Finally, with route params (/e.g./ ~Browse~, where EUFID is directly added to the index),
@@ -108,6 +113,7 @@ Draft or long-running issues, WIP, triage, and additional references or context 
   the current search results.
 
 - [ ] docs :: Only Ensembl short format for chrom.
+- [ ] docs :: bedRMod = 1 organism (incl. cell type/tissue), 1 technology, 1 RNA type (mRNA, tRNA, /etc./), but 1+ modification (name field).
 - [ ] docs :: Only GTF format (annotation).
 - [ ] docs :: The header in bedRMod and selection must match exactly /e.g./ GRCh38 and hg38 will throw an exception.
 - [ ] docs :: Flask CLI.
