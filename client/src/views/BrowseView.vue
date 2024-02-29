@@ -103,9 +103,10 @@ onMounted(() => {
       <div>
         <div>
           <DataTable
-            ref="dt"
             :value="records"
             dataKey="dataset_id"
+            ref="dt"
+            exportFilename="scimodom_browse"
             :paginator="true"
             :rows="5"
             v-model:filters="filters"
@@ -127,7 +128,7 @@ onMounted(() => {
               'cto',
               'access'
             ]"
-            paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+            paginatorTemplate="FirstPageLink PrevPageLink CurrentPageReport NextPageLink LastPageLink  RowsPerPageDropdown"
             :rowsPerPageOptions="[5, 10, 25]"
             currentPageReportTemplate="Showing {first} to {last} of {totalRecords} records"
           >

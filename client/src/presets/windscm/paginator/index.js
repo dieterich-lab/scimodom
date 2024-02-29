@@ -218,7 +218,8 @@ export default {
         // States
         {
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary-600 dark:focus-visible:ring-secondary-500':
-            !state.focused
+            !state.focused,
+          'hover:ring-1 hover:ring-secondary-500 dark:hover:ring-secondary-400': !state.selected
         },
 
         // Misc
