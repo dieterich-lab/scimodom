@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { fmtOrder, fmtFilter } from '@/utils/index.js'
 import { FilterMatchMode, FilterOperator } from 'primevue/api'
 import {
@@ -9,6 +10,8 @@ import {
   updSelectionFromAll
 } from '@/utils/selection.js'
 import service from '@/services/index.js'
+
+const router = useRouter()
 
 const options = ref()
 const biotypes = ref()
@@ -72,6 +75,10 @@ const getFileName = () => {
       selectedOrganism.value.label.replaceAll(/ /g, '_')
   }
   return fileName
+}
+
+const navigateTo = (eufid) => {
+  router.push({ name: 'browse', params: { eufid: eufid } })
 }
 
 const onPage = (event) => {
@@ -438,7 +445,17 @@ onMounted(() => {
             </template>
           </Column>
           <Column field="tech" header="Technology" exportHeader="technology"></Column>
-          <Column field="dataset_id" header="EUFID" exportHeader="eufid"></Column>
+          <Column field="dataset_id" header="EUFID" exportHeader="eufid">
+            <template #body="{ data }">
+              <Button
+                size="small"
+                :label="data.dataset_id"
+                severity="secondary"
+                text
+                @click="navigateTo(data.dataset_id)"
+              />
+            </template>
+          </Column>
         </DataTable>
       </div>
     </SectionLayout>

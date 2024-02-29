@@ -66,7 +66,7 @@ Draft or long-running issues, WIP, triage, and additional references or context 
 
 - [ ] [2024-02-03 Sat] [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/src/scimodom/api/__init__.py::E402 module level import not at top of file]]
 
-** TODO GENERAL [0/19]
+** TODO GENERAL [0/20]
 
 - [ ] dependencies :: replace pandas in ~SetupService~.
 
@@ -101,6 +101,11 @@ Draft or long-running issues, WIP, triage, and additional references or context 
 - [ ] search :: Export: (1) add additional columns /e.g./ taxa_id, cto, RNA type, /etc./ that are hidden from the table, but that requires adding these
   to the select query, we need to see if that impacts performance; if not, then (2) add a header with at least modification, taxa_id, and cto; if not
   then (3) format filename (this is the current solution).
+
+- [ ] router :: All routes to ~/~ with backward/forward navigation? This does not allow either to open a link in a new tab. Also how would
+  that work with route guards, secure routes, /etc./? Finally, with route params (/e.g./ ~Browse~, where EUFID is directly added to the index),
+  this sounds like a strange choice... For ~Browse~ in particular, when clicking on EUFID in ~Search~, we want a new tab, to avoid loosing
+  the current search results.
 
 - [ ] docs :: Only Ensembl short format for chrom.
 - [ ] docs :: Only GTF format (annotation).

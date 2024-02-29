@@ -21,8 +21,9 @@ const router = createRouter({
       component: SearchView
     },
     {
-      path: '/',
+      path: '/:eufid?',
       name: 'browse',
+      props: true,
       component: BrowseView
     },
     {

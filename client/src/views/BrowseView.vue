@@ -17,9 +17,16 @@ const columns = [
   { field: 'date_published', header: 'Published' }
 ]
 
-const initFilters = () => {
+const props = defineProps({
+  eufid: {
+    type: String,
+    required: false,
+    default: null
+  }
+})
+const initFilters = (defaultGlobal) => {
   filters.value = {
-    global: { value: null, matchMode: FilterMatchMode.CONTAINS },
+    global: { value: defaultGlobal, matchMode: FilterMatchMode.CONTAINS },
     rna: {
       operator: FilterOperator.AND,
       constraints: [{ value: null, matchMode: FilterMatchMode.EQUALS }]
@@ -48,11 +55,7 @@ const initFilters = () => {
   }
 }
 
-initFilters()
-
-const clearFilter = () => {
-  initFilters()
-}
+initFilters(props.eufid)
 
 const onExport = () => {
   dt.value.exportCSV()
@@ -154,7 +157,7 @@ onMounted(() => {
                     severity="secondary"
                     outlined
                     raised
-                    @click="clearFilter()"
+                    @click="initFilters(null)"
                   />
                 </div>
                 <div class="text-right">
