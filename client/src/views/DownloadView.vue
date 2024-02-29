@@ -19,6 +19,22 @@
         Data export is available for Search, Browse, and Compare. Database dumps of all or selected
         dataset will soon be available.
       </p>
+
+      <a
+        v-for="doi in splitStr(dois)"
+        class="text-secondary-500 ml-2"
+        target="_blank"
+        :href="`https://doi.org/${doi}`"
+        >{{ doi }}</a
+      >
     </SectionLayout>
   </DefaultLayout>
 </template>
+
+<script setup>
+const dois = '10.1038/s41587-022-01587-6'
+// const dois = '10.1038/s41587-022-01587-6,10.47366/sabia.v5n1a3'
+const splitStr = (str) => {
+  return str.split(',')
+}
+</script>

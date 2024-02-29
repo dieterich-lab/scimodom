@@ -66,7 +66,7 @@ Draft or long-running issues, WIP, triage, and additional references or context 
 
 - [ ] [2024-02-03 Sat] [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/src/scimodom/api/__init__.py::E402 module level import not at top of file]]
 
-** TODO GENERAL [0/20]
+** TODO GENERAL [1/20]
 
 - [ ] dependencies :: replace pandas in ~SetupService~.
 
@@ -87,7 +87,7 @@ Draft or long-running issues, WIP, triage, and additional references or context 
   before writing to the database.
 - [ ] import :: Buffer by chunk (no flush)?
 
-- [ ] Biotype mapping: how to? Write into table, and use only mapping, or map on the fly?
+- [X] Biotype mapping: how to? Write into table, and use only mapping, or map on the fly?
 
 - [ ] ~Datatable dataKey="id"~
 - [ ] Default ordering of data (Search, Browse, Compare). What if EUF file is not sorted?

@@ -3,20 +3,6 @@ import { ref, onMounted } from 'vue'
 import { FilterMatchMode, FilterOperator } from 'primevue/api'
 import service from '@/services/index.js'
 
-const records = ref()
-const dt = ref()
-const recordsOverlay = ref(false)
-const thisRecord = ref({})
-const filters = ref()
-// todo
-const status = ref(['public', 'restricted'])
-const columns = [
-  { field: 'project_title', header: 'Title' },
-  { field: 'project_summary', header: 'Summary' },
-  { field: 'date_added', header: 'Added' },
-  { field: 'date_published', header: 'Published' }
-]
-
 const props = defineProps({
   eufid: {
     type: String,
@@ -24,6 +10,22 @@ const props = defineProps({
     default: null
   }
 })
+
+const records = ref()
+const recordsOverlay = ref(false)
+const thisRecord = ref({})
+const dt = ref()
+const columns = [
+  { field: 'project_title', header: 'Title' },
+  { field: 'project_summary', header: 'Summary' },
+  { field: 'date_added', header: 'Added' },
+  { field: 'date_published', header: 'Published' }
+]
+
+// todo
+const status = ref(['public', 'restricted'])
+
+const filters = ref()
 const initFilters = (defaultGlobal) => {
   filters.value = {
     global: { value: defaultGlobal, matchMode: FilterMatchMode.CONTAINS },
@@ -54,11 +56,14 @@ const initFilters = (defaultGlobal) => {
     }
   }
 }
-
 initFilters(props.eufid)
 
 const onExport = () => {
   dt.value.exportCSV()
+}
+
+const splitStr = (str) => {
+  return str.split(',')
 }
 
 const onOverlay = (record) => {
@@ -323,22 +328,26 @@ onMounted(() => {
               ></Column>
               <Column field="doi" header="DOI">
                 <template #body="{ data }">
-                  <a
-                    class="text-secondary-500"
-                    target="_blank"
-                    :href="`https://doi.org/${data.doi}`"
-                    >{{ data.doi }}</a
-                  >
+                  <ul class="list-none" v-for="doi in splitStr(data.doi)">
+                    <a
+                      class="text-secondary-500 pr-12"
+                      target="_blank"
+                      :href="`https://doi.org/${doi}`"
+                      >{{ doi }}</a
+                    >
+                  </ul>
                 </template>
               </Column>
               <Column field="pmid" header="PMID">
                 <template #body="{ data }">
-                  <a
-                    class="text-secondary-500"
-                    target="_blank"
-                    :href="`http://www.ncbi.nlm.nih.gov/pubmed/${data.pmid}`"
-                    >{{ data.pmid }}</a
-                  >
+                  <ul class="list-none" v-for="pmid in splitStr(data.pmid)">
+                    <a
+                      class="text-secondary-500"
+                      target="_blank"
+                      :href="`http://www.ncbi.nlm.nih.gov/pubmed/${pmid}`"
+                      >{{ pmid }}</a
+                    >
+                  </ul>
                 </template>
               </Column>
             </DataTable>
