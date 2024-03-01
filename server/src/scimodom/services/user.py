@@ -103,9 +103,6 @@ class UserService:
         self._session.commit()
         self._mail_service.send_password_reset_token(email, user.confirmation_token)
 
-    def _send_email_for_password_reset(self, email, confirmation_token):
-        pass
-
     def do_password_reset(self, email, confirmation_token, new_password) -> None:
         try:
             try:
