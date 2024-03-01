@@ -33,7 +33,7 @@ def upgrade() -> None:
         ),
         sa.Column("state", sa.Enum(UserState), default=UserState.wait_for_confirmation),
         sa.Column("password_hash", sa.String(length=64)),
-        sa.Column("confirmation_token", sa.String(length=32)),
+        sa.Column("confirmation_token", sa.String(length=32), nullable=True),
     )
 
 

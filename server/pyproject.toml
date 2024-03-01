@@ -37,7 +37,8 @@ dependencies = [
   "python-dotenv",
   "shortuuid",
   "pybedtools",
-  "requests"
+  "requests",
+  "flask-jwt-extended"
 ]
 
 [project.scripts]
