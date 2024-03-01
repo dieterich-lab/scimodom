@@ -6,7 +6,6 @@ from sqlalchemy import pool
 from alembic import context
 
 from scimodom.database.database import Base
-import scimodom.database.models
 from scimodom.config import Config
 
 # this is the Alembic Config object, which provides

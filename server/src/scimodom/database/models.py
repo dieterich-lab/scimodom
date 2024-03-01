@@ -1,7 +1,8 @@
+import enum
 from datetime import datetime
 from typing import List, Optional
 
-from sqlalchemy import String, Text, DateTime, Index, ForeignKey, UniqueConstraint
+from sqlalchemy import String, Text, DateTime, Index, ForeignKey, UniqueConstraint, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from scimodom.database.database import Base
@@ -375,3 +376,20 @@ class DataAnnotation(Base):
         back_populates="annotations"
     )
     inst_data: Mapped["Data"] = relationship(back_populates="annotations")
+
+
+class UserState(enum.Enum):
+    wait_for_confirmation = 0
+    active = 1
+    password_reset_requested = 2
+
+
+class User(Base):
+    __tablename__ = "user"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    email: Mapped[str] = mapped_column(
+        String(320), nullable=False, index=True, unique=True
+    )
+    state: Mapped[UserState] = mapped_column(Enum(UserState))
+    password_hash: Mapped[str] = mapped_column(String(64))
+    confirmation_token: Mapped[str] = mapped_column(String(32))
