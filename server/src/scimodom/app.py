@@ -2,6 +2,7 @@ from logging.config import dictConfig
 
 import click
 from flask_cors import CORS
+from flask_jwt_extended import JWTManager
 from sqlalchemy.orm import scoped_session
 
 from scimodom.api import api
@@ -34,6 +35,8 @@ def create_app():
 
     app.register_blueprint(api, url_prefix="/api/v0")
     app.register_blueprint(frontend, url_prefix="/")
+
+    jwt = JWTManager(app)
 
     @app.cli.command(
         "assembly", epilog="Check docs at https://dieterich-lab.github.io/scimodom/."

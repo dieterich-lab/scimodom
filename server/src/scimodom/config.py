@@ -1,3 +1,4 @@
+import datetime
 import logging
 import os
 from pathlib import Path
@@ -24,6 +25,8 @@ class Config:
     SECRET_KEY: ClassVar[str | None] = os.getenv("SECRET_KEY")
     SESSION_COOKIE_SAMESITE: ClassVar[str | None] = os.getenv("SESSION_COOKIE_SAMESITE")
     SESSION_COOKIE_SECURE: ClassVar[str | None] = os.getenv("SESSION_COOKIE_SECURE")
+    JWT_SECRET_KEY: ClassVar[str | None] = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
+    JWT_ACCESS_TOKEN_EXPIRES = datetime.timedelta(days=1)
     IMPORT_PATH: ClassVar[str | Path] = os.getenv("IMPORT_PATH", "import")
     DATA_PATH: ClassVar[str | Path] = os.getenv("DATA_PATH", "data")
     FRONTEND_PATH: ClassVar[Path] = Path(

@@ -1,15 +1,20 @@
 # from pathlib import Path
 
-from flask import request
-
-# from flask_cors import cross_origin
-# from flask_jwt_extended import create_access_token, create_refresh_token, set_access_cookies, set_refresh_cookies
-# from flask_jwt_extended import unset_jwt_cookies, jwt_required
+from flask import jsonify, request
+from flask_cors import cross_origin
+from flask_jwt_extended import (
+    create_access_token,
+    create_refresh_token,
+    set_access_cookies,
+    set_refresh_cookies,
+)
+from flask_jwt_extended import unset_jwt_cookies, jwt_required
 
 from . import api
 
 
 @api.route("/login", methods=["POST"])
+@cross_origin(supports_credentials=True)
 def login():
     data = request.get_json()
     username = data["username"]
@@ -17,15 +22,18 @@ def login():
     print(f"USERNAME {username}, PASSWORD {password}")
     # user = authenticate(username, password) # SEE BELOW
     # user = User.authenticate(**data) # SEE BELOW
-    # if user:
-    #   access_token = create_access_token(identity=user.user_id)
-    #   refresh_token = create_refresh_token(identity=user.user_id)
-    #   response = jsonify()
-    #   set_access_cookies(response, access_token)
-    #   set_refresh_cookies(response, refresh_token)
-    #   return response, 201
-    # else:
-    #   return jsonify(message="Unauthorized"), 401
+    user = True
+    if user:
+        # access_token = create_access_token(identity=user.user_id)
+        # refresh_token = create_refresh_token(identity=user.user_id)
+        access_token = create_access_token(identity="ABCDEFG")
+        refresh_token = create_refresh_token(identity="ABCDEFG")
+        response = jsonify()
+        set_access_cookies(response, access_token)
+        set_refresh_cookies(response, refresh_token)
+        return response, 201
+    else:
+        return jsonify(message="Unauthorized"), 401
 
 
 @api.route("/logout", methods=["POST"])
@@ -48,7 +56,11 @@ def logout():
 #     def __init__(self, email, password):
 #         self.email = email
 #         self.password = some function to generate password hash e.g. sha256
-
+# self.password = bcrypt.generate_password_hash( # e.g. using flask_bcrypt
+#     password, app.config.get('BCRYPT_LOG_ROUNDS')
+# ).decode()
+# self.registered_on = datetime.datetime.now()
+# self.admin = admin
 #     @classmethod
 #     def authenticate(cls, **kwargs):
 #         email = kwargs.get('email')

@@ -1,15 +1,14 @@
 import axios from 'axios'
 import { API_BASE_URL } from '/config.js?url'
 
-// refactor HTTP public service either export service, or
+// TODO: refactor HTTP as HTTPPublic either export service, or
 // rename exported functions
 
-// const authService = axios.create({
-//     baseURL:
-//     withCredentials: true,
-//     xsrfCookieName: 'csrf_access_token'
-// })
-// export { authService };
+const HTTPSecure = axios.create({
+  baseURL: API_BASE_URL,
+  withCredentials: true,
+  xsrfCookieName: 'csrf_access_token'
+})
 
 const HTTP = axios.create({
   baseURL: API_BASE_URL,
@@ -34,3 +33,6 @@ export default {
     return HTTP.getUri(HTTP.config)
   }
 }
+
+export { HTTPSecure }
+export { HTTP }
