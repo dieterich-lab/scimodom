@@ -32,6 +32,9 @@ class Config:
     FRONTEND_PATH: ClassVar[Path] = Path(
         os.getenv("FRONTEND_PATH", DEFAULT_FRONTEND_PATH)
     )
+    SMTP_SERVER: str = os.getenv("SMTP_SERVER")
+    SMTP_FROM_ADDRESS: str = os.getenv("SMTP_FROM_ADDRESS")
+    PUBLIC_URL: str = os.getenv("PUBLIC_URL")
 
     LOGGING = dict(
         version=1,

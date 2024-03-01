@@ -7,7 +7,8 @@ from sqlalchemy.orm import Session
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from scimodom.database.models import User, UserState
-from scimodom.services.mail import MailService
+from scimodom.services.mail import MailService, get_mail_service
+from scimodom.database.database import get_session
 
 logger = logging.getLogger(__name__)
 
@@ -145,3 +146,7 @@ class UserService:
             logger.warning(f"WARNING: User '{email}' failed to login")
             return False
         return True
+
+
+def get_user_service():
+    return UserService(session=get_session(), mail_service=get_mail_service())
