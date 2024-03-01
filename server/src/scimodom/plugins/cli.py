@@ -30,16 +30,36 @@ def validate_dataset_title(ctx, param, value):
     return value
 
 
-def add_assembly(assembly_id: int) -> None:
+def add_assembly(**kwargs) -> None:
     """Provides a CLI function to set up a new assembly.
     This function does not add a new assembly to the database,
     but merely creates the data structure.
 
     :param assembly_id: Assembly ID, must exists.
     :type assembly_id: int
+    :param assembly_name: Assembly name, must exists.
+    :type assembly_name: str
+    :param taxa_id: Taxonomy ID, must exists.
+    :type taxa_id: int
     """
     session = get_session()
-    service = AssemblyService.from_id(session, assembly_id=assembly_id)
+
+    assembly_id = kwargs.get("assembly_id", None)
+    if assembly_id is not None:
+        service = AssemblyService.from_id(session, assembly_id=assembly_id)
+    else:
+        click.secho("Checking if assembly exists...", fg="green")
+        assembly_name = kwargs.get("assembly_name")
+        taxa_id = kwargs.get("taxa_id")
+        service = AssemblyService.from_new(session, name=assembly_name, taxa_id=taxa_id)
+        if service._is_new:
+            parent, filen = service.get_chain_path()
+            chain_file = Path(parent, filen)
+            click.secho(f"Done downloading chain file {chain_file}.", fg="green")
+        else:
+            click.secho("Assembly already exists... nothing to do.", fg="green")
+        return
+
     click.secho(
         f"Preparing assembly for {service._name} ({service._taxid}) to {Config.DATABASE_URI}...",
         fg="green",
@@ -108,7 +128,7 @@ def add_dataset(
 ) -> None:
     """Provides a CLI function to add a new dataset
     to a project. Parameter values are validated by
-    DataService.
+    DataService. Project and assembly must exist.
 
     :param smid: SMID (project must exists).
     :type smid: str

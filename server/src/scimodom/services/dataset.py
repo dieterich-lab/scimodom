@@ -18,7 +18,6 @@ from scimodom.database.models import (
     Taxa,
 )
 import scimodom.database.queries as queries
-
 from scimodom.services.annotation import AnnotationService
 from scimodom.services.assembly import AssemblyService, AssemblyVersionError
 from scimodom.services.importer import get_importer, get_bed_importer
@@ -280,8 +279,14 @@ class DataService:
                 raise AssemblyVersionError(msg)
             is_liftover = True
         finally:
+            query = queries.get_assembly_version()
+            version = self._session.execute(query).scalar_one()
+            query = queries.query_column_where(
+                Assembly, "name", filters={"taxa_id": taxa_id, "version": version}
+            )
+            current_assembly_name = self._session.execute(query).scalar_one()
             parent, filen = assembly_service.get_chrom_path(
-                organism_name, assembly_name
+                organism_name, current_assembly_name
             )
             chrom_file = Path(parent, filen)
             with open(chrom_file, "r") as f:
@@ -327,6 +332,7 @@ class DataService:
             if is_liftover:
                 # ... data has not been written to database yet
                 records = importer.data.get_buffer()
+                print(f"RECORDS {records[:3]}")
                 filen = assembly_service.liftover(records)
                 self._liftover(filen)  # commit
 

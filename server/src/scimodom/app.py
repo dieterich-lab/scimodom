@@ -41,13 +41,39 @@ def create_app():
     @app.cli.command(
         "assembly", epilog="Check docs at https://dieterich-lab.github.io/scimodom/."
     )
-    @click.argument("id", type=click.INT)
-    def assembly(id):
-        """Prepare assembly.
-
-        ID is the assembly_id (must already exists).
-        """
-        add_assembly(id)
+    @click.option(
+        "--id",
+        default=None,
+        type=click.INT,
+        help="Assembly ID. Download files for the current assembly (initial setup). This parameter, if given, overrides all other options.",
+    )
+    @click.option(
+        "--name",
+        default=None,
+        type=click.STRING,
+        help="Assembly name. Download files for any assembly. This option must be used with [--taxid].",
+    )
+    @click.option(
+        "--taxid",
+        default=None,
+        type=click.INT,
+        help="Taxonomy ID. Download files for any assembly. This option must be used with [--name].",
+    )
+    def assembly(id, name, taxid):
+        """Prepare assembly."""
+        if id:
+            kwargs = {"assembly_id": id}
+        else:
+            if not name:
+                raise NameError(
+                    "Name [--name] is not defined. One of [--id] or [--name] and [--taxid] is required."
+                )
+            if taxid is None:
+                raise NameError(
+                    "Name [--taxid] is not defined. It is required with [--name]."
+                )
+            kwargs = {"assembly_name": name, "taxa_id": taxid}
+        add_assembly(**kwargs)
 
     @app.cli.command(
         "annotation", epilog="Check docs at https://dieterich-lab.github.io/scimodom/."
@@ -92,24 +118,24 @@ def create_app():
         default=[],
         multiple=True,
         type=click.INT,
-        help="Modification ID(s). Repeat parameter to pass multiple selection IDs. This options must be used with [--technology] and [--organism].",
-    )
-    @click.option(
-        "-t",
-        "--technology",
-        default=None,
-        type=click.INT,
-        help="Technology ID. This options must be used with [--modification] and [--organism].",
+        help="Modification ID(s). Repeat parameter to pass multiple selection IDs. This option must be used with [--technology] and [--organism].",
     )
     @click.option(
         "-o",
         "--organism",
         default=None,
         type=click.INT,
-        help="Organism ID. This options must be used with [--modification] and [--technology].",
+        help="Organism ID. This option must be used with [--modification] and [--technology].",
+    )
+    @click.option(
+        "-t",
+        "--technology",
+        default=None,
+        type=click.INT,
+        help="Technology ID. This option must be used with [--modification] and [--organism].",
     )
     def dataset(
-        smid, title, filename, assembly, selection, modification, technology, organism
+        smid, title, filename, assembly, selection, modification, organism, technology
     ):
         """Add a new dataset to the database.
 
