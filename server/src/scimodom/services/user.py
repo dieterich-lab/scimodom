@@ -25,11 +25,22 @@ class NoSuchUser(Exception):
     pass
 
 
-class DetailedWrongUserOrPassword(Exception):
+class _DetailedWrongUserOrPassword(Exception):
     pass
 
 
 class UserService:
+    """Service to handle users. Beside checking a password on
+    login it supports the workflows to register a user and
+    to rest a password. All errors, which may caused by hacker
+    attacks are logged in detailed but reported to the outside
+    as a WrongUserOrPassword exception with a generic message.
+
+    :session: SQLAlchemy session object
+    :mail_service: Service used to send tokens for registration and
+            password reset to the user
+    """
+
     TOKEN_CHARACTERS = string.ascii_letters + string.digits
 
     def __init__(self, session: Session, mail_service: MailService):
@@ -37,6 +48,14 @@ class UserService:
         self._mail_service = mail_service
 
     def register_user(self, email: str, password: str) -> None:
+        """Create a new, inactive user in the database and send out
+        a token to validate the email address. It may fail with a
+        UserExists exception.
+
+        :email: A user is identified by the email address. The is no
+                separate name.
+        :password: Clear text password
+        """
         try:
             self._get_user_by_email(email)
             raise UserExists(f"User with email address '{email} exists already")
@@ -72,19 +91,20 @@ class UserService:
         pass
 
     def confirm_user(self, email: str, confirmation_token: str):
+        """Activates a registered user with the token sent out before by email."""
         try:
             try:
                 user = self._get_user_by_email(email)
             except NoSuchUser:
-                raise DetailedWrongUserOrPassword(
+                raise _DetailedWrongUserOrPassword(
                     f"Received confirmation for unknown user '{email}'"
                 )
             if user.state != UserState.wait_for_confirmation:
-                raise DetailedWrongUserOrPassword(
+                raise _DetailedWrongUserOrPassword(
                     f"Received confirmation for user '{email}' in unexpected status {user.state.value}"
                 )
             if user.confirmation_token != confirmation_token:
-                raise DetailedWrongUserOrPassword(
+                raise _DetailedWrongUserOrPassword(
                     f"Received bad confirmation token '{confirmation_token}'"
                     + f"for user '{email} during registration'."
                 )
@@ -93,31 +113,33 @@ class UserService:
             user.confirmation_token = None
             self._session.commit()
 
-        except DetailedWrongUserOrPassword as e:
+        except _DetailedWrongUserOrPassword as e:
             logger.warning(f"WARNING: {str(e)}")
             raise WrongUserOrPassword("Go away hacker!")
 
     def request_password_reset(self, email: str) -> None:
+        """A token is generated and send out by email. Otherwise, the account stays
+        unchanged, e.g. inactive or active. That is important, because otherwise an
+        unauthenticated hacker may abuse the workflow to trigger a state change of
+        the account. The workflow can also be used to retry registration if the
+        initial email with the token was lost.
+        """
         user = self._get_user_by_email(email)
         user.confirmation_token = self._get_random_token()
-        user.state = UserState.password_reset_requested
         self._session.commit()
         self._mail_service.send_password_reset_token(email, user.confirmation_token)
 
     def do_password_reset(self, email, confirmation_token, new_password) -> None:
+        """Do a password reset with a token sent out before via email."""
         try:
             try:
                 user = self._get_user_by_email(email)
             except NoSuchUser:
-                raise DetailedWrongUserOrPassword(
+                raise _DetailedWrongUserOrPassword(
                     f"Unknown user '{email}' tried to change the password"
                 )
-            if user.state != UserState.password_reset_requested:
-                raise DetailedWrongUserOrPassword(
-                    f"User '{email}' in unexpected status {user.state.value} tried to change the password"
-                )
             if user.confirmation_token != confirmation_token:
-                raise DetailedWrongUserOrPassword(
+                raise _DetailedWrongUserOrPassword(
                     f"Received bad confirmation token '{confirmation_token}' "
                     + f"for user '{email}' during password change."
                 )
@@ -127,11 +149,14 @@ class UserService:
             user.confirmation_token = None
             self._session.commit()
 
-        except DetailedWrongUserOrPassword as e:
+        except _DetailedWrongUserOrPassword as e:
             logger.warning(f"WARNING: {str(e)}")
             raise WrongUserOrPassword("Go away hacker!")
 
     def check_password(self, email, password) -> bool:
+        """Returns true if the password matches the stored password.
+        Otherwise, false is returned - also in case of an unknown or inactive user.
+        """
         try:
             user = self._get_user_by_email(email)
         except NoSuchUser:
@@ -149,4 +174,5 @@ class UserService:
 
 
 def get_user_service():
+    """Helper function to set up a UserService object by injecting its dependencies."""
     return UserService(session=get_session(), mail_service=get_mail_service())

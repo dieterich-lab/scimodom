@@ -21,7 +21,6 @@ depends_on = None
 class UserState(enum.Enum):
     wait_for_confirmation = 0
     active = 1
-    password_reset_requested = 2
 
 
 def upgrade() -> None:
