@@ -1,6 +1,7 @@
 import logging
 import random
 import string
+from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -173,6 +174,18 @@ class UserService:
         return True
 
 
+_cached_user_service: Optional[UserService] = None
+
+
 def get_user_service():
-    """Helper function to set up a UserService object by injecting its dependencies."""
-    return UserService(session=get_session(), mail_service=get_mail_service())
+    """Helper function to set up a UserService object by injecting its dependencies.
+
+    :refresh: If true a new instance is created. Otherwise, a cached object may be
+    returned.
+    """
+    global _cached_user_service
+    if _cached_user_service is None:
+        _cached_user_service = UserService(
+            session=get_session(), mail_service=get_mail_service()
+        )
+    return _cached_user_service

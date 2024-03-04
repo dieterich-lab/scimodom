@@ -1,5 +1,6 @@
 from email.mime.text import MIMEText
 from smtplib import SMTP
+from typing import Optional
 from urllib.parse import quote
 from scimodom.config import Config
 
@@ -88,17 +89,25 @@ Best regards
         )
 
 
-def get_mail_service():
-    """Helper function to create a MailService by validating and injecting the configuration."""
-    for required_parameter in ["SMTP_SERVER", "SMTP_FROM_ADDRESS", "PUBLIC_URL"]:
-        value = getattr(Config, required_parameter)
-        if value is None or value == "":
-            raise Exception(
-                f"Internal error: Required parameter '{required_parameter}' not set"
-            )
+_cached_mail_service: Optional[MailService] = None
 
-    return MailService(
-        smtp_server=Config.SMTP_SERVER,
-        from_address=Config.SMTP_FROM_ADDRESS,
-        public_url=Config.PUBLIC_URL,
-    )
+
+def get_mail_service() -> MailService:
+    """
+    Helper function to create a MailService by validating and injecting the configuration.
+    """
+    global _cached_mail_service
+    if _cached_mail_service is None:
+        for required_parameter in ["SMTP_SERVER", "SMTP_FROM_ADDRESS", "PUBLIC_URL"]:
+            value = getattr(Config, required_parameter)
+            if value is None or value == "":
+                raise Exception(
+                    f"Internal error: Required parameter '{required_parameter}' not set"
+                )
+
+        _cached_mail_service = MailService(
+            smtp_server=Config.SMTP_SERVER,
+            from_address=Config.SMTP_FROM_ADDRESS,
+            public_url=Config.PUBLIC_URL,
+        )
+    return _cached_mail_service
