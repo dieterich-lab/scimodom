@@ -53,7 +53,7 @@ class UserService:
         a token to validate the email address. It may fail with a
         UserExists exception.
 
-        :email: A user is identified by the email address. The is no
+        :email: A user is identified by the email address. There is no
                 separate name.
         :password: Clear text password
         """
