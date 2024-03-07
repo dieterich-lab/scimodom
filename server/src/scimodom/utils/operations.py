@@ -388,7 +388,7 @@ def get_annotation_records(
 
 
 def liftover_to_file(
-    records: list[dict[str, Any]],
+    records: list[tuple[Any, ...]],
     chain_file: str,
     unmapped: str | None = None,
     chrom_id: str = "s",
@@ -399,7 +399,7 @@ def liftover_to_file(
     "unmapped", or discarded.
 
     :param records: Data records to liftover
-    :type records: dict of {str: Any}
+    :type records: List of tuple of (str, ...) - Data records
     :param chain_file: Chain file
     :type chain_file: str
     :param unmapped: File to write unmapped features
@@ -409,8 +409,7 @@ def liftover_to_file(
     :returns: File with liftedOver features
     :rtype: str
     """
-    tmp = [tuple(r.values()) for r in records]
-    bedtool = _to_bedtool(tmp)
+    bedtool = _to_bedtool(records)
     result = pybedtools.BedTool._tmp()
     if unmapped is None:
         unmapped = pybedtools.BedTool._tmp()

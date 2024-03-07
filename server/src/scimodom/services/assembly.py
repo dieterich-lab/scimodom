@@ -297,12 +297,12 @@ class AssemblyService:
         with open(Path(parent, "release.json"), "w") as f:
             json.dump(release, f, indent="\t")
 
-    def liftover(self, records: list[dict[str, Any]]) -> str:
+    def liftover(self, records: list[tuple[Any, ...]]) -> str:
         """Liftover records to current assembly.
         Unmapped features are discarded.
 
         :param records: Records to be lifted over
-        :type records: dict of {str: Any}
+        :type records: List of tuple of (str, ...) - Data records
         :returns: File pointing to the liftedOver features
         :rtype: str
         """

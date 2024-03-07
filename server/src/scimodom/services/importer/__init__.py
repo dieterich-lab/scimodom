@@ -24,6 +24,10 @@ class Importer:
         self.header = header
         self.data = data
 
+        self._association: dict[str, int]
+        self._seqids: list[str]
+        self._version: str
+
     def init_data_importer(
         self, association: dict[str, int], seqids: list[str], **kwargs
     ) -> None:
@@ -40,7 +44,10 @@ class Importer:
         :type seqids: list of str
         """
 
-        version = self.header._specs_ver
+        self._association = association
+        self._seqids = seqids
+        self._version = self.header._specs_ver
+
         filen = self.header._filen
         session = get_session()
         if self.header._handle.closed is False:
@@ -50,11 +57,31 @@ class Importer:
                 session=session(),
                 filen=filen,
                 handle=open(filen, "r"),
-                association=association,
-                seqids=seqids,
-                specs_ver=version,
+                association=self._association,
+                seqids=self._seqids,
+                specs_ver=self._version,
                 **kwargs,
             )
+
+    def reset_data_importer(self, filen: str, **kwargs) -> None:
+        """Reset EUFDataImporter. This method is intended to be used
+        after a liftOver. In this case, "name" is actually the
+        "association_id".
+
+        :param filen: File path to liftedOver features
+        :type association: str
+        """
+        session = get_session()
+        self.data = EUFDataImporter(
+            session=session(),
+            filen=filen,
+            handle=open(filen, "r"),
+            association=self._association,
+            seqids=self._seqids,
+            specs_ver=self._version,
+            is_lifted=True,
+            **kwargs,
+        )
 
 
 def get_importer(filen: str, smid: str, eufid: str, title: str):

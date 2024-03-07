@@ -330,11 +330,27 @@ class DataService:
         else:
             importer.data.close()  # commit unless...
             if is_liftover:
+                msg = f"Lifting over dataset from {assembly_name} to {current_assembly_name}..."
+                logger.debug(msg)
+
                 # ... data has not been written to database yet
                 records = importer.data.get_buffer()
-                print(f"RECORDS {records[:3]}")
+                # https://github.com/dieterich-lab/scimodom/issues/76
+                # overwrite name with association, remove asociation, add association back after liftover
+                records = [
+                    {**record, "name": self._association[record["name"]]}
+                    for record in records
+                ]
+                records = [
+                    tuple(
+                        [val for key, val in record.items() if key != "association_id"]
+                    )
+                    for record in records
+                ]
                 filen = assembly_service.liftover(records)
-                self._liftover(filen)  # commit
+                importer.reset_data_importer(filen)
+                importer.data.parse_records()
+                importer.data.close()
 
         msg = (
             f"Added dataset {self._eufid} to project {self._smid} with title = {self._title}, "
@@ -494,14 +510,3 @@ class DataService:
         query = select(Dataset.id)
         eufids = self._session.execute(query).scalars().all()
         self._eufid = utils.gen_short_uuid(self.EUFID_LENGTH, eufids)
-
-    def _liftover(self, filen) -> None:
-        """Import liftedOver data records.
-
-        :param filen: File to liftedOver data records
-        :type filen: str
-        """
-        importer = get_bed_importer(filen, is_euf=True)
-        importer.parse_records()
-        importer.close()
-        importer.flush_records()  # commit

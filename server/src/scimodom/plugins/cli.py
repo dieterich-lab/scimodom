@@ -272,12 +272,11 @@ def add_all(directory: Path, templates: list[str]) -> None:
                     filters={"taxa_id": taxa_id, "cto": cto},
                 )
                 organism_id = session.execute(query).scalar_one()
-                query = queries.get_assembly_version()
-                version = session.execute(query).scalar_one()
+                # any "new" assembly is created above on create_project()
                 query = queries.query_column_where(
                     Assembly,
                     "id",
-                    filters={"name": assembly, "taxa_id": taxa_id, "version": version},
+                    filters={"name": assembly, "taxa_id": taxa_id},
                 )
                 assembly_id = session.execute(query).scalar_one()
                 # add dataset to project
