@@ -1,5 +1,5 @@
 <script setup>
-import { DIALOG, useDialogState } from '@/utils/dialogState.js'
+import { DIALOG, useDialogState } from '@/utils/DialogState.js'
 import LoginForm from '@/components/user/LoginForm.vue'
 
 const DIALOGS_BY_STATE = Object.freeze(new Map([[DIALOG.LOGIN, LoginForm]]))

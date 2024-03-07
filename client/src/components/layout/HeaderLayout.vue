@@ -2,7 +2,7 @@
 import ScimodomLogo from './ScimodomLogo.vue'
 import NavigationBar from './NavigationBar.vue'
 
-import { DIALOG, useDialogState } from '@/utils/dialogState.js'
+import { DIALOG, useDialogState } from '@/utils/DialogState.js'
 const dialogState = useDialogState()
 
 function login() {

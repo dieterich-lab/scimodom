@@ -10,10 +10,13 @@ const props = defineProps(['error', 'type'])
     <label for="field" class="text-primary-50 font-semibold">
       <slot></slot>
     </label>
-    <InputText id="field" v-model="model" :class="{ 'p-invalid': error }" :type="type || 'text'" />
-    <!--            class="bg-white/20 border-0 p-4 text-primary-50"-->
+    <InputText
+      id="field"
+      v-model="model"
+      :class="{ 'p-invalid': error }"
+      class="bg-white/20 border-0 p-4 text-primary-50"
+      :type="type || 'text'"
+    />
     <p class="text-primary-900 p-error">{{ error }}</p>
-    <!--        <label for="email">Email</label>-->
-    <!--        <InputText v-model="email" :class="{ 'p-invalid': errors.email }"/>-->
   </div>
 </template>

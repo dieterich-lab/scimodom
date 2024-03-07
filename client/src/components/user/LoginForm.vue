@@ -2,10 +2,9 @@
 import { useForm } from 'vee-validate'
 import * as yup from 'yup'
 import { HTTP } from '@/services'
-import { useAccessToken } from '@/utils/access_token.js'
-import { DIALOG, useDialogState } from '@/utils/dialogState.js'
-import { createFormManager } from '@/utils/FormManager'
-import DialogForm from '@/components/ui/DialogForm.vue'
+import { useAccessToken } from '@/utils/AccessToken.js'
+import { DIALOG, useDialogState } from '@/utils/DialogState.js'
+import FromBox from '@/components/ui/FromBox.vue'
 import FormTextInput from '@/components/ui/FormTextInput.vue'
 import FormButtonGroup from '@/components/ui/FormButtonGroup.vue'
 import FormButton from '@/components/ui/FormButton.vue'
@@ -24,7 +23,6 @@ const [email] = defineField('email')
 const [password] = defineField('password')
 
 function login(values) {
-  // const values = dialogFrom.value.form.values;
   HTTP.post('/user/login', { email: values.email, password: values.password })
     .then((response) => {
       if (response.status == 200) {
@@ -47,37 +45,22 @@ function cancel() {
 }
 
 const onSubmit = handleSubmit((values) => {
-  console.log(`Logging in: ${JSON.stringify(values)}`)
   login(values)
 })
 </script>
 
 <template>
   <form @submit="onSubmit">
-    <FormTextInput v-model="email" :error="errors['email']"> Email </FormTextInput>
-    <FormTextInput v-model="password" :error="errors.password" type="password">
-      Password
-    </FormTextInput>
-    <FormButtonGroup>
-      <FormButton type="submit">Login</FormButton>
-      <FormButton @on-click="cancel()">Cancel</FormButton>
-    </FormButtonGroup>
+    <FromBox>
+      <p>{{ dialogState.error }}</p>
+      <FormTextInput v-model="email" :error="errors.email"> Email </FormTextInput>
+      <FormTextInput v-model="password" :error="errors.password" type="password">
+        Password
+      </FormTextInput>
+      <FormButtonGroup>
+        <FormButton type="submit">Login</FormButton>
+        <FormButton @on-click="cancel()">Cancel</FormButton>
+      </FormButtonGroup>
+    </FromBox>
   </form>
 </template>
-<!--<template>-->
-<!--    <DialogForm :validation-schema="validationSchema" ref="dialogFrom" :my-submit="onSubmit">-->
-<!--        <template v-slot:fields>-->
-<!--            <p class="text-primary-900">{{ dialogState.error || '' }}</p>-->
-<!--            <FormInput name="email" :model="email" :error="errors.email">-->
-<!--                Email-->
-<!--            </FormInput>-->
-<!--            <FormInput name="password" :model="password" :error="errors.password" type="password">-->
-<!--                Password-->
-<!--            </FormInput>-->
-<!--        </template>-->
-<!--        <template v-slot:buttons>-->
-<!--            <FormButton type="submit">Login</FormButton>-->
-<!--            <FormButton @on-click="cancel()">Cancel</FormButton>-->
-<!--        </template>-->
-<!--    </DialogForm>-->
-<!--</template>-->
