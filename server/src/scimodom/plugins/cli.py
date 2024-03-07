@@ -49,8 +49,8 @@ def add_assembly(**kwargs) -> None:
         service = AssemblyService.from_id(session, assembly_id=assembly_id)
     else:
         click.secho("Checking if assembly exists...", fg="green")
-        assembly_name = kwargs.get("assembly_name")
-        taxa_id = kwargs.get("taxa_id")
+        assembly_name = kwargs["assembly_name"]
+        taxa_id = kwargs["taxa_id"]
         service = AssemblyService.from_new(session, name=assembly_name, taxa_id=taxa_id)
         if service._is_new:
             parent, filen = service.get_chain_path()
@@ -155,9 +155,9 @@ def add_dataset(
             session, smid, title, filen, assembly_id, selection_id=selection_id
         )
     else:
-        modification_id = kwargs.get("modification_id")
-        technology_id = kwargs.get("technology_id")
-        organism_id = kwargs.get("organism_id")
+        modification_id = kwargs["modification_id"]
+        technology_id = kwargs["technology_id"]
+        organism_id = kwargs["organism_id"]
         service = DataService.from_new(
             session,
             smid,

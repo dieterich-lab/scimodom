@@ -20,21 +20,23 @@ class Config:
 
     ENV_FILE: ClassVar[str] = os.getenv("ENV_FILE", ".env")
     load_dotenv(ENV_FILE)
+
     FLASK_DEBUG: ClassVar[bool] = eval(os.getenv("FLASK_DEBUG", "False"))
     DATABASE_URI: ClassVar[str | None] = os.getenv("DATABASE_URI")
     SECRET_KEY: ClassVar[str | None] = os.getenv("SECRET_KEY")
     SESSION_COOKIE_SAMESITE: ClassVar[str | None] = os.getenv("SESSION_COOKIE_SAMESITE")
     SESSION_COOKIE_SECURE: ClassVar[str | None] = os.getenv("SESSION_COOKIE_SECURE")
-    JWT_SECRET_KEY: ClassVar[str | None] = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
+    JWT_SECRET_KEY: ClassVar[str | None] = SECRET_KEY
     JWT_ACCESS_TOKEN_EXPIRES = datetime.timedelta(days=1)
+    SMTP_SERVER: ClassVar[str] = os.getenv("SMTP_SERVER")
+    SMTP_FROM_ADDRESS: ClassVar[str] = os.getenv("SMTP_FROM_ADDRESS")
+    PUBLIC_URL: ClassVar[str] = os.getenv("PUBLIC_URL")
+
     IMPORT_PATH: ClassVar[str | Path] = os.getenv("IMPORT_PATH", "import")
     DATA_PATH: ClassVar[str | Path] = os.getenv("DATA_PATH", "data")
     FRONTEND_PATH: ClassVar[Path] = Path(
         os.getenv("FRONTEND_PATH", DEFAULT_FRONTEND_PATH)
     )
-    SMTP_SERVER: str = os.getenv("SMTP_SERVER")
-    SMTP_FROM_ADDRESS: str = os.getenv("SMTP_FROM_ADDRESS")
-    PUBLIC_URL: str = os.getenv("PUBLIC_URL")
 
     LOGGING = dict(
         version=1,
