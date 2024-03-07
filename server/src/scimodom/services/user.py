@@ -70,9 +70,15 @@ class UserService:
             state=UserState.wait_for_confirmation,
             confirmation_token=confirmation_token,
         )
-        self._session.add(new_user)
-        self._session.commit()
-        self._mail_service.send_register_confirmation_token(email, confirmation_token)
+        try:
+            self._session.add(new_user)
+            self._mail_service.send_register_confirmation_token(
+                email, confirmation_token
+            )
+            self._session.commit()
+        except Exception as e:
+            self._session.rollback()
+            raise e
 
     def _get_user_by_email(self, email) -> User:
         stmt = select(User).where(User.email == email)
@@ -92,7 +98,9 @@ class UserService:
         pass
 
     def confirm_user(self, email: str, confirmation_token: str):
-        """Activates a registered user with the token sent out before by email."""
+        """Activates a registered user with the token sent out before by email.
+        If the user is active already just ignore it and count it as success.
+        """
         try:
             try:
                 user = self._get_user_by_email(email)
@@ -100,10 +108,8 @@ class UserService:
                 raise _DetailedWrongUserOrPassword(
                     f"Received confirmation for unknown user '{email}'"
                 )
-            if user.state != UserState.wait_for_confirmation:
-                raise _DetailedWrongUserOrPassword(
-                    f"Received confirmation for user '{email}' in unexpected status {user.state.value}"
-                )
+            if user.state == UserState.active:
+                return
             if user.confirmation_token != confirmation_token:
                 raise _DetailedWrongUserOrPassword(
                     f"Received bad confirmation token '{confirmation_token}'"
@@ -165,7 +171,7 @@ class UserService:
             return False
         if user.state != UserState.active:
             logger.warning(
-                f"WARNING: User '{email}' in unexpected status {user.state.value} tried to login"
+                f"WARNING: User '{email}' in unexpected status {user.state.name} tried to login"
             )
             return False
         if not check_password_hash(user.password_hash, password):

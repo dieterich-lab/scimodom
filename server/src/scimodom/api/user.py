@@ -1,3 +1,6 @@
+import logging
+from smtplib import SMTPException
+
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 
@@ -8,6 +11,8 @@ from scimodom.services.user import (
     NoSuchUser,
 )
 
+logger = logging.getLogger(__name__)
+
 user_api = Blueprint("api_user", __name__)
 
 
@@ -16,12 +21,22 @@ def register_user():
     user_service = get_user_service()
     try:
         user_service.register_user(
-            email=request.json("email"), password=request.json("password")
+            email=request.json["email"], password=request.json["password"]
         )
         return jsonify({"result": "OK"})
 
     except UserExists:
         return jsonify({"result": "User exists"}), 403
+    except SMTPException as e:
+        logger.error(f"Failed to sent out email: {e}")
+        return (
+            jsonify(
+                {
+                    "result": "Failed to sent out registration email - please tak to the administrator"
+                }
+            ),
+            500,
+        )
 
 
 @user_api.route("/confirm_user", methods=["POST"])
@@ -29,7 +44,7 @@ def confirm_user():
     user_service = get_user_service()
     try:
         user_service.confirm_user(
-            email=request.json("email"), confirmation_token=request.json("token")
+            email=request.json["email"], confirmation_token=request.json["token"]
         )
         return jsonify({"result": "OK"})
     except WrongUserOrPassword:
@@ -40,7 +55,7 @@ def confirm_user():
 def request_password_reset():
     user_service = get_user_service()
     try:
-        user_service.request_password_reset(request.json("email"))
+        user_service.request_password_reset(request.json["email"])
     except NoSuchUser:
         return jsonify({"result": "Unknown user"}), 404
     return jsonify({"result": "OK"})
@@ -51,9 +66,9 @@ def do_password_reset():
     user_service = get_user_service()
     try:
         user_service.do_password_reset(
-            email=request.json("email"),
-            confirmation_token=request.json("token"),
-            new_password=request.json("password"),
+            email=request.json["email"],
+            confirmation_token=request.json["token"],
+            new_password=request.json["password"],
         )
     except WrongUserOrPassword:
         return (

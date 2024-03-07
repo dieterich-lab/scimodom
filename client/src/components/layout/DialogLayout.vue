@@ -1,18 +1,21 @@
 <script setup>
 import { DIALOG, useDialogState } from '@/utils/DialogState.js'
 import LoginForm from '@/components/user/LoginForm.vue'
+import RegistrationForm from '@/components/user/RegistrationFrom.vue'
+import RegistrationCheckEmail from '@/components/user/AlertBox.vue'
 
-const DIALOGS_BY_STATE = Object.freeze(new Map([[DIALOG.LOGIN, LoginForm]]))
+const DIALOGS_BY_STATE = Object.freeze(
+  new Map([
+    [DIALOG.LOGIN, LoginForm],
+    [DIALOG.REGISTER_ENTER_DATA, RegistrationForm],
+    [DIALOG.REGISTER_CHECK_EMAIL, RegistrationCheckEmail]
+  ])
+)
 
 const dialogState = useDialogState()
 dialogState.load_cookie_if_needed()
-let current_component = null
-switch (dialogState.state) {
-  case DIALOG.LOGIN:
-    current_component = LoginForm
-    break
-}
 const show = true
+console.log(`dialogState: ${dialogState.state.description}`)
 </script>
 
 <template>

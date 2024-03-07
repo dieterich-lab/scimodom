@@ -9,7 +9,15 @@ function login() {
   dialogState.$patch({
     state: DIALOG.LOGIN,
     email: null,
-    error: null
+    message: null
+  })
+}
+
+function signUp() {
+  dialogState.$patch({
+    state: DIALOG.REGISTER_ENTER_DATA,
+    email: null,
+    message: null
   })
 }
 </script>
@@ -30,7 +38,7 @@ function login() {
         <Button label="Login" @click="login()" icon="pi pi-user" size="small" raised />
         <Button
           label="Sign Up"
-          @click="dialogState.state = DIALOG.REGISTER_ENTER_DATA"
+          @click="signUp()"
           icon="pi pi-user-plus"
           size="small"
           severity="secondary"

@@ -4,6 +4,7 @@
 #
 #
 import json
+from urllib.parse import quote
 from flask import Blueprint, redirect
 
 from scimodom.config import Config
@@ -27,14 +28,14 @@ def confirm_user_registration(email: str, token: str):
     user_service = get_user_service()
     workflow_status = {
         "operation": "user_registration",
-        "email": "email",
+        "email": email,
     }
     try:
         user_service.confirm_user(email, token)
         workflow_status["result"] = "success"
     except WrongUserOrPassword:
         workflow_status["result"] = "failure"
-    response.set_cookie("workflow_status", json.dumps(workflow_status))
+    response.set_cookie("workflow_status", quote(json.dumps(workflow_status)))
     return response
 
 
@@ -42,7 +43,7 @@ def confirm_user_registration(email: str, token: str):
 def request_password_reset(email: str, token: str):
     response = redirect("/")
     workflow_status = {"operation": "password_reset", "email": email, "token": token}
-    response.set_cookie("workflow_status", json.dumps(workflow_status))
+    response.set_cookie("workflow_status", quote(json.dumps(workflow_status)))
     return response
 
 

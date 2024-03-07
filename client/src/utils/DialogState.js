@@ -4,13 +4,10 @@ import { defineStore } from 'pinia'
 const DIALOG = Object.freeze({
   NONE: Symbol('NONE'),
   LOGIN: Symbol('LOGIN'),
-  LOGIN_FAILED: Symbol('LOGIN_FAILED'),
+  ALERT: Symbol('ALERT'),
   REGISTER_ENTER_DATA: Symbol('REGISTER_ENTER_DATA'),
-  REGISTER_CHECK_EMAIL: Symbol('REGISTER_CHECK_EMAIL'),
-  REGISTER_SUCCESS: Symbol('REGISTER_SUCCESS'),
-  RESET_PASSWORD_CHECK_EMAIL: Symbol('RESET_PASSWORD_CHECK_EMAIL'),
-  RESET_PASSWORD_NEW_PASSWORD: Symbol('RESET_PASSWORD_NEW_PASSWORD'),
-  GO_AWAY_HACKER: Symbol('GO_AWAY_HACKER')
+  RESET_PASSWORD_REQUEST: Symbol('RESET_PASSWORD_REQUEST'),
+  RESET_PASSWORD_NEW_PASSWORD: Symbol('RESET_PASSWORD_NEW_PASSWORD')
 })
 
 const useDialogState = defineStore('dialogState', {
@@ -20,22 +17,22 @@ const useDialogState = defineStore('dialogState', {
       email: null,
       token: null,
       newPassword: null,
-      error: null
+      message: null
     }
   },
   actions: {
     load_cookie_if_needed() {
       const cookie_jar = getCurrentInstance().appContext.app.$cookies
-      const workflow_status_raw = cookie_jar.get('workflow_status')
-      if (workflow_status_raw) {
-        const workflow_status = JSON.parse(workflow_status_raw)
-
+      const workflow_status = cookie_jar.get('workflow_status')
+      if (workflow_status) {
         if (workflow_status['operation'] == 'user_registration') {
           this.email = workflow_status['email']
-          if (workflow_status['this'] == 'success') {
-            this.state = DIALOG.REGISTER_SUCCESS
+          if (workflow_status['result'] == 'success') {
+            this.message = 'Your registration was successful - please login.'
+            this.state = DIALOG.LOGIN
           } else {
-            this.state = DIALOG.GO_AWAY_HACKER
+            this.message = 'Something went wrong. Please check the link you tried to use.'
+            this.state = DIALOG.ALERT
           }
         } else if (workflow_status['operation'] == 'password_reset') {
           this.email = workflow_status['email']
@@ -46,6 +43,20 @@ const useDialogState = defineStore('dialogState', {
         }
         cookie_jar.remove('workflow_status')
       }
+    },
+    handle_error(axios_error, context, new_state_template) {
+      let error_message = `${axios_error}`
+      try {
+        const result = axios_error.response.data.result
+        if (result) {
+          error_message = result
+        }
+      } catch (e) {}
+
+      const full_message = `${context}: ${error_message}`
+      console.log(full_message)
+      const new_state = { ...new_state_template, message: full_message }
+      this.$patch(new_state)
     }
   }
 })
