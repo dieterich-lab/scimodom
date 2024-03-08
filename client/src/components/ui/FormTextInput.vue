@@ -17,6 +17,6 @@ const props = defineProps(['error', 'type'])
       class="bg-white/20 border-0 p-4 text-primary-50"
       :type="type || 'text'"
     />
-    <p class="text-primary-900 p-error">{{ error }}</p>
+    <p class="text-primary-900 p-error">{{ error }}&nbsp;</p>
   </div>
 </template>
