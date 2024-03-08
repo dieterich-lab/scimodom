@@ -28,17 +28,18 @@ dynamic = ["version"]
 requires-python = ">=3.10,<3.13"
 dependencies = [
   "alembic",
+  "CrossMap",
   "Flask",
   "Flask-Cors",
+  "Flask-JWT-Extended",
   "mysqlclient",
-  "SQLAlchemy",
   "numpy",
   "pandas",
-  "python-dotenv",
-  "shortuuid",
   "pybedtools",
+  "python-dotenv",
   "requests",
-  "flask-jwt-extended"
+  "shortuuid",
+  "SQLAlchemy",
 ]
 
 [project.scripts]

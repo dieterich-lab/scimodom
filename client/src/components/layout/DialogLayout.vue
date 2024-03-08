@@ -15,7 +15,6 @@ const DIALOGS_BY_STATE = Object.freeze(
 const dialogState = useDialogState()
 dialogState.load_cookie_if_needed()
 const show = true
-console.log(`dialogState: ${dialogState.state.description}`)
 </script>
 
 <template>

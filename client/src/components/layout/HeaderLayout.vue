@@ -35,8 +35,16 @@ function signUp() {
         <NavigationBar />
       </div>
       <div class="flex flex-wrap 2xl:w-1/5 xl:w-auto 2xl:pl-8 xl:pl-0 gap-4">
-        <Button label="Login" @click="login()" icon="pi pi-user" size="small" raised />
         <Button
+          :disabled="true"
+          label="Login"
+          @click="login()"
+          icon="pi pi-user"
+          size="small"
+          raised
+        />
+        <Button
+          :disabled="true"
           label="Sign Up"
           @click="signUp()"
           icon="pi pi-user-plus"
