@@ -19,5 +19,9 @@
     <RouterLink :to="{ name: 'documentation' }">
       <span>Documentation</span>
     </RouterLink>
+
+    <RouterLink :to="{ name: 'access' }">
+      <span>User</span>
+    </RouterLink>
   </nav>
 </template>

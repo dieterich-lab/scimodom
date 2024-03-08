@@ -5,6 +5,7 @@ import BrowseView from '@/views/BrowseView.vue'
 import CompareView from '@/views/CompareView.vue'
 import DownloadView from '@/views/DownloadView.vue'
 import DocumentationView from '@/views/DocumentationView.vue'
+import AccessView from '@/views/AccessView.vue'
 import HomeRoadmap from '@/components/home/HomeRoadmap.vue'
 
 const router = createRouter({
@@ -40,6 +41,11 @@ const router = createRouter({
       path: '/',
       name: 'documentation',
       component: DocumentationView
+    },
+    {
+      path: '/',
+      name: 'access',
+      component: AccessView
     },
     {
       path: '/',

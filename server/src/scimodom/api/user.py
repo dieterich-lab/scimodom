@@ -13,7 +13,7 @@ from scimodom.services.user import (
 
 logger = logging.getLogger(__name__)
 
-user_api = Blueprint("api_user", __name__)
+user_api = Blueprint("user_api", __name__)
 
 
 @user_api.route("/register_user", methods=["POST"])

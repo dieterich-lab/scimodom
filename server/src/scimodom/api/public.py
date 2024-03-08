@@ -1,11 +1,10 @@
 import os
 from pathlib import Path
 
-from flask import request
+from flask import Blueprint, request
 from flask_cors import cross_origin
 from sqlalchemy import select, func
 
-from . import api
 from scimodom.database.database import get_session
 from scimodom.database.models import (
     Annotation,
@@ -33,6 +32,8 @@ from scimodom.services.assembly import AssemblyService
 from scimodom.utils.models import records_factory
 from scimodom.utils.operations import get_op
 import scimodom.utils.specifications as specs
+
+api = Blueprint("api", __name__)
 
 FEATURES = sorted(
     list(
