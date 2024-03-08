@@ -7,6 +7,8 @@ import '@/assets/style/index.css'
 import PrimeVue from 'primevue/config'
 // import LaraScm from '@/presets/larascm'
 import WindScm from '@/presets/windscm'
+import VueCookies from 'vue-cookies'
+import { createPinia } from 'pinia'
 // UI components
 import 'primeicons/primeicons.css'
 import Button from 'primevue/button'
@@ -43,6 +45,8 @@ app.use(PrimeVue, { unstyled: true, pt: WindScm, ripple: true })
 
 app.use(ToastService)
 app.use(router)
+app.use(VueCookies)
+app.use(createPinia())
 
 app.component('Button', Button)
 app.component('CascadeSelect', CascadeSelect)

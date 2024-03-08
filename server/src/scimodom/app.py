@@ -6,6 +6,7 @@ from flask_jwt_extended import JWTManager
 from sqlalchemy.orm import scoped_session
 
 from scimodom.api import api
+from scimodom.api.user import user_api
 from scimodom.app_singleton import create_app_singleton
 from scimodom.database.database import make_session, init
 from scimodom.frontend import frontend
@@ -17,6 +18,7 @@ from scimodom.plugins.cli import (
     add_all,
     validate_dataset_title,
 )
+from scimodom.utils.url_routes import API_PREFIX, USER_API_ROUTE
 
 
 def create_app():
@@ -33,7 +35,8 @@ def create_app():
     app.session = scoped_session(session)
     init(engine, lambda: app.session)
 
-    app.register_blueprint(api, url_prefix="/api/v0")
+    app.register_blueprint(api, url_prefix=f"/{API_PREFIX}")
+    app.register_blueprint(user_api, url_prefix=USER_API_ROUTE)
     app.register_blueprint(frontend, url_prefix="/")
 
     jwt = JWTManager(app)

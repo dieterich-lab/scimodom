@@ -1,8 +1,11 @@
 from email.mime.text import MIMEText
 from smtplib import SMTP
 from typing import Optional
-from urllib.parse import quote
 from scimodom.config import Config
+from scimodom.utils.url_routes import (
+    get_user_registration_link,
+    get_password_reset_link,
+)
 
 
 class MailService:
@@ -16,10 +19,9 @@ class MailService:
             links for emails used in the registration and password reset workflows.
     """
 
-    def __init__(self, smtp_server: str, from_address: str, public_url: str):
+    def __init__(self, smtp_server: str, from_address: str):
         self._smtp_server = smtp_server
         self._from_address = from_address
-        self._public_url = public_url
 
     def _send(self, to_address, subject: str, text: str):
         connection = SMTP(self._smtp_server)
@@ -33,7 +35,7 @@ class MailService:
 
     def send_register_confirmation_token(self, email: str, token: str):
         """Sends out a message to verify the email address during user registration."""
-        link = self._build_link("confirm_email", email, token)
+        link = get_user_registration_link(email, token)
         self._send(
             to_address=email,
             subject="SCI-MODOM - please confirm your email address",
@@ -49,25 +51,17 @@ visit this link:
 
         {link}
 
+If you did NOT register, please don't click the link and
+consider to report the incident too us.
+
 Best regards
 {self._from_address}
 """,
         )
 
-    def _build_link(self, operation, email, token):
-        parts = [self._public_url]
-        if self._public_url[-1] != "/":
-            parts.append("/")
-        parts.append(operation)
-        parts.append("/")
-        parts.append(quote(email))
-        parts.append("/")
-        parts.append(token)
-        return "".join(parts)
-
     def send_password_reset_token(self, email: str, token: str):
         """Sends out a message to allow the user to confirm a password reset."""
-        link = self._build_link("reset_password", email, token)
+        link = get_password_reset_link(email, token)
         self._send(
             to_address=email,
             subject="SCI-MODOM - password reset",
@@ -79,9 +73,12 @@ you just requested to reset your password for
         {email}
 
 on the SCI-MODOM server. To set your new password please
-bisit this link:
+visit this link:
 
         {link}
+
+If you did NOT request a password, please don't click the
+link and consider to report the incident too us.
 
 Best regards
 {self._from_address}
@@ -98,7 +95,7 @@ def get_mail_service() -> MailService:
     """
     global _cached_mail_service
     if _cached_mail_service is None:
-        for required_parameter in ["SMTP_SERVER", "SMTP_FROM_ADDRESS", "PUBLIC_URL"]:
+        for required_parameter in ["SMTP_SERVER", "SMTP_FROM_ADDRESS"]:
             value = getattr(Config, required_parameter)
             if value is None or value == "":
                 raise Exception(
@@ -108,6 +105,5 @@ def get_mail_service() -> MailService:
         _cached_mail_service = MailService(
             smtp_server=Config.SMTP_SERVER,
             from_address=Config.SMTP_FROM_ADDRESS,
-            public_url=Config.PUBLIC_URL,
         )
     return _cached_mail_service

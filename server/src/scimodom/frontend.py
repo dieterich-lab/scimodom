@@ -3,9 +3,16 @@
 # as static content. In the DEV setup it is not used.
 #
 #
-from flask import Blueprint
+import json
+from urllib.parse import quote
+from flask import Blueprint, redirect
 
 from scimodom.config import Config
+from scimodom.services.user import get_user_service, WrongUserOrPassword
+from scimodom.utils.url_routes import (
+    CONFIRM_USER_REGISTRATION_URI,
+    REQUEST_PASSWORD_RESET_URI,
+)
 
 frontend = Blueprint("frontend", __name__, static_folder=Config.FRONTEND_PATH)
 
@@ -13,6 +20,31 @@ frontend = Blueprint("frontend", __name__, static_folder=Config.FRONTEND_PATH)
 @frontend.route("/")
 def index():
     return frontend.send_static_file("index.html")
+
+
+@frontend.route(f"/{CONFIRM_USER_REGISTRATION_URI}/<email>/<token>")
+def confirm_user_registration(email: str, token: str):
+    response = redirect("/")
+    user_service = get_user_service()
+    workflow_status = {
+        "operation": "user_registration",
+        "email": email,
+    }
+    try:
+        user_service.confirm_user(email, token)
+        workflow_status["result"] = "success"
+    except WrongUserOrPassword:
+        workflow_status["result"] = "failure"
+    response.set_cookie("workflow_status", quote(json.dumps(workflow_status)))
+    return response
+
+
+@frontend.route(f"/{REQUEST_PASSWORD_RESET_URI}/<email>/<token>")
+def request_password_reset(email: str, token: str):
+    response = redirect("/")
+    workflow_status = {"operation": "password_reset", "email": email, "token": token}
+    response.set_cookie("workflow_status", quote(json.dumps(workflow_status)))
+    return response
 
 
 @frontend.route("/<path:filename>")

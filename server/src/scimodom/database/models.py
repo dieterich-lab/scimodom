@@ -390,5 +390,5 @@ class User(Base):
         String(320), nullable=False, index=True, unique=True
     )
     state: Mapped[UserState] = mapped_column(Enum(UserState))
-    password_hash: Mapped[str] = mapped_column(String(64))
+    password_hash: Mapped[str] = mapped_column(String(128))
     confirmation_token: Mapped[str] = mapped_column(String(32), nullable=True)
