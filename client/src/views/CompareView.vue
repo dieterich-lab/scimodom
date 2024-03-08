@@ -122,14 +122,13 @@ onMounted(() => {
         dataset
       </h1>
       <p class="text-lg font-normal text-gray-500 dark:text-surface-400 lg:text-xl">
-        Perform complex queries (currently unavailable due to maintenance work)
+        Perform complex queries
       </p>
       <Divider />
 
       <div>
         <div class="flex mb-2 gap-2 justify-content-end">
           <Button
-            :disabled="true"
             @click="active = 0"
             rounded
             label="A"
@@ -143,7 +142,6 @@ onMounted(() => {
             :ptOptions="{ mergeProps: true }"
           />
           <Button
-            :disabled="true"
             @click="active = 1"
             rounded
             label="B"
@@ -157,7 +155,6 @@ onMounted(() => {
             :ptOptions="{ mergeProps: true }"
           />
           <Button
-            :disabled="true"
             @click="active = 2"
             rounded
             label="C"
@@ -173,7 +170,7 @@ onMounted(() => {
         </div>
 
         <TabView v-model:activeIndex="active">
-          <TabPanel header="Select reference dataset" :disabled="true">
+          <TabPanel header="Select reference dataset">
             <CompareStepA
               v-if="options && dataset"
               :options="options"
@@ -182,7 +179,7 @@ onMounted(() => {
               @selected-dataset="selectedDSA = $event"
             />
           </TabPanel>
-          <TabPanel header="Select dataset for comparison" :disabled="true">
+          <TabPanel header="Select dataset for comparison">
             <CompareStepB
               v-if="options && dataset && selectedSpecies && selectedDSA"
               :options="options"
@@ -193,7 +190,7 @@ onMounted(() => {
               @uploaded-dataset="selectedDSU = $event"
             />
           </TabPanel>
-          <TabPanel header="Select query criteria" :disabled="true">
+          <TabPanel header="Select query criteria">
             <div>
               <form @submit="onSubmit" class="flex flex-col gap-4">
                 <div class="flex flex-row">
