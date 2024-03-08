@@ -12,6 +12,16 @@
 DOCKER=podman
 DOCKER_COMPOSE=podman-compose
 
+# That should fit for the first instance created with podman-compose.
+# In doubt check "podman-compose ps" or "docker ps".
+DB_CONTAINER_NAME=docker_scimodom_db_1
+APP_CONTAINER_NAME=docker_scimodom_app_1
+
+DB_IMAGE_NAME=scimodom_db:latest
+APP_IMAGE_NAME=scimodom_app:latest
+
+# App environment variables
+
 HTTP_PORT=8000
 
 # We use gunicorn. The docs suggest 2*CPU worker processes.
@@ -23,13 +33,10 @@ HTTP_WORKER_TIMEOUT=120
 # Enter here the URL to access the API.
 HTTP_PUBLIC_URL=http://127.0.0.1:5000
 
-# That should fit for the first instance created with podman-compose.
-# In doubt check "podman-compose ps" or "docker ps".
-DB_CONTAINER_NAME=docker_scimodom_db_1
-APP_CONTAINER_NAME=docker_scimodom_app_1
-
-DB_IMAGE_NAME=scimodom_db:latest
-APP_IMAGE_NAME=scimodom_app:latest
+# Email server settings
+SMTP_SERVER=outgoing-email-server.my-site.org
+SMTP_FROM_ADDRESS=sci-modom-admin@my-site.org
+PUBLIC_URL=https://sci-modom.my-site.org
 
 # You may use relative paths below. However the backup
 # scripts will only work if called from the right location
@@ -58,6 +65,7 @@ HOST_DB_DATA_DIR=./db_data
 HOST_CONFIG_DIR=./config
 
 # Only used for DEV setup
+
 HOST_DEV_DB_DATA_DIR=./db_data_dev
 MARIADB_DEV_PORT=3306
 

@@ -7,6 +7,10 @@ ENV_FILE_NAME = "/app/.env"
 FLASK_SECRET_FILE = f"{SECRETS_FOLDER}/flask-secret"
 DATABASE_PASSWORD_FILE = f"{SECRETS_FOLDER}/mariadb-scimodom"
 
+SMTP_SERVER = environ.get("SMTP_SERVER")
+SMTP_FROM_ADDRESS = environ.get("SMTP_FROM_ADDRESS")
+PUBLIC_URL = environ.get("PUBLIC_URL")
+
 
 def write_env_file():
     db_password = get_secret(DATABASE_PASSWORD_FILE)
@@ -18,6 +22,9 @@ DATABASE_URI=mysql+mysqldb://scimodom:{db_password}@scimodom_db:3306/scimodom
 SECRET_KEY={flask_secret}
 SESSION_COOKIE_SAMESITE=None
 SESSION_COOKIE_SECURE=True
+SMTP_SERVER={SMTP_SERVER}
+SMTP_FROM_ADDRESS={SMTP_FROM_ADDRESS}
+PUBLIC_URL={PUBLIC_URL}
 UPLOAD_PATH=/uploads
 IMPORT_PATH=/import
 DATA_PATH=/data
