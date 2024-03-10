@@ -4,36 +4,11 @@ import { API_BASE_URL } from '/config.js?url'
 // TODO: refactor HTTP as HTTPPublic either export service, or
 // rename exported functions
 
-// const HTTPSecure = {
-//     connection: null,
-//     get: (url) => {
-//         this.init()
-//         this.connection.get(url)
-//     },
-//     init: () => {
-//         if ( this.connection !== null ) {
-//             return
-//         }
-//         this.connection =
-//     }
-// }
-
 const HTTPSecure = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: false
   // default xsrfCookieName: 'XSRF-TOKEN'
 })
-
-// this dosn't work getActivePinia() was called but there was no active Pinia
-// HTTPSecure.interceptors.request.use(
-//     (config) => {
-//         const token = accessToken.access_token
-//         const auth = token ? `Bearer ${token}` : ''
-//         config.headers.common['Authorization'] = auth
-//         return config
-//     },
-//     (error) => Promise.reject(error),
-// )
 
 HTTPSecure.interceptors.response.use(
   (response) => {
