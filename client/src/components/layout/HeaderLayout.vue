@@ -16,7 +16,7 @@ function getUserName() {
 }
 
 const accessToken = useAccessToken()
-const isLoggedIn = computed(() => accessToken.get() !== null)
+const isLoggedIn = computed(() => accessToken.get !== null)
 const userName = computed(getUserName)
 
 const router = useRouter()
@@ -35,6 +35,14 @@ const items = ref([
       {
         label: 'Dataset upload',
         icon: 'pi pi-upload'
+      },
+      {
+        label: 'Logout',
+        icon: 'pi pi-sign-out',
+        command: () => {
+          accessToken.unset()
+          router.push({ name: 'home' })
+        }
       }
     ]
   }

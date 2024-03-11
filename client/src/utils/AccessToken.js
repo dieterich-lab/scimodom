@@ -15,25 +15,30 @@ const useAccessToken = defineStore('access_token', {
       expire_epoch: null
     }
   },
-  actions: {
-    get() {
-      if (this.token !== null) {
+  getters: {
+    get(state) {
+      if (state.token !== null) {
         const now_epoch = Date.now() / 1000
-        const seconds_to_expire = this.expire_epoch - now_epoch
+        const seconds_to_expire = state.expire_epoch - now_epoch
         if (seconds_to_expire <= 0) {
-          this.token = null
+          state.token = null
         } else if (seconds_to_expire < REFRESH_GRACE_PERIOD_SECONDS) {
           try_to_refresh_access_token(this)
         }
       }
-      return this.token
-    },
+      return state.token
+    }
+  },
+  actions: {
     set(email, token) {
       const decoded_token = jwtDecode(token)
       this.email = email
       this.token = token
       this.expire_epoch = decoded_token.exp
       this.refresh_requested_epoch = null
+    },
+    unset() {
+      this.$reset()
     },
     try_to_refresh_access_token() {
       const now_epoch = Date.now() / 1000

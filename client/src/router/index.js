@@ -76,14 +76,14 @@ router.beforeEach((to, from) => {
   const accessToken = useAccessToken()
   HTTPSecure.interceptors.request.use(
     (config) => {
-      const token = accessToken.get()
+      const token = accessToken.get
       const auth = token ? `Bearer ${token}` : ''
       config.headers.Authorization = auth
       return config
     },
     (error) => Promise.reject(error)
   )
-  if (to.meta.requiresAuth && accessToken.get() == null) {
+  if (to.meta.requiresAuth && accessToken.get == null) {
     const dialogState = useDialogState()
     dialogState.state = DIALOG.LOGIN
     // return { name: 'home' }
