@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { jwtDecode } from 'jwt-decode'
 import { HTTPSecure } from '@/services'
+// import { useLocalStorage } from '@vueuse/core'
 
 const REFRESH_GRACE_PERIOD_SECONDS = 30 * 60
 const REFRESH_RETRY_INTERVALL_SECONDS = 60
