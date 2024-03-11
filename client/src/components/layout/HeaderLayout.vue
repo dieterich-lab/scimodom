@@ -12,11 +12,12 @@ function getUserName() {
   if (result.length > 20) {
     result = result.substring(0, 17) + '...'
   }
+  console.log(`XXX: ${accessToken.token}`)
   return result
 }
 
 const accessToken = useAccessToken()
-const isLoggedIn = computed(() => accessToken.get !== null)
+const isLoggedIn = computed(() => accessToken.token !== null)
 const userName = computed(getUserName)
 
 const router = useRouter()
