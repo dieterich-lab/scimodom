@@ -5,8 +5,11 @@ import BrowseView from '@/views/BrowseView.vue'
 import CompareView from '@/views/CompareView.vue'
 import DownloadView from '@/views/DownloadView.vue'
 import DocumentationView from '@/views/DocumentationView.vue'
-import AccessView from '@/views/AccessView.vue'
 import HomeRoadmap from '@/components/home/HomeRoadmap.vue'
+
+import AccessView from '@/views/AccessView.vue'
+import ProjectView from '@/views/ProjectView.vue'
+import UploadView from '@/views/UploadView.vue'
 
 import { useAccessToken } from '@/utils/AccessToken.js'
 import { DIALOG, useDialogState } from '@/utils/DialogState.js'
@@ -48,14 +51,26 @@ const router = createRouter({
     },
     {
       path: '/',
+      name: 'roadmap',
+      component: HomeRoadmap
+    },
+    {
+      path: '/',
       name: 'access',
       component: AccessView,
       meta: { requiresAuth: true }
     },
     {
       path: '/',
-      name: 'roadmap',
-      component: HomeRoadmap
+      name: 'project',
+      component: ProjectView,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/',
+      name: 'upload',
+      component: UploadView,
+      meta: { requiresAuth: true }
     }
     // {
     //   path: '/about',
@@ -66,6 +81,7 @@ const router = createRouter({
     //   component: () => import('../views/AboutView.vue'),
     // },
   ],
+  linkActiveClass: 'text-primary-500',
   scrollBehavior(to, from, savedPosition) {
     // always scroll to top
     return { top: 0 }

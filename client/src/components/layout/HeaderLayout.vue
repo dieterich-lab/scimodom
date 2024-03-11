@@ -1,40 +1,52 @@
 <script setup>
-import ScimodomLogo from './ScimodomLogo.vue'
-import NavigationBar from './NavigationBar.vue'
 import { ref, computed } from 'vue'
 import { DIALOG, useDialogState } from '@/utils/DialogState.js'
 import { useAccessToken } from '@/utils/AccessToken.js'
 import { useRouter } from 'vue-router'
+import ScimodomLogo from './ScimodomLogo.vue'
+import NavigationBar from './NavigationBar.vue'
+
+const router = useRouter()
+
 const dialogState = useDialogState()
-
-function getUserName() {
-  let result = accessToken.email || ''
-  if (result.length > 20) {
-    result = result.substring(0, 17) + '...'
-  }
-  return result
-}
-
 const accessToken = useAccessToken()
+
 const isLoggedIn = computed(() => accessToken.get !== null)
 const userName = computed(getUserName)
 
-const router = useRouter()
 const menu = ref()
 const items = ref([
+  // {
+  //   separator: true
+  // },
   {
-    // label: 'Options',
+    label: 'Data',
     items: [
       {
-        label: 'Account',
-        icon: 'pi pi-pencil',
+        label: 'Project template',
+        icon: 'pi pi-file-edit',
         command: () => {
-          router.push({ name: 'access' })
+          router.push({ name: 'project' })
         }
       },
       {
         label: 'Dataset upload',
-        icon: 'pi pi-upload'
+        icon: 'pi pi-upload',
+        command: () => {
+          router.push({ name: 'upload' })
+        }
+      }
+    ]
+  },
+  {
+    label: 'Profile',
+    items: [
+      {
+        label: 'Settings',
+        icon: 'pi pi-cog',
+        command: () => {
+          router.push({ name: 'access' })
+        }
       },
       {
         label: 'Logout',
@@ -47,6 +59,7 @@ const items = ref([
     ]
   }
 ])
+
 const toggle = (event) => {
   menu.value.toggle(event)
 }
@@ -66,6 +79,14 @@ function signUp() {
     message: null
   })
 }
+
+function getUserName() {
+  let result = accessToken.email || ''
+  if (result.length > 23) {
+    result = result.substring(0, 20) + '...'
+  }
+  return result
+}
 </script>
 
 <template>
@@ -82,21 +103,35 @@ function signUp() {
       </div>
       <div v-if="isLoggedIn" class="flex flex-wrap 2xl:w-1/5 xl:w-auto 2xl:pl-8 xl:pl-0 gap-4">
         <Button
-          type="button"
+          size="small"
           icon="pi pi-user-edit"
           :label="userName"
           @click="toggle"
           aria-haspopup="true"
           aria-controls="overlay_menu"
+          raised
         />
         <Menu ref="menu" id="overlay_menu" :model="items" :popup="true">
           <template #start>
-            <span class="inline-flex items-center gap-1 px-2 py-2 w-full sm:w-[15rem]">
-              <!-- add avatar or user badge or formatted username as label-->
-              <span class="font-medium text-xl"
-                >PRIME<span class="text-primary-500 dark:text-primary-400">APP</span></span
-              >
+            <span class="inline-flex items-center gap-1 px-2 py-2 w-full sm:w-[10rem]">
+              <span class="font-medium font-ham text-xl">
+                Sci-<span class="text-primary-500 dark:text-primary-400">Mo</span>d<span
+                  class="text-secondary-500 dark:text-secondary-400"
+                  >oM</span
+                >
+              </span>
             </span>
+          </template>
+          <template #submenuheader="{ item }">
+            <span class="text-base text-primary-500 dark:text-primary-400 font-bold leading-none">{{
+              item.label
+            }}</span>
+          </template>
+          <template #item="{ item, props }">
+            <a class="flex items-center" v-bind="props.action">
+              <span :class="item.icon" />
+              <span class="ml-2">{{ item.label }}</span>
+            </a>
           </template>
         </Menu>
       </div>
