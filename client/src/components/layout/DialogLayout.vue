@@ -2,13 +2,17 @@
 import { DIALOG, useDialogState } from '@/utils/DialogState.js'
 import LoginForm from '@/components/user/LoginForm.vue'
 import RegistrationForm from '@/components/user/RegistrationFrom.vue'
-import RegistrationCheckEmail from '@/components/user/AlertBox.vue'
+import AlertBox from '@/components/user/AlertBox.vue'
+import RequestPasswordResetForm from '@/components/user/RequestPasswordResetForm.vue'
+import DoPasswordResetForm from '@/components/user/DoPasswordResetForm.vue'
 
 const DIALOGS_BY_STATE = Object.freeze(
   new Map([
     [DIALOG.LOGIN, LoginForm],
     [DIALOG.REGISTER_ENTER_DATA, RegistrationForm],
-    [DIALOG.REGISTER_CHECK_EMAIL, RegistrationCheckEmail]
+    [DIALOG.ALERT, AlertBox],
+    [DIALOG.RESET_PASSWORD_REQUEST, RequestPasswordResetForm],
+    [DIALOG.RESET_PASSWORD_NEW_PASSWORD, DoPasswordResetForm]
   ])
 )
 
