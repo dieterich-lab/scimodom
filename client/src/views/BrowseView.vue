@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { FilterMatchMode, FilterOperator } from 'primevue/api'
-import service from '@/services/index.js'
+import { HTTP } from '@/services/API.js'
 
 const props = defineProps({
   eufid: {
@@ -72,8 +72,7 @@ const onOverlay = (record) => {
 }
 
 onMounted(() => {
-  service
-    .getEndpoint('/browse')
+  HTTP.get('/browse')
     .then(function (response) {
       records.value = response.data
     })

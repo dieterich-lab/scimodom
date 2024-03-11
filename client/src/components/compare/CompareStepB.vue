@@ -6,7 +6,7 @@ import {
   updTechnologyFromOrgAndMod,
   updDataset
 } from '@/utils/selection.js'
-import service from '@/services/index.js'
+import { HTTP } from '@/services/API.js'
 
 const props = defineProps({
   selectedSpecies: {
@@ -28,7 +28,7 @@ const props = defineProps({
 })
 
 const disabled = ref(false)
-const uploadURL = service.getUri() + '/upload'
+const uploadURL = HTTP.getUri() + '/upload'
 
 const modification = ref()
 const selectedModification = ref()

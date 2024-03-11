@@ -12,7 +12,6 @@ function getUserName() {
   if (result.length > 20) {
     result = result.substring(0, 17) + '...'
   }
-  console.log(`XXX: ${accessToken.token}`)
   return result
 }
 

@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue'
-import { HTTPSecure } from '@/services'
+import { HTTPSecure } from '@/services/API'
 
 const user = ref()
 

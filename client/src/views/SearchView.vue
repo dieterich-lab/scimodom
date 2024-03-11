@@ -9,7 +9,7 @@ import {
   updTechnologyFromModAndOrg,
   updSelectionFromAll
 } from '@/utils/selection.js'
-import service from '@/services/index.js'
+import {} from '@/services/API.js'
 
 const router = useRouter()
 
@@ -152,8 +152,7 @@ const updateSelection = () => {
     chroms.value = undefined
   } else {
     // get chrom.sizes
-    service
-      .getEndpoint(`/chrom/${taxid.value}`)
+    HTTP.get(`/chrom/${taxid.value}`)
       .then(function (response) {
         chroms.value = response.data
       })
@@ -166,28 +165,27 @@ const updateSelection = () => {
 function lazyLoad(event) {
   loading.value = true
   lazyParams.value = { ...lazyParams.value, first: event?.first || first.value }
-  service
-    .get('/search', {
-      params: {
-        selection: selection.value,
-        taxid: taxid.value,
-        chrom: selectedChrom.value == null ? null : selectedChrom.value.chrom,
-        chromStart: selectedChromStart.value == null ? 0 : selectedChromStart.value,
-        chromEnd:
-          selectedChromEnd.value == null
-            ? selectedChrom.value == null
-              ? null
-              : selectedChrom.value.size
-            : selectedChromEnd.value,
-        firstRecord: lazyParams.value.first,
-        maxRecords: lazyParams.value.rows,
-        multiSort: fmtOrder(lazyParams.value.multiSortMeta),
-        tableFilter: fmtFilter(lazyParams.value.filters)
-      },
-      paramsSerializer: {
-        indexes: null
-      }
-    })
+  HTTP.get('/search', {
+    params: {
+      selection: selection.value,
+      taxid: taxid.value,
+      chrom: selectedChrom.value == null ? null : selectedChrom.value.chrom,
+      chromStart: selectedChromStart.value == null ? 0 : selectedChromStart.value,
+      chromEnd:
+        selectedChromEnd.value == null
+          ? selectedChrom.value == null
+            ? null
+            : selectedChrom.value.size
+          : selectedChromEnd.value,
+      firstRecord: lazyParams.value.first,
+      maxRecords: lazyParams.value.rows,
+      multiSort: fmtOrder(lazyParams.value.multiSortMeta),
+      tableFilter: fmtFilter(lazyParams.value.filters)
+    },
+    paramsSerializer: {
+      indexes: null
+    }
+  })
     .then(function (response) {
       records.value = response.data.records
       totalRecords.value = response.data.totalRecords
@@ -206,8 +204,7 @@ onMounted(() => {
     rows: rows.value,
     filters: filters.value
   }
-  service
-    .getEndpoint('/selection')
+  HTTP.get('/selection')
     .then(function (response) {
       options.value = response.data
       modification.value = updModification(options.value)
