@@ -9,6 +9,7 @@ import AccessView from '@/views/AccessView.vue'
 import HomeRoadmap from '@/components/home/HomeRoadmap.vue'
 
 import { useAccessToken } from '@/utils/AccessToken.js'
+import { DIALOG, useDialogState } from '@/utils/DialogState.js'
 import { HTTPSecure } from '@/services'
 
 const router = createRouter({
@@ -73,24 +74,20 @@ const router = createRouter({
 
 router.beforeEach((to, from) => {
   const accessToken = useAccessToken()
+  const token = accessToken.get()
   HTTPSecure.interceptors.request.use(
     (config) => {
-      const token = accessToken.access_token
       const auth = token ? `Bearer ${token}` : ''
       config.headers.Authorization = auth
       return config
     },
     (error) => Promise.reject(error)
   )
-  if (to.meta.requiresAuth && accessToken.access_token == null) {
-    return { name: 'home' }
+  if (to.meta.requiresAuth && token == null) {
+    const dialogState = useDialogState()
+    dialogState.state = DIALOG.LOGIN
+    // return { name: 'home' }
   }
 })
-// after pull
-// router.beforeEach((to, from, next) => {
-//     const accessToken = useAccessToken()
-//     if (to.meta.requiresAuth && accessToken.get() == null) next({ name: 'home'})
-//     else next()
-// })
 
 export default router

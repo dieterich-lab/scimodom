@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { jwtDecode } from 'jwt-decode'
-import { HTTP } from '@/services'
+import { HTTPSecure } from '@/services'
 
 const REFRESH_GRACE_PERIOD_SECONDS = 30 * 60
 const REFRESH_RETRY_INTERVALL_SECONDS = 60
@@ -16,19 +16,16 @@ const useAccessToken = defineStore('access_token', {
   },
   actions: {
     get() {
-      if (!this.token) {
-        return null
+      if (this.token !== null) {
+        const now_epoch = Date.now() / 1000
+        const seconds_to_expire = this.expire_epoch - now_epoch
+        if (seconds_to_expire <= 0) {
+          this.token = null
+        } else if (seconds_to_expire < REFRESH_GRACE_PERIOD_SECONDS) {
+          try_to_refresh_access_token(this)
+        }
       }
-      const now_epoch = Date.now() / 1000
-      const seconds_to_expire = this.expire_epoch - now_epoch
-
-      if (seconds_to_expire <= 0) {
-        this.token = null
-        return null
-      } else if (seconds_to_expire < REFRESH_GRACE_PERIOD_SECONDS) {
-        try_to_refresh_access_token(this)
-      }
-      return this.access_token
+      return this.token
     },
     set(email, token) {
       const decoded_token = jwtDecode(token)
@@ -45,7 +42,7 @@ const useAccessToken = defineStore('access_token', {
           return
         }
       }
-      HTTP.get('/user/refresh_access_token')
+      HTTPSecure.get('/user/refresh_access_token')
         .then((response) => {
           if (response.status == 200) {
             this.set(this.email, response.data.access_token)

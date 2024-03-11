@@ -1,9 +1,47 @@
 <script setup>
 import ScimodomLogo from './ScimodomLogo.vue'
 import NavigationBar from './NavigationBar.vue'
-
+import { ref, computed } from 'vue'
 import { DIALOG, useDialogState } from '@/utils/DialogState.js'
+import { useAccessToken } from '@/utils/AccessToken.js'
+import { useRouter } from 'vue-router'
 const dialogState = useDialogState()
+
+function getUserName() {
+  let result = accessToken.email || ''
+  if (result.length > 20) {
+    result = result.substring(0, 17) + '...'
+  }
+  return result
+}
+
+const accessToken = useAccessToken()
+const isLoggedIn = computed(() => accessToken.get() !== null)
+const userName = computed(getUserName)
+
+const router = useRouter()
+const menu = ref()
+const items = ref([
+  {
+    // label: 'Options',
+    items: [
+      {
+        label: 'Account',
+        icon: 'pi pi-pencil',
+        command: () => {
+          router.push({ name: 'access' })
+        }
+      },
+      {
+        label: 'Dataset upload',
+        icon: 'pi pi-upload'
+      }
+    ]
+  }
+])
+const toggle = (event) => {
+  menu.value.toggle(event)
+}
 
 function login() {
   dialogState.$patch({
@@ -34,7 +72,27 @@ function signUp() {
         <ScimodomLogo />
         <NavigationBar />
       </div>
-      <div class="flex flex-wrap 2xl:w-1/5 xl:w-auto 2xl:pl-8 xl:pl-0 gap-4">
+      <div v-if="isLoggedIn" class="flex flex-wrap 2xl:w-1/5 xl:w-auto 2xl:pl-8 xl:pl-0 gap-4">
+        <Button
+          type="button"
+          icon="pi pi-user-edit"
+          :label="userName"
+          @click="toggle"
+          aria-haspopup="true"
+          aria-controls="overlay_menu"
+        />
+        <Menu ref="menu" id="overlay_menu" :model="items" :popup="true">
+          <template #start>
+            <span class="inline-flex items-center gap-1 px-2 py-2 w-full sm:w-[15rem]">
+              <!-- add avatar or user badge or formatted username as label-->
+              <span class="font-medium text-xl"
+                >PRIME<span class="text-primary-500 dark:text-primary-400">APP</span></span
+              >
+            </span>
+          </template>
+        </Menu>
+      </div>
+      <div v-else class="flex flex-wrap 2xl:w-1/5 xl:w-auto 2xl:pl-8 xl:pl-0 gap-4">
         <Button label="Login" @click="login()" icon="pi pi-user" size="small" raised />
         <Button
           label="Sign Up"
