@@ -1,8 +1,11 @@
 import logging
+from datetime import timedelta
 from smtplib import SMTPException
 
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
+
+ACCESS_TOKEN_EXPIRATION_TIME = timedelta(hours=2)
 
 from scimodom.services.user import (
     get_user_service,
@@ -84,7 +87,9 @@ def login():
     email = request.json["email"]
     password = request.json["password"]
     if user_service.check_password(email, password):
-        access_token = create_access_token(identity=email)
+        access_token = create_access_token(
+            identity=email, expires_delta=ACCESS_TOKEN_EXPIRATION_TIME
+        )
         return jsonify({"access_token": access_token})
     else:
         return jsonify({"result": "Wrong user or password"}), 401
@@ -94,5 +99,7 @@ def login():
 @jwt_required()
 def refresh_access_token():
     email = get_jwt_identity()
-    access_token = create_access_token(identity=email)
+    access_token = create_access_token(
+        identity=email, expires_delta=ACCESS_TOKEN_EXPIRATION_TIME
+    )
     return jsonify({"access_token": access_token})

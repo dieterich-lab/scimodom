@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia'
 import { jwtDecode } from 'jwt-decode'
-import { HTTPSecure } from '@/services'
-// import { useLocalStorage } from '@vueuse/core'
+import { HTTPSecure } from '@/services/API'
 
 const REFRESH_GRACE_PERIOD_SECONDS = 30 * 60
 const REFRESH_RETRY_INTERVALL_SECONDS = 60
@@ -9,45 +8,63 @@ const REFRESH_RETRY_INTERVALL_SECONDS = 60
 const useAccessToken = defineStore('access_token', {
   state: () => {
     return {
-      token: null,
-      refresh_requested_epoch: null,
+      _tokenCache: null,
+      refreshRequestedEpoch: null,
       email: null,
-      expire_epoch: null
+      expireEpoch: null
     }
   },
   getters: {
-    get(state) {
-      if (state.token !== null) {
+    token(state) {
+      if (state._tokenCache !== null) {
         const now_epoch = Date.now() / 1000
-        const seconds_to_expire = state.expire_epoch - now_epoch
+        const seconds_to_expire = state.expireEpoch - now_epoch
         if (seconds_to_expire <= 0) {
-          state.token = null
-        } else if (seconds_to_expire < REFRESH_GRACE_PERIOD_SECONDS) {
-          try_to_refresh_access_token(this)
+          log.console('token getter: Access token expired - unsetting.')
+          this.unset()
         }
       }
-      return state.token
+      return state._tokenCache
     }
   },
   actions: {
     set(email, token) {
       const decoded_token = jwtDecode(token)
       this.email = email
-      this.token = token
-      this.expire_epoch = decoded_token.exp
-      this.refresh_requested_epoch = null
+      this._tokenCache = token
+      this.expireEpoch = decoded_token.exp
+      this.refreshRequestedEpoch = null
+      console.log(`Got new access token.`)
     },
     unset() {
       this.$reset()
     },
-    try_to_refresh_access_token() {
+    considerToRefresh() {
+      if (this.expireEpoch === null) {
+        return
+      }
       const now_epoch = Date.now() / 1000
-      if (this.refresh_requested_epoch !== null) {
-        const last_attempt_seconds = now_epoch - this.refresh_requested_epoch
+      const seconds_to_expire = this.expireEpoch - now_epoch
+      if (seconds_to_expire > REFRESH_GRACE_PERIOD_SECONDS) {
+        return
+      }
+      if (seconds_to_expire < 1) {
+        console.log('considerToRefresh: Access token expired - unsetting.')
+        this.unset()
+        return
+      }
+
+      if (this.refreshRequestedEpoch !== null) {
+        const last_attempt_seconds = now_epoch - this.refreshRequestedEpoch
         if (last_attempt_seconds < REFRESH_RETRY_INTERVALL_SECONDS) {
           return
         }
       }
+      this.refresh()
+    },
+    refresh() {
+      const now_epoch = Date.now() / 1000
+      console.log('Requesting access token refresh.')
       HTTPSecure.get('/user/refresh_access_token')
         .then((response) => {
           if (response.status == 200) {
@@ -57,7 +74,7 @@ const useAccessToken = defineStore('access_token', {
         .catch((err) => {
           console.log(`Failed to refresh access token: ${err.text}`)
         })
-      this.refresh_requested_epoch = now_epoch
+      this.refreshRequestedEpoch = now_epoch
     }
   }
 })

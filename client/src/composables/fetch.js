@@ -1,5 +1,5 @@
 import { ref, watchEffect, toValue } from 'vue'
-import service from '@/services/index.js'
+import { HTTP } from '@/services/API.js'
 
 // export function useFetchOptions(url) {
 //   const options = ref(null)
@@ -31,7 +31,7 @@ export function useFetchOptions(url) {
   const fetchOptions = async () => {
     isLoading.value = true
     try {
-      await service.getEndpoint(toValue(url)).then(function (response) {
+      await HTTP.get(toValue(url)).then(function (response) {
         options.value = response.data
       })
     } catch (err) {

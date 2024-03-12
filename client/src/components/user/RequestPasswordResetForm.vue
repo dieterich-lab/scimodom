@@ -1,7 +1,7 @@
 <script setup>
 import { useForm } from 'vee-validate'
 import * as yup from 'yup'
-import { HTTP } from '@/services'
+import { HTTP } from '@/services/API'
 import { DIALOG, useDialogState } from '@/utils/DialogState.js'
 import FormBox from '@/components/ui/FormBox.vue'
 import FormTextInput from '@/components/ui/FormTextInput.vue'

@@ -11,9 +11,7 @@ import AccessView from '@/views/AccessView.vue'
 import ProjectView from '@/views/ProjectView.vue'
 import UploadView from '@/views/UploadView.vue'
 
-import { useAccessToken } from '@/utils/AccessToken.js'
-import { DIALOG, useDialogState } from '@/utils/DialogState.js'
-import { HTTPSecure } from '@/services'
+import { HTTPSecure, prepareAPI } from '@/services'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -89,21 +87,7 @@ const router = createRouter({
 })
 
 router.beforeEach((to, from) => {
-  const accessToken = useAccessToken()
-  HTTPSecure.interceptors.request.use(
-    (config) => {
-      const token = accessToken.get
-      const auth = token ? `Bearer ${token}` : ''
-      config.headers.Authorization = auth
-      return config
-    },
-    (error) => Promise.reject(error)
-  )
-  if (to.meta.requiresAuth && accessToken.get == null) {
-    const dialogState = useDialogState()
-    dialogState.state = DIALOG.LOGIN
-    // return { name: 'home' }
-  }
+  prepareAPI(to.meta.requiresAuth)
 })
 
 export default router

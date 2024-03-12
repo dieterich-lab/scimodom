@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useField, useForm } from 'vee-validate'
-import service from '@/services/index.js'
+import { HTTP } from '@/services/API.js'
 import CompareStepA from '@/components/compare/CompareStepA.vue'
 import CompareStepB from '@/components/compare/CompareStepB.vue'
 
@@ -54,18 +54,17 @@ const onExport = () => {
 
 function load(operation) {
   records.value = undefined
-  service
-    .get('/compare/ops', {
-      params: {
-        datasetIdsA: selectedDSA.value,
-        datasetIdsB: selectedDSB.value,
-        datasetUpload: selectedDSU.value,
-        queryOperation: operation
-      },
-      paramsSerializer: {
-        indexes: null
-      }
-    })
+  HTTP.get('/compare/ops', {
+    params: {
+      datasetIdsA: selectedDSA.value,
+      datasetIdsB: selectedDSB.value,
+      datasetUpload: selectedDSU.value,
+      queryOperation: operation
+    },
+    paramsSerializer: {
+      indexes: null
+    }
+  })
     .then(function (response) {
       records.value = response.data
     })
@@ -89,16 +88,14 @@ function isAandB() {
 }
 
 onMounted(() => {
-  service
-    .getEndpoint('/selection')
+  HTTP.get('/selection')
     .then(function (response) {
       options.value = response.data
     })
     .catch((error) => {
       console.log(error)
     })
-  service
-    .getEndpoint('/compare/dataset')
+  HTTP.get('/compare/dataset')
     .then(function (response) {
       dataset.value = response.data
     })
