@@ -11,7 +11,7 @@ const router = useRouter()
 const dialogState = useDialogState()
 const accessToken = useAccessToken()
 
-const isLoggedIn = computed(() => accessToken.get !== null)
+const isLoggedIn = computed(() => accessToken.token !== null)
 const userName = computed(getUserName)
 
 const menu = ref()

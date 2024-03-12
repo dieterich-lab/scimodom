@@ -11,7 +11,7 @@ import AccessView from '@/views/AccessView.vue'
 import ProjectView from '@/views/ProjectView.vue'
 import UploadView from '@/views/UploadView.vue'
 
-import { HTTPSecure, prepareAPI } from '@/services'
+import { HTTPSecure, prepareAPI } from '@/services/API'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
