@@ -1,5 +1,5 @@
 <script setup>
-import { DIALOG, useDialogState } from '@/utils/DialogState.js'
+import { DIALOG, useDialogState } from '@/stores/DialogState.js'
 import LoginForm from '@/components/user/LoginForm.vue'
 import RegistrationForm from '@/components/user/RegistrationFrom.vue'
 import AlertBox from '@/components/user/AlertBox.vue'

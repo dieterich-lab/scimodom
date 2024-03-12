@@ -1,5 +1,5 @@
 <script setup>
-import { DIALOG, useDialogState } from '@/utils/DialogState.js'
+import { DIALOG, useDialogState } from '@/stores/DialogState.js'
 import FromBox from '@/components/ui/FormBox.vue'
 import FormButtonGroup from '@/components/ui/FormButtonGroup.vue'
 import FormButton from '@/components/ui/FormButton.vue'

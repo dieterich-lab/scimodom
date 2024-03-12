@@ -1,7 +1,7 @@
 import axios from 'axios'
 import { API_BASE_URL } from '/config.js?url'
-import { useAccessToken } from '@/utils/AccessToken.js'
-import { DIALOG, useDialogState } from '@/utils/DialogState.js'
+import { useAccessToken } from '@/stores/AccessToken.js'
+import { DIALOG, useDialogState } from '@/stores/DialogState.js'
 
 // TODO: refactor HTTP as HTTPPublic either export service, or
 // rename exported functions

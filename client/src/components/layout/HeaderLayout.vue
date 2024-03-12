@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { DIALOG, useDialogState } from '@/utils/DialogState.js'
-import { useAccessToken } from '@/utils/AccessToken.js'
+import { DIALOG, useDialogState } from '@/stores/DialogState.js'
+import { useAccessToken } from '@/stores/AccessToken.js'
 import { useRouter } from 'vue-router'
 import ScimodomLogo from './ScimodomLogo.vue'
 import NavigationBar from './NavigationBar.vue'

@@ -2,7 +2,7 @@
 import { useForm } from 'vee-validate'
 import * as yup from 'yup'
 import { HTTP } from '@/services/API'
-import { DIALOG, useDialogState } from '@/utils/DialogState.js'
+import { DIALOG, useDialogState } from '@/stores/DialogState.js'
 import FromBox from '@/components/ui/FormBox.vue'
 import FormTextInput from '@/components/ui/FormTextInput.vue'
 import FormButtonGroup from '@/components/ui/FormButtonGroup.vue'
