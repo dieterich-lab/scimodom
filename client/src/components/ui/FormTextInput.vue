@@ -1,6 +1,4 @@
 <script setup>
-import InputText from 'primevue/inputtext'
-
 const model = defineModel()
 const props = defineProps(['error', 'type'])
 </script>

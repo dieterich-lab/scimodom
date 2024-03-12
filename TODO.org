@@ -5,19 +5,21 @@ Draft or long-running issues, WIP, triage, and additional references or context 
 
 * TODO SCIMODOM DRAFT ISSUES
 
-** TODO MAINTENANCE [0/2]
+** TODO MAINTENANCE [1/2]
 
 - [ ] ~pre-commit run --all-files~ under server (.pre-commit-config.yaml) runs for all files incl. client.
-- [ ] Add *CrossMap* to requirements.
+- [X] Add *CrossMap* to requirements.
 
-** TODO STYLE [0/14]
+** TODO STYLE [0/18]
 
-- [ ] DEADLINE: <2024-08-30 Fri> To harmonize CSS vars across views, components, and presets (colours, behaviour, /etc./), to do
-  when addressing [[https://github.com/dieterich-lab/scimodom/issues/14][responsive design]] and accessibility in Q3.
+- [ ] DEADLINE: <2024-08-30 Fri> To harmonize CSS vars/style across views, components, and presets (colours, behaviour, /etc./), to do
+  when addressing [[https://github.com/dieterich-lab/scimodom/issues/14][responsive design]] and accessibility in Q3. Harmonize dark mode and styles for hover, focus, /etc./ across presets.
 - [ ] Add dark mode
-  - [ ] Logos are displayed in greyscale in dark mode, as invert also inverts the colors. Otherwise, we may have to use 2 logos.
+  - [ ] Logos are displayed in greyscale in dark mode, as invert also inverts the colors. Otherwise, we may have to use 2 logos,
+    or create SVGs.
   - [ ] Component color, /e.g./ ~TreeSelect~ in Search /vs./ Compare (~TabView~ has a different bg color). We could
   add a custom ~Panel~ to Search, /etc./
+  - [ ] Add dark mode to and style using ~pt~ all recently added components (login/sign up, /etc./).
   - [ ] ~DataTable~: ~stripedRows~ removed, it doesn't work well with dark mode. Modify the preset?
 - [ ] URGENT :: Missing presets: draft ~FileUpload~ only for Wind, ~VirtualScroll~ not working, see also [[https://github.com/primefaces/primevue-tailwind/issues/108][Missing preset for VirtualScroller.]]
 - [ ] Placeholder text color ~TreeSelect~ /vs./ ~MultiSelect~.
@@ -39,8 +41,12 @@ Draft or long-running issues, WIP, triage, and additional references or context 
 - [ ] To harmonize ~DataTable~ header across views.
 - [ ] p-float-label
 - [ ] ~Divider~ styling, thickness and color.
+- [ ] ~Search~ view filters (~Dropdown~, ~CascaseSelect~, and ~TreeSelect~) have slighlty different styles, and the "no available options"
+  is styled differently in each.
+- [ ] How to custom style ~FormTextInput~ (class/style binding), incl.secondary colour for sign up.
+- [ ] Form validation and warning/message styling for login/sign up/reset components. Check vee-validate usage.
 
-** TODO PEP [0/7]
+** TODO PEP [1/8]
 
 - Note taken on [2024-02-03 Sat 07:51] \\
   Check [[https://github.com/dieterich-lab/scimodom/issues/28][Add type hints, docstrings]], there are some long-term impovements. See [[https://docs.sqlalchemy.org/en/20/orm/extensions/mypy.html][Mypy / Pep-484 Support for ORM Mappings]] for SQLAlchemy-related, also [[https://realpython.com/python-type-checking/][type checking]] in general. \\
@@ -64,13 +70,16 @@ Draft or long-running issues, WIP, triage, and additional references or context 
 - [ ] In setup, we use pandas. Type check is disabled. The problem is that there is in fact no type casting, tables are read and values
   are bulk upserted.
 
-- [ ] [2024-02-03 Sat] [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/src/scimodom/api/__init__.py::E402 module level import not at top of file]]
+- [ ] Harmonize docstrings /e.g./ ~str~ /vs./ ~String~ /etc./. Order of arguments. Add ~Raises~. Add docstrings where missing.
 
-** TODO GENERAL [4/23]
+- [X] [2024-02-03 Sat] [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/src/scimodom/api/__init__.py::E402 module level import not at top of file]]
+
+** TODO GENERAL [4/29]
 
 - [ ] dependencies :: replace pandas in ~SetupService~.
 
-- [ ] refactor :: Move ~upsert.py~ to importer (get_ function), call at startup, so we don't have to call it manually.
+- [ ] refactor :: Move ~upsert.py~ to importer (get_ function), call at startup, so we don't have to call it manually. Keep upsert
+  for the CLI.
 - [ ] refactor :: Can we add type casting methods directly in each ORM model class?
 
 - [ ] models :: ~contact_email~ nullable.
@@ -81,12 +90,16 @@ Draft or long-running issues, WIP, triage, and additional references or context 
 
 - [ ] import :: [2024-02-16 Fri] Add exception if /e.g./ more than 30% of features are unmapped.
   [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/src/scimodom/services/assembly.py::Unmapped features are discarded.]]
+- [ ] import :: What happens if /e.g./ too many rows are skipped or in the worst cases there is no records (/e.g./ if chroms are
+  not formatted short/Ensembl-style)? Maybe we should have a "no commit" fallback and warning/error.
 - [ ] import :: ~_validate_columns~ (EUFHeaderImporter) adjusted to check first /non-comment/ row, and raises a ~SpecsError~ if the column
   count does not match (or if emtpy). On the other hand, EUFDataImporter ignore bad rows. Maybe it would make more sense to NOT
   validate the column count in EUFHEaderImporter, leave it to EUFDataImporter to handle it, and add a test to check how
   many rows were skipped (/e.g./ if a file has chrom long format style, it will be skipped entirely), or if the file was empty,
   before writing to the database.
 - [ ] import :: Buffer by chunk (no flush)?
+- [ ] import :: Title is ~VARCHAR(255)~ (dataset/project) but there is no check on project/dataset creation (batch or dataset).
+  For the FE forms, add a max. length.
 
 - [X] Biotype mapping: how to? Write into table, and use only mapping, or map on the fly?
 
@@ -100,6 +113,9 @@ Draft or long-running issues, WIP, triage, and additional references or context 
   using a single directory. What I would like to is to use ~monkeypatch.setenv~ to /dynamically/ set ~DATA_PATH~ to ~loc~ (tmp directory for test),
   to isolate each test, but calling ~AssemblyService~ or ~AnnotationService~ overrides ~DATA_PATH~, as this loads the config, which in turn
   loads the dotenv file.
+- [ ] test :: Recent changes don't have unit tests. Go through the codebase and check where we need to add unit tests (refactor where necessary).
+  In particular Flask API.
+- [ ] test :: Integration tests?
 
 - [ ] search :: Export: (1) add additional columns /e.g./ taxa_id, cto, RNA type, /etc./ that are hidden from the table, but that requires adding these
   to the select query, we need to see if that impacts performance; if not, then (2) add a header with at least modification, taxa_id, and cto; if not
@@ -112,11 +128,19 @@ Draft or long-running issues, WIP, triage, and additional references or context 
   this sounds like a strange choice... For ~Browse~ in particular, when clicking on EUFID in ~Search~, we want a new tab, to avoid loosing
   the current search results.
 
-- [ ] docs :: Only Ensembl short format for chrom.
+- [ ] store :: Import/use pinia before router. Options /vs./ Compostion. Add pinia as argument to router ~beforeEach~. Check =ways-to-use-pinia=.
+
+- [ ] email :: Env vars (SMTP, /etc./) probably need to go to the =docker-compose.yml= for production, /etc./? Also do we have twice the same
+  env var for PUBLIC SERVER?
+
+- [ ] operations/specs :: Does bedtools support strand ~.~? Constraints to Data model in import.
+
+- [ ] docs :: Only Ensembl short format for chrom, they will be ignored.
 - [ ] docs :: bedRMod = 1 organism (incl. cell type/tissue), 1 technology, 1 RNA type (mRNA, tRNA, /etc./), but 1+ modification (name field).
 - [ ] docs :: Only GTF format (annotation).
 - [ ] docs :: The header in bedRMod and selection must match exactly /e.g./ GRCh38 and hg38 will throw an exception.
 - [ ] docs :: Flask CLI.
+- [ ] docs :: Dataset/project title length (json template or project creation form).
 
 - [ ] [2024-02-22 Thu] [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/src/scimodom/plugins/cli.py::session.rollback()]]
   Session does not rollback. Why? Does this also happens somewhere else?
