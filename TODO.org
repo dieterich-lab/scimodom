@@ -74,7 +74,7 @@ Draft or long-running issues, WIP, triage, and additional references or context 
 
 - [X] [2024-02-03 Sat] [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/src/scimodom/api/__init__.py::E402 module level import not at top of file]]
 
-** TODO GENERAL [4/29]
+** TODO GENERAL [4/33]
 
 - [ ] dependencies :: replace pandas in ~SetupService~.
 
@@ -129,7 +129,9 @@ Draft or long-running issues, WIP, triage, and additional references or context 
   the current search results.
 
 - [ ] store :: Import/use pinia before router. Options /vs./ Compostion. Add pinia as argument to router ~beforeEach~. Check =ways-to-use-pinia=.
-
+- [ ] forms :: Add lazy validation to form fields, in particular for login/sign up. Check also strict, see https://github.com/jquense/yup
+- [ ] forms :: Do not load the full ~yup~ package, but only what is needed. Customize validation (login /vs./ sign up). Revisit messages. See
+  /e.g./ https://tailwind.primevue.org/inputtext/#helptext. Classes are wrong, there is no ~p-error~, /etc./
 - [ ] email :: Env vars (SMTP, /etc./) probably need to go to the =docker-compose.yml= for production, /etc./? Also do we have twice the same
   env var for PUBLIC SERVER?
 

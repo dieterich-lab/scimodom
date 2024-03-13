@@ -1,3 +1,23 @@
+<script setup>
+import { useForm } from 'vee-validate'
+
+// use yup
+function required(value) {
+  return value ? true : 'This field is required'
+}
+
+const { defineField, handleSubmit, errors } = useForm({
+  validationSchema: {
+    title: required
+  }
+})
+const [title, titleProps] = defineField('title')
+const onSubmit = handleSubmit((values) => {
+  // Submit to API
+  console.log(values)
+})
+</script>
+
 <template>
   <DefaultLayout>
     <SectionLayout>

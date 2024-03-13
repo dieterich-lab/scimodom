@@ -30,6 +30,7 @@ import RadioButton from 'primevue/radiobutton'
 import Row from 'primevue/row'
 import TabPanel from 'primevue/tabpanel'
 import TabView from 'primevue/tabview'
+import Textarea from 'primevue/textarea'
 import TreeSelect from 'primevue/treeselect'
 // layout components
 import DefaultLayout from '@/components/layout/DefaultLayout.vue'
@@ -68,6 +69,7 @@ app.component('RadioButton', RadioButton)
 app.component('Row', Row)
 app.component('TabPanel', TabPanel)
 app.component('TabView', TabView)
+app.component('Textarea', Textarea)
 app.component('TreeSelect', TreeSelect)
 
 app.component('DefaultLayout', DefaultLayout)

@@ -5,9 +5,9 @@ import { HTTPSecure } from '@/services/API'
 const user = ref()
 
 const testlogin = () => {
-  HTTPSecure.get('/access/testlogin')
+  HTTPSecure.get('/access/username')
     .then((response) => {
-      user.value = response.data
+      user.value = response.data.username
     })
     .catch((err) => {
       // console.log(err.response.status)

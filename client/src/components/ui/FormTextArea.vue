@@ -4,20 +4,15 @@ const props = defineProps({
   error: {
     required: true
   },
-  type: {
-    type: String,
+  rows: {
+    type: Number,
     required: false,
-    default: 'text'
+    default: 5
   },
-  isLogin: {
-    type: Boolean,
+  cols: {
+    type: Number,
     required: false,
-    default: false
-  },
-  isSignIn: {
-    type: Boolean,
-    required: false,
-    default: false
+    default: 50
   },
   placeholder: {
     type: String,
@@ -43,34 +38,9 @@ const props = defineProps({
   errCls: {
     type: String,
     required: false,
-    default: '!ring-red-700'
+    default: 'ring-red-700'
   }
 })
-
-// pt style for login and sign in
-const loginStyle = {
-  root: ({ props, context, parent }) => ({
-    class: [
-      'bg-primary-50/25 dark:bg-surface-900/20',
-      {
-        'ring-primary-500/20 dark:ring-primary-500/20': parent.instance.$name != 'InputGroup'
-      }
-    ]
-  })
-}
-// TODO: change with FormBox color
-const signInStyle = {
-  root: ({ props, context, parent }) => ({
-    class: [
-      'bg-primary-50/25 dark:bg-surface-900/20',
-      {
-        'ring-primary-500/20 dark:ring-primary-500/20': parent.instance.$name != 'InputGroup'
-      }
-    ]
-  })
-}
-const pt = props.isLogin ? loginStyle : props.isSignIn ? signInStyle : {}
-const ptOptions = props.isLogin || props.isSignIn ? { mergeProps: true } : {}
 </script>
 
 <template>
@@ -78,13 +48,13 @@ const ptOptions = props.isLogin || props.isSignIn ? { mergeProps: true } : {}
     <label for="field" :class="props.labelCls">
       <slot></slot>
     </label>
-    <InputText
+    <Textarea
       id="field"
       v-model="model"
-      :type="type"
+      autoResize
+      rows="props.rows"
+      cols="props.cols"
       :placeholder="props.placeholder"
-      :pt="pt"
-      :ptOptions="ptOptions"
       :class="error ? props.errCls : ''"
     />
     <span class="inline-flex items-baseline">

@@ -15,7 +15,12 @@ const accessToken = useAccessToken()
 const dialogState = useDialogState()
 
 const validationSchema = yup.object({
-  email: yup.string().required('required field').email('invalid email').label('Email address')
+  email: yup
+    .string()
+    .required('required field')
+    .email('invalid email')
+    .max(320)
+    .label('Email address')
 })
 const { defineField, handleSubmit, errors } = useForm({
   validationSchema: validationSchema
@@ -62,8 +67,20 @@ const onSubmit = handleSubmit((values) => {
   <form @submit="onSubmit">
     <FormBox>
       <FormText>{{ dialogState.message }}</FormText>
-      <FormTextInput v-model="email" :error="errors.email">Email </FormTextInput>
-      <FormTextInput v-model="password" :error="errors.password" type="password">
+      <FormTextInput
+        v-model="email"
+        labelCls="text-primary-50 font-semibold"
+        :isLogin="true"
+        :error="errors.email"
+        >Email
+      </FormTextInput>
+      <FormTextInput
+        v-model="password"
+        labelCls="text-primary-50 font-semibold"
+        :isLogin="true"
+        :error="errors.password"
+        type="password"
+      >
         Password
       </FormTextInput>
       <FormButtonGroup>
