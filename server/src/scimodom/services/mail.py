@@ -15,8 +15,6 @@ class MailService:
     :smtp_server: A server willing to relay unauthenticated emails for us.
     :from_address: The email address used for the sender. It must be also acceptable
             for the SMTP server.
-    :public_url: The official URL of the SCI_MODEM instance. It is used to contract
-            links for emails used in the registration and password reset workflows.
     """
 
     def __init__(self, smtp_server: str, from_address: str):

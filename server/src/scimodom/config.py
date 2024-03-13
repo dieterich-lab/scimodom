@@ -40,7 +40,7 @@ class Config:
     try:
         SMTP_SERVER: ClassVar[str] = os.environ["SMTP_SERVER"]
         SMTP_FROM_ADDRESS: ClassVar[str] = os.environ["SMTP_FROM_ADDRESS"]
-        PUBLIC_URL: ClassVar[str] = os.environ["PUBLIC_URL"]
+        HTTP_PUBLIC_URL: ClassVar[str] = os.environ["HTTP_PUBLIC_URL"]
     except KeyError:
         msg = (
             "Undefined environment variable(s): SMTP_SERVER, SMTP_FROM_ADDRESS, and/or PUBLIC_URL. "
