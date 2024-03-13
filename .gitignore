@@ -45,6 +45,7 @@ logs/
 
 .idea
 .env
+docker/.env_docker
 docker/secrets/
 docker/backup/
 docker/db_data/

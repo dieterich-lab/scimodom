@@ -20,9 +20,9 @@ The following version is known to work:
 - Node.js 18.13.0 on Debian 12
 - Node.js 18.17.1 on Debian 11 from nodesource.com
 
-## Configure .env
+## Configure .env_docker
 
-Create a file _.env_ in the _docker_ directory based on [env_example](env_example).
+Create a file _.env_docker_ in the _docker_ directory based on [env_docker_example](env_docker_example).
 You may stick with the relative path names used there, but then you need to make sure that all scripts are run from the _docker_ directory.
 
 ## Build the images
@@ -43,14 +43,19 @@ to that system or a separate folder per instance.
 In case of a deployment to a different container host the following data need to be transferred:
 
 - The images, _e.g._ via a Docker repository
-  - scimodom_db:latest
-  - scimodom_app:latest
+  - The database image, e.g. scimodom_db:latest
+  - The application image, e.g. scimodom_app:latest
 - The docker/scripts folder
 - The docker-compose.yml
-- Your .env file.
+- Your .env file - see below.
 
 In case multiple instances are run on the same host, a separate folder needs to be created for each instance. The same data is needed as above.
 Make sure that the ports, paths and names in the _.env_ files don't collide!
+
+## Set up your .env file
+
+Create a file .env in the same folder as the docker-compose.yml you use.
+An example may be found here: server/env_example
 
 ## Set up the local directories
 
