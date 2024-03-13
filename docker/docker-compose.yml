@@ -1,7 +1,7 @@
 version: "3"
 services:
   scimodom_db:
-    env_file: .env_docker
+    env_file: .env
     image: ${DB_IMAGE_NAME}
     volumes:
       - ${HOST_SECRETS_DIR}:/run/secrets
@@ -10,7 +10,7 @@ services:
     restart: always
 
   scimodom_app:
-    env_file: .env_docker
+    env_file: .env
     image: ${APP_IMAGE_NAME}
     depends_on:
       - scimodom_db
