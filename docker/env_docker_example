@@ -1,0 +1,20 @@
+#
+# This is the template for the .env_docker file which is used
+# by docker-compose/podman-compose and the backup scripts.
+# So it needs to work both as a shell script and a
+# docker-compose .env file. That is usually not much
+# of a problem.
+#
+
+# Your preferred container CLI
+# Both podman/podman-compose and docker/docker-compose should work
+# if available the target platform
+DOCKER=podman
+DOCKER_COMPOSE=podman-compose
+
+# Names used to tag the freshly build docker images.
+# If you work with multiple deployments, you may want
+# to change them. If they don't match what is configured
+# in your .env file, you will to manually tag your images.
+DB_IMAGE_NAME=scimodom_db:latest
+APP_IMAGE_NAME=scimodom_app:latest

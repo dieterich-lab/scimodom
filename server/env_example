@@ -1,0 +1,64 @@
+##
+## Common part (container and local setup)
+##
+
+# Configuration for the web server
+HTTP_PORT=8000
+HTTP_WORKER_PROCESSES=4
+HTTP_WORKER_TIMEOUT=120
+# Usually you will have a reverse proxy in front to terminate TLS.
+# Use it's name below.
+HTTP_PUBLIC_URL=https://scimodom.my-site.org
+
+# Mail server to use. It must be willing to relay emails
+# for your host/SMTP_FROM_ADDRESS.
+SMTP_SERVER=mail-server.my-site.org
+# Email address to use als sender for emails.
+SMTP_FROM_ADDRESS=scimodom@my-site.org
+
+##
+## Local part - only use if the Flask App runs locally
+##
+
+# DATABASE_URI=mysql+mysqldb://scimodom:XXX-DB_PASSWORD-XXX@127.0.0.1:3306/scimodom
+# SECRET_KEY=asgddfgsdfgshbsfrdaDSAS
+SESSION_COOKIE_SAMESITE=None
+SESSION_COOKIE_SECURE=True
+UPLOAD_PATH=/path/to/upload
+
+##
+## Container part - only use with docker-compose.yml
+##
+
+# Your preferred container CLI.
+# Only used for a container setup.
+# Both podman/podman-compose and docker/docker-compose should work
+# if available the target platform
+DOCKER=podman
+DOCKER_COMPOSE=podman-compose
+
+# The docker images to use.
+DB_IMAGE_NAME=scimodom_db:latest
+APP_IMAGE_NAME=scimodom_app:latest
+
+# Directories to use for various stuff on the host machine.
+# The path may be absolute or relative to the place where you
+# run docker-compose
+
+# Here the database backup goes
+HOST_BACKUP_DIR=backup
+
+# Find here auto-configured passwords
+HOST_SECRETS_DIR=secrets
+
+HOST_IMPORT_DIR=import
+HOST_CONFIG_DIR=config
+HOST_DB_DATA_DIR=db_data
+HOST_DATA_DIR=data
+
+# The parameters below are only used inside the containers.
+# There should be no need to ever change them.
+MARIADB_USER=scimodom
+MARIADB_DATABASE=scimodom
+MARIADB_ROOT_PASSWORD_FILE=/run/secrets/mariadb-root
+MARIADB_PASSWORD_FILE=/run/secrets/mariadb-scimodom

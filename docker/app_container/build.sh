@@ -3,7 +3,7 @@
 set -eu
 
 script_path="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
-env_file="$script_path/../.env"
+env_file="$script_path/../.env_docker"
 . "$env_file"
 
 cd "$script_path/../../client"
