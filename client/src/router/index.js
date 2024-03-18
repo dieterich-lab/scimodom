@@ -7,6 +7,8 @@ import DownloadView from '@/views/DownloadView.vue'
 import DocumentationView from '@/views/DocumentationView.vue'
 import HomeRoadmap from '@/components/home/HomeRoadmap.vue'
 
+import PageMaintenance from '@/components/default/PageMaintenance.vue'
+
 import AccessView from '@/views/AccessView.vue'
 import ProjectView from '@/views/ProjectView.vue'
 import UploadView from '@/views/UploadView.vue'
@@ -35,7 +37,8 @@ const router = createRouter({
     {
       path: '/',
       name: 'compare',
-      component: CompareView
+      component: CompareView,
+      redirect: { name: 'maintenance' }
     },
     {
       path: '/',
@@ -69,6 +72,11 @@ const router = createRouter({
       name: 'upload',
       component: UploadView,
       meta: { requiresAuth: true }
+    },
+    {
+      path: '/',
+      name: 'maintenance',
+      component: PageMaintenance
     }
     // {
     //   path: '/about',

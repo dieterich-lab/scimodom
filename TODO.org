@@ -10,7 +10,7 @@ Draft or long-running issues, WIP, triage, and additional references or context 
 - [ ] ~pre-commit run --all-files~ under server (.pre-commit-config.yaml) runs for all files incl. client.
 - [X] Add *CrossMap* to requirements.
 
-** TODO STYLE [0/18]
+** TODO STYLE [0/19]
 
 - [ ] DEADLINE: <2024-08-30 Fri> To harmonize CSS vars/style across views, components, and presets (colours, behaviour, /etc./), to do
   when addressing [[https://github.com/dieterich-lab/scimodom/issues/14][responsive design]] and accessibility in Q3. Harmonize dark mode and styles for hover, focus, /etc./ across presets.
@@ -21,7 +21,8 @@ Draft or long-running issues, WIP, triage, and additional references or context 
   add a custom ~Panel~ to Search, /etc./
   - [ ] Add dark mode to and style using ~pt~ all recently added components (login/sign up, /etc./).
   - [ ] ~DataTable~: ~stripedRows~ removed, it doesn't work well with dark mode. Modify the preset?
-- [ ] URGENT :: Missing presets: draft ~FileUpload~ only for Wind, ~VirtualScroll~ not working, see also [[https://github.com/primefaces/primevue-tailwind/issues/108][Missing preset for VirtualScroller.]]
+- [ ] URGENT :: Missing presets: draft ~FileUpload~ only for Wind (changed to newly added preset), ~VirtualScroll~ not working, see
+  also [[https://github.com/primefaces/primevue-tailwind/issues/108][Missing preset for VirtualScroller.]]
 - [ ] Placeholder text color ~TreeSelect~ /vs./ ~MultiSelect~.
 - [ ] Default preset color is secondary for ~DataTable~, ~Paginator~, and ~tabView~. Why not use a local ~ptOptions~
   with ~mergeSections="false"~? Else this has to be documented.
@@ -45,9 +46,9 @@ Draft or long-running issues, WIP, triage, and additional references or context 
   is styled differently in each.
 - [ ] How to custom style ~FormTextInput~ (class/style binding), incl.secondary colour for sign up.
 - [ ] Form validation and warning/message styling for login/sign up/reset components (re-usable style binding with sensible defaults).
-  Check vee-validate usage.i Inline message (PV)
-- [ ] Large number don't show nicely in the Search paginator.
-- [ ] We have not updated the preset for Lara. Maybe just remove them?
+  Check InlineMessage (PV).
+- [ ] Large numbers don't show nicely in the Search paginator.
+- [ ] Outdated presets for Lara. Remove?
 
 ** TODO PEP [1/8]
 
@@ -72,12 +73,10 @@ Draft or long-running issues, WIP, triage, and additional references or context 
   Step five - make use of pep-593 Annotated to package common directives into types
 - [ ] In setup, we use pandas. Type check is disabled. The problem is that there is in fact no type casting, tables are read and values
   are bulk upserted.
-
 - [ ] Harmonize docstrings /e.g./ ~str~ /vs./ ~String~ /etc./. Order of arguments. Add ~Raises~. Add docstrings where missing.
-
 - [X] [2024-02-03 Sat] [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/src/scimodom/api/__init__.py::E402 module level import not at top of file]]
 
-** TODO GENERAL [4/36]
+** TODO GENERAL [7/39]
 
 - [ ] dependencies :: replace pandas in ~SetupService~.
 
@@ -85,8 +84,6 @@ Draft or long-running issues, WIP, triage, and additional references or context 
   for the CLI.
 - [ ] refactor :: Can we add type casting methods directly in each ORM model class?
 - [ ] refactor :: ~getUserName~ in ~headerLayout~ to store getter.
-
-- [ ] search :: Features and biotypes are fixed, but /e.g./ do biotypes change with organism?
 
 - [ ] models :: ~contact_email~ nullable.
 - [ ] models :: Add ~Dataset~ contact and/or date added?
@@ -96,7 +93,7 @@ Draft or long-running issues, WIP, triage, and additional references or context 
 
 - [ ] import :: [2024-02-16 Fri] Add exception if /e.g./ more than 30% of features are unmapped.
   [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/src/scimodom/services/assembly.py::Unmapped features are discarded.]]
-- [ ] import :: What happens if /e.g./ too many rows are skipped or in the worst cases there is no records (/e.g./ if chroms are
+- [ ] import :: What happens if /e.g./ too many rows are skipped or in the worst case there is no records (/e.g./ if chroms are
   not formatted short/Ensembl-style)? Maybe we should have a "no commit" fallback and warning/error.
 - [ ] import :: ~_validate_columns~ (EUFHeaderImporter) adjusted to check first /non-comment/ row, and raises a ~SpecsError~ if the column
   count does not match (or if emtpy). On the other hand, EUFDataImporter ignore bad rows. Maybe it would make more sense to NOT
@@ -105,7 +102,7 @@ Draft or long-running issues, WIP, triage, and additional references or context 
   before writing to the database.
 - [ ] import :: Buffer by chunk (no flush)?
 - [ ] import :: Title is ~VARCHAR(255)~ (dataset/project) but there is no check on project/dataset creation (batch or dataset).
-  For the FE forms, add a max. length.
+  For the FE forms, add a max. length/validation.
 
 - [X] Biotype mapping: how to? Write into table, and use only mapping, or map on the fly?
 
@@ -123,6 +120,7 @@ Draft or long-running issues, WIP, triage, and additional references or context 
   In particular Flask API.
 - [ ] test :: Integration tests?
 
+- [ ] search :: Features and biotypes are fixed, but /e.g./ do biotypes change with organism?
 - [ ] search :: Export: (1) add additional columns /e.g./ taxa_id, cto, RNA type, /etc./ that are hidden from the table, but that requires adding these
   to the select query, we need to see if that impacts performance; if not, then (2) add a header with at least modification, taxa_id, and cto; if not
   then (3) format filename (this is the current solution).
@@ -133,21 +131,24 @@ Draft or long-running issues, WIP, triage, and additional references or context 
   that work with route guards, secure routes, /etc./? Finally, with route params (/e.g./ ~Browse~, where EUFID is directly added to the index),
   this sounds like a strange choice... For ~Browse~ in particular, when clicking on EUFID in ~Search~, we want a new tab, to avoid loosing
   the current search results.
+- [ ] router :: https://router.vuejs.org/guide/essentials/redirect-and-alias#Alias (would this work?)
 
 - [ ] store :: Import/use pinia before router. Options /vs./ Compostion. Add pinia as argument to router ~beforeEach~. Check =ways-to-use-pinia=.
 - [ ] store :: About "refresh" one way is to persist the store, this is easy with https://vueuse.org/core/useLocalStorage/, but somehow got
 - [ ] store :: No need for a logout action, we can just reset the store. Use router push inside the store on logout?
   unexpected behaviour. Check also Pinia plugin.
+
 - [ ] forms :: Add lazy validation to form fields, in particular for login/sign up. Check also strict, see https://github.com/jquense/yup
 - [ ] forms :: Do not load the full ~yup~ package, but only what is needed. Customize validation (login /vs./ sign up). Revisit messages. See
   /e.g./ https://tailwind.primevue.org/inputtext/#helptext. Classes are wrong, there is no ~p-error~, /etc./
-- [ ] email :: Env vars (SMTP, /etc./) probably need to go to the =docker-compose.yml= for production, /etc./? Also do we have twice the same
+
+- [X] email :: Env vars (SMTP, /etc./) probably need to go to the =docker-compose.yml= for production, /etc./? Also do we have twice the same
   env var for PUBLIC SERVER?
 
 - [ ] operations/specs :: Does bedtools support strand ~.~? Constraints to Data model in import.
 
-- [ ] docs :: Only Ensembl short format for chrom, they will be ignored.
-- [ ] docs :: bedRMod = 1 organism (incl. cell type/tissue), 1 technology, 1 RNA type (mRNA, tRNA, /etc./), but 1+ modification (name field).
+- [X] docs :: Only Ensembl short format for chrom, they will be ignored.
+- [X] docs :: bedRMod = 1 organism (incl. cell type/tissue), 1 technology, 1 RNA type (mRNA, tRNA, /etc./), but 1+ modification (name field).
 - [ ] docs :: Only GTF format (annotation).
 - [ ] docs :: The header in bedRMod and selection must match exactly /e.g./ GRCh38 and hg38 will throw an exception.
 - [ ] docs :: Flask CLI.
@@ -155,6 +156,8 @@ Draft or long-running issues, WIP, triage, and additional references or context 
 
 - [ ] [2024-02-22 Thu] [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/src/scimodom/plugins/cli.py::session.rollback()]]
   Session does not rollback. Why? Does this also happens somewhere else?
+- [ ] How to consistently and robustly handle suspected discrepancies at upload (form fields vs. header,
+  form fields vs. data records) to avoid DB transactions?
 
 *** TODO FEATURE REQUEST [0/2]
 

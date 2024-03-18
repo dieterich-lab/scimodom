@@ -50,7 +50,7 @@
                   <h2 class="text-lg font-bold mt-0 mb-2">Data Model & Query Optimization</h2>
                   <p class="mt-0 mb-3 leading-tight">Provide fast sort and filter options.</p>
                   <div class="border-2 border-solid border-gb-2 rounded">
-                    <div class="border-2 border-solid border-gb-2 rounded" style="width: 5%"></div>
+                    <div class="border-2 border-solid border-gb-2 rounded" style="width: 85%"></div>
                   </div>
                 </div>
                 <div class="p-3 border-l-4 border-solid border-gb-2 rounded-l dark:text-white/80">
@@ -60,7 +60,10 @@
                     across techniques, dataset, ...
                   </p>
                   <div class="border-2 border-solid border-gb-2 rounded">
-                    <div class="border-2 border-solid border-gb-2 rounded" style="width: 25%"></div>
+                    <div
+                      class="border-2 border-solid border-gb-2 rounded"
+                      style="width: 100%"
+                    ></div>
                   </div>
                 </div>
                 <div class="p-3 border-l-4 border-solid border-gb-2 rounded-l dark:text-white/80">
@@ -69,7 +72,10 @@
                     Update model, provide advanced and faster records annotation.
                   </p>
                   <div class="border-2 border-solid border-gb-2 rounded">
-                    <div class="border-2 border-solid border-gb-2 rounded" style="width: 35%"></div>
+                    <div
+                      class="border-2 border-solid border-gb-2 rounded"
+                      style="width: 100%"
+                    ></div>
                   </div>
                 </div>
                 <div class="p-3 border-l-4 border-solid border-gb-2 rounded-l dark:text-white/80">
@@ -78,7 +84,10 @@
                     Add version management and services: data cleaning, liftover, ...
                   </p>
                   <div class="border-2 border-solid border-gb-2 rounded">
-                    <div class="border-2 border-solid border-gb-2 rounded" style="width: 0%"></div>
+                    <div
+                      class="border-2 border-solid border-gb-2 rounded"
+                      style="width: 100%"
+                    ></div>
                   </div>
                 </div>
                 <div class="p-3 border-l-4 border-solid border-gb-2 rounded-l dark:text-white/80">
@@ -87,7 +96,7 @@
                     Harmonize upload services, data validation, setup for Q2.
                   </p>
                   <div class="border-2 border-solid border-gb-2 rounded">
-                    <div class="border-2 border-solid border-gb-2 rounded" style="width: 15%"></div>
+                    <div class="border-2 border-solid border-gb-2 rounded" style="width: 45%"></div>
                   </div>
                 </div>
               </div>
@@ -98,7 +107,7 @@
                     Add A&A, user account, data sharing and management, ...
                   </p>
                   <div class="border-2 border-solid border-gb-2 rounded">
-                    <div class="border-2 border-solid border-gb-2 rounded" style="width: 0%"></div>
+                    <div class="border-2 border-solid border-gb-2 rounded" style="width: 50%"></div>
                   </div>
                 </div>
                 <div class="p-3 border-l-4 border-solid border-gb-2 rounded-l dark:text-white/80">
@@ -180,7 +189,7 @@
                     <div class="border-2 border-solid border-gb-4 rounded">
                       <div
                         class="border-2 border-solid border-gb-4 rounded"
-                        style="width: 5%"
+                        style="width: 15%"
                       ></div>
                     </div>
                   </div>
@@ -194,7 +203,7 @@
                     <div class="border-2 border-solid border-gb-4 rounded">
                       <div
                         class="border-2 border-solid border-gb-4 rounded"
-                        style="width: 0%"
+                        style="width: 90%"
                       ></div>
                     </div>
                   </div>
@@ -220,7 +229,7 @@
                     <div class="border-2 border-solid border-gg-2 rounded">
                       <div
                         class="border-2 border-solid border-gg-2 rounded"
-                        style="width: 0%"
+                        style="width: 75%"
                       ></div>
                     </div>
                   </div>
@@ -234,7 +243,7 @@
                     <div class="border-2 border-solid border-gg-2 rounded">
                       <div
                         class="border-2 border-solid border-gg-2 rounded"
-                        style="width: 0%"
+                        style="width: 50%"
                       ></div>
                     </div>
                   </div>
@@ -283,7 +292,7 @@
                     <div class="border-2 border-solid border-gg-1 rounded">
                       <div
                         class="border-2 border-solid border-gg-1 rounded"
-                        style="width: 25%"
+                        style="width: 35%"
                       ></div>
                     </div>
                   </div>
