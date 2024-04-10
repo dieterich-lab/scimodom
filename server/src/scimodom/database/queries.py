@@ -26,10 +26,9 @@ def query_column_where(
     :param model: Model (or model name)
     :type model: ...
     :columns: Column or list of columns
-    :type columns: String | list
+    :type columns: str | list
     :param filters: Query filters in the form of {column: value}
-    :type filters: Dict
-
+    :type filters: dict
     """
 
     columns_list = utils.to_list(columns)

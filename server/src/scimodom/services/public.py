@@ -41,6 +41,12 @@ class PublicService:
 
     :param session: SQLAlchemy ORM session
     :type session: Session
+    :param FEATURES: List of features
+    :type FEATURES: list of str
+    :param BIOTYPES: Available biotypes
+    :type BIOTYPES: dict of {str, str}
+    :param MAPPED_BIOTYPES: List of biotypes to use
+    :type MAPPED_BIOTYPES: list of str
     """
 
     FEATURES: ClassVar[list[str]] = sorted(

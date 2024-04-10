@@ -5,8 +5,6 @@ from smtplib import SMTPException
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 
-ACCESS_TOKEN_EXPIRATION_TIME = timedelta(hours=2)
-
 from scimodom.services.user import (
     get_user_service,
     UserExists,
@@ -17,6 +15,8 @@ from scimodom.services.user import (
 logger = logging.getLogger(__name__)
 
 user_api = Blueprint("user_api", __name__)
+
+ACCESS_TOKEN_EXPIRATION_TIME = timedelta(hours=2)
 
 
 @user_api.route("/register_user", methods=["POST"])

@@ -12,8 +12,6 @@ api = Blueprint("api", __name__)
 @api.route("/selection", methods=["GET"])
 @cross_origin(supports_credentials=True)
 def get_selection():
-    """Get available selection =
-    (modification, organism, technology)."""
     public_service = get_public_service()
     return public_service.get_selection()
 
@@ -21,8 +19,6 @@ def get_selection():
 @api.route("/chrom/<taxid>", methods=["GET"])
 @cross_origin(supports_credentials=True)
 def get_chrom(taxid):
-    """Provides access to chrom.sizes for one
-    selected organism for current database version."""
     public_service = get_public_service()
     return public_service.get_chrom(taxid)
 
@@ -30,8 +26,7 @@ def get_chrom(taxid):
 @api.route("/search", methods=["GET"])
 @cross_origin(supports_credentials=True)
 def get_search():
-    """Get Data records for conditional selection, add
-    filters and sort."""
+    """Search view API."""
     selection_ids = request.args.getlist("selection", type=int)
     taxa_id = request.args.get("taxid", type=int)
     chrom = request.args.get("chrom", type=str)
@@ -60,16 +55,15 @@ def get_search():
 @api.route("/browse", methods=["GET"])
 @cross_origin(supports_credentials=True)
 def get_browse():
-    """Retrieve all dataset/projects."""
-    # 11.2023 no lazy loading, all data is returned
-    # filtering is done in Vue.js
+    """Browse view API."""
     public_service = get_public_service()
     return public_service.get_dataset()
 
 
 @api.route("/compare/<step>", methods=["GET"])
 @cross_origin(supports_credentials=True)
-def get_compare_step(step):
+def get_compare(step):
+    """Compare view API."""
     dataset_ids_a = request.args.getlist("datasetIdsA", type=str)
     dataset_ids_b = request.args.getlist("datasetIdsB", type=str)
     dataset_upload = request.args.get("datasetUpload", type=str)
@@ -85,8 +79,6 @@ def get_compare_step(step):
 @api.route("/upload", methods=["POST"])
 @cross_origin(supports_credentials=True)
 def upload_file():
-    """Upload ..."""
-
     # TODO: define app.config['UPLOAD_PATH'] = UPLOAD_FOLDER
     # ALLOWED_EXTENSIONS are dealt with PrimeVue FileUpload
     # PEP8 import

@@ -37,9 +37,11 @@ class UserService:
     attacks are logged in detailed but reported to the outside
     as a WrongUserOrPassword exception with a generic message.
 
-    :session: SQLAlchemy session object
-    :mail_service: Service used to send tokens for registration and
-            password reset to the user
+    :param session: SQLAlchemy ORM session
+    :type session: Session
+    :param mail_service: Service used to send tokens for registration and
+    password reset to the user
+    :type mail_service: MailService
     """
 
     TOKEN_CHARACTERS = string.ascii_letters + string.digits
@@ -53,9 +55,11 @@ class UserService:
         a token to validate the email address. It may fail with a
         UserExists exception.
 
-        :email: A user is identified by the email address. There is no
-                separate name.
-        :password: Clear text password
+        :param email: A user is identified by the email address. There is no
+        separate name.
+        :type email: str
+        :param password: Clear text password
+        :type password: str
         """
         try:
             self._get_user_by_email(email)
@@ -76,11 +80,18 @@ class UserService:
                 email, confirmation_token
             )
             self._session.commit()
-        except Exception as e:
+        except Exception as exc:
             self._session.rollback()
-            raise e
+            raise exc
 
-    def _get_user_by_email(self, email) -> User:
+    def _get_user_by_email(self, email: str) -> User:
+        """Get user.
+
+        :param email: User name (email address).
+        :type email: str
+        :returns: User instance
+        :rtype: User
+        """
         stmt = select(User).where(User.email == email)
         users = list(self._session.scalars(stmt))
         if len(users) > 1:
@@ -100,6 +111,11 @@ class UserService:
     def confirm_user(self, email: str, confirmation_token: str):
         """Activates a registered user with the token sent out before by email.
         If the user is active already just ignore it and count it as success.
+
+        :param email: User name (email address).
+        :type email: str
+        :param confirmation_token: Token
+        :type confirmation_token: str
         """
         try:
             try:
@@ -120,8 +136,8 @@ class UserService:
             user.confirmation_token = None
             self._session.commit()
 
-        except _DetailedWrongUserOrPassword as e:
-            logger.warning(f"WARNING: {str(e)}")
+        except _DetailedWrongUserOrPassword as exc:
+            logger.warning(f"WARNING: {str(exc)}")
             raise WrongUserOrPassword("Go away hacker!")
 
     def request_password_reset(self, email: str) -> None:
@@ -130,14 +146,27 @@ class UserService:
         unauthenticated hacker may abuse the workflow to trigger a state change of
         the account. The workflow can also be used to retry registration if the
         initial email with the token was lost.
+
+        :param email: User name (email address).
+        :type email: str
         """
         user = self._get_user_by_email(email)
         user.confirmation_token = self._get_random_token()
         self._session.commit()
         self._mail_service.send_password_reset_token(email, user.confirmation_token)
 
-    def do_password_reset(self, email, confirmation_token, new_password) -> None:
-        """Do a password reset with a token sent out before via email."""
+    def do_password_reset(
+        self, email: str, confirmation_token: str, new_password: str
+    ) -> None:
+        """Do a password reset with a token sent out before via email.
+
+        :param email: User name (email address).
+        :type email: str
+        :param confirmation_token: Token
+        :type confirmation_token: str
+        :param new_password: New password
+        :type new_password: str
+        """
         try:
             try:
                 user = self._get_user_by_email(email)
@@ -156,13 +185,18 @@ class UserService:
             user.confirmation_token = None
             self._session.commit()
 
-        except _DetailedWrongUserOrPassword as e:
-            logger.warning(f"WARNING: {str(e)}")
+        except _DetailedWrongUserOrPassword as exc:
+            logger.warning(f"WARNING: {str(exc)}")
             raise WrongUserOrPassword("Go away hacker!")
 
-    def check_password(self, email, password) -> bool:
+    def check_password(self, email: str, password: str) -> bool:
         """Returns true if the password matches the stored password.
         Otherwise, false is returned - also in case of an unknown or inactive user.
+
+        :param email: User name (email address).
+        :type email: str
+        :param password: Password
+        :type password: str
         """
         try:
             user = self._get_user_by_email(email)
@@ -186,8 +220,8 @@ _cached_user_service: Optional[UserService] = None
 def get_user_service():
     """Helper function to set up a UserService object by injecting its dependencies.
 
-    :refresh: If true a new instance is created. Otherwise, a cached object may be
-    returned.
+    :returns: User service instance
+    :rtype: UserService
     """
     global _cached_user_service
     if _cached_user_service is None:
