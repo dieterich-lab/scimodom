@@ -137,7 +137,7 @@ function getUserName() {
       </div>
       <div v-else class="flex flex-wrap 2xl:w-1/5 xl:w-auto 2xl:pl-8 xl:pl-0 gap-4">
         <Button
-          :disabled="true"
+          :disabled="false"
           label="Login"
           @click="login()"
           icon="pi pi-user"
@@ -145,7 +145,7 @@ function getUserName() {
           raised
         />
         <Button
-          :disabled="true"
+          :disabled="false"
           label="Sign Up"
           @click="signUp()"
           icon="pi pi-user-plus"

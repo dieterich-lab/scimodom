@@ -1,0 +1,134 @@
+<script setup>
+import { ref, onMounted } from 'vue'
+import { useForm, useFieldArray } from 'vee-validate'
+import { object, array, string, number, date } from 'yup'
+import { HTTPSecure } from '@/services/API'
+
+import FormTextInput from '@/components/ui/FormTextInput.vue'
+import FormTextArea from '@/components/ui/FormTextArea.vue'
+import FormButton from '@/components/ui/FormButton.vue'
+
+const validationSchema = object({
+  forename: string().required('Forename is required!'),
+  surname: string().required('Surname is required!'),
+  institution: string()
+    .required('Institution is required!')
+    .max(255, 'At most 255 characters allowed!'),
+  email: string()
+    .required('Email is required!')
+    .email('Invalid email!')
+    .max(320, 'At most 320 characters allowed!'),
+  title: string().required('Title is required!').max(255, 'At most 255 characters allowed!'),
+  summary: string().required('Summary is required!'),
+  published: date(),
+  sources: array().of(
+    object().shape({
+      doi: string().max(255, 'At most 255 characters allowed!'),
+      pmid: number()
+        .integer()
+        .typeError('PMID must be a number!')
+        .nullable()
+        .transform((_, val) => (val !== '' ? Number(val) : null))
+    })
+  )
+})
+
+const { defineField, handleSubmit, errors } = useForm({
+  validationSchema: validationSchema,
+  initialValues: {
+    sources: [{ doi: '', pmid: null }]
+  }
+})
+const [forename, forenameProps] = defineField('forename')
+const [surname, surnameProps] = defineField('surname')
+const [institution, institutionProps] = defineField('institution')
+const [email, emailProps] = defineField('email')
+const [title, titleProps] = defineField('title')
+const [summary, summaryProps] = defineField('summary')
+const [published, publishedProps] = defineField('published')
+
+const { remove, push, fields } = useFieldArray('sources')
+
+const onSubmit = handleSubmit((values) => {
+  // Submit to API
+  console.log(values)
+})
+
+onMounted(() => {
+  HTTPSecure.get('/access/username')
+    .then((response) => {
+      email.value = response.data.username
+    })
+    .catch((err) => {
+      // console.log(err.response.status)
+      console.log(err)
+      // on error what to do
+    })
+})
+</script>
+
+<template>
+  <SectionLayout>
+    <div>
+      <form @submit.prevent="onSubmit">
+        <h3 class="dark:text-white/80">Your contact details</h3>
+        <div class="grid grid-cols-2 gap-4">
+          <FormTextInput v-model="forename" :error="errors.forename" placeholder="Forename"
+            >Forename</FormTextInput
+          >
+          <FormTextInput v-model="surname" :error="errors.surname" placeholder="Surname"
+            >Surname (family name)</FormTextInput
+          >
+          <FormTextInput
+            v-model="institution"
+            :error="errors.institution"
+            placeholder="University of ..."
+            >Institution</FormTextInput
+          >
+          <FormTextInput v-model="email" :error="errors.email">Email address</FormTextInput>
+        </div>
+        <h3 class="mt-4 dark:text-white/80">Project information</h3>
+        <div class="grid grid-rows-3 gap-2">
+          <FormTextInput
+            v-model="title"
+            :error="errors.title"
+            placeholder="Transcriptome-wide profiling ..."
+            >Title</FormTextInput
+          >
+          <FormTextArea
+            v-model="summary"
+            :error="errors.summary"
+            placeholder="Profiling with technique T at site-specific resolution in human cell lines X, Y, Z under conditions A and B, etc."
+          >
+            Summary (project description)
+          </FormTextArea>
+          <FormTextInput v-model="published" :error="errors.published" type="date"
+            >Date published</FormTextInput
+          >
+        </div>
+        <h3 class="mt-4 mb-2 dark:text-white/80">Published project sources</h3>
+        <Button @click="push({ doi: '', pmid: '' })" label="Add source" />
+        <div class="grid grid-cols-3 gap-4 mt-2" v-for="(field, idx) in fields" :key="field.key">
+          <FormTextInput
+            v-model="field.value.doi"
+            :error="errors[`sources[${idx}].doi`]"
+            placeholder="10.XXXX/..."
+            >DOI</FormTextInput
+          >
+          <FormTextInput
+            v-model="field.value.pmid"
+            :error="errors[`sources[${idx}].pmid`]"
+            placeholder="PubMed-ID"
+            >PMID</FormTextInput
+          >
+          <div class="place-self-start self-center">
+            <Button @click="remove(idx)" label="Remove" />
+          </div>
+        </div>
+
+        <br />
+        <FormButton type="submit">Submit</FormButton>
+      </form>
+    </div>
+  </SectionLayout>
+</template>
