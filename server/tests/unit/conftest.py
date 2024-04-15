@@ -1,13 +1,10 @@
 from collections import namedtuple
-import os
 from pathlib import Path
 
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from scimodom.services.annotation import AnnotationService
-from scimodom.services.assembly import AssemblyService
 from scimodom.database.database import init, Base
 from scimodom.database.models import (
     Modomics,
