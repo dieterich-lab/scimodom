@@ -50,11 +50,6 @@ class Exporter:
         assembly = "TODO"  # We might get one via selection.inst_organism.inst_taxa.assemblies - but which?
         annotation_source = "TODO"
         annotation_version = "TODO"
-        methods = self._get_methods_from_selections(
-            selections
-        )  # TODO: Is comma-separated correct?
-        references = "TODO"
-        conversion_information = "TODO"
 
         stream.write(
             f"""#fileformat=bedRModv1.7
@@ -68,9 +63,6 @@ class Exporter:
 #bioinformatics_workflow={_or_default(dataset.bioinformatics_workflow, '')}
 #experiment={_or_default(dataset.experiment, '')}
 #external_source={_or_default(dataset.external_source, '')}
-#methods={methods}
-#references={references}
-#conversion_information={conversion_information}
 #om\tomStart\tomEnd\tname\tscore\tstrand\tthickStart\tthickEnd\titemRgb\tcoverage\tfrequency
 """
         )
@@ -84,26 +76,6 @@ class Exporter:
                     f"Found inconsistent Taxa IDs in data set {dataset.id} ({', '.join(str(candidates))})"
                 )
         return candidates[0]
-
-    def _get_methods_from_selections(self, selections):
-        db = self._session
-        technology_ids = [s.technology_id for s in selections]
-        technologies = list(
-            db.scalars(
-                select(DetectionTechnology)
-                .distinct()
-                .where(DetectionTechnology.id.in_(technology_ids))
-            )
-        )
-        method_ids = [t.method_id for t in technologies]
-        methods = list(
-            db.scalars(
-                select(DetectionMethod)
-                .distinct()
-                .where(DetectionMethod.id.in_(method_ids))
-            )
-        )
-        return ",".join([m.meth for m in methods])
 
     def _write_records(self, associations, stream):
         db = self._session
