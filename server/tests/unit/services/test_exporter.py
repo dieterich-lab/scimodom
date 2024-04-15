@@ -20,10 +20,10 @@ from scimodom.services.exporter import Exporter
 
 
 @pytest.fixture
-def dataset(Session):
+def dataset(Session, setup):
     organism = Organism(id=1, taxa_id=9606, cto="Cell Type 1")
     modomics = Modomics(id="m1", name="Mod1", short_name="Mod1", moiety="moiety")
-    modification = Modification(id=1, modomics_id=modomics.id, rna="RNA")
+    modification = Modification(id=1, modomics_id=modomics.id, rna="Bla")
     method = DetectionMethod(id="m1", cls="c1", meth="Method m1")
     technology = DetectionTechnology(id=1, method_id=method.id, tech="Very Cool Tech")
     selection = Selection(
@@ -89,6 +89,7 @@ def dataset(Session):
         frequency=99,
     )
     session = Session()
+    session.add_all(setup)
     session.add_all(
         [
             organism,
@@ -117,9 +118,9 @@ def test_exporter(Session, dataset):
         == """#fileformat=bedRModv1.7
 #organism=9606
 #modification_type=RNA
-#assembly=TODO
-#annotation_source=TODO
-#annotation_version=TODO
+#assembly=GRCh38
+#annotation_source=Ensembl
+#annotation_version=110
 #sequencing_platform=sp1
 #basecalling=bc1
 #bioinformatics_workflow=wf1

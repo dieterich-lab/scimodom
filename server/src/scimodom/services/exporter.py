@@ -12,8 +12,10 @@ from scimodom.database.models import (
     Association,
     Selection,
     Data,
-    DetectionTechnology,
-    DetectionMethod,
+    AssemblyVersion,
+    Assembly,
+    AnnotationVersion,
+    Annotation,
 )
 
 logger = getLogger(__name__)
@@ -33,10 +35,10 @@ class Exporter:
         associations = list(
             db.scalars(select(Association).where(Association.dataset_id == dataset.id))
         )
-        self._write_header(dataset, stream, associations)
+        self._write_header(dataset, associations, stream)
         self._write_records(associations, stream)
 
-    def _write_header(self, dataset, stream, associations):
+    def _write_header(self, dataset, associations, stream):
         db = self._session
         if len(associations) > 1:
             logger.warning(
@@ -47,16 +49,15 @@ class Exporter:
             db.scalars(select(Selection).where(Selection.id.in_(selection_ids)))
         )
         taxa_id = self._get_taxa_id_from_selections(dataset, selections)
-        assembly = "TODO"  # We might get one via selection.inst_organism.inst_taxa.assemblies - but which?
-        annotation_source = "TODO"
-        annotation_version = "TODO"
+        assembly = self._get_assembly(taxa_id)
+        annotation_version = self._get_annotation_version(taxa_id)
 
         stream.write(
             f"""#fileformat=bedRModv1.7
 #organism={taxa_id}
 #modification_type={dataset.modification_type}
 #assembly={assembly}
-#annotation_source={annotation_source}
+#annotation_source=Ensembl
 #annotation_version={annotation_version}
 #sequencing_platform={_or_default(dataset.sequencing_platform, '')}
 #basecalling={_or_default(dataset.basecalling, '')}
@@ -76,6 +77,41 @@ class Exporter:
                     f"Found inconsistent Taxa IDs in data set {dataset.id} ({', '.join(str(candidates))})"
                 )
         return candidates[0]
+
+    def _get_assembly(self, taxa_id):
+        db = self._session
+        assembly_version = list(db.scalars(select(AssemblyVersion)))[0].version_num
+        candidates = list(
+            db.scalars(
+                select(Assembly).where(
+                    Assembly.version == assembly_version, Assembly.taxa_id == taxa_id
+                )
+            )
+        )
+        if len(candidates) > 1:
+            logger.warning(
+                f"WARNING: Found multiple Assemblies for taxa_id {taxa_id} and Assembly version {assembly_version}!"
+            )
+        return candidates[0].name
+
+    def _get_annotation_version(self, taxa_id):
+        db = self._session
+        annotation_version = list(db.scalars((select(AnnotationVersion))))[
+            0
+        ].version_num
+        candidates = list(
+            db.scalars(
+                select(Annotation).where(
+                    Annotation.version == annotation_version,
+                    Annotation.taxa_id == taxa_id,
+                )
+            )
+        )
+        if len(candidates) > 1:
+            logger.warning(
+                f"WARNING: Found multiple Annotation for taxa_id {taxa_id} and Annotation version {annotation_version}!"
+            )
+        return candidates[0].release
 
     def _write_records(self, associations, stream):
         db = self._session
