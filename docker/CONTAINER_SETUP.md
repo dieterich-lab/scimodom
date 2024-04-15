@@ -113,7 +113,20 @@ Use the password found in secrets/mariadb-root.
 
 ## Development Setup
 
-The database can be run using a container and connected with the application running locally by using _docker-compose-db-only.yml_. If the system already runs a different MariaDB/MySQL instance the `MARIADB_DEV_PORT` must be changed in the _docker/.env_ file (and also in _server/.env_, see below). When running it the first time, you need to set up the secrets. Create the data folder for the DEV database:
+The database can be run using a container and connected with the application running locally by using
+_docker-compose-db-only.yml_. To do so, you first need a separate _docker/.env_ file. It may be as short
+as this:
+
+```bash
+DB_IMAGE_NAME=scimodom_db:latest
+MARIADB_DEV_PORT=3307
+HOST_BACKUP_DIR=backup
+HOST_SECRETS_DIR=secrets
+HOST_DEV_DB_DATA_DIR=db_data_dev
+```
+
+Please note, that the example above use the non-standard port 3307 to avoid clashes with a local MariaDB/Mysql
+installation.
 
 ```bash
 ./scripts/create_local_folders.sh
@@ -121,13 +134,20 @@ mkdir db_data_dev
 podman-compose -f docker-compose-db-only.yml up -d
 ```
 
-In the _server/.env_ the correct `DATABASE_URI` must be configured:
+Now you can set up _server/.env_:
+
+- Start with server/env_example.
+- Change _DATABASE_URI_ to match your setup, especially:
+- The port must match _MARIADB_DEV_PORT_ from docker/.env
+- The password is one you find in the file _docker/secrets/mariadb-scimodom_.
+
+The resulting line should look like this:
 
 ```
-DATABASE_URI=mysql+mysqldb://scimodom:PASSWORD@127.0.0.1:3306/scimodom
+DATABASE_URI=mysql+mysqldb://scimodom:YourPassword@127.0.0.1:3307/scimodom
 ```
 
-Replace **PASSWORD** with the contents of your 'secrets/mariadb-scimodom' file. In case you changed `MARIADB_DEV_PORT` you may have to change the port after **127.0.0.1**. Now the database schema can be initialized with alembic:
+Now the database schema can be initialized with alembic:
 
 ```bash
 cd ../server
