@@ -8,6 +8,9 @@ import FormTextInput from '@/components/ui/FormTextInput.vue'
 import FormTextArea from '@/components/ui/FormTextArea.vue'
 import FormButton from '@/components/ui/FormButton.vue'
 
+const props = defineProps(['nextCallback'])
+const model = defineModel()
+
 const validationSchema = object({
   forename: string().required('Forename is required!'),
   surname: string().required('Surname is required!'),
@@ -33,11 +36,17 @@ const validationSchema = object({
   )
 })
 
+const getInitialValues = () => {
+  if (model.value === undefined) {
+    return { doi: '', pmid: null }
+  } else {
+    return { ...model.value }
+  }
+}
+
 const { defineField, handleSubmit, errors } = useForm({
   validationSchema: validationSchema,
-  initialValues: {
-    sources: [{ doi: '', pmid: null }]
-  }
+  initialValues: getInitialValues()
 })
 const [forename, forenameProps] = defineField('forename')
 const [surname, surnameProps] = defineField('surname')
@@ -52,6 +61,8 @@ const { remove, push, fields } = useFieldArray('sources')
 const onSubmit = handleSubmit((values) => {
   // Submit to API
   console.log(values)
+  model.value = values
+  props.nextCallback()
 })
 
 onMounted(() => {
@@ -127,7 +138,18 @@ onMounted(() => {
         </div>
 
         <br />
-        <FormButton type="submit">Submit</FormButton>
+        <div class="flex pt-4 justify-end">
+          <Button
+            type="submit"
+            label="Next"
+            icon="pi pi-arrow-right"
+            iconPos="right"
+            class="p-4 text-primary-50 border border-white-alpha-30"
+          >
+          </Button>
+          <!-- <div class="flex pt-4 justify-end">
+             <FormButton type="submit">Nexat</FormButton> -->
+        </div>
       </form>
     </div>
   </SectionLayout>

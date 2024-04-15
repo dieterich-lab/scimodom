@@ -2,6 +2,27 @@
 import { ref } from 'vue'
 
 import ProjectForm from '@/components/project/ProjectForm.vue'
+import ProjectMetaData from '@/components/project/ProjectMetaData.vue'
+
+const projectInfo = ref()
+const projectData = ref()
+
+const active = ref(0)
+const completed = ref(false)
+const products = ref()
+const name = ref()
+const email = ref()
+const password = ref()
+const option1 = ref(false)
+const option2 = ref(false)
+const option3 = ref(false)
+const option4 = ref(false)
+const option5 = ref(false)
+const option6 = ref(false)
+const option7 = ref(false)
+const option8 = ref(false)
+const option9 = ref(false)
+const option10 = ref(false)
 </script>
 
 <template>
@@ -32,6 +53,89 @@ import ProjectForm from '@/components/project/ProjectForm.vue'
       </p>
     </SectionLayout>
 
-    <ProjectForm />
+    <!-- <ProjectForm /> -->
+    <SectionLayout>
+      <Stepper v-model:activeStep="active">
+        <StepperPanel>
+          <template #header="{ index, clickCallback }">
+            <span
+              :class="[
+                'rounded-md border-2 w-[3rem] h-[3rem] inline-flex items-center justify-center',
+                {
+                  'bg-primary-500 dark:bg-primary-400 border-primary*500 dark:border-primary-400':
+                    index <= active,
+                  'border-surface-200 dark:border-surface-700': index > active
+                }
+              ]"
+            >
+              <i class="pi pi-file-edit" />
+            </span>
+          </template>
+          <template #content="{ nextCallback }">
+            <ProjectForm :nextCallback="nextCallback" v-model="projectInfo" />
+          </template>
+        </StepperPanel>
+        <StepperPanel>
+          <template #header="{ index, clickCallback }">
+            <span
+              :class="[
+                'rounded-md border-2 w-[3rem] h-[3rem] inline-flex items-center justify-center',
+                {
+                  'bg-primary-500 dark:bg-primary-400 border-primary*500 dark:border-primary-400':
+                    index <= active,
+                  'border-surface-200 dark:border-surface-700': index > active
+                }
+              ]"
+            >
+              <i class="pi pi-file-plus" />
+            </span>
+          </template>
+          <template #content="{ prevCallback, nextCallback }">
+            <ProjectMetaData :nextCallback="nextCallback" v-model="projectData" />
+            <!-- <div class="flex pt-4 justify-between">
+                         <Button label="Back" severity="secondary" icon="pi pi-arrow-left" @click="prevCallback" />
+                         <Button label="Next" icon="pi pi-arrow-right" iconPos="right" @click="nextCallback" />
+                         </div> -->
+          </template>
+        </StepperPanel>
+        <StepperPanel>
+          <template #header="{ index, clickCallback }">
+            <span
+              :class="[
+                'rounded-md border-2 w-[3rem] h-[3rem] inline-flex items-center justify-center',
+                {
+                  'bg-primary-500 dark:bg-primary-400 border-primary*500 dark:border-primary-400':
+                    index <= active,
+                  'border-surface-200 dark:border-surface-700': index > active
+                }
+              ]"
+            >
+              <i class="pi pi-file-export" />
+            </span>
+          </template>
+          <template #content="{ prevCallback }">
+            <div class="flex flex-col gap-2 mx-auto" style="min-height: 16rem; max-width: 24rem">
+              <div class="text-center mt-3 mb-3 text-xl font-semibold">
+                Account created successfully
+              </div>
+              <div class="flex justify-center">
+                <img
+                  alt="logo"
+                  src="https://primefaces.org/cdn/primevue/images/stepper/content.svg"
+                />
+              </div>
+            </div>
+            <div class="flex pt-4 justify-start">
+              <Button
+                label="Back"
+                severity="secondary"
+                icon="pi pi-arrow-left"
+                @click="prevCallback"
+              />
+            </div>
+          </template>
+        </StepperPanel>
+      </Stepper>
+    </SectionLayout>
   </DefaultLayout>
 </template>

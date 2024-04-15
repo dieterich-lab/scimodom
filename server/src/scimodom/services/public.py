@@ -63,6 +63,26 @@ class PublicService:
     def __init__(self, session: Session):
         self._session = session
 
+    def get_modomics(self):
+        """Get all modifications.
+
+        :returns: Query result
+        :rtype: list of dict
+        """
+
+        query = select(Modomics.id, Modomics.short_name.label("modomics_sname"))
+        return self._dump(query)
+
+    def get_detection_method(self):
+        """Get all standard methods.
+
+        :returns: Query result
+        :rtype: list of dict
+        """
+
+        query = select(DetectionMethod.id, DetectionMethod.cls, DetectionMethod.meth)
+        return self._dump(query)
+
     def get_selection(self):
         """Get available selections.
 
