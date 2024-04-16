@@ -229,10 +229,7 @@ onMounted(() => {
             <CascadeSelect
               id="orgDropdown"
               v-model="selectedTaxid"
-              @change="
-                field.value.taxid = selectedTaxid.key
-                getAssemblies()
-              "
+              @change="[(field.value.taxid = selectedTaxid.key), getAssemblies()]"
               :options="taxid"
               optionLabel="label"
               optionGroupLabel="label"
