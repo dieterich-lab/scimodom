@@ -1,12 +1,15 @@
 #
-# The purpose of this module is to write bedRMod files
+# The purpose of this module is to write .bedrmod files
 #
 from logging import getLogger
-from typing import TextIO
+from typing import Optional, Generator
+import re
 
 from sqlalchemy import select
+from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session
 
+from scimodom.database.database import get_session
 from scimodom.database.models import (
     Dataset,
     Association,
@@ -25,20 +28,39 @@ def _or_default(value, default):
     return default if value is None else value
 
 
+class NoSuchDataset(Exception):
+    pass
+
+
 class Exporter:
+    BAD_FILE_NAME_CHARACTERS_REGEXP = re.compile(r"[^a-zA-Z0-9(),._-]")
+
     def __init__(self, session: Session):
         self._session = session
 
-    def export_dataset(self, dataset_id: str, stream: TextIO):
-        dataset = self._session.get(Dataset, dataset_id)
+    def get_dataset_file_name(self, dataset_id: str) -> str:
+        try:
+            dataset = self._session.get(Dataset, dataset_id)
+        except NoResultFound:
+            raise NoSuchDataset(f"Failed to find dataset {dataset_id}")
+        cleaned_name = re.sub(self.BAD_FILE_NAME_CHARACTERS_REGEXP, "_", dataset.title)
+        return f"{cleaned_name}.bedrmod"  # noqa
+
+    def generate_dataset(self, dataset_id: str) -> Generator[bytes, None, None]:
+        try:
+            dataset = self._session.get(Dataset, dataset_id)
+        except NoResultFound:
+            raise NoSuchDataset(f"Failed to find dataset {dataset_id}")
         db = self._session
         associations = list(
             db.scalars(select(Association).where(Association.dataset_id == dataset.id))
         )
-        self._write_header(dataset, associations, stream)
-        self._write_records(associations, stream)
+        for line in self._generate_header(dataset, associations):
+            yield line.encode("utf-8")
+        for line in self._generate_records(associations):
+            yield line.encode("utf-8")
 
-    def _write_header(self, dataset, associations, stream):
+    def _generate_header(self, dataset, associations):
         db = self._session
         if len(associations) > 1:
             logger.warning(
@@ -48,25 +70,22 @@ class Exporter:
         selections = list(
             db.scalars(select(Selection).where(Selection.id.in_(selection_ids)))
         )
-        taxa_id = self._get_taxa_id_from_selections(dataset, selections)
-        assembly = self._get_assembly(taxa_id)
-        annotation_version = self._get_annotation_version(taxa_id)
 
-        stream.write(
-            f"""#fileformat=bedRModv1.7
-#organism={taxa_id}
-#modification_type={dataset.modification_type}
-#assembly={assembly}
-#annotation_source=Ensembl
-#annotation_version={annotation_version}
-#sequencing_platform={_or_default(dataset.sequencing_platform, '')}
-#basecalling={_or_default(dataset.basecalling, '')}
-#bioinformatics_workflow={_or_default(dataset.bioinformatics_workflow, '')}
-#experiment={_or_default(dataset.experiment, '')}
-#external_source={_or_default(dataset.external_source, '')}
-#om\tomStart\tomEnd\tname\tscore\tstrand\tthickStart\tthickEnd\titemRgb\tcoverage\tfrequency
-"""
-        )
+        yield "#fileformat=bedRModv1.7\n"  # noqa
+        taxa_id = self._get_taxa_id_from_selections(dataset, selections)
+        yield f"#organism={taxa_id}\n"
+        yield f"#modification_type={dataset.modification_type}\n"
+        assembly = self._get_assembly(taxa_id)
+        yield f"#assembly={assembly}\n"
+        yield "#annotation_source=Ensembl\n"
+        annotation_version = self._get_annotation_version(taxa_id)
+        yield f"#annotation_version={annotation_version}\n"
+        yield f"#sequencing_platform={_or_default(dataset.sequencing_platform, '')}\n"
+        yield f"#basecalling={_or_default(dataset.basecalling, '')}\n"
+        yield f"#bioinformatics_workflow={_or_default(dataset.bioinformatics_workflow, '')}\n"
+        yield f"#experiment={_or_default(dataset.experiment, '')}\n"
+        yield f"#external_source={_or_default(dataset.external_source, '')}\n"
+        yield "#om\tomStart\tomEnd\tname\tscore\tstrand\tthickStart\tthickEnd\titemRgb\tcoverage\tfrequency\n"
 
     @staticmethod
     def _get_taxa_id_from_selections(dataset, selections):
@@ -74,7 +93,7 @@ class Exporter:
         for i in candidates[1:]:
             if candidates[0] != i:
                 logger.warning(
-                    f"Found inconsistent Taxa IDs in data set {dataset.id} ({', '.join(str(candidates))})"
+                    f"WARNING: Found inconsistent Taxa IDs in data set {dataset.id} ({', '.join(str(candidates))})"
                 )
         return candidates[0]
 
@@ -113,7 +132,7 @@ class Exporter:
             )
         return candidates[0].release
 
-    def _write_records(self, associations, stream):
+    def _generate_records(self, associations):
         db = self._session
         association_ids = [a.id for a in associations]
         for data in db.scalars(
@@ -132,4 +151,14 @@ class Exporter:
                 str(data.coverage),
                 str(data.frequency),
             ]
-            print("\t".join(parts), file=stream)
+            yield "\t".join(parts) + "\n"
+
+
+_cached_exporter: Optional[Exporter] = None
+
+
+def get_exporter() -> Exporter:
+    global _cached_exporter
+    if _cached_exporter is None:
+        _cached_exporter = Exporter(session=get_session())
+    return _cached_exporter

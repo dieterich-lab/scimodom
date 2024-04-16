@@ -7,6 +7,7 @@ API_PREFIX = "api/v0"  # must fit with client/public/config.js
 USER_API_ROUTE = f"/{API_PREFIX}/user"
 ACCESS_API_ROUTE = f"/{API_PREFIX}/access"
 UPLOAD_API_ROUTE = f"/{API_PREFIX}/upload"
+TRANSFER_API_ROUTE = f"/{API_PREFIX}/transfer"
 
 CONFIRM_USER_REGISTRATION_URI = "confirm_user_registration"
 REQUEST_PASSWORD_RESET_URI = "request_password_reset"

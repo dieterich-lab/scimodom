@@ -111,10 +111,14 @@ def dataset(Session, setup):
 
 
 def test_exporter(Session, dataset):
-    stream = StringIO()
-    Exporter(Session()).export_dataset(dataset.id, stream)
+    exporter = Exporter(Session())
+    assert exporter.get_dataset_file_name(dataset.id) == "dataset_title.bedrmod"  # noqa
+    content = "".join(
+        [x.decode("utf-8") for x in exporter.generate_dataset(dataset.id)]
+    )
+
     assert (
-        stream.getvalue()
+        content
         == """#fileformat=bedRModv1.7
 #organism=9606
 #modification_type=RNA
