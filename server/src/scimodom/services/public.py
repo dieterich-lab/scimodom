@@ -83,6 +83,35 @@ class PublicService:
         query = select(DetectionMethod.id, DetectionMethod.cls, DetectionMethod.meth)
         return self._dump(query)
 
+    def get_taxa(self):
+        """Get all organisms with their taxonomy.
+
+        :returns: Query result
+        :rtype: list of dict
+        """
+
+        query = select(
+            Taxa.id,
+            Taxa.short_name.label("taxa_sname"),
+            Taxonomy.domain,
+            Taxonomy.kingdom,
+            Taxonomy.phylum,
+        ).join_from(Taxa, Taxonomy, Taxa.inst_taxonomy)
+
+        return self._dump(query)
+
+    def get_assembly_for_taxid(self, taxid: int):
+        """Get available assemblies for given Taxa ID.
+
+        :param taxid: Taxa ID
+        :type taxid: int
+        :returns: Query result
+        :rtype: list of dict
+        """
+
+        query = select(Assembly.id, Assembly.name).where(Assembly.taxa_id == taxid)
+        return self._dump(query)
+
     def get_selection(self):
         """Get available selections.
 
