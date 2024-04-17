@@ -91,7 +91,11 @@ const option10 = ref(false)
             </span>
           </template>
           <template #content="{ prevCallback, nextCallback }">
-            <ProjectMetaData :nextCallback="nextCallback" v-model="projectData" />
+            <ProjectMetaData
+              :nextCallback="nextCallback"
+              :prevCallback="prevCallback"
+              v-model="projectData"
+            />
             <!-- <div class="flex pt-4 justify-between">
                          <Button label="Back" severity="secondary" icon="pi pi-arrow-left" @click="prevCallback" />
                          <Button label="Next" icon="pi pi-arrow-right" iconPos="right" @click="nextCallback" />

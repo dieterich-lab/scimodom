@@ -19,9 +19,15 @@ const taxid = ref([])
 const assembly = ref([])
 const selectedModification = ref()
 const selectedMethod = ref()
-const selectedType = ref()
 const selectedTaxid = ref()
 const selectedAssembly = ref()
+
+import { useRouter } from 'vue-router'
+const router = useRouter()
+const routeData = router.resolve({ name: 'documentation' })
+const tata = () => {
+  window.open(routeData.href, '_blank')
+}
 
 // TODO define in BE
 const rna = ref(['mRNA', 'rRNA'])
@@ -32,23 +38,33 @@ import FormTextInput from '@/components/ui/FormTextInput.vue'
 import FormTextArea from '@/components/ui/FormTextArea.vue'
 import FormButton from '@/components/ui/FormButton.vue'
 
-const props = defineProps(['nextCallback'])
+const props = defineProps(['nextCallback', 'prevCallback'])
 const model = defineModel()
 
 const validationSchema = object({
   metadata: array().of(
     object().shape({
-      rna: string().required('RNA type is required!'), //.nullable().transform((value) => !!value ? value : null),
-      modification: string().required('Modification is required!'), //.nullable().transform((value) => !!value ? value : null),
-      method: string().required('Method is required!'), //.nullable().transform((value) => !!value ? value : null),
-      technology: string().required('Technology is required!'),
-      taxid: number().integer().required('Organism is a required field!'),
-      organism: string().required('Cell, tissue, or organ is required!'),
+      rna: string().max(32, 'At most 32 characters allowed!').required('RNA type is required!'),
+      modification: string()
+        .max(128, 'At most 128 characters allowed!')
+        .required('Modification is required!'),
+      method: string().max(8, 'At most 8 characters allowed').required('Method is required!'),
+      technology: string()
+        .max(255, 'At most 255 characters allowed!')
+        .required('Technology is required!'),
+      taxid: number().integer().required('Organism is required!'),
+      organism: string()
+        .max(255, 'At most 255 characters allowed!')
+        .required('Cell, tissue, or organ is required!'),
       assembly: number()
         .integer()
         .typeError('Assembly ID must be a number!')
         .transform((_, val) => (val !== '' ? Number(val) : null)),
-      freeAssembly: string(),
+      freeAssembly: string()
+        .max(128, 'At most 128 characters allowed!')
+        .required(
+          'Assembly is required! If selecting from existing (left), copy your selection above.'
+        ),
       note: string()
     })
   )
@@ -73,7 +89,6 @@ const getInitialValues = () => {
     return { ...model.value }
   }
 }
-console.log('INITIAL', getInitialValues())
 
 const { handleSubmit, errors } = useForm({
   validationSchema: validationSchema,
@@ -82,14 +97,19 @@ const { handleSubmit, errors } = useForm({
 
 const { remove, push, fields } = useFieldArray('metadata')
 
-console.log('FIELDS', fields)
+const addMetadata = () => {
+  push(initialValues)
+  selectedModification.value = undefined
+  selectedMethod.value = undefined
+  selectedTaxid.value = undefined
+  selectedAssembly.value = undefined
+}
 
 const onSubmit = handleSubmit((values) => {
   // Submit to API
-  console.log('ON SUBMIT')
   console.log(values)
-  //  model.value = values
-  //  props.nextCallback()
+  model.value = values
+  props.nextCallback()
 })
 
 const getAssemblies = () => {
@@ -140,19 +160,38 @@ onMounted(() => {
   <SectionLayout>
     <div>
       <form @submit.prevent="onSubmit">
-        <!-- <h3 class="dark:text-white/80">Your contact details</h3> -->
-
-        <h3 class="mt-4 mb-2 dark:text-white/80">Project metadata...</h3>
-        <Button @click="push(initialValues)" label="Add metadata" />
-        <div class="grid grid-cols-2 gap-4 mt-2" v-for="(field, idx) in fields" :key="field.key">
+        <div class="flex flex-col mx-auto">
+          <div class="text-center mt-0 mb-4 text-xl font-semibold dark:text-white/80">
+            Project metadata
+          </div>
+        </div>
+        <h3 class="mt-0 mb-4 dark:text-white/80">
+          Click <span class="inline font-semibold">"Add metadata"</span> to add a metadata sheet for
+          a dataset. Add a new metadata sheet for each dataset that belongs to this project or for
+          each modification associated with a single dataset. Consult the
+          <RouterLink
+            :to="{ name: 'documentation' }"
+            target="_blank"
+            class="inline-flex items-center font-semibold text-primary-500 hover:text-secondary-500"
+            >Documentation
+          </RouterLink>
+          for more information and examples.
+        </h3>
+        <Button @click="addMetadata()" label="Add metadata" class="mt-4 mb-4" />
+        <div class="grid grid-cols-2 gap-4 mt-4" v-for="(field, idx) in fields" :key="field.key">
           <div class="inline-flex flex-col gap-2">
             <label for="rnaDropdown" class="text-primary-500 font-semibold"> RNA type </label>
+            <!-- force placeholder color? -->
             <Dropdown
               id="rnaDropdown"
               v-model="field.value.rna"
               :options="rna"
               placeholder="Select RNA type"
               :class="errors[`metadata[${idx}].rna`] ? '!ring-red-700' : ''"
+              :pt="{
+                input: { class: '!text-surface-400 !dark:text-surface-500' }
+              }"
+              :ptOptions="{ mergeProps: true }"
             />
             <span class="inline-flex items-baseline">
               <i
@@ -245,7 +284,7 @@ onMounted(() => {
                     : ''
                 "
               />
-              <span :class="['pl-1 place-self-center', props.errMsgCls]"
+              <span :class="['pl-1 place-self-center', 'text-red-700']"
                 >{{ errors[`metadata[${idx}].taxid`] }}&nbsp;</span
               >
             </span>
@@ -295,26 +334,15 @@ onMounted(() => {
           >
             Additional notes for this metadata template.
           </FormTextArea>
-          FIELDS:
-          {{ fields }}
-          <br />
-          ERRORS:
-          {{ errors }}
           <div class="place-self-start self-center">
-            <Button @click="remove(idx)" label="Remove" />
+            <Button @click="remove(idx)" label="Remove metadata" />
           </div>
         </div>
 
         <br />
-        <div class="flex pt-4 justify-end">
-          <Button
-            type="submit"
-            label="Next"
-            icon="pi pi-arrow-right"
-            iconPos="right"
-            class="p-4 text-primary-50 border border-white-alpha-30"
-          >
-          </Button>
+        <div class="flex pt-4 justify-between">
+          <Button label="Back" severity="secondary" icon="pi pi-arrow-left" @click="prevCallback" />
+          <Button type="submit" label="Next" icon="pi pi-arrow-right" iconPos="right" />
         </div>
       </form>
     </div>

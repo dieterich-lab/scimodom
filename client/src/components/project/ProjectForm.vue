@@ -82,6 +82,11 @@ onMounted(() => {
   <SectionLayout>
     <div>
       <form @submit.prevent="onSubmit">
+        <div class="flex flex-col mx-auto">
+          <div class="text-center mt-0 mb-4 text-xl font-semibold dark:text-white/80">
+            Project information
+          </div>
+        </div>
         <h3 class="dark:text-white/80">Your contact details</h3>
         <div class="grid grid-cols-2 gap-4">
           <FormTextInput v-model="forename" :error="errors.forename" placeholder="Forename"
@@ -98,7 +103,7 @@ onMounted(() => {
           >
           <FormTextInput v-model="email" :error="errors.email">Email address</FormTextInput>
         </div>
-        <h3 class="mt-4 dark:text-white/80">Project information</h3>
+        <h3 class="mt-4 dark:text-white/80">Project details</h3>
         <div class="grid grid-rows-3 gap-2">
           <FormTextInput
             v-model="title"
@@ -114,10 +119,13 @@ onMounted(() => {
             Summary (project description)
           </FormTextArea>
           <FormTextInput v-model="published" :error="errors.published" type="date"
-            >Date published</FormTextInput
+            >Date published (add if published)</FormTextInput
           >
         </div>
-        <h3 class="mt-4 mb-2 dark:text-white/80">Published project sources</h3>
+        <h3 class="mt-4 mb-2 dark:text-white/80">
+          Published project sources. Click <span class="inline font-semibold">"Add source"</span> to
+          add DOI and/or PubMed-ID. Add as many as required. DOI or PubMed-ID can be empty.
+        </h3>
         <Button @click="push({ doi: '', pmid: '' })" label="Add source" />
         <div class="grid grid-cols-3 gap-4 mt-2" v-for="(field, idx) in fields" :key="field.key">
           <FormTextInput
@@ -147,8 +155,6 @@ onMounted(() => {
             class="p-4 text-primary-50 border border-white-alpha-30"
           >
           </Button>
-          <!-- <div class="flex pt-4 justify-end">
-             <FormButton type="submit">Nexat</FormButton> -->
         </div>
       </form>
     </div>

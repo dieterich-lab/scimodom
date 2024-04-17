@@ -155,6 +155,44 @@
           selected in A and B. Records can be exported to CSV.
         </p>
       </div>
+      <!-- DATA MANAGEMENT ----  -->
+      <div class="text-justify m-6 dark:text-white/80">
+        <h1 class="font-ham text-4xl font-semibold m-auto pt-4 pb-4">
+          <span>Data management (for logged in users)</span>
+        </h1>
+        <p class="indent-4 text-lg underline underline-offset-8 decoration-gb-4/25">
+          Project template
+        </p>
+        <p class="indent-4 text-lg leading-relaxed mt-2 mb-2">
+          To create a new project, fill the template request form, accessible for logged-in users
+          through User menu > Data > Project template. Add a new metadata sheet for each dataset
+          that belongs to this project.
+        </p>
+        <p class="indent-4 text-lg leading-relaxed mt-2 mb-2">For example:</p>
+        <div class="pl-8">
+          <ul class="list-disc">
+            <li>
+              A study generates human and mouse data, for two conditions, each in three replicates,
+              using a detection technology for m6A. For this project, create two metadata sheets,
+              one for human and one for mouse. Add notes if necessary. Once the project has been
+              created, upload data in separate files for human and mouse, and ideally with as much
+              granularity as possible, <span class="inline italic">e.g.</span> one file per
+              condition and/or replicate, with appropriate information.
+            </li>
+            <li>
+              A study generates human data using a technology to detect two different modifications.
+              The resulting bedRMod file explicitely contains the modification in the 4th column.
+              For this project, create two identical metadata sheets, except for the modification.
+            </li>
+          </ul>
+        </div>
+        <p class="indent-4 text-lg leading-relaxed mt-2 mb-2">
+          In general, add a metadata sheet <span class="italic">(i)</span> for each dataset
+          associated with a different modification, detection technology, and/or organism (incl.
+          cell type, tissue, or organ), or <span class="italic">(ii)</span> for each modification
+          associated with a single dataset.
+        </p>
+      </div>
     </SectionLayout>
   </DefaultLayout>
 </template>
