@@ -30,9 +30,13 @@ const tata = () => {
 }
 
 // TODO define in BE
-const rna = ref(['mRNA', 'rRNA'])
+const rna = ref([
+  { id: 'mRNA', label: 'mRNA' },
+  { id: 'rRNA', label: 'rRNA' }
+])
 
 import FormDropdown from '@/components/ui/FormDropdown.vue'
+import FormCascade from '@/components/ui/FormCascade.vue'
 
 import FormTextInput from '@/components/ui/FormTextInput.vue'
 import FormTextArea from '@/components/ui/FormTextArea.vue'
@@ -82,9 +86,18 @@ const initialValues = {
   note: ''
 }
 
+const resetRefs = () => {
+  selectedModification.value = undefined
+  selectedMethod.value = undefined
+  selectedTaxid.value = undefined
+  selectedAssembly.value = undefined
+}
+
 const getInitialValues = () => {
+  // is this used at all? i.e. it's not called on previous/next Stepper navigation
+  // resetRefs()
   if (model.value === undefined) {
-    return initialValues
+    return null
   } else {
     return { ...model.value }
   }
@@ -98,11 +111,8 @@ const { handleSubmit, errors } = useForm({
 const { remove, push, fields } = useFieldArray('metadata')
 
 const addMetadata = () => {
+  resetRefs()
   push(initialValues)
-  selectedModification.value = undefined
-  selectedMethod.value = undefined
-  selectedTaxid.value = undefined
-  selectedAssembly.value = undefined
 }
 
 const onSubmit = handleSubmit((values) => {
@@ -161,8 +171,8 @@ onMounted(() => {
     <div>
       <form @submit.prevent="onSubmit">
         <div class="flex flex-col mx-auto">
-          <div class="text-center mt-0 mb-4 text-xl font-semibold dark:text-white/80">
-            Project metadata
+          <div class="text-center -mt-4 mb-4 text-xl font-semibold dark:text-white/80">
+            Project metadata MODEL VALUE: {{ model }}
           </div>
         </div>
         <h3 class="mt-0 mb-4 dark:text-white/80">
@@ -178,149 +188,56 @@ onMounted(() => {
           for more information and examples.
         </h3>
         <Button @click="addMetadata()" label="Add metadata" class="mt-4 mb-4" />
-        <div class="grid grid-cols-2 gap-4 mt-4" v-for="(field, idx) in fields" :key="field.key">
-          <div class="inline-flex flex-col gap-2">
-            <label for="rnaDropdown" class="text-primary-500 font-semibold"> RNA type </label>
-            <!-- force placeholder color? -->
-            <Dropdown
-              id="rnaDropdown"
-              v-model="field.value.rna"
-              :options="rna"
-              placeholder="Select RNA type"
-              :class="errors[`metadata[${idx}].rna`] ? '!ring-red-700' : ''"
-              :pt="{
-                input: { class: '!text-surface-400 !dark:text-surface-500' }
-              }"
-              :ptOptions="{ mergeProps: true }"
-            />
-            <span class="inline-flex items-baseline">
-              <i
-                :class="
-                  errors[`metadata[${idx}].rna`]
-                    ? 'pi pi-times-circle place-self-center text-red-700'
-                    : ''
-                "
-              />
-              <span :class="['pl-1 place-self-center', 'text-red-700']"
-                >{{ errors[`metadata[${idx}].rna`] }}&nbsp;</span
-              >
-            </span>
-          </div>
-          <div class="inline-flex flex-col gap-2">
-            <label for="modDropdown" class="text-primary-500 font-semibold"> Modification </label>
-            <Dropdown
-              id="modDropdown"
-              v-model="selectedModification"
-              @change="field.value.modification = selectedModification.id"
-              editable
-              :options="modification"
-              optionLabel="modomics_sname"
-              placeholder="Select RNA modification"
-              :class="errors[`metadata[${idx}].modification`] ? '!ring-red-700' : ''"
-            />
-            <span class="inline-flex items-baseline">
-              <i
-                :class="
-                  errors[`metadata[${idx}].modification`]
-                    ? 'pi pi-times-circle place-self-center text-red-700'
-                    : ''
-                "
-              />
-              <span :class="['pl-1 place-self-center', 'text-red-700']"
-                >{{ errors[`metadata[${idx}].modification`] }}&nbsp;</span
-              >
-            </span>
-          </div>
-          <div class="inline-flex flex-col gap-2">
-            <label for="methDropdown" class="text-primary-500 font-semibold"> Method </label>
-            <CascadeSelect
-              id="methDropdown"
-              v-model="selectedMethod"
-              @change="field.value.method = selectedMethod.key"
-              :options="method"
-              optionLabel="label"
-              optionGroupLabel="label"
-              :optionGroupChildren="['child1', 'child2']"
-              placeholder="Select method"
-              :class="errors[`metadata[${idx}].method`] ? '!ring-red-700' : ''"
-            />
-            <span class="inline-flex items-baseline">
-              <i
-                :class="
-                  errors[`metadata[${idx}].method`]
-                    ? 'pi pi-times-circle place-self-center text-red-700'
-                    : ''
-                "
-              />
-              <span :class="['pl-1 place-self-center', 'text-red-700']"
-                >{{ errors[`metadata[${idx}].method`] }}&nbsp;</span
-              >
-            </span>
-          </div>
+        <div class="grid grid-cols-2 gap-x-8 mt-4" v-for="(field, idx) in fields" :key="field.key">
+          <FormDropdown
+            v-model="field.value.rna"
+            :options="rna"
+            :error="errors[`metadata[${idx}].rna`]"
+            placeholder="Select RNA type"
+            >RNA type
+          </FormDropdown>
+          <FormDropdown
+            v-model="field.value.modification"
+            :options="modification"
+            optionsLabel="modomics_sname"
+            :error="errors[`metadata[${idx}].modification`]"
+            placeholder="Select modification"
+            >Modification
+          </FormDropdown>
+          <FormCascade
+            v-model="field.value.method"
+            :options="method"
+            :error="errors[`metadata[${idx}].method`]"
+            placeholder="Select method"
+            >Method
+          </FormCascade>
           <FormTextInput
             v-model="field.value.technology"
             :error="errors[`metadata[${idx}].technology`]"
             placeholder="Tech-seq"
-            >Technology</FormTextInput
-          >
-          <div class="inline-flex flex-col gap-2">
-            <label for="orgDropdown" class="text-primary-500 font-semibold"> Organism </label>
-            <CascadeSelect
-              id="orgDropdown"
-              v-model="selectedTaxid"
-              @change="[(field.value.taxid = selectedTaxid.key), getAssemblies()]"
-              :options="taxid"
-              optionLabel="label"
-              optionGroupLabel="label"
-              :optionGroupChildren="['child1']"
-              placeholder="Select organism"
-              :class="errors[`metadata[${idx}].taxid`] ? '!ring-red-700' : ''"
-            />
-            <span class="inline-flex items-baseline">
-              <i
-                :class="
-                  errors[`metadata[${idx}].taxid`]
-                    ? 'pi pi-times-circle place-self-center text-red-700'
-                    : ''
-                "
-              />
-              <span :class="['pl-1 place-self-center', 'text-red-700']"
-                >{{ errors[`metadata[${idx}].taxid`] }}&nbsp;</span
-              >
-            </span>
-          </div>
+            >Technology
+          </FormTextInput>
+          <FormCascade
+            v-model="field.value.taxid"
+            :options="taxid"
+            :error="errors[`metadata[${idx}].taxid`]"
+            placeholder="Select organism"
+            >Organism
+          </FormCascade>
           <FormTextInput
             v-model="field.value.organism"
             :error="errors[`metadata[${idx}].organism`]"
             placeholder="e.g. HeLa, mESC, or Heart"
             >Cell, tissue, organ</FormTextInput
           >
-          <div class="inline-flex flex-col gap-2">
-            <label for="asmbDropdown" class="text-primary-500 font-semibold">
-              Assembly (select from existing assemblies)
-            </label>
-            <Dropdown
-              id="asmbDropdown"
-              v-model="selectedAssembly"
-              @change="field.value.assembly = selectedAssembly.id"
-              :options="assembly"
-              optionLabel="name"
-              placeholder="Select assembly"
-              :class="errors[`metadata[${idx}].assembly`] ? '!ring-red-700' : ''"
-            />
-            <span class="inline-flex items-baseline">
-              <i
-                :class="
-                  errors[`metadata[${idx}].assembly`]
-                    ? 'pi pi-times-circle place-self-center text-red-700'
-                    : ''
-                "
-              />
-              <span :class="['pl-1 place-self-center', 'text-red-700']"
-                >{{ errors[`metadata[${idx}].assembly`] }}&nbsp;</span
-              >
-            </span>
-          </div>
+          <FormDropdown
+            v-model="field.value.assembly"
+            :options="assembly"
+            optionsLabel="name"
+            :error="errors[`metadata[${idx}].assembly`]"
+            placeholder="Select assembly"
+            >Assembly (select from existing assemblies)
+          </FormDropdown>
           <FormTextInput
             v-model="field.value.freeAssembly"
             :error="errors[`metadata[${idx}].freeAssembly`]"
@@ -338,7 +255,6 @@ onMounted(() => {
             <Button @click="remove(idx)" label="Remove metadata" />
           </div>
         </div>
-
         <br />
         <div class="flex pt-4 justify-between">
           <Button label="Back" severity="secondary" icon="pi pi-arrow-left" @click="prevCallback" />

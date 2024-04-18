@@ -51,10 +51,7 @@ const option10 = ref(false)
         <br />
         To create a new project, complete the form below.
       </p>
-    </SectionLayout>
-
-    <!-- <ProjectForm /> -->
-    <SectionLayout>
+      <!-- <ProjectForm /> -->
       <Stepper v-model:activeStep="active">
         <StepperPanel>
           <template #header="{ index, clickCallback }">

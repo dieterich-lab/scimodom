@@ -6,7 +6,6 @@ import { HTTPSecure } from '@/services/API'
 
 import FormTextInput from '@/components/ui/FormTextInput.vue'
 import FormTextArea from '@/components/ui/FormTextArea.vue'
-import FormButton from '@/components/ui/FormButton.vue'
 
 const props = defineProps(['nextCallback'])
 const model = defineModel()
@@ -38,7 +37,7 @@ const validationSchema = object({
 
 const getInitialValues = () => {
   if (model.value === undefined) {
-    return { doi: '', pmid: null }
+    return null
   } else {
     return { ...model.value }
   }
@@ -55,7 +54,6 @@ const [email, emailProps] = defineField('email')
 const [title, titleProps] = defineField('title')
 const [summary, summaryProps] = defineField('summary')
 const [published, publishedProps] = defineField('published')
-
 const { remove, push, fields } = useFieldArray('sources')
 
 const onSubmit = handleSubmit((values) => {
@@ -83,12 +81,12 @@ onMounted(() => {
     <div>
       <form @submit.prevent="onSubmit">
         <div class="flex flex-col mx-auto">
-          <div class="text-center mt-0 mb-4 text-xl font-semibold dark:text-white/80">
+          <div class="text-center -mt-4 mb-4 text-xl font-semibold dark:text-white/80">
             Project information
           </div>
         </div>
-        <h3 class="dark:text-white/80">Your contact details</h3>
-        <div class="grid grid-cols-2 gap-4">
+        <h3 class="mb-4 dark:text-white/80">Your contact details</h3>
+        <div class="grid grid-cols-2 gap-x-8">
           <FormTextInput v-model="forename" :error="errors.forename" placeholder="Forename"
             >Forename</FormTextInput
           >
@@ -103,7 +101,7 @@ onMounted(() => {
           >
           <FormTextInput v-model="email" :error="errors.email">Email address</FormTextInput>
         </div>
-        <h3 class="mt-4 dark:text-white/80">Project details</h3>
+        <h3 class="mt-2 mb-4 dark:text-white/80">Project details</h3>
         <div class="grid grid-rows-3 gap-2">
           <FormTextInput
             v-model="title"
@@ -122,11 +120,12 @@ onMounted(() => {
             >Date published (add if published)</FormTextInput
           >
         </div>
-        <h3 class="mt-4 mb-2 dark:text-white/80">
-          Published project sources. Click <span class="inline font-semibold">"Add source"</span> to
-          add DOI and/or PubMed-ID. Add as many as required. DOI or PubMed-ID can be empty.
+        <h3 class="dark:text-white/80">Published project sources.</h3>
+        <h3 class="mb-4 dark:text-white/80">
+          Click <span class="inline font-semibold">"Add source"</span> to add DOI and/or PubMed-ID.
+          Add as many as required. DOI or PubMed-ID can be empty.
         </h3>
-        <Button @click="push({ doi: '', pmid: '' })" label="Add source" />
+        <Button @click="push({ doi: '', pmid: '' })" label="Add source" class="mt-2 mb-4" />
         <div class="grid grid-cols-3 gap-4 mt-2" v-for="(field, idx) in fields" :key="field.key">
           <FormTextInput
             v-model="field.value.doi"

@@ -1,6 +1,6 @@
 <script setup>
-// provides a custom wrapper for the PrimeVue Dropdown component
-// to be used in a form
+// provides a custom wrapper for the PrimeVue Cascade component
+// to be used in a form, with default grouping - hard coded "key"
 import { ref, computed } from 'vue'
 
 const props = defineProps({
@@ -18,6 +18,16 @@ const props = defineProps({
     type: String,
     required: false,
     default: 'label'
+  },
+  optionGroupLabel: {
+    type: String,
+    required: false,
+    default: 'label'
+  },
+  optionGroupChildren: {
+    type: Array,
+    required: false,
+    default: ['child1']
   },
   placeholder: {
     type: String,
@@ -50,10 +60,15 @@ const emit = defineEmits(['update:modelValue'])
 // boiler plate... there is surely a nicer solution?!
 const computedModel = computed({
   get() {
-    return props.options.filter((item) => item.id == props.modelValue)[0]
+    if (!(props.modelValue == '' || props.modelValue == undefined)) {
+      return props.options
+        .filter((a) => a[props.optionGroupChildren].some((b) => b.key == props.modelValue))
+        .map((c) => c[props.optionGroupChildren])[0]
+        .filter((d) => d.key == props.modelValue)[0]
+    }
   },
   set(value) {
-    emit('update:modelValue', value.id)
+    emit('update:modelValue', value.key)
   }
 })
 </script>
@@ -63,11 +78,13 @@ const computedModel = computed({
     <label for="field" :class="props.labelCls">
       <slot></slot>
     </label>
-    <Dropdown
+    <CascadeSelect
       id="field"
       v-model="computedModel"
       :options="props.options"
       :optionLabel="props.optionsLabel"
+      :optionGroupLabel="props.optionGroupLabel"
+      :optionGroupChildren="props.optionGroupChildren"
       :placeholder="props.placeholder"
       :class="error ? props.errCls : ''"
     />
