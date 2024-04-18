@@ -17,17 +17,6 @@ const modification = ref([])
 const method = ref([])
 const taxid = ref([])
 const assembly = ref([])
-const selectedModification = ref()
-const selectedMethod = ref()
-const selectedTaxid = ref()
-const selectedAssembly = ref()
-
-import { useRouter } from 'vue-router'
-const router = useRouter()
-const routeData = router.resolve({ name: 'documentation' })
-const tata = () => {
-  window.open(routeData.href, '_blank')
-}
 
 // TODO define in BE
 const rna = ref([
@@ -86,16 +75,7 @@ const initialValues = {
   note: ''
 }
 
-const resetRefs = () => {
-  selectedModification.value = undefined
-  selectedMethod.value = undefined
-  selectedTaxid.value = undefined
-  selectedAssembly.value = undefined
-}
-
 const getInitialValues = () => {
-  // is this used at all? i.e. it's not called on previous/next Stepper navigation
-  // resetRefs()
   if (model.value === undefined) {
     return null
   } else {
@@ -110,11 +90,6 @@ const { handleSubmit, errors } = useForm({
 
 const { remove, push, fields } = useFieldArray('metadata')
 
-const addMetadata = () => {
-  resetRefs()
-  push(initialValues)
-}
-
 const onSubmit = handleSubmit((values) => {
   // Submit to API
   console.log(values)
@@ -122,8 +97,8 @@ const onSubmit = handleSubmit((values) => {
   props.nextCallback()
 })
 
-const getAssemblies = () => {
-  HTTP.get(`/assembly/${selectedTaxid.value.key}`)
+const getAssemblies = (taxid) => {
+  HTTP.get(`/assembly/${taxid}`)
     .then(function (response) {
       assembly.value = response.data
     })
@@ -187,7 +162,7 @@ onMounted(() => {
           </RouterLink>
           for more information and examples.
         </h3>
-        <Button @click="addMetadata()" label="Add metadata" class="mt-4 mb-4" />
+        <Button @click="push(initialValues)" label="Add metadata" class="mt-4 mb-4" />
         <div class="grid grid-cols-2 gap-x-8 mt-4" v-for="(field, idx) in fields" :key="field.key">
           <FormDropdown
             v-model="field.value.rna"
@@ -220,6 +195,7 @@ onMounted(() => {
           <FormCascade
             v-model="field.value.taxid"
             :options="taxid"
+            @onChange="getAssemblies"
             :error="errors[`metadata[${idx}].taxid`]"
             placeholder="Select organism"
             >Organism

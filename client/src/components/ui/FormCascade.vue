@@ -56,11 +56,15 @@ const props = defineProps({
     default: '!ring-red-700'
   }
 })
-const emit = defineEmits(['update:modelValue'])
-// boiler plate... there is surely a nicer solution?!
+// onChange event also send modelValue...
+const emit = defineEmits(['update:modelValue', 'onChange'])
+// ugly boiler plate... there is surely a nicer solution?!
 const computedModel = computed({
   get() {
-    if (!(props.modelValue == '' || props.modelValue == undefined)) {
+    if (
+      !(props.modelValue == '' || props.modelValue == undefined) &&
+      !(props.options.length === 0)
+    ) {
       return props.options
         .filter((a) => a[props.optionGroupChildren].some((b) => b.key == props.modelValue))
         .map((c) => c[props.optionGroupChildren])[0]
@@ -81,6 +85,7 @@ const computedModel = computed({
     <CascadeSelect
       id="field"
       v-model="computedModel"
+      @change="$emit('onChange', $event.value.key)"
       :options="props.options"
       :optionLabel="props.optionsLabel"
       :optionGroupLabel="props.optionGroupLabel"

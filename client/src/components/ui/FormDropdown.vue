@@ -1,6 +1,6 @@
 <script setup>
 // provides a custom wrapper for the PrimeVue Dropdown component
-// to be used in a form
+// to be used in a form - hard coded "id"
 import { ref, computed } from 'vue'
 
 const props = defineProps({
