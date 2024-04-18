@@ -1,8 +1,8 @@
 <script setup>
 import { ref } from 'vue'
-
 import ProjectForm from '@/components/project/ProjectForm.vue'
 import ProjectMetaData from '@/components/project/ProjectMetaData.vue'
+import ProjectSubmission from '@/components/project/ProjectSubmission.vue'
 
 const projectInfo = ref()
 const projectData = ref()
@@ -51,8 +51,8 @@ const option10 = ref(false)
         <br />
         To create a new project, complete the form below.
       </p>
-      <!-- <ProjectForm /> -->
       <Stepper v-model:activeStep="active">
+        <!-- ProjectForm  -->
         <StepperPanel>
           <template #header="{ index, clickCallback }">
             <span
@@ -72,6 +72,7 @@ const option10 = ref(false)
             <ProjectForm :nextCallback="nextCallback" v-model="projectInfo" />
           </template>
         </StepperPanel>
+        <!-- ProjectMetadata  -->
         <StepperPanel>
           <template #header="{ index, clickCallback }">
             <span
@@ -93,12 +94,9 @@ const option10 = ref(false)
               :prevCallback="prevCallback"
               v-model="projectData"
             />
-            <!-- <div class="flex pt-4 justify-between">
-                         <Button label="Back" severity="secondary" icon="pi pi-arrow-left" @click="prevCallback" />
-                         <Button label="Next" icon="pi pi-arrow-right" iconPos="right" @click="nextCallback" />
-                         </div> -->
           </template>
         </StepperPanel>
+        <!-- Submission  -->
         <StepperPanel>
           <template #header="{ index, clickCallback }">
             <span
@@ -115,25 +113,7 @@ const option10 = ref(false)
             </span>
           </template>
           <template #content="{ prevCallback }">
-            <div class="flex flex-col gap-2 mx-auto" style="min-height: 16rem; max-width: 24rem">
-              <div class="text-center mt-3 mb-3 text-xl font-semibold">
-                Account created successfully
-              </div>
-              <div class="flex justify-center">
-                <img
-                  alt="logo"
-                  src="https://primefaces.org/cdn/primevue/images/stepper/content.svg"
-                />
-              </div>
-            </div>
-            <div class="flex pt-4 justify-start">
-              <Button
-                label="Back"
-                severity="secondary"
-                icon="pi pi-arrow-left"
-                @click="prevCallback"
-              />
-            </div>
+            <ProjectSubmission :projectForm="{ ...projectInfo, ...projectData }" />
           </template>
         </StepperPanel>
       </Stepper>

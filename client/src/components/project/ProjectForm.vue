@@ -13,17 +13,17 @@ const model = defineModel()
 const validationSchema = object({
   forename: string().required('Forename is required!'),
   surname: string().required('Surname is required!'),
-  institution: string()
+  contact_institution: string()
     .required('Institution is required!')
     .max(255, 'At most 255 characters allowed!'),
-  email: string()
+  contact_email: string()
     .required('Email is required!')
     .email('Invalid email!')
     .max(320, 'At most 320 characters allowed!'),
   title: string().required('Title is required!').max(255, 'At most 255 characters allowed!'),
   summary: string().required('Summary is required!'),
-  published: date(),
-  sources: array().of(
+  date_published: date(),
+  external_sources: array().of(
     object().shape({
       doi: string().max(255, 'At most 255 characters allowed!'),
       pmid: number()
@@ -49,16 +49,14 @@ const { defineField, handleSubmit, errors } = useForm({
 })
 const [forename, forenameProps] = defineField('forename')
 const [surname, surnameProps] = defineField('surname')
-const [institution, institutionProps] = defineField('institution')
-const [email, emailProps] = defineField('email')
+const [contact_institution, institutionProps] = defineField('contact_institution')
+const [contact_email, emailProps] = defineField('contact_email')
 const [title, titleProps] = defineField('title')
 const [summary, summaryProps] = defineField('summary')
-const [published, publishedProps] = defineField('published')
-const { remove, push, fields } = useFieldArray('sources')
+const [date_published, publishedProps] = defineField('date_published')
+const { remove, push, fields } = useFieldArray('external_sources')
 
 const onSubmit = handleSubmit((values) => {
-  // Submit to API
-  console.log(values)
   model.value = values
   props.nextCallback()
 })
@@ -66,7 +64,7 @@ const onSubmit = handleSubmit((values) => {
 onMounted(() => {
   HTTPSecure.get('/access/username')
     .then((response) => {
-      email.value = response.data.username
+      contact_email.value = response.data.username
     })
     .catch((err) => {
       // console.log(err.response.status)
@@ -86,7 +84,7 @@ onMounted(() => {
           </div>
         </div>
         <h3 class="mb-4 dark:text-white/80">Your contact details</h3>
-        <div class="grid grid-cols-2 gap-x-8">
+        <div class="grid grid-cols-2 gap-y-2 gap-x-8">
           <FormTextInput v-model="forename" :error="errors.forename" placeholder="Forename"
             >Forename</FormTextInput
           >
@@ -94,12 +92,14 @@ onMounted(() => {
             >Surname (family name)</FormTextInput
           >
           <FormTextInput
-            v-model="institution"
-            :error="errors.institution"
+            v-model="contact_institution"
+            :error="errors.contact_institution"
             placeholder="University of ..."
             >Institution</FormTextInput
           >
-          <FormTextInput v-model="email" :error="errors.email">Email address</FormTextInput>
+          <FormTextInput v-model="contact_email" :error="errors.contact_email"
+            >Email address</FormTextInput
+          >
         </div>
         <h3 class="mt-2 mb-4 dark:text-white/80">Project details</h3>
         <div class="grid grid-rows-3 gap-2">
@@ -116,7 +116,7 @@ onMounted(() => {
           >
             Summary (project description)
           </FormTextArea>
-          <FormTextInput v-model="published" :error="errors.published" type="date"
+          <FormTextInput v-model="date_published" :error="errors.date_published" type="date"
             >Date published (add if published)</FormTextInput
           >
         </div>
@@ -129,13 +129,13 @@ onMounted(() => {
         <div class="grid grid-cols-3 gap-4 mt-2" v-for="(field, idx) in fields" :key="field.key">
           <FormTextInput
             v-model="field.value.doi"
-            :error="errors[`sources[${idx}].doi`]"
+            :error="errors[`external_sources[${idx}].doi`]"
             placeholder="10.XXXX/..."
             >DOI</FormTextInput
           >
           <FormTextInput
             v-model="field.value.pmid"
-            :error="errors[`sources[${idx}].pmid`]"
+            :error="errors[`external_sources[${idx}].pmid`]"
             placeholder="PubMed-ID"
             >PMID</FormTextInput
           >
