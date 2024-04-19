@@ -8,6 +8,7 @@ from sqlalchemy.orm import scoped_session
 from scimodom.api.public import api
 from scimodom.api.user import user_api
 from scimodom.api.access import access_api
+from scimodom.api.management import management_api
 from scimodom.api.upload import upload_api
 from scimodom.app_singleton import create_app_singleton
 from scimodom.database.database import make_session, init
@@ -25,6 +26,7 @@ from scimodom.utils.url_routes import (
     USER_API_ROUTE,
     UPLOAD_API_ROUTE,
     ACCESS_API_ROUTE,
+    DATA_MANAGEMENT_API_ROUTE,
 )
 
 
@@ -46,6 +48,7 @@ def create_app():
     app.register_blueprint(user_api, url_prefix=USER_API_ROUTE)
     app.register_blueprint(access_api, url_prefix=ACCESS_API_ROUTE)
     app.register_blueprint(upload_api, url_prefix=UPLOAD_API_ROUTE)
+    app.register_blueprint(management_api, url_prefix=DATA_MANAGEMENT_API_ROUTE)
     app.register_blueprint(frontend, url_prefix="/")
 
     jwt = JWTManager(app)

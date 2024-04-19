@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useForm, useFieldArray } from 'vee-validate'
 import { object, array, string, number } from 'yup'
 import { HTTP } from '@/services/API'
@@ -78,9 +78,14 @@ const { handleSubmit, errors } = useForm({
   initialValues: getInitialValues()
 })
 const { remove, push, fields } = useFieldArray('metadata')
+
 const onSubmit = handleSubmit((values) => {
   model.value = values
   props.nextCallback()
+})
+
+const disabled = computed(() => {
+  return fields.value.length == 0
 })
 
 const getAssemblies = (taxid) => {
@@ -228,7 +233,13 @@ onMounted(() => {
         <br />
         <div class="flex pt-4 justify-between">
           <Button label="Back" severity="secondary" icon="pi pi-arrow-left" @click="prevCallback" />
-          <Button type="submit" label="Next" icon="pi pi-arrow-right" iconPos="right" />
+          <Button
+            type="submit"
+            label="Next"
+            icon="pi pi-arrow-right"
+            iconPos="right"
+            :disabled="disabled"
+          />
         </div>
       </form>
     </div>

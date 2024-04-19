@@ -52,6 +52,7 @@ class ProjectService:
     SMID_LENGTH: ClassVar[int] = specs.SMID_LENGTH
     DATA_PATH: ClassVar[str | Path] = Config.DATA_PATH
     DATA_SUB_PATH: ClassVar[str] = "metadata"
+    DATA_SUB_PATH_SUB: ClassVar[str] = "project_requests"
 
     def __init__(self, session: Session, project: dict) -> None:
         """Initializer method."""
@@ -70,6 +71,55 @@ class ProjectService:
             raise FileNotFoundError(msg)
         else:
             return super(ProjectService, cls).__new__(cls)
+
+    @staticmethod
+    def create_project_request(project: dict):
+        """Project request constructor.
+
+        :param project: Project description (json template)
+        :type project: dict
+        """
+        project_request_path = Path(
+            ProjectService.DATA_PATH,
+            ProjectService.DATA_SUB_PATH,
+            ProjectService.DATA_SUB_PATH_SUB,
+        )
+        if not project_request_path.is_dir():
+            msg = f"DATA PATH {project_request_path} not found! Terminating!"
+            raise FileNotFoundError(msg)
+
+        # reformat project template
+        forename = project["forename"]
+        surname = project["surname"]
+        project["contact_name"] = f"{surname}, {forename}"
+        project["external_sources"] = project.get("external_sources", None)
+        for d in utils.to_list(project["external_sources"]):
+            d["doi"] = d["doi"] if d["doi"] != "" else None
+            d["pmid"] = d["pmid"] if d["pmid"] != "" else None
+            project["date_published"] = project.get("date_published", None)
+            for d in utils.to_list(project["metadata"]):
+                d["organism"] = {
+                    "taxa_id": d["taxa_id"],
+                    "cto": d["cto"],
+                    "assembly": d["assembly_name"],
+                }
+                d["extra"] = {
+                    "assembly_id": d.get("assembly", None),
+                    "note": d["note"] if d["note"] != "" else None,
+                }
+                del d["taxa_id"]
+                del d["cto"]
+                del d["assembly_name"]
+                del d["assembly"]
+                del d["note"]
+            del project["forename"]
+            del project["surname"]
+
+        # hard coded length = 12
+        uuid = utils.gen_short_uuid(12, [])
+        with open(Path(project_request_path, f"{uuid}.json"), "w") as f:
+            json.dump(project, f, indent="\t")
+        return uuid
 
     def create_project(self, wo_assembly: bool = False) -> None:
         """Project constructor."""

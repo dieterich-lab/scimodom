@@ -6,23 +6,8 @@ import ProjectSubmission from '@/components/project/ProjectSubmission.vue'
 
 const projectInfo = ref()
 const projectData = ref()
-
 const active = ref(0)
 const completed = ref(false)
-const products = ref()
-const name = ref()
-const email = ref()
-const password = ref()
-const option1 = ref(false)
-const option2 = ref(false)
-const option3 = ref(false)
-const option4 = ref(false)
-const option5 = ref(false)
-const option6 = ref(false)
-const option7 = ref(false)
-const option8 = ref(false)
-const option9 = ref(false)
-const option10 = ref(false)
 </script>
 
 <template>

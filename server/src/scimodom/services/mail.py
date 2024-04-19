@@ -109,6 +109,18 @@ Best regards
 """,
         )
 
+    def send_project_request_notification(self, uuid: str):
+        """Notify aministrator of a new project submission.
+
+        :param uuid: Project temporary identifier
+        :type uuid: str
+        """
+        self._send(
+            to_address=Config.SMTP_TO_ADDRESS,
+            subject="Sci-ModoM - NEW PROJECT REQUEST RECEIVED",
+            text=f"""Project template: {uuid}.json""",
+        )
+
 
 _cached_mail_service: Optional[MailService] = None
 

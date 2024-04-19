@@ -1,10 +1,27 @@
 <script setup>
 import { ref } from 'vue'
-
 import { useRouter } from 'vue-router'
+import { HTTPSecure } from '@/services/API'
 
 const router = useRouter()
 const props = defineProps(['projectForm'])
+
+const submitForm = () => {
+  HTTPSecure.post('/management/project', props.projectForm)
+    .then((response) => {
+      if (response.status == 200) {
+        router.push({ name: 'home' })
+      }
+    })
+    .catch((error) => {
+      return {
+        status: error.response ? error.response.status : 0,
+        data: {},
+        error: error.message
+      }
+      // on error what to do next?
+    })
+}
 </script>
 
 <template>
@@ -20,12 +37,8 @@ const props = defineProps(['projectForm'])
         <span class="inline font-semibold">"Submit"</span> to finalise the submission. A
         notification will be sent to your email address as soon as the project is created.
       </h3>
-      <pre id="json" class="mt-3 mb-3 text-xl font-semibold">
-          {{ JSON.stringify(projectForm, undefined, 2) }}
-        </pre
-      >
       <div class="flex justify-center">
-        <Button label="Submit" size="large" @click="router.push({ name: 'home' })" />
+        <Button label="Submit" size="large" @click="submitForm" />
       </div>
     </div>
   </SectionLayout>

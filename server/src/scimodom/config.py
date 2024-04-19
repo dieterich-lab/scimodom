@@ -40,6 +40,7 @@ class Config:
     try:
         SMTP_SERVER: ClassVar[str] = os.environ["SMTP_SERVER"]
         SMTP_FROM_ADDRESS: ClassVar[str] = os.environ["SMTP_FROM_ADDRESS"]
+        SMTP_TO_ADDRESS: ClassVar[str] = os.environ["SMTP_TO_ADDRESS"]
         HTTP_PUBLIC_URL: ClassVar[str] = os.environ["HTTP_PUBLIC_URL"]
     except KeyError:
         msg = (
