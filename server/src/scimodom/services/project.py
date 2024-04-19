@@ -97,23 +97,23 @@ class ProjectService:
             d["doi"] = d["doi"] if d["doi"] != "" else None
             d["pmid"] = d["pmid"] if d["pmid"] != "" else None
             project["date_published"] = project.get("date_published", None)
-            for d in utils.to_list(project["metadata"]):
-                d["organism"] = {
-                    "taxa_id": d["taxa_id"],
-                    "cto": d["cto"],
-                    "assembly": d["assembly_name"],
-                }
-                d["extra"] = {
-                    "assembly_id": d.get("assembly", None),
-                    "note": d["note"] if d["note"] != "" else None,
-                }
-                del d["taxa_id"]
-                del d["cto"]
-                del d["assembly_name"]
-                del d["assembly"]
-                del d["note"]
-            del project["forename"]
-            del project["surname"]
+        for d in utils.to_list(project["metadata"]):
+            d["organism"] = {
+                "taxa_id": d["taxa_id"],
+                "cto": d["cto"],
+                "assembly": d["assembly_name"],
+            }
+            d["extra"] = {
+                "assembly_id": d.get("assembly", None),
+                "note": d["note"] if d["note"] != "" else None,
+            }
+            del d["taxa_id"]
+            del d["cto"]
+            del d["assembly_name"]
+            del d["assembly"]
+            del d["note"]
+        del project["forename"]
+        del project["surname"]
 
         # hard coded length = 12
         uuid = utils.gen_short_uuid(12, [])
