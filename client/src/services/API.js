@@ -67,4 +67,8 @@ function handleHTTPSecureRequest(config, accessToken) {
   return config
 }
 
-export { HTTP, HTTPSecure, prepareAPI }
+function getApiUrl(endpoint) {
+  return `${API_BASE_URL}${endpoint}`
+}
+
+export { HTTP, HTTPSecure, getApiUrl, prepareAPI }

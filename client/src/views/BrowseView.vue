@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { FilterMatchMode, FilterOperator } from 'primevue/api'
-import { HTTP } from '@/services/API.js'
+import { HTTP, getApiUrl } from '@/services/API.js'
 
 const props = defineProps({
   eufid: {
@@ -351,9 +351,17 @@ onMounted(() => {
                 </template>
               </Column>
             </DataTable>
+
+            <a
+              class="btn text-secondary-500 pr-12"
+              :href="getApiUrl(`transfer/dataset/${thisRecord.dataset_id}`)"
+            >
+              <Button size="small" label="Download Dataset" raised />
+            </a>
           </div>
         </Dialog>
       </div>
     </SectionLayout>
   </DefaultLayout>
 </template>
+'

@@ -51,3 +51,6 @@ docker/backup/
 docker/db_data/
 docker/db_data_dev/
 docker/config/
+docker/upload/
+docker/test_data/
+docker/data/
