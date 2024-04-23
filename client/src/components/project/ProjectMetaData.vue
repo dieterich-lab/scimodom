@@ -166,6 +166,7 @@ onMounted(() => {
           <FormDropdown
             v-model="field.value.rna"
             :options="rna"
+            optionValue="id"
             :error="errors[`metadata[${idx}].rna`]"
             placeholder="Select RNA type"
             >RNA type
@@ -173,7 +174,8 @@ onMounted(() => {
           <FormDropdown
             v-model="field.value.modomics_id"
             :options="modification"
-            optionsLabel="modomics_sname"
+            optionLabel="modomics_sname"
+            optionValue="id"
             :error="errors[`metadata[${idx}].modomics_id`]"
             placeholder="Select modification"
             >Modification
@@ -208,7 +210,8 @@ onMounted(() => {
           <FormDropdown
             v-model="field.value.assembly"
             :options="assembly"
-            optionsLabel="name"
+            optionLabel="name"
+            optionValue="id"
             :error="errors[`metadata[${idx}].assembly`]"
             placeholder="Select assembly"
             >Assembly (select from existing assemblies)

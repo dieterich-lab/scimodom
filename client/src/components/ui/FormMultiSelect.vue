@@ -3,7 +3,7 @@
 // to be used in a form
 import { ref, computed } from 'vue'
 
-const emit = defineEmits(['onChange'])
+const emit = defineEmits(['change'])
 const model = defineModel()
 const props = defineProps({
   error: {
@@ -60,7 +60,7 @@ const props = defineProps({
     <MultiSelect
       id="field"
       v-model="model"
-      @change="$emit('onChange', $event.value)"
+      @change="$emit('change', $event.value)"
       :options="props.options"
       :optionLabel="props.optionLabel"
       :optionValue="props.optionValue"

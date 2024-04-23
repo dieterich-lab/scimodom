@@ -1,12 +1,11 @@
 <script setup>
 // provides a custom wrapper for the PrimeVue Dropdown component
-// to be used in a form - hard coded "id"
+// to be used in a form
 import { ref, computed } from 'vue'
 
+const emit = defineEmits(['change'])
+const model = defineModel()
 const props = defineProps({
-  modelValue: {
-    required: true
-  },
   error: {
     required: true
   },
@@ -14,10 +13,15 @@ const props = defineProps({
     type: Array,
     required: true
   },
-  optionsLabel: {
+  optionLabel: {
     type: String,
     required: false,
     default: 'label'
+  },
+  optionValue: {
+    type: String,
+    required: false,
+    default: 'value'
   },
   placeholder: {
     type: String,
@@ -46,16 +50,6 @@ const props = defineProps({
     default: '!ring-red-700'
   }
 })
-const emit = defineEmits(['update:modelValue'])
-// boiler plate... there is surely a nicer solution?!
-const computedModel = computed({
-  get() {
-    return props.options.filter((item) => item.id == props.modelValue)[0]
-  },
-  set(value) {
-    emit('update:modelValue', value.id)
-  }
-})
 </script>
 
 <template>
@@ -65,9 +59,11 @@ const computedModel = computed({
     </label>
     <Dropdown
       id="field"
-      v-model="computedModel"
+      v-model="model"
+      @change="$emit('change', $event.value)"
       :options="props.options"
-      :optionLabel="props.optionsLabel"
+      :optionLabel="props.optionLabel"
+      :optionValue="props.optionValue"
       :placeholder="props.placeholder"
       :class="error ? props.errCls : ''"
     />

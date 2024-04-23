@@ -53,8 +53,9 @@ const showProjects = () => {
   })
 }
 
-const options = ref()
-/* const modification = ref() */
+const options = ref([])
+const modification = ref([])
+
 /* -- */
 
 /* const method = ref([]) */
@@ -105,35 +106,17 @@ const onSubmit = handleSubmit((values) => {
   console.log('SUBMIT', values)
 })
 
-/* const updModification = () => {
- *   console.log('RNA', rna_type)
- *   let opts = options.value.filter(
- *       (item) => item.rna == rna_type.id
- *   )
- *     modification.value = Object.fromEntries(
- *         ['modomics_sname', 'modification_id']
- *             .filter(key => key in obj)
- *             .map(key => [key, obj[key]])
- *     )
- *     console.log(modification.value)
- * } */
 const pick = (obj, keys) =>
   Object.keys(obj)
     .filter((k) => keys.includes(k))
     .reduce((res, k) => Object.assign(res, { [k]: obj[k] }), {})
-const modification = computed(() => {
-  if (!(options.value == undefined)) {
-    let opts = options.value.filter((item) => item.rna == rna_type.value)
-    let subset = opts.map((obj) => pick(obj, ['modomics_sname', 'modification_id']))
-    /* rename modification+id to key to use with predefined functions
-     * const { k1, ...rest } = old_obj
-     * const new_obj = { kA: k1, ...rest} */
-    return [...new Map(subset.map((item) => [item.modification_id, item])).values()]
-  }
-  return []
-  /* modification_id.value = undefined
-   * return undefined */
-})
+
+const updModification = (event) => {
+  let opts = options.value
+    .filter((item) => item.rna == event)
+    .map((obj) => pick(obj, ['modomics_sname', 'modification_id']))
+  modification.value = [...new Map(opts.map((item) => [item.modification_id, item])).values()]
+}
 
 /* const updateOrganism = () => {
  *   organism_id.value = undefined
@@ -147,23 +130,24 @@ const modification = computed(() => {
  *   organism.value = updOrganismFromMod(options.value, selectedModification.value)
  * } */
 
-const technology = ref()
-const organism = computed(() => {
-  /* if (!(options.value == undefined)) {
-   *     let opts = options.value.filter(
-   *         (item) => item.rna == rna_type.value
-   *     )
-   *     let subset = opts.map(obj => pick(obj, ["modomics_sname", "modification_id"]))
-   *     /* rename modification+id to key to use with predefined functions
-   *      * const { k1, ...rest } = old_obj
-   *      * const new_obj = { kA: k1, ...rest} */
-  /* *     return [...new Map(subset.map(item =>
-   *     *         [item.modification_id, item])).values()]
-   * * } */
-  return []
-  /* modification_id.value = undefined
-   * return undefined */
-})
+const technology = ref([])
+const organism = ref([])
+/* const organism = computed(() => {
+ *     if (!(options.value == undefined)) {
+ *         let opts = options.value.filter(
+ *             (item) => item.rna == rna_type.value
+ *         )
+ *         let subset = opts.map(obj => pick(obj, ["modomics_sname", "modification_id"]))
+ *         rename modification+id to key to use with predefined functions
+ *         const { k1, ...rest } = old_obj
+ *         const new_obj = { kA: k1, ...rest}
+ *         return [...new Map(subset.map(item =>
+ *             [item.modification_id, item])).values()]
+ *     }
+ *     return []
+ *     /* modification_id.value = undefined
+ *     return undefined
+ * }) */
 
 const updOrganism = (value) => {
   console.log(value)
@@ -222,6 +206,8 @@ onMounted(() => {
         <FormDropdown
           v-model="rna_type"
           :options="rna"
+          @change="updModification($event)"
+          optionValue="id"
           :error="errors.rna_type"
           placeholder="Select RNA type"
           >RNA type
@@ -230,7 +216,7 @@ onMounted(() => {
         <FormMultiSelect
           v-model="modification_id"
           :options="modification"
-          @onChange="updOrganism($event)"
+          @change="updOrganism($event)"
           optionLabel="modomics_sname"
           optionValue="modification_id"
           :error="errors.modification_id"
@@ -260,7 +246,8 @@ onMounted(() => {
         <FormDropdown
           v-model="assembly_id"
           :options="assembly"
-          optionsLabel="name"
+          optionLabel="name"
+          optionValue="id"
           :error="errors.assembly_id"
           placeholder="Select assembly"
           >Assembly (select from existing assemblies)
