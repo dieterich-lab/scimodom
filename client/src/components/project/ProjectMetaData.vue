@@ -183,6 +183,7 @@ onMounted(() => {
           <FormCascade
             v-model="field.value.method_id"
             :options="method"
+            optionValue="key"
             :error="errors[`metadata[${idx}].method_id`]"
             placeholder="Select method"
             >Method
@@ -196,7 +197,8 @@ onMounted(() => {
           <FormCascade
             v-model="field.value.taxa_id"
             :options="taxid"
-            @onChange="getAssemblies"
+            optionValue="key"
+            @change="getAssemblies($event)"
             :error="errors[`metadata[${idx}].taxa_id`]"
             placeholder="Select organism"
             >Organism

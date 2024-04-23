@@ -1,12 +1,11 @@
 <script setup>
 // provides a custom wrapper for the PrimeVue Cascade component
-// to be used in a form, with default grouping - hard coded "key"
+// to be used in a form
 import { ref, computed } from 'vue'
 
+const emit = defineEmits(['change'])
+const model = defineModel()
 const props = defineProps({
-  modelValue: {
-    required: true
-  },
   error: {
     required: true
   },
@@ -14,10 +13,15 @@ const props = defineProps({
     type: Array,
     required: true
   },
-  optionsLabel: {
+  optionLabel: {
     type: String,
     required: false,
     default: 'label'
+  },
+  optionValue: {
+    type: String,
+    required: false,
+    default: 'value'
   },
   optionGroupLabel: {
     type: String,
@@ -56,25 +60,6 @@ const props = defineProps({
     default: '!ring-red-700'
   }
 })
-// onChange event also send modelValue...
-const emit = defineEmits(['update:modelValue', 'onChange'])
-// ugly boiler plate... there is surely a nicer solution?!
-const computedModel = computed({
-  get() {
-    if (
-      !(props.modelValue == '' || props.modelValue == undefined) &&
-      !(props.options.length === 0)
-    ) {
-      return props.options
-        .filter((a) => a[props.optionGroupChildren].some((b) => b.key == props.modelValue))
-        .map((c) => c[props.optionGroupChildren])[0]
-        .filter((d) => d.key == props.modelValue)[0]
-    }
-  },
-  set(value) {
-    emit('update:modelValue', value.key)
-  }
-})
 </script>
 
 <template>
@@ -84,10 +69,11 @@ const computedModel = computed({
     </label>
     <CascadeSelect
       id="field"
-      v-model="computedModel"
-      @change="$emit('onChange', $event.value.key)"
+      v-model="model"
+      @change="$emit('change', $event.value)"
       :options="props.options"
-      :optionLabel="props.optionsLabel"
+      :optionLabel="props.optionLabel"
+      :optionValue="props.optionValue"
       :optionGroupLabel="props.optionGroupLabel"
       :optionGroupChildren="props.optionGroupChildren"
       :placeholder="props.placeholder"

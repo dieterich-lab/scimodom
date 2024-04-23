@@ -55,6 +55,7 @@ const showProjects = () => {
 
 const options = ref([])
 const modification = ref([])
+const organism = ref([])
 
 /* -- */
 
@@ -111,11 +112,18 @@ const pick = (obj, keys) =>
     .filter((k) => keys.includes(k))
     .reduce((res, k) => Object.assign(res, { [k]: obj[k] }), {})
 
-const updModification = (event) => {
+const updModification = (value) => {
   let opts = options.value
-    .filter((item) => item.rna == event)
+    .filter((item) => item.rna == value)
     .map((obj) => pick(obj, ['modomics_sname', 'modification_id']))
   modification.value = [...new Map(opts.map((item) => [item.modification_id, item])).values()]
+}
+
+const updOrganism = (value) => {
+  organism_id.value = undefined
+  technology_id.value = undefined
+  organism.value = updOrganismFromMod(options.value, value)
+  console.log(organism.value)
 }
 
 /* const updateOrganism = () => {
@@ -131,7 +139,6 @@ const updModification = (event) => {
  * } */
 
 const technology = ref([])
-const organism = ref([])
 /* const organism = computed(() => {
  *     if (!(options.value == undefined)) {
  *         let opts = options.value.filter(
@@ -148,10 +155,6 @@ const organism = ref([])
  *     /* modification_id.value = undefined
  *     return undefined
  * }) */
-
-const updOrganism = (value) => {
-  console.log(value)
-}
 
 const getAssemblies = (taxid) => {
   HTTP.get(`/assembly/${taxid}`)
@@ -226,9 +229,11 @@ onMounted(() => {
         <FormCascade
           v-model="organism_id"
           :options="organism"
+          :optionGroupChildren="['child1', 'child2']"
+          optionValue="key"
           :error="errors.organism_id"
           placeholder="Select organism"
-          >Organism
+          >Organism RETURNED {{ organism_id }}
         </FormCascade>
         <FormCascade
           v-model="technology_id"

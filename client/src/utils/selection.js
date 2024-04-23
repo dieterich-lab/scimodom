@@ -17,7 +17,13 @@ export const updOrganismFromMod = (selection, slctMod) => {
     const kingdom = Object.is(item.kingdom, null) ? item.domain : item.kingdom
     return { ...item, kingdom }
   })
-  opts = selection.filter((item) => item.modification_id == slctMod.key)
+  // if array of modification ids
+  if (Array.isArray(slctMod)) {
+    opts = selection.filter((item) => slctMod.includes(item.modification_id))
+  } else {
+    // single object
+    opts = selection.filter((item) => item.modification_id == slctMod.key)
+  }
   let tree = toTree(opts, ['kingdom', 'taxa_sname', 'cto'], 'organism_id')
   tree = toCascade(tree)
   nestedSort(tree, ['child1', 'child2'])
