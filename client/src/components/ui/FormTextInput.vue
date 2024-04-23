@@ -19,6 +19,11 @@ const props = defineProps({
     required: false,
     default: false
   },
+  disabled: {
+    type: Boolean,
+    required: false,
+    default: false
+  },
   placeholder: {
     type: String,
     required: false,
@@ -83,6 +88,7 @@ const ptOptions = props.isLogin || props.isSignIn ? { mergeProps: true } : {}
       v-model="model"
       :type="type"
       :placeholder="props.placeholder"
+      :disabled="props.disabled"
       :pt="pt"
       :ptOptions="ptOptions"
       :class="error ? props.errCls : ''"

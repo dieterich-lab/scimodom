@@ -1,9 +1,10 @@
 <script setup>
 import { ref, computed, onMounted, defineAsyncComponent } from 'vue'
+import { useRouter } from 'vue-router'
 import { useDialog } from 'primevue/usedialog'
-import { useForm, useFieldArray } from 'vee-validate'
+import { useForm } from 'vee-validate'
 import { object, array, string, number } from 'yup'
-import { HTTP } from '@/services/API'
+import { HTTP, HTTPSecure } from '@/services/API'
 import { toTree, toCascade, nestedSort } from '@/utils/index.js'
 import {
   updOrganismFromMod,
@@ -18,6 +19,8 @@ import FormTextInput from '@/components/ui/FormTextInput.vue'
 import FormTextArea from '@/components/ui/FormTextArea.vue'
 import FormButton from '@/components/ui/FormButton.vue'
 
+const router = useRouter()
+
 // TODO define in BE
 const rna = ref([
   { id: 'mRNA', label: 'mRNA' },
@@ -28,6 +31,8 @@ const modification = ref([])
 const organism = ref([])
 const technology = ref([])
 const assembly = ref([])
+
+const uploadURL = HTTP.getUri() + '/upload'
 
 const ProjectList = defineAsyncComponent(() => import('@/components/project/ProjectList.vue'))
 const dialog = useDialog()
@@ -61,6 +66,8 @@ const showProjects = () => {
 
 const validationSchema = object({
   smid: string().max(8, 'At most 8 characters allowed!').required('SMID is required!'),
+  filename: string().required('A dataset file is required!'),
+  path: string().required('A dataset file path is required!'),
   rna_type: string().max(32, 'At most 32 characters allowed!').required('RNA type is required!'),
   modification_id: array()
     .of(
@@ -92,9 +99,10 @@ const validationSchema = object({
 const { defineField, handleSubmit, errors } = useForm({
   validationSchema: validationSchema
 })
-/* const { remove, push, fields } = useFieldArray('metadata') */
 
 const [smid, smidProps] = defineField('smid')
+const [filename, filenameProps] = defineField('filename')
+const [path, pathProps] = defineField('path')
 const [rna_type, rnaProps] = defineField('rna_type')
 const [modification_id, modificationProps] = defineField('modification_id')
 const [organism_id, organismProps] = defineField('organism_id')
@@ -103,8 +111,27 @@ const [technology_id, technologyProps] = defineField('technology_id')
 const [title, titleProps] = defineField('title')
 
 const onSubmit = handleSubmit((values) => {
-  console.log('SUBMIT', values)
+  HTTPSecure.post('/management/dataset', values)
+    .then((response) => {
+      if (response.status == 200) {
+        router.push({ name: 'home' })
+      }
+    })
+    .catch((error) => {
+      return {
+        status: error.response ? error.response.status : 0,
+        data: {},
+        error: error.message
+      }
+      // on error what to do next?
+    })
 })
+
+const onUpload = (event) => {
+  filename.value = event.files[0].name
+  // path is "invisible", we could use path, and derive filename from it...
+  path.value = event.xhr.response
+}
 
 const pick = (obj, keys) =>
   Object.keys(obj)
@@ -195,6 +222,34 @@ onMounted(() => {
           <DynamicDialog />
         </div>
         <div />
+        <div class="flex flex-row">
+          <FormTextInput
+            v-model="filename"
+            :error="errors.filename"
+            :disabled="true"
+            placeholder="filename.bedrmod"
+            class="w-full"
+            >Dataset file
+          </FormTextInput>
+          <FileUpload
+            mode="basic"
+            name="file"
+            :url="uploadURL"
+            accept="text/plain,.bed,.bedrmod"
+            :maxFileSize="50000000"
+            :auto="true"
+            chooseLabel="Select a file"
+            @upload="onUpload($event)"
+            class="ml-4 self-center"
+          >
+          </FileUpload>
+        </div>
+        <FormTextInput
+          v-model="title"
+          :error="errors.title"
+          placeholder="Wild type mouse heart (Tech-seq) treatment X ..."
+          >Dataset title
+        </FormTextInput>
         <FormDropdown
           v-model="rna_type"
           :options="rna"
@@ -242,12 +297,7 @@ onMounted(() => {
           placeholder="Select technology"
           >Technology
         </FormCascade>
-        <FormTextInput
-          v-model="title"
-          :error="errors.title"
-          placeholder="Wild type mouse heart (Tech-seq) treatment X ..."
-          >Dataset title
-        </FormTextInput>
+        <div />
       </div>
       <br />
       <div class="flex pt-4 justify-left">
