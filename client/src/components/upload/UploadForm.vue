@@ -5,9 +5,7 @@ import { useForm, useFieldArray } from 'vee-validate'
 import { object, array, string, number } from 'yup'
 import { HTTP } from '@/services/API'
 import { toTree, toCascade, nestedSort } from '@/utils/index.js'
-
 import {
-  /* updModification, */
   updOrganismFromMod,
   updTechnologyFromModAndOrg,
   updSelectionFromAll
@@ -19,6 +17,17 @@ import FormCascade from '@/components/ui/FormCascade.vue'
 import FormTextInput from '@/components/ui/FormTextInput.vue'
 import FormTextArea from '@/components/ui/FormTextArea.vue'
 import FormButton from '@/components/ui/FormButton.vue'
+
+// TODO define in BE
+const rna = ref([
+  { id: 'mRNA', label: 'mRNA' },
+  { id: 'rRNA', label: 'rRNA' }
+])
+const options = ref([])
+const modification = ref([])
+const organism = ref([])
+const technology = ref([])
+const assembly = ref([])
 
 const ProjectList = defineAsyncComponent(() => import('@/components/project/ProjectList.vue'))
 const dialog = useDialog()
@@ -37,9 +46,6 @@ const showProjects = () => {
       ptOptions: { mergeProps: true },
       modal: true
     },
-    /* templates: {
-     *     footer: markRaw(FooterDemo)
-     * }, */
     onClose: (options) => {
       const data = options.data
       if (data) {
@@ -53,38 +59,31 @@ const showProjects = () => {
   })
 }
 
-const options = ref([])
-const modification = ref([])
-const organism = ref([])
-
-/* -- */
-
-/* const method = ref([]) */
-const taxid = ref([])
-const assembly = ref([])
-// TODO define in BE
-const rna = ref([
-  { id: 'mRNA', label: 'mRNA' },
-  { id: 'rRNA', label: 'rRNA' }
-])
-
 const validationSchema = object({
   smid: string().max(8, 'At most 8 characters allowed!').required('SMID is required!'),
   rna_type: string().max(32, 'At most 32 characters allowed!').required('RNA type is required!'),
-  modification_id: number()
-    .integer()
-    .typeError('Modification ID must be a number!')
-    .transform((_, val) => (val !== '' ? Number(val) : null)),
+  modification_id: array()
+    .of(
+      number()
+        .integer()
+        .typeError('Modification ID must be a number!')
+        .transform((_, val) => (val !== '' ? Number(val) : null))
+    )
+    .required('Modification is required!')
+    .min(1, 'Modification is required!'),
   organism_id: number()
     .integer()
+    .required('Organism is required!')
     .typeError('Organism ID must be a number!')
     .transform((_, val) => (val !== '' ? Number(val) : null)),
   assembly_id: number()
     .integer()
+    .required('Assembly is required!')
     .typeError('Assembly ID must be a number!')
     .transform((_, val) => (val !== '' ? Number(val) : null)),
   technology_id: number()
     .integer()
+    .required('Technology is required!')
     .typeError('Technology ID must be a number!')
     .transform((_, val) => (val !== '' ? Number(val) : null)),
   title: string().required('Title is required!').max(255, 'At most 255 characters allowed!')
@@ -113,6 +112,10 @@ const pick = (obj, keys) =>
     .reduce((res, k) => Object.assign(res, { [k]: obj[k] }), {})
 
 const updModification = (value) => {
+  modification_id.value = undefined
+  organism_id.value = undefined
+  technology_id.value = undefined
+  assembly_id.value = undefined
   let opts = options.value
     .filter((item) => item.rna == value)
     .map((obj) => pick(obj, ['modomics_sname', 'modification_id']))
@@ -120,43 +123,29 @@ const updModification = (value) => {
 }
 
 const updOrganism = (value) => {
+  organism.value = []
   organism_id.value = undefined
   technology_id.value = undefined
-  organism.value = updOrganismFromMod(options.value, value)
-  console.log(organism.value)
+  assembly_id.value = undefined
+  if (value.length > 0) {
+    organism.value = updOrganismFromMod(options.value, value)
+  }
 }
 
-/* const updateOrganism = () => {
- *   organism_id.value = undefined
- *   .value = undefined
- *   selectedChrom.value = undefined
- *   selectedChromStart.value = undefined
- *   selectedChromEnd.value = undefined
- *   technology.value = undefined
- *   selection.value = undefined
- *   records.value = undefined
- *   organism.value = updOrganismFromMod(options.value, selectedModification.value)
- * } */
+const updTechnology = (value) => {
+  technology.value = []
+  technology_id.value = undefined
+  technology.value = updTechnologyFromModAndOrg(options.value, modification_id.value, {
+    key: value
+  })
+}
 
-const technology = ref([])
-/* const organism = computed(() => {
- *     if (!(options.value == undefined)) {
- *         let opts = options.value.filter(
- *             (item) => item.rna == rna_type.value
- *         )
- *         let subset = opts.map(obj => pick(obj, ["modomics_sname", "modification_id"]))
- *         rename modification+id to key to use with predefined functions
- *         const { k1, ...rest } = old_obj
- *         const new_obj = { kA: k1, ...rest}
- *         return [...new Map(subset.map(item =>
- *             [item.modification_id, item])).values()]
- *     }
- *     return []
- *     /* modification_id.value = undefined
- *     return undefined
- * }) */
-
-const getAssemblies = (taxid) => {
+const getAssemblies = (value) => {
+  assembly.value = []
+  assembly_id.value = undefined
+  let taxid = options.value
+    .filter((item) => item.organism_id == value)
+    .map((obj) => pick(obj, ['taxa_id']))[0].taxa_id
   HTTP.get(`/assembly/${taxid}`)
     .then(function (response) {
       assembly.value = response.data
@@ -215,7 +204,6 @@ onMounted(() => {
           placeholder="Select RNA type"
           >RNA type
         </FormDropdown>
-        RNA: {{ rna_type }} MODS: {{ modification_id }}
         <FormMultiSelect
           v-model="modification_id"
           :options="modification"
@@ -229,15 +217,27 @@ onMounted(() => {
         <FormCascade
           v-model="organism_id"
           :options="organism"
+          @change="updTechnology($event), getAssemblies($event)"
           :optionGroupChildren="['child1', 'child2']"
           optionValue="key"
           :error="errors.organism_id"
           placeholder="Select organism"
-          >Organism RETURNED {{ organism_id }}
+          >Organism
         </FormCascade>
+        <FormDropdown
+          v-model="assembly_id"
+          :options="assembly"
+          optionLabel="name"
+          optionValue="id"
+          :error="errors.assembly_id"
+          placeholder="Select assembly"
+          >Assembly
+        </FormDropdown>
         <FormCascade
           v-model="technology_id"
           :options="technology"
+          :optionGroupChildren="['children']"
+          optionValue="key"
           :error="errors.technology_id"
           placeholder="Select technology"
           >Technology
@@ -246,21 +246,12 @@ onMounted(() => {
           v-model="title"
           :error="errors.title"
           placeholder="Wild type mouse heart (Tech-seq) treatment X ..."
-          >Dataset title</FormTextInput
-        >
-        <FormDropdown
-          v-model="assembly_id"
-          :options="assembly"
-          optionLabel="name"
-          optionValue="id"
-          :error="errors.assembly_id"
-          placeholder="Select assembly"
-          >Assembly (select from existing assemblies)
-        </FormDropdown>
+          >Dataset title
+        </FormTextInput>
       </div>
       <br />
       <div class="flex pt-4 justify-left">
-        <Button type="submit" label="Submit" icon="pi pi-arrow-right" iconPos="right" />
+        <Button type="submit" label="Submit dataset" />
       </div>
     </form>
   </div>
