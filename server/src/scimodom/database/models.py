@@ -242,7 +242,7 @@ class Project(Base):
         ForeignKey("project_contact.id"), index=True
     )
     date_published: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False
+        DateTime, nullable=True
     )  # datetime declaration/default format ?  YYYY-MM-DD ISO 8601
     date_added: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
@@ -389,6 +389,6 @@ class User(Base):
     email: Mapped[str] = mapped_column(
         String(320), nullable=False, index=True, unique=True
     )
-    state: Mapped[UserState] = mapped_column(Enum(UserState))
-    password_hash: Mapped[str] = mapped_column(String(128))
+    state: Mapped[UserState] = mapped_column(Enum(UserState), nullable=False)
+    password_hash: Mapped[str] = mapped_column(String(128), nullable=True)
     confirmation_token: Mapped[str] = mapped_column(String(32), nullable=True)

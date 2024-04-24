@@ -92,11 +92,11 @@ class ProjectService:
         forename = project["forename"]
         surname = project["surname"]
         project["contact_name"] = f"{surname}, {forename}"
+        project["date_published"] = project.get("date_published", None)
         project["external_sources"] = project.get("external_sources", None)
         for d in utils.to_list(project["external_sources"]):
             d["doi"] = d["doi"] if d["doi"] != "" else None
             d["pmid"] = d["pmid"] if d["pmid"] != "" else None
-            project["date_published"] = project.get("date_published", None)
         for d in utils.to_list(project["metadata"]):
             d["organism"] = {
                 "taxa_id": d["taxa_id"],
@@ -325,13 +325,17 @@ class ProjectService:
         contact_id = self._add_contact()
 
         stamp = datetime.now(timezone.utc).replace(microsecond=0)  # .isoformat()
+        try:
+            date_published = datetime.fromisoformat(self._project["date_published"])
+        except TypeError:
+            date_published = None
 
         project = Project(
             id=self._smid,
             title=self._project["title"],
             summary=self._project["summary"],
             contact_id=contact_id,
-            date_published=datetime.fromisoformat(self._project["date_published"]),
+            date_published=date_published,
             date_added=stamp,
         )
 
