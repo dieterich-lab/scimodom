@@ -16,6 +16,7 @@ const submitForm = () => {
     })
     .catch((error) => {
       message.value = error.response.data.message
+      console.log(error)
     })
 }
 

@@ -31,6 +31,7 @@ const modification = ref([])
 const organism = ref([])
 const technology = ref([])
 const assembly = ref([])
+const message = ref()
 
 const uploadURL = HTTP.getUri() + '/upload'
 
@@ -118,12 +119,8 @@ const onSubmit = handleSubmit((values) => {
       }
     })
     .catch((error) => {
-      return {
-        status: error.response ? error.response.status : 0,
-        data: {},
-        error: error.message
-      }
-      // on error what to do next?
+      message.value = error.response.data.message
+      console.log(error)
     })
 })
 
@@ -131,6 +128,10 @@ const onUpload = (event) => {
   filename.value = event.files[0].name
   // path is "invisible", we could use path, and derive filename from it...
   path.value = event.xhr.response
+}
+
+const dropForm = () => {
+  router.push({ name: 'home' })
 }
 
 const pick = (obj, keys) =>
@@ -197,7 +198,7 @@ onMounted(() => {
   <div>
     <form @submit.prevent="onSubmit">
       <h3 class="mt-0 mb-4 dark:text-white/80">
-        Fill the submission form for each dataset (bedRMod file) that belongs to this project. For
+        Fill a submission form for each dataset (bedRMod file) that belongs to this project. For
         more information on the bedRMod format, consult the
         <RouterLink
           :to="{ name: 'documentation' }"
@@ -205,8 +206,9 @@ onMounted(() => {
           class="inline-flex items-center font-semibold text-primary-500 hover:text-secondary-500"
           >Documentation.
         </RouterLink>
-        After completion, click <span class="inline font-semibold">"Submit"</span> to finalise the
-        submission. You cannot go back after this step.
+        Click <span class="inline font-semibold">"Upload"</span> to submit the form. You cannot go
+        back after this step. Click <span class="inline font-semibold">"Cancel"</span> to drop the
+        request. In the latter case, all information that you entered will be lost.
       </h3>
       <div class="grid grid-cols-2 gap-y-2 gap-x-8">
         <div class="flex flex-row">
@@ -299,9 +301,12 @@ onMounted(() => {
         </FormCascade>
         <div />
       </div>
-      <br />
-      <div class="flex pt-4 justify-left">
-        <Button type="submit" label="Submit dataset" />
+      <div v-if="message" class="flex m-4 justify-center">
+        <Message severity="error" :closable="false">{{ message }}</Message>
+      </div>
+      <div class="flex flow-row justify-center pt-4 gap-4">
+        <Button label="Upload" size="large" type="submit" />
+        <Button label="Cancel" size="large" severity="danger" @click="dropForm" />
       </div>
     </form>
   </div>

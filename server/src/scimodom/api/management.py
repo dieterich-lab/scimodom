@@ -6,7 +6,7 @@ from flask_cors import cross_origin
 from flask_jwt_extended import jwt_required
 
 from scimodom.database.database import get_session
-from scimodom.services.dataset import DataService, InstantiationError
+from scimodom.services.dataset import DataService, InstantiationError, DatasetError
 from scimodom.services.project import ProjectService
 from scimodom.services.mail import get_mail_service
 import scimodom.utils.utils as utils
@@ -81,39 +81,51 @@ def add_dataset():
             organism_id=dataset_form["organism_id"],
         )
     except InstantiationError as exc:
-        logger.error(
-            f"Failed to instantiate data service: {exc}. The form received was: {dataset_form}."
-        )
+        # no need to log these errors, users should normally handle them
+        # ValueError during instantiation should not happen as we are using pre-defined values (Dropdown, MultiSelect, CascadeSelect)
+        # unless database corruption...
         return (
             jsonify(
                 {
-                    "result": "Failed to create a dataset instance. Contact the administrator."
+                    "message": f'Failed to upload dataset. Verify the input value for SMID or select a project using the button. The selected combination of modification, organism, and technology may be invalid for this project. Modify the form and try again. The message received from the server was: "{exc}"'
                 }
             ),
             500,
         )
+    except Exception as exc:
+        # all others
+        logger.error(
+            f"Failed to instantiate dataservice: {exc}. The form received was: {dataset_form}."
+        )
+        return (
+            jsonify(
+                {"message": "Failed to upload dataset. Contact the administrator."}
+            ),
+            500,
+        )
 
-    data_service.create_dataset()
-    # try:
-    #     data_service.create_dataset()
-    #     # TODO: feedback to user e.g. liftover, etc. and finally successful upload (return EUFID?)
-    # except:
-    #     # TODO: there are many exceptions ot handle
-    #     logger.error(f"Failed to upload dataset ...")
-    #     return (
-    #         jsonify(
-    #             {
-    #                 "result": "Failed to upload dataset. Contact the administrator."
-    #             }
-    #         ),
-    #         500,
-    #     )
+    try:
+        data_service.create_dataset()
+        # TODO: feedback to user e.g. liftover, etc. and finally successful upload (return EUFID?)
+    except DatasetError as exc:
+        # no need to log these errors, users should normally handle them
+        return (
+            jsonify(
+                {
+                    "message": f'Failed to upload dataset. Either this dataset already exists, or your bedRMod file header does not match the values you entered. Modify the form or the file header and try again. The message received from the server was: "{exc}". If you are unsure about what happened, click "Cancel" and contact the administrator.'
+                }
+            ),
+            500,
+        )
+    except Exception as exc:
+        # TODO ...
+        logger.error(f"Failed to create dataset: {exc}")
+        return (
+            jsonify({"result": "Failed to upload dataset. Contact the administrator."}),
+            500,
+        )
 
-    # errors that can arise during creation
-    # scimodom.services.dataset.DatasetError: Expected 9606 for organism; got 10090 (imported). Aborting transaction!
-    # scimodom.services.dataset.DatasetError: Expected GRCm39 for assembly; got GRCm38 (imported). Aborting transaction!
-
-    # logging
+    # WARNING scimodom.services.annotation.annotate_data.193 | No records found for Kr6uj7QzWfLJ...
     # DEBUG scimodom.services.dataset.create_dataset.334 | Lifting over dataset from GRCm38 to GRCm39...
     # DEBUG scimodom.services.dataset.create_dataset.360 | Added dataset MALPJw5m5CWW to project gRHWaFYU with title = test upload 2, and the following associations: m6A:67. Annotating data now...
     # DEBUG scimodom.services.annotation.annotate_data.197 | Annotating records for EUFID MALPJw5m5CWW...
