@@ -60,6 +60,7 @@ class Config:
 
     IMPORT_PATH: ClassVar[str | Path] = os.getenv("IMPORT_PATH", "import")
     DATA_PATH: ClassVar[str | Path] = os.getenv("DATA_PATH", "data")
+    UPLOAD_PATH: ClassVar[str | Path] = os.getenv("UPLOAD_PATH", "uploads")
     FRONTEND_PATH: ClassVar[Path] = Path(
         os.getenv("FRONTEND_PATH", DEFAULT_FRONTEND_PATH)
     )
