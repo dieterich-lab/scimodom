@@ -141,21 +141,20 @@ onMounted(() => {
         </div>
         <h3 class="mt-0 mb-4 dark:text-white/80">
           Click <span class="inline font-semibold">"Add metadata"</span> to add a metadata sheet for
-          a dataset. At least one metadata sheet is required! Add a new metadata sheet for each
-          dataset that belongs to this project or for each modification associated with a single
-          dataset. Consult the
+          a dataset. Add a new metadata sheet for each dataset that belongs to this project or for
+          each modification associated with a single dataset. Consult the
           <RouterLink
             :to="{ name: 'documentation' }"
             target="_blank"
             class="inline-flex items-center font-semibold text-primary-500 hover:text-secondary-500"
             >Documentation
           </RouterLink>
-          for more information and examples.
+          for more information and examples. At least one metadata sheet is required!
         </h3>
         <h3 class="mt-0 mb-4 dark:text-white/80">
-          After completion, click <span class="inline font-semibold">"Next"</span> to finalise the
-          submission. You cannot go back after this step. Click
-          <span class="inline font-semibold">"Back"</span> to edit the project form.
+          To submit, click <span class="inline font-semibold">"Next"</span>. You cannot go back
+          after this step. Click <span class="inline font-semibold">"Back"</span> to modify the
+          project form.
         </h3>
         <Button @click="push(pushValues)" label="Add metadata" class="mt-4 mb-4" />
         <div

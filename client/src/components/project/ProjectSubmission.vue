@@ -5,6 +5,7 @@ import { HTTPSecure } from '@/services/API'
 
 const router = useRouter()
 const props = defineProps(['projectForm'])
+const message = ref()
 
 const submitForm = () => {
   HTTPSecure.post('/management/project', props.projectForm)
@@ -14,13 +15,12 @@ const submitForm = () => {
       }
     })
     .catch((error) => {
-      return {
-        status: error.response ? error.response.status : 0,
-        data: {},
-        error: error.message
-      }
-      // on error what to do next?
+      message.value = error.response.data.message
     })
+}
+
+const dropForm = () => {
+  router.push({ name: 'home' })
 }
 </script>
 
@@ -33,12 +33,17 @@ const submitForm = () => {
         </div>
       </div>
       <h3 class="mt-0 mb-4 dark:text-white/80">
-        The project form has been successfully validated. Click
-        <span class="inline font-semibold">"Submit"</span> to finalise the submission. A
-        notification will be sent to your email address as soon as the project is created.
+        Click <span class="inline font-semibold">"Submit"</span> to send a project request. A
+        notification will be sent to your email address as soon as the project is created. Click
+        <span class="inline font-semibold">"Cancel"</span> to drop the request. In the latter case,
+        all information that you entered will be lost.
       </h3>
-      <div class="flex justify-center">
+      <div v-if="message" class="flex m-4 justify-center">
+        <Message severity="error" :closable="false">{{ message }}</Message>
+      </div>
+      <div class="flex flow-row justify-center gap-4">
         <Button label="Submit" size="large" @click="submitForm" />
+        <Button label="Cancel" size="large" severity="danger" @click="dropForm" />
       </div>
     </div>
   </SectionLayout>

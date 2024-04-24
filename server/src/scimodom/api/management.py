@@ -34,7 +34,7 @@ def get_project():
         return (
             jsonify(
                 {
-                    "result": "Failed to save the project submission form. Contact the administrator."
+                    "message": "Failed to save the project submission form. Contact the administrator."
                 }
             ),
             500,
@@ -44,16 +44,16 @@ def get_project():
     try:
         mail_service.send_project_request_notification(uuid)
     except SMTPException as exc:
-        logger.error(f"Failed to sent out notification email: {exc}")
+        logger.error(f"Failed to send out notification email: {exc}")
         return (
             jsonify(
                 {
-                    "result": "Failed to sent out notification email. Contact the administrator."
+                    "message": f"Project form successfully submitted, but failed to send out notification email. Contact the administrator with this ID: {uuid}."
                 }
             ),
             500,
         )
-    return jsonify({"result": "Ok"}), 200
+    return jsonify({"message": "OK"}), 200
 
 
 @management_api.route("/dataset", methods=["POST"])

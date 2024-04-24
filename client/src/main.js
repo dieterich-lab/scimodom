@@ -25,6 +25,7 @@ import DynamicDialog from 'primevue/dynamicdialog'
 import InputNumber from 'primevue/inputnumber'
 import InputText from 'primevue/inputtext'
 import Menu from 'primevue/menu'
+import Message from 'primevue/message'
 import MultiSelect from 'primevue/multiselect'
 import Panel from 'primevue/panel'
 import ProgressSpinner from 'primevue/progressspinner'
@@ -68,6 +69,7 @@ app.component('FileUpload', FileUpload)
 app.component('InputNumber', InputNumber)
 app.component('InputText', InputText)
 app.component('Menu', Menu)
+app.component('Message', Message)
 app.component('MultiSelect', MultiSelect)
 app.component('Panel', Panel)
 app.component('ProgressSpinner', ProgressSpinner)
