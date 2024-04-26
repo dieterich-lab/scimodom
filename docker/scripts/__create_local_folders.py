@@ -20,6 +20,7 @@ HOST_FOLDERS = [
     HOST_IMPORT_DIR,
     HOST_DATA_DIR,
     Path(HOST_DATA_DIR, "metadata"),
+    Path(HOST_DATA_DIR, "metadata", "project_requests"),
     Path(HOST_DATA_DIR, "annotation"),
     Path(HOST_DATA_DIR, "assembly"),
 ]

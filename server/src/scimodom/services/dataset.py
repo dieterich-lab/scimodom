@@ -243,7 +243,7 @@ class DataService:
         """
         if not form_value == header_value:
             msg = (
-                f"Expected {form_value} for {name}; got {header_value} (imported). "
+                f"Expected {form_value} for {name}; got {header_value} (file header). "
                 f"Aborting transaction!"
             )
             raise DatasetError(msg)

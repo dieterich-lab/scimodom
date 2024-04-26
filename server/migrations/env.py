@@ -6,7 +6,9 @@ from sqlalchemy import pool
 from alembic import context
 
 from scimodom.database.database import Base
+import scimodom.database.models  # noqa
 from scimodom.config import Config
+
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

@@ -4,7 +4,7 @@ export default {
       // Spacing and Shape
       'my-2 mx-0',
       'rounded-md',
-      'ring-1 ring-inset ring-surface-200 dark:ring-surface-700 ring-offset-0',
+      // 'ring-1 ring-inset ring-surface-200 dark:ring-surface-700 ring-offset-0',
 
       // Colors
       'bg-surface-0 dark:bg-surface-800',

@@ -14,7 +14,11 @@ import scimodom.utils.utils as utils
 
 
 def _get_project(
-    project_template, external_sources_fmt="list", metadata_fmt="list", missing_key=None
+    project_template,
+    external_sources_fmt="list",
+    metadata_fmt="list",
+    missing_key=None,
+    missing_date=False,
 ):
     """\
     2023-08-25 Project template (JSON format).
@@ -31,6 +35,8 @@ def _get_project(
         "metadata" format (list or dict)
     missing_key: str or None
         missing_key
+    missing_date: Bool
+        missing_date
 
     Returns
     -------
@@ -49,6 +55,9 @@ def _get_project(
         external_sources = None
     else:
         raise ValueError
+
+    if missing_date:
+        project["date_published"] = None
 
     metadata = project["metadata"]
     if metadata_fmt == "list":
@@ -236,7 +245,16 @@ def test_project_validate_entry(Session, project_template, data_path):
     assert ProjectService(Session(), project)._validate_entry() is None
 
 
-def test_project_create_project(Session, setup, project_template, data_path):
+@pytest.mark.parametrize(
+    "missing_date",
+    [
+        False,
+        True,
+    ],
+)
+def test_project_create_project(
+    missing_date, Session, setup, project_template, data_path
+):
     with Session() as session, session.begin():
         session.add_all(setup)
 
@@ -246,17 +264,22 @@ def test_project_create_project(Session, setup, project_template, data_path):
         external_sources_fmt="list",
         metadata_fmt="list",
         missing_key=None,
+        missing_date=missing_date,
     )
     # AssemblyService tested in test_assembly.py
     project_instance = ProjectService(Session(), project)
     project_instance.create_project(wo_assembly=True)
     project_smid = project_instance.get_smid()
 
+    date_published = datetime.fromisoformat("2024-01-01")
+    if missing_date:
+        date_published = None
+
     with Session() as session, session.begin():
         records = session.execute(select(Project)).scalar()
         assert records.title == "Title"
         assert records.summary == "Summary"
-        assert records.date_published == datetime.fromisoformat("2024-01-01")
+        assert records.date_published == date_published
         assert records.date_added.year == stamp.year
         assert records.date_added.month == stamp.month
         assert records.date_added.day == stamp.day

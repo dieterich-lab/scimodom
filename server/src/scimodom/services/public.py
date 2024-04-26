@@ -20,6 +20,7 @@ from scimodom.database.models import (
     Modomics,
     Organism,
     Project,
+    ProjectContact,
     ProjectSource,
     Taxonomy,
     Taxa,
@@ -62,6 +63,78 @@ class PublicService:
 
     def __init__(self, session: Session):
         self._session = session
+
+    def get_project(self):
+        """Get all projects.
+
+        :returns: Query result
+        :rtype: list of dict
+        """
+
+        query = (
+            select(
+                Project.id,
+                Project.title,
+                Project.summary,
+                Project.date_added,
+                ProjectContact.contact_name,
+                ProjectContact.contact_institution,
+                func.group_concat(ProjectSource.doi.distinct()).label("doi"),
+                func.group_concat(ProjectSource.pmid.distinct()).label("pmid"),
+            )
+            .join_from(Project, ProjectContact, Project.inst_contact)
+            .join_from(Project, ProjectSource, Project.sources)
+        ).group_by(Project.id)
+        return self._dump(query)
+
+    def get_modomics(self):
+        """Get all modifications.
+
+        :returns: Query result
+        :rtype: list of dict
+        """
+
+        query = select(Modomics.id, Modomics.short_name.label("modomics_sname"))
+        return self._dump(query)
+
+    def get_detection_method(self):
+        """Get all standard methods.
+
+        :returns: Query result
+        :rtype: list of dict
+        """
+
+        query = select(DetectionMethod.id, DetectionMethod.cls, DetectionMethod.meth)
+        return self._dump(query)
+
+    def get_taxa(self):
+        """Get all organisms with their taxonomy.
+
+        :returns: Query result
+        :rtype: list of dict
+        """
+
+        query = select(
+            Taxa.id,
+            Taxa.short_name.label("taxa_sname"),
+            Taxonomy.domain,
+            Taxonomy.kingdom,
+            Taxonomy.phylum,
+        ).join_from(Taxa, Taxonomy, Taxa.inst_taxonomy)
+
+        return self._dump(query)
+
+    def get_assembly_for_taxid(self, taxid: int):
+        """Get available assemblies for given Taxa ID.
+
+        :param taxid: Taxa ID
+        :type taxid: int
+        :returns: Query result
+        :rtype: list of dict
+        """
+
+        query = select(Assembly.id, Assembly.name).where(Assembly.taxa_id == taxid)
+        return self._dump(query)
 
     def get_selection(self):
         """Get available selections.

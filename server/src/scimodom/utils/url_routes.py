@@ -8,6 +8,7 @@ USER_API_ROUTE = f"/{API_PREFIX}/user"
 ACCESS_API_ROUTE = f"/{API_PREFIX}/access"
 UPLOAD_API_ROUTE = f"/{API_PREFIX}/upload"
 TRANSFER_API_ROUTE = f"/{API_PREFIX}/transfer"
+DATA_MANAGEMENT_API_ROUTE = f"/{API_PREFIX}/management"
 
 CONFIRM_USER_REGISTRATION_URI = "confirm_user_registration"
 REQUEST_PASSWORD_RESET_URI = "request_password_reset"

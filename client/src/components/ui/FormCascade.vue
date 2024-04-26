@@ -1,28 +1,37 @@
 <script setup>
+// provides a custom wrapper for the PrimeVue Cascade component
+// to be used in a form
+import { ref, computed } from 'vue'
+
+const emit = defineEmits(['change'])
 const model = defineModel()
 const props = defineProps({
   error: {
     required: true
   },
-  type: {
+  options: {
+    type: Array,
+    required: true
+  },
+  optionLabel: {
     type: String,
     required: false,
-    default: 'text'
+    default: 'label'
   },
-  isLogin: {
-    type: Boolean,
+  optionValue: {
+    type: String,
     required: false,
-    default: false
+    default: 'value'
   },
-  isSignIn: {
-    type: Boolean,
+  optionGroupLabel: {
+    type: String,
     required: false,
-    default: false
+    default: 'label'
   },
-  disabled: {
-    type: Boolean,
+  optionGroupChildren: {
+    type: Array,
     required: false,
-    default: false
+    default: ['child1']
   },
   placeholder: {
     type: String,
@@ -51,31 +60,6 @@ const props = defineProps({
     default: '!ring-red-700'
   }
 })
-
-// pt style for login and sign in
-const loginStyle = {
-  root: ({ props, context, parent }) => ({
-    class: [
-      'bg-primary-50/25 dark:bg-surface-900/20',
-      {
-        'ring-primary-500/20 dark:ring-primary-500/20': parent.instance.$name != 'InputGroup'
-      }
-    ]
-  })
-}
-// TODO: change with FormBox color
-const signInStyle = {
-  root: ({ props, context, parent }) => ({
-    class: [
-      'bg-primary-50/25 dark:bg-surface-900/20',
-      {
-        'ring-primary-500/20 dark:ring-primary-500/20': parent.instance.$name != 'InputGroup'
-      }
-    ]
-  })
-}
-const pt = props.isLogin ? loginStyle : props.isSignIn ? signInStyle : {}
-const ptOptions = props.isLogin || props.isSignIn ? { mergeProps: true } : {}
 </script>
 
 <template>
@@ -83,14 +67,16 @@ const ptOptions = props.isLogin || props.isSignIn ? { mergeProps: true } : {}
     <label for="field" :class="props.labelCls">
       <slot></slot>
     </label>
-    <InputText
+    <CascadeSelect
       id="field"
       v-model="model"
-      :type="type"
+      @change="$emit('change', $event.value)"
+      :options="props.options"
+      :optionLabel="props.optionLabel"
+      :optionValue="props.optionValue"
+      :optionGroupLabel="props.optionGroupLabel"
+      :optionGroupChildren="props.optionGroupChildren"
       :placeholder="props.placeholder"
-      :disabled="props.disabled"
-      :pt="pt"
-      :ptOptions="ptOptions"
       :class="error ? props.errCls : ''"
     />
     <span class="inline-flex items-baseline">

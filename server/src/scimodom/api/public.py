@@ -9,6 +9,41 @@ from scimodom.services.public import get_public_service
 api = Blueprint("api", __name__)
 
 
+@api.route("/modification", methods=["GET"])
+@cross_origin(supports_credentials=True)
+def get_modification():
+    public_service = get_public_service()
+    return public_service.get_modomics()
+
+
+@api.route("/smid", methods=["GET"])
+@cross_origin(supports_credentials=True)
+def get_smid():
+    public_service = get_public_service()
+    return public_service.get_project()
+
+
+@api.route("/method", methods=["GET"])
+@cross_origin(supports_credentials=True)
+def get_method():
+    public_service = get_public_service()
+    return public_service.get_detection_method()
+
+
+@api.route("/taxid", methods=["GET"])
+@cross_origin(supports_credentials=True)
+def get_taxid():
+    public_service = get_public_service()
+    return public_service.get_taxa()
+
+
+@api.route("/assembly/<taxid>", methods=["GET"])
+@cross_origin(supports_credentials=True)
+def get_assembly(taxid):
+    public_service = get_public_service()
+    return public_service.get_assembly_for_taxid(taxid)
+
+
 @api.route("/selection", methods=["GET"])
 @cross_origin(supports_credentials=True)
 def get_selection():

@@ -40,6 +40,7 @@ class Config:
     try:
         SMTP_SERVER: ClassVar[str] = os.environ["SMTP_SERVER"]
         SMTP_FROM_ADDRESS: ClassVar[str] = os.environ["SMTP_FROM_ADDRESS"]
+        SMTP_TO_ADDRESS: ClassVar[str] = os.environ["SMTP_TO_ADDRESS"]
         HTTP_PUBLIC_URL: ClassVar[str] = os.environ["HTTP_PUBLIC_URL"]
     except KeyError:
         msg = (
@@ -59,6 +60,7 @@ class Config:
 
     IMPORT_PATH: ClassVar[str | Path] = os.getenv("IMPORT_PATH", "import")
     DATA_PATH: ClassVar[str | Path] = os.getenv("DATA_PATH", "data")
+    UPLOAD_PATH: ClassVar[str | Path] = os.getenv("UPLOAD_PATH", "uploads")
     FRONTEND_PATH: ClassVar[Path] = Path(
         os.getenv("FRONTEND_PATH", DEFAULT_FRONTEND_PATH)
     )
