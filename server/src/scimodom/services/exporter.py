@@ -2,8 +2,8 @@
 # The purpose of this module is to write .bedrmod files
 #
 from logging import getLogger
-from typing import Optional, Generator
 import re
+from typing import Optional, Generator
 
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
@@ -20,6 +20,7 @@ from scimodom.database.models import (
     AnnotationVersion,
     Annotation,
 )
+from scimodom.utils.specifications import SPECS_EUF
 
 logger = getLogger(__name__)
 
@@ -34,13 +35,14 @@ class NoSuchDataset(Exception):
 
 class Exporter:
     BAD_FILE_NAME_CHARACTERS_REGEXP = re.compile(r"[^a-zA-Z0-9(),._-]")
+    VERSION = SPECS_EUF["versions"][-1]
 
     def __init__(self, session: Session):
         self._session = session
 
     def get_dataset_file_name(self, dataset_id: str) -> str:
         try:
-            dataset = self._session.get(Dataset, dataset_id)
+            dataset = self._session.get_one(Dataset, dataset_id)
         except NoResultFound:
             raise NoSuchDataset(f"Failed to find dataset {dataset_id}")
         cleaned_name = re.sub(self.BAD_FILE_NAME_CHARACTERS_REGEXP, "_", dataset.title)
@@ -48,7 +50,7 @@ class Exporter:
 
     def generate_dataset(self, dataset_id: str) -> Generator[bytes, None, None]:
         try:
-            dataset = self._session.get(Dataset, dataset_id)
+            dataset = self._session.get_one(Dataset, dataset_id)
         except NoResultFound:
             raise NoSuchDataset(f"Failed to find dataset {dataset_id}")
         db = self._session
@@ -71,7 +73,7 @@ class Exporter:
             db.scalars(select(Selection).where(Selection.id.in_(selection_ids)))
         )
 
-        yield "#fileformat=bedRModv1.7\n"  # noqa
+        yield f"#fileformat=bedRModv{self.VERSION}\n"  # noqa
         taxa_id = self._get_taxa_id_from_selections(dataset, selections)
         yield f"#organism={taxa_id}\n"
         yield f"#modification_type={dataset.modification_type}\n"
@@ -85,7 +87,7 @@ class Exporter:
         yield f"#bioinformatics_workflow={_or_default(dataset.bioinformatics_workflow, '')}\n"
         yield f"#experiment={_or_default(dataset.experiment, '')}\n"
         yield f"#external_source={_or_default(dataset.external_source, '')}\n"
-        yield "#om\tomStart\tomEnd\tname\tscore\tstrand\tthickStart\tthickEnd\titemRgb\tcoverage\tfrequency\n"
+        yield "#chrom\tchromStart\tchromEnd\tname\tscore\tstrand\tthickStart\tthickEnd\titemRgb\tcoverage\tfrequency\n"
 
     @staticmethod
     def _get_taxa_id_from_selections(dataset, selections):

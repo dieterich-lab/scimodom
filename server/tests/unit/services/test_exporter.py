@@ -130,7 +130,7 @@ def test_exporter(Session, dataset):
 #bioinformatics_workflow=wf1
 #experiment=experiment 1
 #external_source=ext. source 1
-#om\tomStart\tomEnd\tname\tscore\tstrand\tthickStart\tthickEnd\titemRgb\tcoverage\tfrequency
+#chrom\tchromStart\tchromEnd\tname\tscore\tstrand\tthickStart\tthickEnd\titemRgb\tcoverage\tfrequency
 17\t100001\t120000\tY\t1000\t+\t100101\t100201\t128,128,0\t43\t100
 Y\t200001\t220000\tX\t900\t-\t200101\t200201\t0,0,128\t44\t99
 """

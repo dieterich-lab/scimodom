@@ -17,5 +17,5 @@ def export_dataset(dataset_id: str):
             mimetype="text/csv",
             headers={"Content-Disposition": f'attachment; filename="{file_name}"'},
         )
-    except NoSuchDataset as e:
-        return {"error_message": str(e)}, 404
+    except NoSuchDataset as exc:
+        return {"message": str(exc)}, 404

@@ -146,7 +146,8 @@ def test_validate_imported_fail():
     with pytest.raises(DatasetError) as exc:
         DataService.validate_imported("test", "a", "b")
     assert (
-        str(exc.value) == "Expected a for test; got b (imported). Aborting transaction!"
+        str(exc.value)
+        == "Expected a for test; got b (file header). Aborting transaction!"
     )
     assert exc.type == DatasetError
 
