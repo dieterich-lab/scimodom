@@ -16,6 +16,7 @@ const recordsOverlay = ref(false)
 const thisRecord = ref({})
 const dt = ref()
 const columns = [
+  { field: 'project_id', header: 'SMID' },
   { field: 'project_title', header: 'Title' },
   { field: 'project_summary', header: 'Summary' },
   { field: 'date_added', header: 'Added' },
@@ -64,6 +65,11 @@ const onExport = () => {
 
 const splitStr = (str) => {
   return str.split(',')
+}
+
+const onDownload = (value) => {
+  console.log('downloading', value)
+  getApiUrl(`transfer/dataset/${value}`)
 }
 
 const onOverlay = (record) => {
@@ -179,7 +185,7 @@ onMounted(() => {
             </template>
             <template #empty> No results found. </template>
             <Column field="project_id" header="SMID" style="display: none"></Column>
-            <Column field="dataset_id" header="EUFID" style="display: none"></Column>
+            <Column field="dataset_id" header="EUFID" style="width: 5%"></Column>
             <Column field="dataset_title" header="Title" style="width: 25%"></Column>
             <Column field="rna" header="RNA" filterField="rna" style="width: 5%">
               <template #body="{ data }">
@@ -256,23 +262,11 @@ onMounted(() => {
                 />
               </template>
             </Column>
-            <Column
-              field="access"
-              header="Access"
-              filterField="access"
-              :showFilterMatchModes="false"
-              style="width: 5%"
-            >
+            <Column :exportable="false" field="dataset_id" style="width: 5%">
               <template #body="{ data }">
-                {{ data.access }}
-              </template>
-              <template #filter="{ filterModel }">
-                <Dropdown
-                  v-model="filterModel.value"
-                  :options="status"
-                  placeholder="Select access..."
-                >
-                </Dropdown>
+                <a :href="getApiUrl(`transfer/dataset/${data.dataset_id}`)">
+                  <Button text severity="secondary" label="Download" />
+                </a>
               </template>
             </Column>
 
@@ -291,7 +285,6 @@ onMounted(() => {
                   outlined
                   rounded
                   severity="secondary"
-                  class="mr-2"
                   @click="onOverlay(slotProps.data)"
                 />
               </template>
@@ -301,7 +294,7 @@ onMounted(() => {
 
         <Dialog
           v-model:visible="recordsOverlay"
-          header="Additional information"
+          header="Project information"
           :modal="true"
           :pt="{
             root: { class: 'w-fit' },
@@ -310,11 +303,8 @@ onMounted(() => {
           :ptOptions="{ mergeProps: true }"
         >
           <div>
-            <div class="flex space-x-12 mb-6">
-              <span class="inline-block font-semibold pr-2">SMID:</span>
-              {{ thisRecord.project_id }}
-              <span class="inline-block font-semibold pr-2">EUFID:</span>
-              {{ thisRecord.dataset_id }}
+            <div class="flex space-x-12 mb-6 whitespace-pre-line">
+              This dataset is part of the following project:
             </div>
             <DataTable
               :value="records.filter((val) => val.dataset_id == thisRecord.dataset_id)"
@@ -351,13 +341,6 @@ onMounted(() => {
                 </template>
               </Column>
             </DataTable>
-
-            <a
-              class="btn text-secondary-500 pr-12"
-              :href="getApiUrl(`transfer/dataset/${thisRecord.dataset_id}`)"
-            >
-              <Button size="small" label="Download Dataset" raised />
-            </a>
           </div>
         </Dialog>
       </div>
