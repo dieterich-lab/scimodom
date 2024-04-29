@@ -148,10 +148,15 @@ const updModification = (value) => {
     .filter((item) => item.rna == value)
     .map((obj) => pick(obj, ['modomics_sname', 'modification_id']))
   modification.value = [...new Map(opts.map((item) => [item.modification_id, item])).values()]
+  organism.value = []
+  technology.value = []
+  assembly.value = []
 }
 
 const updOrganism = (value) => {
   organism.value = []
+  technology.value = []
+  assembly.value = []
   organism_id.value = undefined
   technology_id.value = undefined
   assembly_id.value = undefined
@@ -162,6 +167,7 @@ const updOrganism = (value) => {
 
 const updTechnology = (value) => {
   technology.value = []
+  assembly.value = []
   technology_id.value = undefined
   technology.value = updTechnologyFromModAndOrg(options.value, modification_id.value, {
     key: value
@@ -233,18 +239,19 @@ onMounted(() => {
             class="w-full"
             >Dataset file
           </FormTextInput>
-          <FileUpload
-            mode="basic"
-            name="file"
-            :url="uploadURL"
-            accept="text/plain,.bed,.bedrmod"
-            :maxFileSize="50000000"
-            :auto="true"
-            chooseLabel="Select a file"
-            @upload="onUpload($event)"
-            class="ml-4 self-center"
-          >
-          </FileUpload>
+          <div class="ml-4 place-self-center">
+            <FileUpload
+              mode="basic"
+              name="file"
+              :url="uploadURL"
+              accept="text/plain,.bed,.bedrmod"
+              :maxFileSize="50000000"
+              :auto="true"
+              chooseLabel="Select a file"
+              @upload="onUpload($event)"
+            >
+            </FileUpload>
+          </div>
         </div>
         <FormTextInput
           v-model="title"

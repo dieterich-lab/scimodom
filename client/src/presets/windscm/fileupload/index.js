@@ -1,66 +1,176 @@
 export default {
-  root: {
-    class: [
-      // Display and Position
-      'inline-flex',
-      'relative',
-
-      // Color and Background
-      'bg-surface-0 dark:bg-surface-800',
-
-      // Misc
-      'cursor-default',
-      'select-none'
-    ]
+  // root: { class: ['inline-flex', 'relative'] },
+  input: {
+    class: 'hidden'
   },
-  input: 'hidden',
   buttonbar: {
     class: [
-      'flex flex-wrap',
-      'bg-gray-50 dark:bg-gray-800 p-5 border border-solid border-gray-300 dark:border-blue-900/40 text-gray-700 dark:text-white/80 rounded-tr-lg rounded-tl-lg gap-2 border-b-0'
+      // Flexbox
+      'flex',
+      'flex-wrap',
+
+      // Colors
+      'bg-surface-50',
+      'dark:bg-surface-800',
+      'text-surface-700',
+      'dark:text-white/80',
+
+      // Spacing
+      'p-5',
+      'gap-2',
+
+      // Borders
+      'border',
+      'border-solid',
+      'border-surface-200',
+      'dark:border-surface-700',
+      'border-b-0',
+
+      // Shape
+      'rounded-tr-lg',
+      'rounded-tl-lg'
     ]
   },
   chooseButton: {
-    // class: ['text-white bg-blue-500 border border-blue-500 p-3 px-5 rounded-md text-base', 'overflow-hidden relative']
     class: [
-      'block leading-5',
+      'relative',
+
+      // Alignments
+      'items-center inline-flex text-center align-bottom justify-center',
+
+      // Spacing
+      'px-2.5 py-1.5 min-w-[2rem]',
+
+      // Shape
       'rounded-md',
-      'shadow-sm',
-      // Space
-      'py-1.5 px-3',
 
-      // Transition
-      'transition duration-200',
+      // Font
+      // 'leading-[normal]',
+      'text-sm',
+      'font-semibold',
 
-      // 'p-3 px-5 text-sm',
-      'text-white dark:text-surface-900 text-bold bg-primary-500 dark:bg-primary-400 ring-1 ring-primary-500 dark:ring-primary-400 hover:bg-primary-600 dark:hover:bg-primary-300 hover:ring-primary-600 dark:hover:ring-primary-300',
-      'overflow-hidden whitespace-nowrap cursor-pointer overflow-ellipsis'
+      // Colors
+      'text-white dark:text-surface-900',
+      'bg-primary-500 dark:bg-primary-400',
+      'border-primary-500 dark:border-primary-400',
+
+      // States
+      'hover:bg-primary-600 dark:hover:bg-primary-300',
+
+      // Misc
+      'overflow-hidden',
+      'cursor-pointer',
+      'whitespace-nowrap'
     ]
   },
-  chooseIcon: 'mr-2 inline-block',
-  chooseButtonLabel: 'flex-1 font-bold',
+  chooseIcon: {
+    class: ['mr-2', 'inline-block']
+  },
+  chooseButtonLabel: {
+    class: ['flex-1', 'font-semibold']
+  },
   uploadbutton: {
-    icon: 'mr-2'
+    icon: {
+      class: 'mr-2 font-semibold'
+    }
   },
   cancelbutton: {
-    icon: 'mr-2'
+    icon: {
+      class: 'mr-2 font-semibold'
+    }
   },
   content: {
     class: [
+      // Position
       'relative',
-      'bg-white dark:bg-gray-900 p-8 border border-gray-300 dark:border-blue-900/40 text-gray-700 dark:text-white/80 rounded-b-lg'
+
+      // Colors
+      'bg-surface-0',
+      'dark:bg-surface-900',
+      'text-surface-700',
+      'dark:text-white/80',
+
+      // Spacing
+      'p-8',
+
+      // Borders
+      'border',
+      'border-surface-200',
+      'dark:border-surface-700',
+
+      // Shape
+      'rounded-b-lg'
     ]
   },
   file: {
     class: [
-      'flex items-center flex-wrap',
-      'p-4 border border-gray-300 dark:border-blue-900/40 rounded gap-2 mb-2',
-      'last:mb-0'
+      // Flexbox
+      'flex',
+      'items-center',
+      'flex-wrap',
+
+      // Spacing
+      'p-4',
+      'mb-2',
+      'last:mb-0',
+
+      // Borders
+      'border',
+      'border-surface-200',
+      'dark:border-surface-700',
+      'gap-2',
+
+      // Shape
+      'rounded'
     ]
   },
-  thumbnail: 'shrink-0',
-  fileName: 'mb-2',
-  fileSize: 'mr-2',
-  // uploadicon: 'mr-2'
-  uploadicon: 'mr-4 inline-block'
+  thumbnail: {
+    class: 'shrink-0'
+  },
+  fileName: {
+    class: 'mb-2 break-all'
+  },
+  fileSize: {
+    class: 'mr-2'
+  },
+  uploadicon: {
+    class: 'mr-2'
+  },
+  progressbar: {
+    root: {
+      class: [
+        // Position and Overflow
+        'overflow-hidden',
+        'absolute top-0 left-0',
+
+        // Shape and Size
+        'border-0',
+        'h-2',
+        'rounded-md',
+        'w-full',
+
+        // Colors
+        'bg-surface-100 dark:bg-surface-700'
+      ]
+    },
+    value: {
+      class: [
+        // Flexbox & Overflow & Position
+        'absolute flex items-center justify-center overflow-hidden',
+
+        // Colors
+        'bg-primary-500 dark:bg-primary-400',
+
+        // Spacing & Sizing
+        'm-0',
+        'h-full w-0',
+
+        // Shape
+        'border-0',
+
+        // Transitions
+        'transition-width duration-1000 ease-in-out'
+      ]
+    }
+  }
 }

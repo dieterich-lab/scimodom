@@ -30,7 +30,7 @@ export default {
   },
   label: ({ props }) => ({
     class: [
-      'block leading-5',
+      'block leading-5 sm:text-sm',
 
       props.display === 'chip' && props?.modelValue?.length > 0 ? 'py-1 px-3' : 'py-1.5 px-3',
 

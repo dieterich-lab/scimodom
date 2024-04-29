@@ -10,8 +10,11 @@ Draft or long-running issues, WIP, triage, and additional references or context 
 - [ ] ~pre-commit run --all-files~ under server (.pre-commit-config.yaml) runs for all files incl. client.
 - [X] Add *CrossMap* to requirements.
 
-** TODO STYLE [0/19]
+** TODO STYLE [0/21]
 
+- [ ] Upload :: The ~FileUpload~ component has it's own error handling and display, but the error message display is currently
+  not customized and results in moving/resizing of DOM elements, see /e.g./ ~UploadForm~ (select unsupported file type).
+- [ ] CascadeSelect :: "No available options" is not defined, /cf./ TreeSelect or Dropdown. Styling is different.
 - [ ] DEADLINE: <2024-08-30 Fri> To harmonize CSS vars/style across views, components, and presets (colours, behaviour, /etc./), to do
   when addressing [[https://github.com/dieterich-lab/scimodom/issues/14][responsive design]] and accessibility in Q3. Harmonize dark mode and styles for hover, focus, /etc./ across presets.
 - [ ] Add dark mode
