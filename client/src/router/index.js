@@ -8,6 +8,7 @@ import DocumentationView from '@/views/DocumentationView.vue'
 import HomeRoadmap from '@/components/home/HomeRoadmap.vue'
 
 import PageMaintenance from '@/components/default/PageMaintenance.vue'
+import PageNotFound from '@/components/default/PageNotFound.vue'
 
 import AccessView from '@/views/AccessView.vue'
 import ProjectView from '@/views/ProjectView.vue'
@@ -43,7 +44,8 @@ const router = createRouter({
     {
       path: '/',
       name: 'download',
-      component: DownloadView
+      component: DownloadView,
+      redirect: { name: '404' }
     },
     {
       path: '/',
@@ -77,6 +79,11 @@ const router = createRouter({
       path: '/',
       name: 'maintenance',
       component: PageMaintenance
+    },
+    {
+      path: '/',
+      name: '404',
+      component: PageNotFound
     }
     // {
     //   path: '/about',

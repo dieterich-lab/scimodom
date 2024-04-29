@@ -12,10 +12,6 @@
       <span>Compare</span>
     </RouterLink>
 
-    <RouterLink :to="{ name: 'download' }">
-      <span>Download</span>
-    </RouterLink>
-
     <RouterLink :to="{ name: 'documentation' }">
       <span>Documentation</span>
     </RouterLink>

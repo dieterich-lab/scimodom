@@ -76,7 +76,11 @@ Draft or long-running issues, WIP, triage, and additional references or context 
 - [ ] Harmonize docstrings /e.g./ ~str~ /vs./ ~String~ /etc./. Order of arguments. Add ~Raises~. Add docstrings where missing.
 - [X] [2024-02-03 Sat] [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/src/scimodom/api/__init__.py::E402 module level import not at top of file]]
 
-** TODO GENERAL [7/39]
+** TODO GENERAL [7/40]
+
+- [ ] download :: Download view temporarily removed (do we want selective/schema DB dumps?), this feature is relegated. Do we want
+  to allow ~Export~ to export "all" selected records, not only those lazy loaded and shown on the screen (~SearchView.vue~)? See
+  also [[https://github.com/dieterich-lab/scimodom/issues/62][Search view data export]]
 
 - [ ] dependencies :: replace pandas in ~SetupService~.
 
