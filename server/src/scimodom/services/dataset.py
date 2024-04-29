@@ -35,8 +35,14 @@ class InstantiationError(Exception):
 
 class DatasetError(Exception):
     """Exception for handling Dataset instantiation,
-    e.g. suspected duplicate entries, mismatch between
-    header and input values, etc."""
+    e.g. suspected duplicate entries."""
+
+    pass
+
+
+class DatasetHeaderError(Exception):
+    """Exception for handling mismatch between
+    dataset header and input values."""
 
     pass
 
@@ -246,7 +252,7 @@ class DataService:
                 f"Expected {form_value} for {name}; got {header_value} (file header). "
                 f"Aborting transaction!"
             )
-            raise DatasetError(msg)
+            raise DatasetHeaderError(msg)
 
     def create_dataset(self) -> None:
         """Dataset constructor."""

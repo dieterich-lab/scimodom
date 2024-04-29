@@ -12,8 +12,8 @@ Draft or long-running issues, WIP, triage, and additional references or context 
 
 ** TODO STYLE [0/21]
 
-- [ ] Upload :: The ~FileUpload~ component has it's own error handling and display, but the error message display is currently
-  not customized and results in moving/resizing of DOM elements, see /e.g./ ~UploadForm~ (select unsupported file type).
+- [ ] Upload :: The PV ~FileUpload~ component has it's own error handling, but the display is currently
+  not "customized" and results in moving/resizing of DOM elements, see /e.g./ ~UploadForm~ (select unsupported file type).
 - [ ] CascadeSelect :: "No available options" is not defined, /cf./ TreeSelect or Dropdown. Styling is different.
 - [ ] DEADLINE: <2024-08-30 Fri> To harmonize CSS vars/style across views, components, and presets (colours, behaviour, /etc./), to do
   when addressing [[https://github.com/dieterich-lab/scimodom/issues/14][responsive design]] and accessibility in Q3. Harmonize dark mode and styles for hover, focus, /etc./ across presets.
@@ -79,7 +79,7 @@ Draft or long-running issues, WIP, triage, and additional references or context 
 - [ ] Harmonize docstrings /e.g./ ~str~ /vs./ ~String~ /etc./. Order of arguments. Add ~Raises~. Add docstrings where missing.
 - [X] [2024-02-03 Sat] [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/src/scimodom/api/__init__.py::E402 module level import not at top of file]]
 
-** TODO GENERAL [7/40]
+** TODO GENERAL [8/40]
 
 - [ ] download :: Download view temporarily removed (do we want selective/schema DB dumps?), this feature is relegated. Do we want
   to allow ~Export~ to export "all" selected records, not only those lazy loaded and shown on the screen (~SearchView.vue~)? See
@@ -101,7 +101,8 @@ Draft or long-running issues, WIP, triage, and additional references or context 
 - [ ] import :: [2024-02-16 Fri] Add exception if /e.g./ more than 30% of features are unmapped.
   [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/src/scimodom/services/assembly.py::Unmapped features are discarded.]]
 - [ ] import :: What happens if /e.g./ too many rows are skipped or in the worst case there is no records (/e.g./ if chroms are
-  not formatted short/Ensembl-style)? Maybe we should have a "no commit" fallback and warning/error.
+  not formatted short/Ensembl-style)? Maybe we should have a "no commit" fallback and warning/error. See /e.g./ during testing upload
+  with mock data: ~WARNING scimodom.services.annotation.annotate_data.193 | No records found for Kr6uj7QzWfLJ...~.
 - [ ] import :: ~_validate_columns~ (EUFHeaderImporter) adjusted to check first /non-comment/ row, and raises a ~SpecsError~ if the column
   count does not match (or if emtpy). On the other hand, EUFDataImporter ignore bad rows. Maybe it would make more sense to NOT
   validate the column count in EUFHEaderImporter, leave it to EUFDataImporter to handle it, and add a test to check how
@@ -131,7 +132,7 @@ Draft or long-running issues, WIP, triage, and additional references or context 
 - [ ] search :: Export: (1) add additional columns /e.g./ taxa_id, cto, RNA type, /etc./ that are hidden from the table, but that requires adding these
   to the select query, we need to see if that impacts performance; if not, then (2) add a header with at least modification, taxa_id, and cto; if not
   then (3) format filename (this is the current solution).
-- [ ] browse :: Additional information for the ~Dialog~ or for the export? /e.g./ ~sequencing_platform~, ~basecalling~, ~bioinformatics_workflow~,
+- [X] browse :: Additional information for the ~Dialog~ or for the export? /e.g./ ~sequencing_platform~, ~basecalling~, ~bioinformatics_workflow~,
    ~experiment~, and/or ~ProjectContact~ (~Project~ or eventually ~Dataset~ contact).
 
 - [ ] router :: All routes to ~/~ with backward/forward navigation? This does not allow either to open a link in a new tab. Also how would

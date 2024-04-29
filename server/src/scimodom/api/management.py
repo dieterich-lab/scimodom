@@ -6,7 +6,12 @@ from flask_cors import cross_origin
 from flask_jwt_extended import jwt_required
 
 from scimodom.database.database import get_session
-from scimodom.services.dataset import DataService, InstantiationError, DatasetError
+from scimodom.services.dataset import (
+    DataService,
+    InstantiationError,
+    DatasetError,
+    DatasetHeaderError,
+)
 from scimodom.services.project import ProjectService
 from scimodom.services.mail import get_mail_service
 import scimodom.utils.utils as utils
@@ -112,7 +117,17 @@ def add_dataset():
         return (
             jsonify(
                 {
-                    "message": f'Failed to upload dataset. Either this dataset already exists, or your bedRMod file header does not match the values you entered. Modify the form or the file header and try again. The message received from the server was: "{exc}". If you are unsure about what happened, click "Cancel" and contact the administrator.'
+                    "message": f'Failed to upload dataset. The message received from the server was: "{exc}". If you are unsure about what happened, click "Cancel" and contact the administrator.'
+                }
+            ),
+            500,
+        )
+    except DatasetHeaderError as exc:
+        # no need to log these errors, users should normally handle them
+        return (
+            jsonify(
+                {
+                    "message": f'Failed to upload dataset. Your bedRMod file header does not match the values you entered. Modify the form or the file header and try again. The message received from the server was: "{exc}". If you are unsure about what happened, click "Cancel" and contact the administrator.'
                 }
             ),
             500,
@@ -125,9 +140,7 @@ def add_dataset():
             500,
         )
 
+    # TODO
     # WARNING scimodom.services.annotation.annotate_data.193 | No records found for Kr6uj7QzWfLJ...
-    # DEBUG scimodom.services.dataset.create_dataset.334 | Lifting over dataset from GRCm38 to GRCm39...
-    # DEBUG scimodom.services.dataset.create_dataset.360 | Added dataset MALPJw5m5CWW to project gRHWaFYU with title = test upload 2, and the following associations: m6A:67. Annotating data now...
-    # DEBUG scimodom.services.annotation.annotate_data.197 | Annotating records for EUFID MALPJw5m5CWW...
 
     return jsonify({"result": "Ok"}), 200

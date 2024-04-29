@@ -17,7 +17,12 @@ from scimodom.database.models import (
     ProjectContact,
 )
 import scimodom.database.queries as queries
-from scimodom.services.dataset import DataService, InstantiationError, DatasetError
+from scimodom.services.dataset import (
+    DataService,
+    InstantiationError,
+    DatasetError,
+    DatasetHeaderError,
+)
 from scimodom.services.project import ProjectService
 import scimodom.utils.utils as utils
 
@@ -143,13 +148,13 @@ def _mock_project_service(session, project):
 
 
 def test_validate_imported_fail():
-    with pytest.raises(DatasetError) as exc:
+    with pytest.raises(DatasetHeaderError) as exc:
         DataService.validate_imported("test", "a", "b")
     assert (
         str(exc.value)
         == "Expected a for test; got b (file header). Aborting transaction!"
     )
-    assert exc.type == DatasetError
+    assert exc.type == DatasetHeaderError
 
 
 def test_validate_imported():
