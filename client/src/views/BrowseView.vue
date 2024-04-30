@@ -67,11 +67,6 @@ const splitStr = (str) => {
   return str.split(',')
 }
 
-const onDownload = (value) => {
-  console.log('downloading', value)
-  getApiUrl(`transfer/dataset/${value}`)
-}
-
 const onOverlay = (record) => {
   thisRecord.value = { ...record }
   recordsOverlay.value = true
