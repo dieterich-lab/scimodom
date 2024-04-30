@@ -81,7 +81,7 @@ Draft or long-running issues, WIP, triage, and additional references or context 
 
 ** TODO GENERAL [8/41]
 
-- [ ] refactor :: the API.
+- [ ] refactor :: the API (/e.g./ public all selection-type requests can be grouped under a common route, etc.).
 
 - [ ] download :: Download view temporarily removed (do we want selective/schema DB dumps?), this feature is relegated. Do we want
   to allow ~Export~ to export "all" selected records, not only those lazy loaded and shown on the screen (~SearchView.vue~)? See

@@ -30,6 +30,12 @@ const selectedChrom = ref()
 const selectedChromStart = ref()
 const selectedChromEnd = ref()
 
+// new
+
+const selectedBiotypes = ref()
+const selectedFeatures = ref()
+const selectedGene = ref()
+
 const disabled = computed(() => isAllSelected())
 
 const dt = ref()
@@ -40,11 +46,6 @@ const loading = ref(false)
 const totalRecords = ref(0)
 
 const lazyParams = ref({})
-const filters = ref({
-  gene_name: { value: null, matchMode: FilterMatchMode.STARTS_WITH },
-  gene_biotype: { value: null, matchMode: FilterMatchMode.IN },
-  feature: { value: null, matchMode: FilterMatchMode.IN }
-})
 
 function isAllSelected() {
   return (
@@ -90,13 +91,6 @@ const onPage = (event) => {
 
 const onSort = (event) => {
   lazyParams.value = event
-  if (!disabled.value) {
-    lazyLoad(event)
-  }
-}
-
-const onFilter = (event) => {
-  lazyParams.value.filters = filters.value
   if (!disabled.value) {
     lazyLoad(event)
   }
@@ -165,10 +159,26 @@ const updateSelection = () => {
 function lazyLoad(event) {
   loading.value = true
   lazyParams.value = { ...lazyParams.value, first: event?.first || first.value }
+  // reformat filters for gene, biotypes and features as PV table filters
+  let filters = {
+    gene_name: {
+      value: selectedGene.value == undefined ? null : selectedGene.value,
+      matchMode: 'startsWith'
+    },
+    gene_biotype: {
+      value: selectedBiotypes.value == undefined ? null : selectedBiotypes.value,
+      matchMode: 'in'
+    },
+    feature: {
+      value: selectedFeatures.value == undefined ? null : selectedFeatures.value,
+      matchMode: 'in'
+    }
+  }
   HTTP.get('/search', {
     params: {
       selection: selection.value,
       taxid: taxid.value,
+      geneFilter: fmtFilter(filters),
       chrom: selectedChrom.value == null ? null : selectedChrom.value.chrom,
       chromStart: selectedChromStart.value == null ? 0 : selectedChromStart.value,
       chromEnd:
@@ -179,8 +189,7 @@ function lazyLoad(event) {
           : selectedChromEnd.value,
       firstRecord: lazyParams.value.first,
       maxRecords: lazyParams.value.rows,
-      multiSort: fmtOrder(lazyParams.value.multiSortMeta),
-      tableFilter: fmtFilter(lazyParams.value.filters)
+      multiSort: fmtOrder(lazyParams.value.multiSortMeta)
     },
     paramsSerializer: {
       indexes: null
@@ -189,8 +198,6 @@ function lazyLoad(event) {
     .then(function (response) {
       records.value = response.data.records
       totalRecords.value = response.data.totalRecords
-      biotypes.value = response.data.biotypes
-      features.value = response.data.features
       loading.value = false
     })
     .catch((error) => {
@@ -201,13 +208,20 @@ function lazyLoad(event) {
 onMounted(() => {
   lazyParams.value = {
     first: first.value,
-    rows: rows.value,
-    filters: filters.value
+    rows: rows.value
   }
   HTTP.get('/selection')
     .then(function (response) {
       options.value = response.data
       modification.value = updModification(options.value)
+    })
+    .catch((error) => {
+      console.log(error)
+    })
+  HTTP.get('/features_biotypes')
+    .then(function (response) {
+      biotypes.value = response.data.biotypes
+      features.value = response.data.features
     })
     .catch((error) => {
       console.log(error)
@@ -286,6 +300,51 @@ onMounted(() => {
       <!-- <Divider /> -->
       <div class="grid grid-cols-1 md:grid-cols-10 gap-6 mt-6">
         <div class="col-span-3">
+          <InputText
+            v-model="selectedGene"
+            type="text"
+            placeholder="4. Select gene (optional)"
+            :disabled="disabled"
+            :pt="{
+              root: { class: 'w-full md:w-full' }
+            }"
+            :ptOptions="{ mergeProps: true }"
+          />
+        </div>
+        <div class="col-span-3">
+          <MultiSelect
+            v-model="selectedBiotypes"
+            :options="biotypes"
+            placeholder="5. Select biotype (optional)"
+            :maxSelectedLabels="3"
+            :disabled="disabled"
+            :pt="{
+              root: { class: 'w-full md:w-full' }
+            }"
+            :ptOptions="{ mergeProps: true }"
+          >
+          </MultiSelect>
+        </div>
+        <div class="col-span-3">
+          <MultiSelect
+            v-model="selectedFeatures"
+            :options="features"
+            placeholder="6. Select feature (optional)"
+            :maxSelectedLabels="3"
+            :disabled="disabled"
+            :pt="{
+              root: { class: 'w-full md:w-full' }
+            }"
+            :ptOptions="{ mergeProps: true }"
+          >
+          </MultiSelect>
+        </div>
+        <div></div>
+      </div>
+      <!-- FILTER 3 -->
+      <!-- <Divider /> -->
+      <div class="grid grid-cols-1 md:grid-cols-10 gap-6 mt-6">
+        <div class="col-span-3">
           <Dropdown
             @change="clearCoords()"
             v-model="selectedChrom"
@@ -293,7 +352,7 @@ onMounted(() => {
             optionLabel="chrom"
             showClear
             :disabled="disabled"
-            placeholder="4. Select chromosome (optional)"
+            placeholder="7. Select chromosome (optional)"
             :pt="{
               root: { class: 'w-full md:w-full' }
             }"
@@ -305,7 +364,7 @@ onMounted(() => {
             @input="selectedChromEnd = null"
             v-model="selectedChromStart"
             inputId="minmax"
-            placeholder="5. Enter region start (optional)"
+            placeholder="8. Enter region start (optional)"
             :disabled="selectedChrom == null"
             :min="0"
             :max="selectedChrom == null ? 0 : selectedChrom.size - 1"
@@ -320,7 +379,7 @@ onMounted(() => {
             v-model="selectedChromEnd"
             inputId="minmax"
             :disabled="selectedChromStart == null"
-            placeholder="6. Enter region end (optional)"
+            placeholder="9. Enter region end (optional)"
             :min="selectedChromStart == null ? 0 : selectedChromStart + 1"
             :max="selectedChrom == null ? 0 : selectedChrom.size"
             :pt="{
@@ -358,9 +417,6 @@ onMounted(() => {
           :first="first"
           :rows="rows"
           @page="onPage($event)"
-          v-model:filters="filters"
-          @filter="onFilter($event)"
-          filterDisplay="row"
           @sort="onSort($event)"
           removableSort
           sortMode="multiple"
@@ -391,56 +447,9 @@ onMounted(() => {
           <Column field="strand" header="Strand" exportHeader="strand"></Column>
           <Column field="coverage" header="Coverage" sortable exportHeader="coverage"></Column>
           <Column field="frequency" header="Frequency" sortable exportHeader="frequency"></Column>
-          <Column
-            field="feature"
-            header="Feature"
-            exportHeader="feature"
-            filterField="feature"
-            :showFilterMenu="false"
-          >
-            <template #filter="{ filterModel, filterCallback }">
-              <MultiSelect
-                v-model="filterModel.value"
-                @change="filterCallback()"
-                :options="features"
-                placeholder="Any"
-                :maxSelectedLabels="1"
-                :disabled="disabled"
-              >
-              </MultiSelect>
-            </template>
-          </Column>
-          <Column
-            field="gene_biotype"
-            header="Biotype"
-            exportHeader="biotype"
-            filterField="gene_biotype"
-            :showFilterMenu="false"
-          >
-            <template #filter="{ filterModel, filterCallback }">
-              <MultiSelect
-                v-model="filterModel.value"
-                @change="filterCallback()"
-                :options="biotypes"
-                placeholder="Any"
-                :maxSelectedLabels="1"
-                :disabled="disabled"
-              >
-              </MultiSelect>
-            </template>
-          </Column>
-          <Column field="gene_name" header="Gene" exportHeader="geneName" :showFilterMenu="false">
-            <template #filter="{ filterModel, filterCallback }">
-              <InputText
-                type="text"
-                v-model="filterModel.value"
-                @input="filterCallback()"
-                placeholder="Search"
-                :disabled="disabled"
-                style="width: 8rem"
-              />
-            </template>
-          </Column>
+          <Column field="feature" header="Feature" exportHeader="feature"></Column>
+          <Column field="gene_biotype" header="Biotype" exportHeader="biotype"></Column>
+          <Column field="gene_name" header="Gene" exportHeader="geneName"></Column>
           <Column field="tech" header="Technology" exportHeader="technology"></Column>
           <Column field="dataset_id" header="EUFID" exportHeader="eufid">
             <template #body="{ data }">

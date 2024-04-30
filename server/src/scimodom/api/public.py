@@ -9,6 +9,13 @@ from scimodom.services.public import get_public_service
 api = Blueprint("api", __name__)
 
 
+@api.route("/features_biotypes", methods=["GET"])
+@cross_origin(supports_credentials=True)
+def get_feature_biotypes():
+    public_service = get_public_service()
+    return public_service.get_features_and_biotypes()
+
+
 @api.route("/rna_types", methods=["GET"])
 @cross_origin(supports_credentials=True)
 def get_rna_types():
@@ -71,25 +78,25 @@ def get_search():
     """Search view API."""
     selection_ids = request.args.getlist("selection", type=int)
     taxa_id = request.args.get("taxid", type=int)
+    gene_filter = request.args.getlist("geneFilter", type=str)
     chrom = request.args.get("chrom", type=str)
     chrom_start = request.args.get("chromStart", type=int)
     chrom_end = request.args.get("chromEnd", type=int)
     first_record = request.args.get("firstRecord", type=int)
     max_records = request.args.get("maxRecords", type=int)
     multi_sort = request.args.getlist("multiSort", type=str)
-    table_filter = request.args.getlist("tableFilter", type=str)
 
     public_service = get_public_service()
     response = public_service.get_search(
         selection_ids,
         taxa_id,
+        gene_filter,
         chrom,
         chrom_start,
         chrom_end,
         first_record,
         max_records,
         multi_sort,
-        table_filter,
     )
     return response
 

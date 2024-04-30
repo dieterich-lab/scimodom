@@ -65,6 +65,12 @@ class PublicService:
     def __init__(self, session: Session):
         self._session = session
 
+    def get_features_and_biotypes(self):
+        response = dict()
+        response["features"] = self.FEATURES
+        response["biotypes"] = self.MAPPED_BIOTYPES
+        return response
+
     def get_rna_types(self):
         """Get all RA types.
 
@@ -229,13 +235,13 @@ class PublicService:
         self,
         selection_ids: list[int],
         taxa_id: int,
+        gene_filter: list[str],
         chrom: str | None,
         chrom_start: int,
         chrom_end: int,
         first_record: int,
         max_records: int,
         multi_sort: list[str],
-        table_filter: list[str],
     ):
         """Get Data records for conditional selection, add
         filters and sort.
@@ -244,6 +250,8 @@ class PublicService:
         :type selection_ids: list of int
         :param taxa_id: Taxa ID
         :type taxa_id: int
+        :param gene_filter: Filters (gene-related)
+        :type gene_filter: list of str
         :param chrom: Chromosome
         :type chrom: str
         :param chrom_start: Chromosome start
@@ -256,8 +264,6 @@ class PublicService:
         :type max_records: int
         :param multi_sort: Sorting criteria
         :type multi_sort: list of str
-        :param table_filter: Table filters
-        :type table_filter: list of str
         :returns: Query results
         :rtype: list of dict
         """
@@ -326,7 +332,7 @@ class PublicService:
             )
 
         # annotation filter
-        feature_flt = next((flt for flt in table_filter if "feature" in flt), None)
+        feature_flt = next((flt for flt in gene_filter if "feature" in flt), None)
         if feature_flt:
             _, features, _ = _get_flt(feature_flt)
             query = query.where(DataAnnotation.feature.in_(features))
@@ -341,7 +347,7 @@ class PublicService:
         annotation = self._session.execute(annotation_query).scalar_one()
 
         # index speed up on annotation_id + biotypes + name
-        biotype_flt = next((flt for flt in table_filter if "gene_biotype" in flt), None)
+        biotype_flt = next((flt for flt in gene_filter if "gene_biotype" in flt), None)
         if biotype_flt:
             _, mapped_biotypes, _ = _get_flt(biotype_flt)
             biotypes = [k for k, v in self.BIOTYPES.items() if v in mapped_biotypes]
@@ -350,7 +356,7 @@ class PublicService:
         query = query.where(GenomicAnnotation.annotation_id == annotation).where(
             GenomicAnnotation.biotype.in_(biotypes)
         )
-        name_flt = next((flt for flt in table_filter if "gene_name" in flt), None)
+        name_flt = next((flt for flt in gene_filter if "gene_name" in flt), None)
         if name_flt:
             _, name, _ = _get_flt(name_flt)
             query = query.where(GenomicAnnotation.name.ilike(f"{name[0]}%"))
@@ -376,13 +382,11 @@ class PublicService:
         # paginate
         query = query.offset(first_record).limit(max_records)
 
-        response_object = dict()
-        response_object["totalRecords"] = length
-        response_object["records"] = self._dump(query)
-        response_object["features"] = self.FEATURES
-        response_object["biotypes"] = self.MAPPED_BIOTYPES
+        response = dict()
+        response["totalRecords"] = length
+        response["records"] = self._dump(query)
 
-        return response_object
+        return response
 
     def get_dataset(self):
         """Retrieve all dataset/projects.
