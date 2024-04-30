@@ -22,6 +22,7 @@ from scimodom.database.models import (
     Project,
     ProjectContact,
     ProjectSource,
+    RNAType,
     Taxonomy,
     Taxa,
     Selection,
@@ -63,6 +64,16 @@ class PublicService:
 
     def __init__(self, session: Session):
         self._session = session
+
+    def get_rna_types(self):
+        """Get all RA types.
+
+        :returns: Query result
+        :rtype: list of dict
+        """
+
+        query = select(RNAType.id, RNAType.name.label("label"))
+        return self._dump(query)
 
     def get_project(self):
         """Get all projects.

@@ -14,15 +14,11 @@ import FormButton from '@/components/ui/FormButton.vue'
 const props = defineProps(['nextCallback', 'prevCallback'])
 const model = defineModel()
 
+const rna = ref([])
 const modification = ref([])
 const method = ref([])
 const taxid = ref([])
 const assembly = ref([])
-// TODO define in BE
-const rna = ref([
-  { id: 'mRNA', label: 'mRNA' },
-  { id: 'rRNA', label: 'rRNA' }
-])
 
 const pushValues = {
   rna: '',
@@ -99,6 +95,13 @@ const getAssemblies = (taxid) => {
 }
 
 onMounted(() => {
+  HTTP.get('/rna_types')
+    .then(function (response) {
+      rna.value = response.data
+    })
+    .catch((error) => {
+      console.log(error)
+    })
   HTTP.get('/modification')
     .then(function (response) {
       modification.value = response.data

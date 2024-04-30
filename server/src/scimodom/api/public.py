@@ -9,6 +9,13 @@ from scimodom.services.public import get_public_service
 api = Blueprint("api", __name__)
 
 
+@api.route("/rna_types", methods=["GET"])
+@cross_origin(supports_credentials=True)
+def get_rna_types():
+    public_service = get_public_service()
+    return public_service.get_rna_types()
+
+
 @api.route("/modification", methods=["GET"])
 @cross_origin(supports_credentials=True)
 def get_modification():

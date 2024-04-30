@@ -44,7 +44,7 @@ class Config:
         HTTP_PUBLIC_URL: ClassVar[str] = os.environ["HTTP_PUBLIC_URL"]
     except KeyError:
         msg = (
-            "Undefined environment variable(s): SMTP_SERVER, SMTP_FROM_ADDRESS, and/or PUBLIC_URL. "
+            "Undefined environment variable(s): SMTP_SERVER, SMTP_FROM_ADDRESS, SMTP_TO_ADDRESS, and/or PUBLIC_URL. "
             "Check your .env file!"
         )
         raise MissingEnviron(msg)
@@ -95,7 +95,8 @@ class Config:
     ) -> None:
         """Constructor method.
 
-        Note: Default tables from import directory, no check.
+        :param import_dir: start-up import directory
+        :type import_dir: str | Path | None
         """
 
         if import_dir is None:
@@ -103,6 +104,10 @@ class Config:
         else:
             self.import_dir = import_dir
 
+        self.rna_tbl: tuple[str, Path] = (
+            "RNAType",
+            Path(self.import_dir, "rna_type.csv"),
+        )
         self.modomics_tbl: tuple[str, Path] = (
             "Modomics",
             Path(self.import_dir, "modomics.csv"),

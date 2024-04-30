@@ -320,7 +320,7 @@ Project creation is handled via request. Each project is assigned a **Sci-ModoM*
         ]
     }
 
-``"external_sources": null`` is allowed, ``"doi": null`` or ``"pmid": null`` are allowed, but not both simultaneously. ``"external_sources"`` can be a list of entries, or a single entry (as above). ``"metadata"`` can be a list of entries (as above), or a single entry (at least one entry is required, and all keys are required). Each ``"metadata"`` entry provides information for a given dataset (bedRMod file). Upon successful upload, a dataset is assigned a EUF identifier or EUFID. A given project (SMID) can thus have one or more dataset (EUFID) attached to it. A single dataset may also require two or more entries for ``metadata`` *e.g.* if two or more modifications are given in the same bedRMod file.
+``"external_sources": null`` is allowed, ``"doi": null`` or ``"pmid": null`` are allowed, but not both simultaneously. ``"external_sources"`` can be a list of entries, or a single entry (as above). ``"date_published": null`` is allowed (no public sources). ``"metadata"`` can be a list of entries (as above), or a single entry (at least one entry is required, and all keys are required). Each ``"metadata"`` entry provides information for a given dataset (bedRMod file). Upon successful upload, a dataset is assigned a EUF identifier or EUFID. A given project (SMID) can thus have one or more dataset (EUFID) attached to it. A single dataset may also require two or more entries for ``metadata`` *e.g.* if two or more modifications are given in the same bedRMod file.
 
 .. attention::
 
@@ -333,7 +333,7 @@ Project creation is handled via request. Each project is assigned a **Sci-ModoM*
 Nomenclature
 """"""""""""
 
-The nomenclature for modifications (table ``modomics``), technologies (table ``method``), and taxa (tables ``taxonomy`` and ``ncbi_taxa``) is fixed. Assembly and annotation follow the Ensembl format.
+The nomenclature for RNA types (table ``rna_type``), modifications (table ``modomics``), technologies (table ``method``), and taxa (tables ``taxonomy`` and ``ncbi_taxa``) is fixed. Assembly and annotation follow the Ensembl format.
 
 The classification of detection technologies is taken from this `paper <https://www.nature.com/articles/s12276-022-00821-0>`_ *.e.g.* NGS 2nd generation is subclassified into direct sequencing, chemical-assisted sequencing (m6A-SAC-seq, RiboMeth-seq, ...), Antibody-based (m6A-seq/MeRIP, ...), enzyme/protein-assisted (DART-seq, MAZTER-seq, ...).
 
@@ -411,16 +411,14 @@ It is currently not possible to perform a full database upgrade. A method implem
 Setup
 -----
 
-*All this is subject to change*
-
 At lauchtime, the app uses tables defined in ``config.py`` to perform an ``INSERT... ON DUPLICATE KEY UPDATE``
 
 .. code-block:: python
 
-    setup = SetupService(app.session)
-    setup.upsert_all()
+    setup_service = get_setup_service()
+    setup_service.upsert_all()
 
-These tables (``modomics``, ``method``, ``taxonomy``, ``ncbi_taxa``, ``assembly``, ``assembly_version``, ``annotation``, and ``annotation_version``) allow to define base options for project creation, and establish a standard terminology for the application. The import format is *CSV*, and the header must match the column names (including *id*) from the corresponding database table, *e.g. ncbi_taxa.csv*
+These tables (``rna_type``, ``modomics``, ``method``, ``taxonomy``, ``ncbi_taxa``, ``assembly``, ``assembly_version``, ``annotation``, and ``annotation_version``) allow to define base options for project creation, and establish a standard terminology for the application. The import format is *CSV*, and the header must match the column names (including *id*) from the corresponding database table, *e.g. ncbi_taxa.csv*
 
 .. code-block:: bash
 
@@ -428,22 +426,17 @@ These tables (``modomics``, ``method``, ``taxonomy``, ``ncbi_taxa``, ``assembly`
     9606,Homo sapiens,H. sapiens,8128e900
     10090,Mus musculus,M. musculus,8128e900
 
-This is typically done *e.g.*
+The upsert can be done for one model/table at a time, or forced with
 
 .. code-block:: bash
 
-    # under docker
-    docker compose -f docker-compose-db-only.yml up -d
-    # under server
-    alembic upgrade head
-    upsert --all # <- this is subject to change!
-
+    flask setup [options]
 
 Projects are added with
 
 .. code-block:: bash
 
-    flask project [OPTIONS] TEMPLATE
+    flask project [options] template
 
 After project creation, dataset can be added with
 

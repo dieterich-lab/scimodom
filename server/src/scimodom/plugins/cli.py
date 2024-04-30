@@ -20,6 +20,7 @@ from scimodom.services.annotation import AnnotationService
 from scimodom.services.assembly import AssemblyService
 from scimodom.services.project import ProjectService
 from scimodom.services.dataset import DataService
+from scimodom.services.setup import get_setup_service
 import scimodom.utils.utils as utils
 
 
@@ -307,6 +308,34 @@ def add_all(directory: Path, templates: list[str]) -> None:
             )
         finally:
             session.close()
+
+
+def upsert(init: bool, **kwargs) -> None:
+    """Provies a CLI function for the SetupService.
+    Upsert a given table, or all default tables (defined
+    in the config).
+
+    :param init: Upsert all default tables (same as start-up)
+    :type init: bool
+    """
+    setup_service = get_setup_service()
+    if init:
+        setup_service.upsert_all()
+    else:
+        model = utils.get_model(kwargs.get("model"))
+        table = setup_service.get_table(model, kwargs.get("table"))
+        setup_service.validate_table(model, table)
+        msg = (
+            f"Updating {model.__name__} (table {model.__table__.name}) using "
+            f"the following columns: {table.columns.tolist()}."
+        )
+        click.secho(msg, fg="green")
+        click.secho("Continue [y/n]?", fg="green")
+        c = click.getchar()
+        if c not in ["y", "Y"]:
+            return
+        setup_service.bulk_upsert(model, table)
+    click.secho("Successfully performed INSERT... ON DUPLICATE KEY UPDATE.", fg="green")
 
 
 def _get_single(metadata, title):

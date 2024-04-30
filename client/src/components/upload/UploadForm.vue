@@ -21,11 +21,7 @@ import FormButton from '@/components/ui/FormButton.vue'
 
 const router = useRouter()
 
-// TODO define in BE
-const rna = ref([
-  { id: 'mRNA', label: 'mRNA' },
-  { id: 'rRNA', label: 'rRNA' }
-])
+const rna = ref([])
 const options = ref([])
 const modification = ref([])
 const organism = ref([])
@@ -190,6 +186,13 @@ const getAssemblies = (value) => {
 }
 
 onMounted(() => {
+  HTTP.get('/rna_types')
+    .then(function (response) {
+      rna.value = response.data
+    })
+    .catch((error) => {
+      console.log(error)
+    })
   HTTP.get('/selection')
     .then(function (response) {
       options.value = response.data

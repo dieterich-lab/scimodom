@@ -13,6 +13,7 @@ from scimodom.api.upload import upload_api
 from scimodom.api.transfer import transfer_api
 from scimodom.app_singleton import create_app_singleton
 from scimodom.database.database import make_session, init
+from scimodom.services.setup import get_setup_service
 from scimodom.frontend import frontend
 from scimodom.plugins.cli import (
     add_annotation,
@@ -21,6 +22,7 @@ from scimodom.plugins.cli import (
     add_dataset,
     add_all,
     validate_dataset_title,
+    upsert,
 )
 from scimodom.utils.url_routes import (
     API_PREFIX,
@@ -45,6 +47,8 @@ def create_app():
     engine, session = make_session(app.config["DATABASE_URI"])
     app.session = scoped_session(session)
     init(engine, lambda: app.session)
+    setup_service = get_setup_service()
+    setup_service.upsert_all()
 
     app.register_blueprint(api, url_prefix=f"/{API_PREFIX}")
     app.register_blueprint(user_api, url_prefix=USER_API_ROUTE)
@@ -199,6 +203,42 @@ def create_app():
         TEMPLATES is the name (w/o extension) of one or more project templates.
         """
         add_all(directory, templates)
+
+    @app.cli.command(
+        "setup", epilog="Check docs at https://dieterich-lab.github.io/scimodom/."
+    )
+    @click.option(
+        "-m",
+        "--model",
+        default=None,
+        type=click.STRING,
+        help="""Upsert MODEL using [--table TABLE]. Performs an INSERT... ON DUPLICATE KEY UPDATE. Requires [--table TABLE]""",
+    )
+    @click.option(
+        "-t",
+        "--table",
+        default=None,
+        type=click.STRING,
+        help="""Database table for MODEL with column names. Only columns matching __table__.columns are used. CSV format. Requires [--model MODEL]""",
+    )
+    @click.option(
+        "--init",
+        is_flag=True,
+        help="This flag silently overrides other options. Called on application start-up.",
+    )
+    def setup(model, table, init):
+        """Upsert selected or all default DB tables.
+        Selected model/table names must exist.
+        """
+        kwargs = dict()
+        if not init:
+            if None not in (model, table):
+                kwargs = {"model": model, "table": table}
+            else:
+                raise TypeError(
+                    "'NoneType' object is not a valid argument for [--model] and/or [--table]."
+                )
+        upsert(init, **kwargs)
 
     # does this goes here?
     @app.teardown_appcontext

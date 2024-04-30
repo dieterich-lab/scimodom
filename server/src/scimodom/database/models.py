@@ -8,6 +8,19 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from scimodom.database.database import Base
 
 
+class RNAType(Base):
+    """RNA types (nomenclature)"""
+
+    __tablename__ = "rna_type"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, autoincrement=False)
+    name: Mapped[str] = mapped_column(String(128), nullable=False, unique=True)
+
+    modifications: Mapped[List["Modification"]] = relationship(
+        back_populates="inst_rna"
+    )
+
+
 class Modomics(Base):
     """Modified residues"""
 
@@ -32,11 +45,13 @@ class Modification(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     modomics_id: Mapped[str] = mapped_column(ForeignKey("modomics.id"), index=True)
-    rna: Mapped[str] = mapped_column(String(32), nullable=False)
+    # rna: Mapped[str] = mapped_column(String(32), nullable=False)
+    rna: Mapped[str] = mapped_column(ForeignKey("rna_type.id"))
 
     __table_args__ = (UniqueConstraint(modomics_id, rna),)
 
     inst_modomics: Mapped["Modomics"] = relationship(back_populates="modifications")
+    inst_rna: Mapped["RNAType"] = relationship(back_populates="modifications")
     selections: Mapped[List["Selection"]] = relationship(
         back_populates="inst_modification"
     )

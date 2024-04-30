@@ -42,8 +42,7 @@ dependencies = [
   "SQLAlchemy",
 ]
 
-[project.scripts]
-upsert = "scimodom.database.maintenance.upsert:main"
+# [project.scripts]
 
 [project.urls]
 Github = "https://github.com/dieterich-lab/scimodom"

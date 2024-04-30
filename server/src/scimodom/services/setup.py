@@ -2,11 +2,12 @@
 
 import logging
 from pathlib import Path
+from typing import Optional
 
 import pandas as pd  # type: ignore # import-untyped
 
 from scimodom.config import Config
-from scimodom.database.database import Base
+from scimodom.database.database import Base, get_session
 import scimodom.utils.utils as utils
 
 logger = logging.getLogger(__name__)
@@ -24,6 +25,7 @@ class SetupService:
         self._session = session
         self._config = Config()
         self._models_tables = [
+            self._config.rna_tbl,
             self._config.modomics_tbl,
             self._config.taxonomy_tbl,
             self._config.ncbi_taxa_tbl,
@@ -33,6 +35,11 @@ class SetupService:
             self._config.annotation_version_tbl,
             self._config.method_tbl,
         ]
+
+        for _, table in self._models_tables:
+            if not table.is_file():
+                msg = f"No such file or directory: {table.as_posix()}"
+                raise FileNotFoundError(msg)
 
     @staticmethod
     def get_table(model: Base, table: str | Path) -> pd.DataFrame:
@@ -102,3 +109,13 @@ class SetupService:
             table = self.get_table(model, t)
             self.validate_table(model, table)
             self.bulk_upsert(model, table)
+
+
+_cached_service: Optional[SetupService] = None
+
+
+def get_setup_service() -> SetupService:
+    global _cached_service
+    if _cached_service is None:
+        _cached_service = SetupService(session=get_session())
+    return _cached_service
