@@ -19,6 +19,7 @@ const props = defineProps({
   }
 })
 const classes = props.uiStyle.buttonClasses()
+console.log(`Classes: ${classes}`)
 </script>
 <template>
   <Button @click="$emit('onClick')" :type="type" :class="classes">
