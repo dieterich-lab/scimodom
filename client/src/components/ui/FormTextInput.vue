@@ -1,4 +1,6 @@
 <script setup>
+import AbstractStyle from '@/ui_styles/AbstractStyle.js'
+import DefaultStyle from '@/ui_styles/DefaultStyle.js'
 const model = defineModel()
 const props = defineProps({
   error: {
@@ -8,16 +10,6 @@ const props = defineProps({
     type: String,
     required: false,
     default: 'text'
-  },
-  isLogin: {
-    type: Boolean,
-    required: false,
-    default: false
-  },
-  isSignIn: {
-    type: Boolean,
-    required: false,
-    default: false
   },
   disabled: {
     type: Boolean,
@@ -29,58 +21,28 @@ const props = defineProps({
     required: false,
     default: ''
   },
-  labelCls: {
-    type: String,
+  uiStyle: {
+    type: AbstractStyle,
     required: false,
-    default: 'text-primary-500 font-semibold'
-  },
-  errMsgCls: {
-    type: String,
-    required: false,
-    default: 'text-red-700'
-  },
-  errIconCls: {
-    type: String,
-    required: false,
-    default: 'pi pi-times-circle place-self-center text-red-700'
-  },
-  // overwrites component style in case of error
-  errCls: {
-    type: String,
-    required: false,
-    default: '!ring-red-700'
+    default: DefaultStyle
   }
 })
 
 // pt style for login and sign in
-const loginStyle = {
-  root: ({ props, context, parent }) => ({
+const pt = {
+  root: ({ _1, _2, parent }) => ({
     class: [
-      'bg-primary-50/25 dark:bg-surface-900/20',
-      {
-        'ring-primary-500/20 dark:ring-primary-500/20': parent.instance.$name != 'InputGroup'
-      }
+      parent.instance.$name === 'InputGroup'
+        ? props.uiStyle.inputTextGroupClasses()
+        : props.uiStyle.inputTextDefaultClasses()
     ]
   })
 }
-// TODO: change with FormBox color
-const signInStyle = {
-  root: ({ props, context, parent }) => ({
-    class: [
-      'bg-primary-50/25 dark:bg-surface-900/20',
-      {
-        'ring-primary-500/20 dark:ring-primary-500/20': parent.instance.$name != 'InputGroup'
-      }
-    ]
-  })
-}
-const pt = props.isLogin ? loginStyle : props.isSignIn ? signInStyle : {}
-const ptOptions = props.isLogin || props.isSignIn ? { mergeProps: true } : {}
 </script>
 
 <template>
   <div class="inline-flex flex-col gap-2">
-    <label for="field" :class="props.labelCls">
+    <label for="field" :class="props.uiStyle.labelClasses()">
       <slot></slot>
     </label>
     <InputText
@@ -90,12 +52,12 @@ const ptOptions = props.isLogin || props.isSignIn ? { mergeProps: true } : {}
       :placeholder="props.placeholder"
       :disabled="props.disabled"
       :pt="pt"
-      :ptOptions="ptOptions"
-      :class="error ? props.errCls : ''"
+      :ptOptions="{ mergeProps: true }"
+      :class="error ? props.uiStyle.errorClasses() : ''"
     />
     <span class="inline-flex items-baseline">
-      <i :class="error ? props.errIconCls : ''" />
-      <span :class="['pl-1 place-self-center', props.errMsgCls]">{{ error }}&nbsp;</span>
+      <i :class="error ? props.uiStyle.errorIconClasses() : ''" />
+      <span :class="['pl-1 place-self-center', props.uiStyle.errorClasses]">{{ error }}&nbsp;</span>
     </span>
   </div>
 </template>

@@ -14,7 +14,6 @@ function ok() {
 <template>
   <form @submit="ok">
     <FromBox>
-      {{ dialogState.message }}
       <FormButtonGroup>
         <FormButton type="submit">OK</FormButton>
       </FormButtonGroup>

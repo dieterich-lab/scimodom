@@ -56,6 +56,7 @@ function cancel() {
 function resetPassword() {
   dialogState.email = email.value
   dialogState.state = DIALOG.RESET_PASSWORD_REQUEST
+  dialogState.message = null
 }
 
 const onSubmit = handleSubmit((values) => {
@@ -66,21 +67,8 @@ const onSubmit = handleSubmit((values) => {
 <template>
   <form @submit="onSubmit">
     <FormBox>
-      <FormText>{{ dialogState.message }}</FormText>
-      <FormTextInput
-        v-model="email"
-        labelCls="text-primary-50 font-semibold"
-        :isLogin="true"
-        :error="errors.email"
-        >Email
-      </FormTextInput>
-      <FormTextInput
-        v-model="password"
-        labelCls="text-primary-50 font-semibold"
-        :isLogin="true"
-        :error="errors.password"
-        type="password"
-      >
+      <FormTextInput v-model="email" :error="errors.email"> Email </FormTextInput>
+      <FormTextInput v-model="password" :error="errors.password" type="password">
         Password
       </FormTextInput>
       <FormButtonGroup>
