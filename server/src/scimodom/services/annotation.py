@@ -1,3 +1,4 @@
+import fcntl
 import logging
 from pathlib import Path
 from posixpath import join as urljoin
@@ -62,6 +63,7 @@ class AnnotationService:
 
     DATA_PATH: ClassVar[str | Path] = Config.DATA_PATH
     DATA_SUB_PATH: ClassVar[str] = "annotation"
+    DATA_GENE_CACHE_PATH: ClassVar[Path] = Path("cache", "gene", "selection")
     FMT: ClassVar[str] = "gtf"  # only handles GTF
     ANNOTATION_FILE: ClassVar[
         Callable
@@ -143,6 +145,12 @@ class AnnotationService:
             msg = f"DATA PATH {Path(cls.DATA_PATH, cls.DATA_SUB_PATH)} not found! Terminating!"
             raise FileNotFoundError(msg)
         else:
+            if not Path(cls.DATA_PATH, cls.DATA_GENE_CACHE_PATH).is_dir():
+                msg = f"DATA PATH {Path(cls.DATA_PATH, cls.DATA_GENE_CACHE_PATH)} not found! Creating!"
+                logger.warning(msg)
+                Path(cls.DATA_PATH, cls.DATA_GENE_CACHE_PATH).mkdir(
+                    parents=True, mode=0o755
+                )
             return super(AnnotationService, cls).__new__(cls)
 
     @staticmethod
@@ -153,6 +161,15 @@ class AnnotationService:
         :rtype: Path
         """
         return Path(AnnotationService.DATA_PATH, AnnotationService.DATA_SUB_PATH)
+
+    @staticmethod
+    def get_gene_cache_path() -> Path:
+        """Construct path to gene cache (selection).
+
+        :returns: Path to gene cache
+        :rtype: Path
+        """
+        return Path(AnnotationService.DATA_PATH, AnnotationService.DATA_GENE_CACHE_PATH)
 
     def create_annotation(self) -> None:
         """Create destination, download gene annotation,
@@ -208,6 +225,39 @@ class AnnotationService:
             buffer.buffer_data(record)
         buffer.flush()
         self._session.commit()
+
+    def update_gene_cache(self, selection_ids: list[int]) -> None:
+        """Update gene cache.
+
+        :param selection_ids: Selection ID(s)
+        :type selection_ids: list of int
+        """
+        cache_path = self.get_gene_cache_path()
+        for selection_id in selection_ids:
+            query = (
+                select(Data.id)
+                .join_from(Data, Association, Data.inst_association)
+                .where(Association.selection_id == selection_id)
+            )
+            dataset_ids = self._session.execute(query).scalars().all()
+            query = (
+                select(GenomicAnnotation.name)
+                .join_from(
+                    GenomicAnnotation, DataAnnotation, GenomicAnnotation.annotations
+                )
+                .where(DataAnnotation.data_id.in_(dataset_ids))
+            ).distinct()
+            genes = list(
+                filter(
+                    lambda g: g is not None,
+                    set(self._session.execute(query).scalars().all()),
+                )
+            )
+
+            with open(Path(cache_path, str(selection_id)), "w") as fc:
+                fcntl.flock(fc.fileno(), fcntl.LOCK_EX)
+                fc.write("\n".join(genes))
+                fcntl.flock(fc.fileno(), fcntl.LOCK_UN)
 
     def _get_files_path(self) -> None:
         """Construct file path (annotation and chrom files) for

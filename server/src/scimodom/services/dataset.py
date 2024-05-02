@@ -365,9 +365,10 @@ class DataService:
         )
         logger.debug(msg)
 
-        # annotate newly imported data
+        # annotate newly imported data, update cache
         annotation_service = AnnotationService(session=self._session, taxa_id=taxa_id)
         annotation_service.annotate_data(self._eufid)
+        annotation_service.update_gene_cache(self._selection_id)
 
     def get_eufid(self) -> str:
         """Return newly created EUFID.

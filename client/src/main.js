@@ -11,6 +11,7 @@ import VueCookies from 'vue-cookies'
 import { createPinia } from 'pinia'
 // UI components
 import 'primeicons/primeicons.css'
+import AutoComplete from 'primevue/autocomplete'
 import Button from 'primevue/button'
 import CascadeSelect from 'primevue/cascadeselect'
 import Column from 'primevue/column'
@@ -56,6 +57,7 @@ app.use(router)
 app.use(VueCookies)
 app.use(createPinia())
 
+app.component('AutoComplete', AutoComplete)
 app.component('Button', Button)
 app.component('CascadeSelect', CascadeSelect)
 app.component('Column', Column)

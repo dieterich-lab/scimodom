@@ -9,6 +9,14 @@ from scimodom.services.public import get_public_service
 api = Blueprint("api", __name__)
 
 
+@api.route("/genes", methods=["GET"])
+@cross_origin(supports_credentials=True)
+def get_genes():
+    selection_ids = request.args.getlist("selection", type=int)
+    public_service = get_public_service()
+    return public_service.get_gene_list(selection_ids)
+
+
 @api.route("/features_biotypes", methods=["GET"])
 @cross_origin(supports_credentials=True)
 def get_feature_biotypes():

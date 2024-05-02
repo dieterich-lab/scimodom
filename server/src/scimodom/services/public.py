@@ -1,3 +1,4 @@
+from itertools import chain
 from pathlib import Path
 from typing import ClassVar, Optional
 
@@ -64,6 +65,19 @@ class PublicService:
 
     def __init__(self, session: Session):
         self._session = session
+
+    def get_gene_list(self, selection_ids):
+        """Retrieve gene list for selection.
+
+        :param selection_ids: Selection ID(s)
+        :type selection_ids: list of int
+        :returns: Query result
+        :rtype: list
+        """
+        cache_path = AnnotationService.get_gene_cache_path()
+        files = [Path(cache_path, str(selection_id)) for selection_id in selection_ids]
+        genes = [fc.read_text().split() for fc in files]
+        return list(set(chain(*genes)))
 
     def get_features_and_biotypes(self):
         response = dict()
@@ -356,10 +370,18 @@ class PublicService:
         query = query.where(GenomicAnnotation.annotation_id == annotation).where(
             GenomicAnnotation.biotype.in_(biotypes)
         )
+
+        # one gene is selected the matching is done in FE, so here we can really
+        # just get an equal, not an ilike
         name_flt = next((flt for flt in gene_filter if "gene_name" in flt), None)
         if name_flt:
             _, name, _ = _get_flt(name_flt)
-            query = query.where(GenomicAnnotation.name.ilike(f"{name[0]}%"))
+            print(f">>>> {name_flt}, {name}, {name[0]}")
+            query = query.where(GenomicAnnotation.name == name[0])
+        # name_flt = next((flt for flt in gene_filter if "gene_name" in flt), None)
+        # if name_flt:
+        #     _, name, _ = _get_flt(name_flt)
+        #     query = query.where(GenomicAnnotation.name.ilike(f"{name[0]}%"))
 
         query = query.group_by(DataAnnotation.data_id)
 

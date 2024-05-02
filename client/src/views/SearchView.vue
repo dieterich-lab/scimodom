@@ -36,6 +36,9 @@ const selectedBiotypes = ref()
 const selectedFeatures = ref()
 const selectedGene = ref()
 
+const genes = ref()
+const filteredGenes = ref()
+
 const disabled = computed(() => isAllSelected())
 
 const dt = ref()
@@ -100,12 +103,25 @@ const onExport = () => {
   dt.value.exportCSV()
 }
 
+const searchGene = (event) => {
+  setTimeout(() => {
+    if (!event.query.trim().length) {
+      filteredGenes.value = [...genes.value]
+    } else {
+      filteredGenes.value = genes.value.filter((g) => {
+        return g.toLowerCase().startsWith(event.query.toLowerCase())
+      })
+    }
+  }, 250)
+}
+
 const updateOrganism = () => {
   selectedOrganism.value = undefined
   selectedTechnology.value = undefined
   selectedChrom.value = undefined
   selectedChromStart.value = undefined
   selectedChromEnd.value = undefined
+  selectedGene.value = undefined
   technology.value = undefined
   selection.value = undefined
   records.value = undefined
@@ -117,6 +133,7 @@ const updateTechnology = () => {
   selectedChrom.value = undefined
   selectedChromStart.value = undefined
   selectedChromEnd.value = undefined
+  selectedGene.value = undefined
   selection.value = undefined
   records.value = undefined
   technology.value = updTechnologyFromModAndOrg(
@@ -130,6 +147,7 @@ const updateSelection = () => {
   selectedChrom.value = undefined
   selectedChromStart.value = undefined
   selectedChromEnd.value = undefined
+  selectedGene.value = undefined
   records.value = undefined
   let result = updSelectionFromAll(
     options.value,
@@ -149,6 +167,21 @@ const updateSelection = () => {
     HTTP.get(`/chrom/${taxid.value}`)
       .then(function (response) {
         chroms.value = response.data
+      })
+      .catch((error) => {
+        console.log(error)
+      })
+    // get genes
+    HTTP.get('/genes', {
+      params: {
+        selection: selection.value
+      },
+      paramsSerializer: {
+        indexes: null
+      }
+    })
+      .then(function (response) {
+        genes.value = response.data.sort()
       })
       .catch((error) => {
         console.log(error)
@@ -244,7 +277,7 @@ onMounted(() => {
         RNA modifications
       </h1>
       <p class="text-lg font-normal text-gray-500 dark:text-surface-400 lg:text-xl">
-        Select filters and query the database
+        Select filters and query the database {{ selectedGene }}
       </p>
       <!-- FILTER 1 -->
       <Divider />
@@ -300,13 +333,16 @@ onMounted(() => {
       <!-- <Divider /> -->
       <div class="grid grid-cols-1 md:grid-cols-10 gap-6 mt-6">
         <div class="col-span-3">
-          <InputText
+          <AutoComplete
             v-model="selectedGene"
-            type="text"
+            :suggestions="filteredGenes"
+            @complete="searchGene"
+            forceSelection
             placeholder="4. Select gene (optional)"
             :disabled="disabled"
             :pt="{
-              root: { class: 'w-full md:w-full' }
+              root: { class: 'w-full md:w-full' },
+              input: { class: 'w-full md:w-full' }
             }"
             :ptOptions="{ mergeProps: true }"
           />
