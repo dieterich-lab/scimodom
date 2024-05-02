@@ -2,6 +2,7 @@ import datetime
 import logging
 import os
 from pathlib import Path
+from sys import stderr
 from typing import ClassVar
 
 from dotenv import load_dotenv
@@ -11,10 +12,18 @@ DEFAULT_FRONTEND_PATH = (
 )
 
 
-class MissingEnviron(Exception):
-    """Exception handling for missing environment variable."""
+_env_file = None
 
-    pass
+
+def _get_required_parameter(name: str):
+    try:
+        return os.environ[name]
+    except KeyError:
+        print(
+            f"Required parameter '{name}' not set. Please check the file '{_env_file}'.",
+            file=stderr,
+        )
+        exit(1)
 
 
 class Config:
@@ -24,30 +33,17 @@ class Config:
     :type import_dir: Path | str
     """
 
-    ENV_FILE: ClassVar[str] = os.getenv("ENV_FILE", ".env")
-    load_dotenv(ENV_FILE)
+    global _env_file
+    _env_file = os.getenv("ENV_FILE", ".env")
+    ENV_FILE: ClassVar[str] = _env_file
+    load_dotenv(_env_file)
 
-    try:
-        DATABASE_URI: ClassVar[str] = os.environ["DATABASE_URI"]
-        SECRET_KEY: ClassVar[str] = os.environ["SECRET_KEY"]
-    except KeyError:
-        msg = (
-            "Undefined environment variable(s): DATABASE_URI and/or SECRET_KEY. "
-            "Check your .env file!"
-        )
-        raise MissingEnviron(msg)
-
-    try:
-        SMTP_SERVER: ClassVar[str] = os.environ["SMTP_SERVER"]
-        SMTP_FROM_ADDRESS: ClassVar[str] = os.environ["SMTP_FROM_ADDRESS"]
-        SMTP_TO_ADDRESS: ClassVar[str] = os.environ["SMTP_TO_ADDRESS"]
-        HTTP_PUBLIC_URL: ClassVar[str] = os.environ["HTTP_PUBLIC_URL"]
-    except KeyError:
-        msg = (
-            "Undefined environment variable(s): SMTP_SERVER, SMTP_FROM_ADDRESS, SMTP_TO_ADDRESS, and/or PUBLIC_URL. "
-            "Check your .env file!"
-        )
-        raise MissingEnviron(msg)
+    DATABASE_URI: ClassVar[str] = _get_required_parameter("DATABASE_URI")
+    SECRET_KEY: ClassVar[str] = _get_required_parameter("SECRET_KEY")
+    SMTP_SERVER: ClassVar[str] = _get_required_parameter("SMTP_SERVER")
+    SMTP_FROM_ADDRESS: ClassVar[str] = _get_required_parameter("SMTP_FROM_ADDRESS")
+    SMTP_TO_ADDRESS: ClassVar[str] = _get_required_parameter("SMTP_TO_ADDRESS")
+    HTTP_PUBLIC_URL: ClassVar[str] = _get_required_parameter("HTTP_PUBLIC_URL")
 
     FLASK_DEBUG: ClassVar[bool] = eval(os.getenv("FLASK_DEBUG", "False"))
     SESSION_COOKIE_SAMESITE: ClassVar[str | None] = os.getenv("SESSION_COOKIE_SAMESITE")
