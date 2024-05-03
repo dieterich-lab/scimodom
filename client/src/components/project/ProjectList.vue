@@ -20,7 +20,6 @@ onMounted(() => {
 })
 
 function selectProject(data) {
-  console.log('DATA', data)
   dialogRef.value.close(data)
 }
 </script>
