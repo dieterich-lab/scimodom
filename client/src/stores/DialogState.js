@@ -7,7 +7,7 @@ const DIALOG = Object.freeze({
   ALERT: Symbol('ALERT'),
   REGISTER_ENTER_DATA: Symbol('REGISTER_ENTER_DATA'),
   RESET_PASSWORD_REQUEST: Symbol('RESET_PASSWORD_REQUEST'),
-  RESET_PASSWORD_NEW_PASSWORD: Symbol('RESET_PASSWORD_NEW_PASSWORD')
+  CHANGE_PASSWORD: Symbol('CHANGE_PASSWORD')
 })
 
 const useDialogState = defineStore('dialogState', {

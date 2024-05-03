@@ -4,7 +4,7 @@ import LoginForm from '@/components/user/LoginForm.vue'
 import RegistrationForm from '@/components/user/RegistrationFrom.vue'
 import AlertBox from '@/components/user/AlertBox.vue'
 import RequestPasswordResetForm from '@/components/user/RequestPasswordResetForm.vue'
-import DoPasswordResetForm from '@/components/user/DoPasswordResetForm.vue'
+import ChangePasswordForm from '@/components/user/ChangePasswordForm.vue'
 
 const DIALOGS_BY_STATE = Object.freeze(
   new Map([
@@ -12,7 +12,7 @@ const DIALOGS_BY_STATE = Object.freeze(
     [DIALOG.REGISTER_ENTER_DATA, RegistrationForm],
     [DIALOG.ALERT, AlertBox],
     [DIALOG.RESET_PASSWORD_REQUEST, RequestPasswordResetForm],
-    [DIALOG.RESET_PASSWORD_NEW_PASSWORD, DoPasswordResetForm]
+    [DIALOG.CHANGE_PASSWORD, ChangePasswordForm]
   ])
 )
 

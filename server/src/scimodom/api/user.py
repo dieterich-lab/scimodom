@@ -103,3 +103,15 @@ def refresh_access_token():
         identity=email, expires_delta=ACCESS_TOKEN_EXPIRATION_TIME
     )
     return jsonify({"access_token": access_token})
+
+
+@user_api.route("/change_password", methods=["POST"])
+@jwt_required()
+def change_password():
+    email = get_jwt_identity()
+    user_service = get_user_service()
+    user_service.change_password(
+        email=email,
+        new_password=request.json["password"],
+    )
+    return jsonify({"result": "OK"})
