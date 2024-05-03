@@ -40,11 +40,10 @@ class AbstractStyle {
   }
   buttonClasses() {
     const baseColor = this.baseColor()
-    return (
-      `p-4 w-full text-${baseColor}-50 border border-${baseColor}-300` +
-      ` ring-${baseColor}-800 bg-${baseColor}-600 hover:bg-${baseColor}-800` +
-      ` hover:ring-${baseColor}-800 focus:ring-${baseColor}-800`
-    )
+    return `p-4 w-full text-${baseColor}-50 border border-${baseColor}-300 ring-${baseColor}-800`
+  }
+  severity() {
+    return null
   }
 }
 

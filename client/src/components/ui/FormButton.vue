@@ -19,10 +19,11 @@ const props = defineProps({
   }
 })
 const classes = props.uiStyle.buttonClasses()
+const severity = props.uiStyle.severity()
 console.log(`Classes: ${classes}`)
 </script>
 <template>
-  <Button @click="$emit('onClick')" :type="type" :class="classes">
+  <Button @click="$emit('onClick')" :type="type" :class="classes" :severity="severity">
     <slot></slot>
   </Button>
 </template>

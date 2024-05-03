@@ -4,6 +4,9 @@ class SecondaryStyle extends AbstractStyle {
   baseColor() {
     return 'secondary'
   }
+  severity() {
+    return 'secondary'
+  }
 }
 
 const style = new SecondaryStyle()
