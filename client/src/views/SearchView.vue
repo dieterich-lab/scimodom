@@ -2,7 +2,6 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { fmtOrder, fmtFilter } from '@/utils/index.js'
-import { FilterMatchMode, FilterOperator } from 'primevue/api'
 import {
   updModification,
   updOrganismFromMod,
@@ -15,8 +14,9 @@ const router = useRouter()
 
 const options = ref()
 const biotypes = ref()
+const selectedBiotypes = ref()
 const features = ref()
-
+const selectedFeatures = ref()
 const modification = ref()
 const selectedModification = ref()
 const technology = ref()
@@ -25,21 +25,13 @@ const organism = ref()
 const selectedOrganism = ref()
 const selection = ref()
 const taxid = ref()
+const genes = ref()
+const selectedGene = ref()
+const filteredGenes = ref()
 const chroms = ref()
 const selectedChrom = ref()
 const selectedChromStart = ref()
 const selectedChromEnd = ref()
-
-// new
-
-const selectedBiotypes = ref()
-const selectedFeatures = ref()
-const selectedGene = ref()
-
-const genes = ref()
-const filteredGenes = ref()
-
-const disabled = computed(() => isAllSelected())
 
 const dt = ref()
 const first = ref(0)
@@ -47,8 +39,9 @@ const rows = ref(10)
 const records = ref()
 const loading = ref(false)
 const totalRecords = ref(0)
-
 const lazyParams = ref({})
+
+const disabled = computed(() => isAllSelected())
 
 function isAllSelected() {
   return (
@@ -63,22 +56,36 @@ const clearCoords = () => {
   selectedChromEnd.value = undefined
 }
 
-const getFileName = () => {
-  let sep = '_&_'
-  let fileName = 'scimodom_search'
-  if (!(selectedModification.value == null || selectedOrganism.value == null)) {
-    fileName =
-      fileName +
-      '_mod=' +
-      selectedModification.value.label +
-      sep +
-      'taxid=' +
-      taxid.value +
-      sep +
-      'tissue=' +
-      selectedOrganism.value.label.replaceAll(/ /g, '_')
+const clearChrom = () => {
+  selectedChrom.value = undefined
+  clearCoords()
+}
+
+const clearSelection = (value) => {
+  if (value < 1) {
+    technology.value = undefined
   }
-  return fileName
+  if (value < 2) {
+    selection.value = undefined
+  }
+  records.value = undefined
+}
+
+const clearSelected = (value) => {
+  if (value < 1) {
+    selectedOrganism.value = undefined
+  }
+  if (value < 2) {
+    selectedTechnology.value = undefined
+  }
+  selectedGene.value = undefined
+  selectedBiotypes.value = undefined
+  selectedFeatures.value = undefined
+}
+
+const getFileName = () => {
+  let stamp = new Date()
+  return 'scimodom_search_' + stamp.toISOString().replaceAll(/:/g, '')
 }
 
 const navigateTo = (eufid) => {
@@ -104,6 +111,7 @@ const onExport = () => {
 }
 
 const searchGene = (event) => {
+  clearChrom()
   setTimeout(() => {
     if (!event.query.trim().length) {
       filteredGenes.value = [...genes.value]
@@ -116,26 +124,16 @@ const searchGene = (event) => {
 }
 
 const updateOrganism = () => {
-  selectedOrganism.value = undefined
-  selectedTechnology.value = undefined
-  selectedChrom.value = undefined
-  selectedChromStart.value = undefined
-  selectedChromEnd.value = undefined
-  selectedGene.value = undefined
-  technology.value = undefined
-  selection.value = undefined
-  records.value = undefined
+  clearSelection(0)
+  clearSelected(0)
+  clearChrom()
   organism.value = updOrganismFromMod(options.value, selectedModification.value)
 }
 
 const updateTechnology = () => {
-  selectedTechnology.value = undefined
-  selectedChrom.value = undefined
-  selectedChromStart.value = undefined
-  selectedChromEnd.value = undefined
-  selectedGene.value = undefined
-  selection.value = undefined
-  records.value = undefined
+  clearSelection(1)
+  clearSelected(1)
+  clearChrom()
   technology.value = updTechnologyFromModAndOrg(
     options.value,
     selectedModification.value,
@@ -144,11 +142,9 @@ const updateTechnology = () => {
 }
 
 const updateSelection = () => {
-  selectedChrom.value = undefined
-  selectedChromStart.value = undefined
-  selectedChromEnd.value = undefined
-  selectedGene.value = undefined
-  records.value = undefined
+  clearSelection(2)
+  clearSelected(2)
+  clearChrom()
   let result = updSelectionFromAll(
     options.value,
     selectedModification.value,
@@ -194,6 +190,7 @@ function lazyLoad(event) {
   lazyParams.value = { ...lazyParams.value, first: event?.first || first.value }
   // reformat filters for gene, biotypes and features as PV table filters
   let filters = {
+    // matchMode is actually hard coded to "equal" in the BE; forceSelection is toggled
     gene_name: {
       value: selectedGene.value == undefined ? null : selectedGene.value,
       matchMode: 'startsWith'
@@ -277,11 +274,10 @@ onMounted(() => {
         RNA modifications
       </h1>
       <p class="text-lg font-normal text-gray-500 dark:text-surface-400 lg:text-xl">
-        Select filters and query the database {{ selectedGene }}
+        Select filters and query the database
       </p>
       <!-- FILTER 1 -->
       <Divider />
-      <!-- <div class="flex flex-row flex-wrap justify-start place-items-center [&>*]:mr-6"> -->
       <div class="grid grid-cols-1 md:grid-cols-10 gap-6">
         <div class="col-span-3">
           <Dropdown
@@ -330,7 +326,7 @@ onMounted(() => {
         <div></div>
       </div>
       <!-- FILTER 2 -->
-      <!-- <Divider /> -->
+      <Divider />
       <div class="grid grid-cols-1 md:grid-cols-10 gap-6 mt-6">
         <div class="col-span-3">
           <AutoComplete
@@ -378,7 +374,6 @@ onMounted(() => {
         <div></div>
       </div>
       <!-- FILTER 3 -->
-      <!-- <Divider /> -->
       <div class="grid grid-cols-1 md:grid-cols-10 gap-6 mt-6">
         <div class="col-span-3">
           <Dropdown
@@ -387,7 +382,7 @@ onMounted(() => {
             :options="chroms"
             optionLabel="chrom"
             showClear
-            :disabled="disabled"
+            :disabled="disabled || !(selectedGene == null)"
             placeholder="7. Select chromosome (optional)"
             :pt="{
               root: { class: 'w-full md:w-full' }
@@ -400,7 +395,7 @@ onMounted(() => {
             @input="selectedChromEnd = null"
             v-model="selectedChromStart"
             inputId="minmax"
-            placeholder="8. Enter region start (optional)"
+            placeholder="8. Enter chromosome start (optional)"
             :disabled="selectedChrom == null"
             :min="0"
             :max="selectedChrom == null ? 0 : selectedChrom.size - 1"
@@ -415,7 +410,7 @@ onMounted(() => {
             v-model="selectedChromEnd"
             inputId="minmax"
             :disabled="selectedChromStart == null"
-            placeholder="9. Enter region end (optional)"
+            placeholder="9. Enter chromosome end (optional)"
             :min="selectedChromStart == null ? 0 : selectedChromStart + 1"
             :max="selectedChrom == null ? 0 : selectedChrom.size"
             :pt="{
@@ -471,7 +466,11 @@ onMounted(() => {
               />
             </div>
           </template>
-          <!-- <template #empty> <p class="dark:text-white/80 font-semibold">No records found matching search criteria!</p> </template> -->
+          <template #empty>
+            <p class="text-center text-secondary-500 font-semibold">
+              No records match your search criteria!
+            </p>
+          </template>
           <template #loading>
             <ProgressSpinner style="width: 60px; height: 60px" strokeWidth="6" />
           </template>
@@ -498,6 +497,9 @@ onMounted(() => {
               />
             </template>
           </Column>
+          <!-- export columns only -->
+          <Column field="taxa_id" exportHeader="Organism" style="display: none"></Column>
+          <Column field="cto" exportHeader="cellTissueOrgan" style="display: none"></Column>
         </DataTable>
       </div>
     </SectionLayout>

@@ -328,60 +328,55 @@ class PublicService:
                 func.group_concat(GenomicAnnotation.name.distinct()).label("gene_name"),
                 DetectionTechnology.tech,
                 Association.dataset_id,
+                Organism.taxa_id,
+                Organism.cto,
             )
             .join_from(DataAnnotation, Data, DataAnnotation.inst_data)
             .join_from(DataAnnotation, GenomicAnnotation, DataAnnotation.inst_genomic)
             .join_from(Data, Association, Data.inst_association)
             .join_from(Association, Selection, Association.inst_selection)
             .join_from(Selection, DetectionTechnology, Selection.inst_technology)
+            .join_from(Selection, Organism, Selection.inst_organism)
             .where(Association.selection_id.in_(selection_ids))
         )
 
-        # coordinate filter
+        # coordinate filters
         if chrom:
             query = (
                 query.where(Data.chrom == chrom)
                 .where(Data.start >= chrom_start)
-                .where(Data.end < chrom_end)
+                .where(Data.end <= chrom_end)
             )
 
+        # gene filters: matchMode unused (cf. PrimeVue), but keep it this way
+        # e.g. to extend options or add table filters
+        # gene name
+        name_flt = next((flt for flt in gene_filter if "gene_name" in flt), None)
+        if name_flt:
+            _, name, _ = _get_flt(name_flt)
+            query = query.where(GenomicAnnotation.name == name[0])
         # annotation filter
         feature_flt = next((flt for flt in gene_filter if "feature" in flt), None)
         if feature_flt:
             _, features, _ = _get_flt(feature_flt)
             query = query.where(DataAnnotation.feature.in_(features))
-
-        version_query = queries.get_annotation_version()
-        version = self._session.execute(version_query).scalar_one()
-        annotation_query = queries.query_column_where(
-            Annotation,
-            "id",
-            filters={"taxa_id": taxa_id, "version": version},
-        )
-        annotation = self._session.execute(annotation_query).scalar_one()
-
+        # biotypes
         # index speed up on annotation_id + biotypes + name
         biotype_flt = next((flt for flt in gene_filter if "gene_biotype" in flt), None)
         if biotype_flt:
+            version_query = queries.get_annotation_version()
+            version = self._session.execute(version_query).scalar_one()
+            annotation_query = queries.query_column_where(
+                Annotation,
+                "id",
+                filters={"taxa_id": taxa_id, "version": version},
+            )
+            annotation_id = self._session.execute(annotation_query).scalar_one()
             _, mapped_biotypes, _ = _get_flt(biotype_flt)
             biotypes = [k for k, v in self.BIOTYPES.items() if v in mapped_biotypes]
-        else:
-            biotypes = self.BIOTYPES.keys()
-        query = query.where(GenomicAnnotation.annotation_id == annotation).where(
-            GenomicAnnotation.biotype.in_(biotypes)
-        )
-
-        # one gene is selected the matching is done in FE, so here we can really
-        # just get an equal, not an ilike
-        name_flt = next((flt for flt in gene_filter if "gene_name" in flt), None)
-        if name_flt:
-            _, name, _ = _get_flt(name_flt)
-            print(f">>>> {name_flt}, {name}, {name[0]}")
-            query = query.where(GenomicAnnotation.name == name[0])
-        # name_flt = next((flt for flt in gene_filter if "gene_name" in flt), None)
-        # if name_flt:
-        #     _, name, _ = _get_flt(name_flt)
-        #     query = query.where(GenomicAnnotation.name.ilike(f"{name[0]}%"))
+            query = query.where(GenomicAnnotation.annotation_id == annotation_id).where(
+                GenomicAnnotation.biotype.in_(biotypes)
+            )
 
         query = query.group_by(DataAnnotation.data_id)
 
@@ -390,7 +385,7 @@ class PublicService:
             select(func.count()).select_from(query.with_only_columns(Data.id))
         )
 
-        # sort filter
+        # sort filters
         # index speed up for chrom + start
         if not multi_sort:
             chrom_expr = _get_arg_sort("chrom%2Basc")
