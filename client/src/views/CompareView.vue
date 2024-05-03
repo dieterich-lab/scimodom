@@ -4,6 +4,8 @@ import { useField, useForm } from 'vee-validate'
 import { HTTP } from '@/services/API.js'
 import CompareStepA from '@/components/compare/CompareStepA.vue'
 import CompareStepB from '@/components/compare/CompareStepB.vue'
+import StyledHeadline from '@/components/ui/StyledHeadline.vue'
+import SubTitle from '@/components/ui/SubTitle.vue'
 
 const active = ref(0)
 const disabled = computed(() => isAandB())
@@ -108,19 +110,9 @@ onMounted(() => {
 <template>
   <DefaultLayout>
     <SectionLayout>
-      <h1
-        class="font-ham mb-4 text-3xl font-extrabold text-gray-900 dark:text-white/80 md:text-5xl lg:text-6xl"
-      >
-        <span
-          class="text-transparent bg-clip-text bg-gradient-to-r from-gg-2 from-10% via-gg-1 via-40% via-gb-2 via-60% to-gb-4 to-100"
-        >
-          Compare
-        </span>
-        dataset
-      </h1>
-      <p class="text-lg font-normal text-gray-500 dark:text-surface-400 lg:text-xl">
-        Perform complex queries
-      </p>
+      <StyledHeadline text="Compare dataset" />
+      <SubTitle>Perform complex queries</SubTitle>
+
       <Divider />
 
       <div>

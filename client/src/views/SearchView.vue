@@ -10,6 +10,8 @@ import {
   updSelectionFromAll
 } from '@/utils/selection.js'
 import { HTTP } from '@/services/API.js'
+import StyledHeadline from '@/components/ui/StyledHeadline.vue'
+import SubTitle from '@/components/ui/SubTitle.vue'
 
 const router = useRouter()
 
@@ -219,19 +221,8 @@ onMounted(() => {
   <DefaultLayout>
     <!-- SECTION -->
     <SectionLayout>
-      <h1
-        class="font-ham mb-4 text-3xl font-extrabold text-gray-900 dark:text-white/80 md:text-5xl lg:text-6xl"
-      >
-        <span
-          class="text-transparent bg-clip-text bg-gradient-to-r from-gg-2 from-10% via-gg-1 via-40% via-gb-2 via-60% to-gb-4 to-100"
-        >
-          Search
-        </span>
-        RNA modifications
-      </h1>
-      <p class="text-lg font-normal text-gray-500 dark:text-surface-400 lg:text-xl">
-        Select filters and query the database
-      </p>
+      <StyledHeadline text="Search RNA modifications" />
+      <SubTitle>Select filters and query the database</SubTitle>
       <!-- FILTER 1 -->
       <Divider />
       <!-- <div class="flex flex-row flex-wrap justify-start place-items-center [&>*]:mr-6"> -->
