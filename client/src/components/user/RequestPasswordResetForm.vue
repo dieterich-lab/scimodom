@@ -7,7 +7,7 @@ import FormBox from '@/components/ui/FormBox.vue'
 import FormTextInput from '@/components/ui/FormTextInput.vue'
 import FormButtonGroup from '@/components/ui/FormButtonGroup.vue'
 import FormButton from '@/components/ui/FormButton.vue'
-import FormText from '@/components/ui/FormText.vue'
+import PrimaryDialogStyle from '@/ui_styles/PrimaryDialogStyle.js'
 
 const dialogState = useDialogState()
 
@@ -52,11 +52,13 @@ const onSubmit = handleSubmit((values) => {
 
 <template>
   <form @submit="onSubmit">
-    <FormBox>
-      <FormTextInput v-model="email" :error="errors.email">Email </FormTextInput>
+    <FormBox :ui-style="PrimaryDialogStyle">
+      <FormTextInput v-model="email" :error="errors.email" :ui-style="PrimaryDialogStyle"
+        >Email
+      </FormTextInput>
       <FormButtonGroup>
-        <FormButton type="submit">Request Password Reset</FormButton>
-        <FormButton @on-click="cancel()">Cancel</FormButton>
+        <FormButton type="submit" :ui-style="PrimaryDialogStyle">Request Password Reset</FormButton>
+        <FormButton @on-click="cancel()" :ui-style="PrimaryDialogStyle">Cancel</FormButton>
       </FormButtonGroup>
     </FormBox>
   </form>
