@@ -53,7 +53,6 @@ const onSubmit = handleSubmit((values) => {
 <template>
   <form @submit="onSubmit">
     <FormBox>
-      <FormText>{{ dialogState.message }}</FormText>
       <FormTextInput v-model="email" :error="errors.email">Email </FormTextInput>
       <FormButtonGroup>
         <FormButton type="submit">Request Password Reset</FormButton>
