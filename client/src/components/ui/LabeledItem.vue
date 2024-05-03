@@ -20,7 +20,7 @@ const props = defineProps({
     <span :class="props.uiStyle.labelClasses()">
       {{ props.label }}
     </span>
-    <span :class="props.uiStyle.inputTextDefaultClasses()">
+    <span :class="props.uiStyle.textClasses()">
       <slot></slot>
     </span>
   </div>
