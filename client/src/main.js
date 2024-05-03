@@ -16,6 +16,8 @@ import Button from 'primevue/button'
 import CascadeSelect from 'primevue/cascadeselect'
 import Column from 'primevue/column'
 import ColumnGroup from 'primevue/columngroup'
+import ConfirmDialog from 'primevue/confirmdialog'
+import ConfirmationService from 'primevue/confirmationservice'
 import DataTable from 'primevue/datatable'
 import Dialog from 'primevue/dialog'
 import DialogService from 'primevue/dialogservice'
@@ -52,6 +54,7 @@ const app = createApp(App)
 app.use(PrimeVue, { unstyled: true, pt: WindScm, ripple: true })
 
 app.use(ToastService)
+app.use(ConfirmationService)
 app.use(DialogService)
 app.use(router)
 app.use(VueCookies)
@@ -62,6 +65,7 @@ app.component('Button', Button)
 app.component('CascadeSelect', CascadeSelect)
 app.component('Column', Column)
 app.component('ColumnGroup', ColumnGroup)
+app.component('ConfirmDialog', ConfirmDialog)
 app.component('DataTable', DataTable)
 app.component('Dialog', Dialog)
 app.component('Divider', Divider)

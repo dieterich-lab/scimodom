@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useConfirm } from 'primevue/useconfirm'
 import { fmtOrder, fmtFilter } from '@/utils/index.js'
 import {
   updModification,
@@ -11,6 +12,7 @@ import {
 import { HTTP } from '@/services/API.js'
 
 const router = useRouter()
+const confirm = useConfirm()
 
 const options = ref()
 const biotypes = ref()
@@ -42,6 +44,7 @@ const totalRecords = ref(0)
 const lazyParams = ref({})
 
 const disabled = computed(() => isAllSelected())
+const confirmed = computed(() => isAnyExtraSelected())
 
 function isAllSelected() {
   return (
@@ -49,6 +52,12 @@ function isAllSelected() {
     selectedTechnology.value == null ||
     selectedOrganism.value == null
   )
+}
+
+function isAnyExtraSelected() {
+  // biotypes and/or features may not be restrictive enough...
+  // though chrom alone is quite broad...
+  return selectedGene.value != null || selectedChrom.value != null
 }
 
 const clearCoords = () => {
@@ -81,33 +90,6 @@ const clearSelected = (value) => {
   selectedGene.value = undefined
   selectedBiotypes.value = undefined
   selectedFeatures.value = undefined
-}
-
-const getFileName = () => {
-  let stamp = new Date()
-  return 'scimodom_search_' + stamp.toISOString().replaceAll(/:/g, '')
-}
-
-const navigateTo = (eufid) => {
-  router.push({ name: 'browse', params: { eufid: eufid } })
-}
-
-const onPage = (event) => {
-  lazyParams.value = event
-  if (!disabled.value) {
-    lazyLoad(event)
-  }
-}
-
-const onSort = (event) => {
-  lazyParams.value = event
-  if (!disabled.value) {
-    lazyLoad(event)
-  }
-}
-
-const onExport = () => {
-  dt.value.exportCSV()
 }
 
 const searchGene = (event) => {
@@ -183,6 +165,49 @@ const updateSelection = () => {
         console.log(error)
       })
   }
+}
+
+const confirmSearch = () => {
+  if (confirmed.value) {
+    lazyLoad()
+  } else {
+    confirm.require({
+      message:
+        'You can narrow down your search by selecting a gene or a genomic region (chromosome). Are you sure you want to proceed?',
+      header: 'Broad search criteria may result in large, slow-running queries!',
+      accept: () => {
+        lazyLoad()
+      },
+      reject: () => {} // do nothing
+    })
+  }
+}
+
+const getFileName = () => {
+  let stamp = new Date()
+  return 'scimodom_search_' + stamp.toISOString().replaceAll(/:/g, '')
+}
+
+const navigateTo = (eufid) => {
+  router.push({ name: 'browse', params: { eufid: eufid } })
+}
+
+const onPage = (event) => {
+  lazyParams.value = event
+  if (!disabled.value) {
+    lazyLoad(event)
+  }
+}
+
+const onSort = (event) => {
+  lazyParams.value = event
+  if (!disabled.value) {
+    lazyLoad(event)
+  }
+}
+
+const onExport = () => {
+  dt.value.exportCSV()
 }
 
 function lazyLoad(event) {
@@ -419,6 +444,7 @@ onMounted(() => {
             :ptOptions="{ mergeProps: true }"
           />
         </div>
+        <ConfirmDialog></ConfirmDialog>
         <div class="place-self-end">
           <Button
             type="button"
@@ -427,7 +453,7 @@ onMounted(() => {
             label="Query"
             :disabled="disabled"
             :loading="loading"
-            @click="lazyLoad()"
+            @click="confirmSearch()"
           />
         </div>
       </div>
