@@ -10,6 +10,7 @@ import FormButtonGroup from '@/components/ui/FormButtonGroup.vue'
 import FormButton from '@/components/ui/FormButton.vue'
 import FormText from '@/components/ui/FormText.vue'
 import FormLink from '@/components/ui/FormLink.vue'
+import PrimaryDialogStyle from '@/ui_styles/PrimaryDialogStyle.js'
 
 const accessToken = useAccessToken()
 const dialogState = useDialogState()
@@ -66,14 +67,21 @@ const onSubmit = handleSubmit((values) => {
 
 <template>
   <form @submit="onSubmit">
-    <FormBox>
-      <FormTextInput v-model="email" :error="errors.email"> Email </FormTextInput>
-      <FormTextInput v-model="password" :error="errors.password" type="password">
+    <FormBox :ui-style="PrimaryDialogStyle">
+      <FormTextInput v-model="email" :error="errors.email" :ui-style="PrimaryDialogStyle">
+        Email
+      </FormTextInput>
+      <FormTextInput
+        v-model="password"
+        :error="errors.password"
+        type="password"
+        :ui-style="PrimaryDialogStyle"
+      >
         Password
       </FormTextInput>
       <FormButtonGroup>
-        <FormButton type="submit">Login</FormButton>
-        <FormButton @on-click="cancel()">Cancel</FormButton>
+        <FormButton type="submit" :ui-style="PrimaryDialogStyle">Login</FormButton>
+        <FormButton @on-click="cancel()" :ui-style="PrimaryDialogStyle">Cancel</FormButton>
       </FormButtonGroup>
       <div class="flex items-center gap-4">
         <FormText>Forgot your password?</FormText>

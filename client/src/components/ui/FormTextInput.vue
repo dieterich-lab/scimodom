@@ -57,7 +57,9 @@ const pt = {
     />
     <span class="inline-flex items-baseline">
       <i :class="error ? props.uiStyle.errorIconClasses() : ''" />
-      <span :class="['pl-1 place-self-center', props.uiStyle.errorClasses]">{{ error }}&nbsp;</span>
+      <span :class="['pl-1 place-self-center', props.uiStyle.errorTextClasses()]"
+        >{{ error }}&nbsp;</span
+      >
     </span>
   </div>
 </template>

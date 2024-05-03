@@ -4,7 +4,7 @@ class AbstractStyle {
   }
   labelClasses() {
     const baseColor = this.baseColor()
-    return `text-${baseColor}-50 font-semibold`
+    return `text-${baseColor}-500 font-semibold`
   }
   inputTextGroupClasses() {
     const baseColor = this.baseColor()

@@ -3,11 +3,12 @@ import { useForm } from 'vee-validate'
 import * as yup from 'yup'
 import { HTTP } from '@/services/API'
 import { DIALOG, useDialogState } from '@/stores/DialogState.js'
-import FromBox from '@/components/ui/FormBox.vue'
+import FormBox from '@/components/ui/FormBox.vue'
 import FormTextInput from '@/components/ui/FormTextInput.vue'
 import FormButtonGroup from '@/components/ui/FormButtonGroup.vue'
 import FormButton from '@/components/ui/FormButton.vue'
 import FormText from '@/components/ui/FormText.vue'
+import PrimaryDialogStyle from '@/ui_styles/PrimaryDialogStyle.js'
 
 const dialogState = useDialogState()
 
@@ -56,18 +57,28 @@ const onSubmit = handleSubmit((values) => {
 
 <template>
   <form @submit="onSubmit">
-    <FromBox>
+    <FormBox :ui-style="PrimaryDialogStyle">
       <FormText>Change password for {{ dialogState.email }}:</FormText>
-      <FormTextInput v-model="password" :error="errors.password" type="password">
+      <FormTextInput
+        v-model="password"
+        :error="errors.password"
+        type="password"
+        :ui-style="PrimaryDialogStyle"
+      >
         Password
       </FormTextInput>
-      <FormTextInput v-model="passwordConfirm" :error="errors.passwordConfirm" type="password">
+      <FormTextInput
+        v-model="passwordConfirm"
+        :error="errors.passwordConfirm"
+        type="password"
+        :ui-style="PrimaryDialogStyle"
+      >
         Password Confirmation
       </FormTextInput>
       <FormButtonGroup>
-        <FormButton type="submit">Change</FormButton>
-        <FormButton @on-click="cancel()">Cancel</FormButton>
+        <FormButton type="submit" :ui-style="PrimaryDialogStyle">Change</FormButton>
+        <FormButton @on-click="cancel()" :ui-style="PrimaryDialogStyle">Cancel</FormButton>
       </FormButtonGroup>
-    </FromBox>
+    </FormBox>
   </form>
 </template>

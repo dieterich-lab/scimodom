@@ -1,4 +1,7 @@
 <script setup>
+import AbstractStyle from '@/ui_styles/AbstractStyle'
+import DefaultStyle from '@/ui_styles/DefaultStyle'
+
 const model = defineModel()
 const props = defineProps({
   error: {
@@ -19,33 +22,17 @@ const props = defineProps({
     required: false,
     default: ''
   },
-  labelCls: {
-    type: String,
+  uiStyle: {
+    type: AbstractStyle,
     required: false,
-    default: 'text-primary-500 font-semibold'
-  },
-  errMsgCls: {
-    type: String,
-    required: false,
-    default: 'text-red-700'
-  },
-  errIconCls: {
-    type: String,
-    required: false,
-    default: 'pi pi-times-circle place-self-center text-red-700'
-  },
-  // overwrites component style in case of error
-  errCls: {
-    type: String,
-    required: false,
-    default: 'ring-red-700'
+    default: DefaultStyle
   }
 })
 </script>
 
 <template>
   <div class="inline-flex flex-col gap-2">
-    <label for="field" :class="props.labelCls">
+    <label for="field" :class="props.uiStyle.labelClasses()">
       <slot></slot>
     </label>
     <Textarea
@@ -55,11 +42,13 @@ const props = defineProps({
       rows="props.rows"
       cols="props.cols"
       :placeholder="props.placeholder"
-      :class="error ? props.errCls : ''"
+      :class="error ? props.uiStyle.errorClasses() : ''"
     />
     <span class="inline-flex items-baseline">
-      <i :class="error ? props.errIconCls : ''" />
-      <span :class="['pl-1 place-self-center', props.errMsgCls]">{{ error }}&nbsp;</span>
+      <i :class="error ? props.uiStyle.errorIconClasses() : ''" />
+      <span :class="['pl-1 place-self-center', props.uiStyle.errorTextClasses()]"
+        >{{ error }}&nbsp;</span
+      >
     </span>
   </div>
 </template>
