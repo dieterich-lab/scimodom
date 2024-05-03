@@ -179,15 +179,29 @@ class UserService:
                     f"Received bad confirmation token '{confirmation_token}' "
                     + f"for user '{email}' during password change."
                 )
-
-            user.state = UserState.active
-            user.password_hash = generate_password_hash(new_password, method="pbkdf2")
-            user.confirmation_token = None
-            self._session.commit()
-
+            self.change_password(email, new_password)
         except _DetailedWrongUserOrPassword as exc:
             logger.warning(f"WARNING: {str(exc)}")
             raise WrongUserOrPassword("Go away hacker!")
+
+    def change_password(self, email: str, new_password: str):
+        """Change a password for an authorized user.
+
+        :param email: User name (email address).
+        :type email: str
+        :param new_password: New password
+        :type new_password: str
+        """
+        try:
+            user = self._get_user_by_email(email)
+        except NoSuchUser:
+            raise _DetailedWrongUserOrPassword(
+                f"Unknown user '{email}' tried to change the password"
+            )
+        user.state = UserState.active
+        user.password_hash = generate_password_hash(new_password, method="pbkdf2")
+        user.confirmation_token = None
+        self._session.commit()
 
     def check_password(self, email: str, password: str) -> bool:
         """Returns true if the password matches the stored password.

@@ -1,7 +1,7 @@
 <script setup>
 import { useForm } from 'vee-validate'
 import * as yup from 'yup'
-import { HTTP } from '@/services/API'
+import { HTTP, HTTPSecure } from '@/services/API'
 import { DIALOG, useDialogState } from '@/stores/DialogState.js'
 import FormBox from '@/components/ui/FormBox.vue'
 import FormTextInput from '@/components/ui/FormTextInput.vue'
@@ -28,13 +28,22 @@ const [password] = defineField('password')
 const [passwordConfirm] = defineField('passwordConfirm')
 
 function changePassword(values) {
-  HTTP.post('/user/do_password_reset', {
-    email: dialogState.email,
-    password: values.password,
-    token: dialogState.token
-  })
+  let request
+  if (dialogState.token) {
+    request = HTTP.post('/user/do_password_reset', {
+      email: dialogState.email,
+      password: values.password,
+      token: dialogState.token
+    })
+  } else {
+    request = HTTPSecure.post('/user/change_password', {
+      password: values.password
+    })
+  }
+
+  request
     .then((response) => {
-      if (response.status == 200) {
+      if (response.status === 200) {
         dialogState.message = 'Password set successfully.'
         dialogState.state = DIALOG.ALERT
       }
