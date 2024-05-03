@@ -42,6 +42,9 @@ class AbstractStyle {
     const baseColor = this.baseColor()
     return `p-4 w-full text-${baseColor}-50 border border-${baseColor}-300 ring-${baseColor}-800`
   }
+  textClasses() {
+    return 'text-gray-700 dark:text-gray-300'
+  }
   severity() {
     return null
   }
