@@ -38,8 +38,8 @@ const router = createRouter({
     {
       path: '/',
       name: 'compare',
-      component: CompareView,
-      redirect: { name: 'maintenance' }
+      component: CompareView
+      // redirect: { name: 'maintenance' }
     },
     {
       path: '/',

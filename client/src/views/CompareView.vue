@@ -2,6 +2,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { useField, useForm } from 'vee-validate'
 import { HTTP } from '@/services/API.js'
+import { toTree, toCascade, nestedSort } from '@/utils/index.js'
+
 import CompareStepA from '@/components/compare/CompareStepA.vue'
 import CompareStepB from '@/components/compare/CompareStepB.vue'
 import StyledHeadline from '@/components/ui/StyledHeadline.vue'
@@ -9,13 +11,12 @@ import SubTitle from '@/components/ui/SubTitle.vue'
 
 const active = ref(0)
 const disabled = computed(() => isAandB())
-
-const options = ref()
+const taxid = ref()
 const dataset = ref()
-const selectedDSA = ref()
-const selectedDSB = ref()
-const selectedDSU = ref()
-const selectedSpecies = ref()
+const datasetUpdated = ref()
+const datasetUploaded = ref()
+const selectedDatasetA = ref([])
+const selectedDatasetB = ref([])
 
 const dt = ref()
 const records = ref()
@@ -58,9 +59,9 @@ function load(operation) {
   records.value = undefined
   HTTP.get('/compare/ops', {
     params: {
-      datasetIdsA: selectedDSA.value,
-      datasetIdsB: selectedDSB.value,
-      datasetUpload: selectedDSU.value,
+      datasetIdsA: selectedDatasetA.value,
+      datasetIdsB: selectedDatasetB.value,
+      datasetUpload: datasetUploaded.value,
       queryOperation: operation
     },
     paramsSerializer: {
@@ -83,28 +84,40 @@ function validateField(value) {
 }
 
 function isAandB() {
-  var isA = Object.is(selectedDSA.value, undefined) || selectedDSA.value.length === 0 ? true : false
-  var isB = Object.is(selectedDSB.value, undefined) || selectedDSB.value.length === 0 ? true : false
-  var isU = Object.is(selectedDSU.value, undefined) || selectedDSU.value.length === 0 ? true : false
+  var isA = selectedDatasetA.value.length === 0 ? true : false
+  var isB = selectedDatasetB.value.length === 0 ? true : false
+  var isU = Object.is(datasetUploaded.value, undefined) ? true : false
   return isA || (isB && isU)
 }
 
 onMounted(() => {
-  HTTP.get('/selection')
-    .then(function (response) {
-      options.value = response.data
-    })
-    .catch((error) => {
-      console.log(error)
-    })
-  HTTP.get('/compare/dataset')
+  HTTP.get('/browse')
     .then(function (response) {
       dataset.value = response.data
     })
     .catch((error) => {
       console.log(error)
     })
+  HTTP.get('/selection')
+    .then(function (response) {
+      let opts = response.data
+      opts = opts.map((item) => {
+        const kingdom = Object.is(item.kingdom, null) ? item.domain : item.kingdom
+        return { ...item, kingdom }
+      })
+      taxid.value = toCascade(toTree(opts, ['kingdom', 'taxa_sname'], 'taxa_id'))
+      nestedSort(taxid.value, ['child1'])
+    })
+    .catch((error) => {
+      console.log(error)
+    })
 })
+
+const buttonPt = {
+  root: ({ props, context }) => ({
+    class: ['h-12 w-12 p-0 shadow']
+  })
+}
 </script>
 
 <template>
@@ -123,11 +136,7 @@ onMounted(() => {
             label="A"
             severity="secondary"
             :outlined="active !== 0"
-            :pt="{
-              root: ({ props, context }) => ({
-                class: ['h-12 w-12 p-0 shadow']
-              })
-            }"
+            :pt="buttonPt"
             :ptOptions="{ mergeProps: true }"
           />
           <Button
@@ -136,11 +145,7 @@ onMounted(() => {
             label="B"
             severity="secondary"
             :outlined="active !== 1"
-            :pt="{
-              root: ({ props, context }) => ({
-                class: ['h-12 w-12 p-0 shadow']
-              })
-            }"
+            :pt="buttonPt"
             :ptOptions="{ mergeProps: true }"
           />
           <Button
@@ -149,35 +154,41 @@ onMounted(() => {
             label="C"
             severity="secondary"
             :outlined="active !== 2"
-            :pt="{
-              root: ({ props, context }) => ({
-                class: ['h-12 w-12 p-0 shadow']
-              })
-            }"
+            :pt="buttonPt"
             :ptOptions="{ mergeProps: true }"
           />
         </div>
 
         <TabView v-model:activeIndex="active">
           <TabPanel header="Select reference dataset">
-            <CompareStepA
-              v-if="options && dataset"
-              :options="options"
-              :dataset="dataset"
-              @selected-species="selectedSpecies = $event"
-              @selected-dataset="selectedDSA = $event"
-            />
+            <div class="h-52">
+              <div class="mb-4">
+                Select one organism and choose up to three reference dataset. Use the dataset search
+                bar to find records.
+              </div>
+              <CompareStepA
+                v-if="taxid && dataset"
+                v-model="selectedDatasetA"
+                :organism="taxid"
+                :dataset="dataset"
+                @dataset-updated="datasetUpdated = $event"
+              />
+            </div>
           </TabPanel>
           <TabPanel header="Select dataset for comparison">
-            <CompareStepB
-              v-if="options && dataset && selectedSpecies && selectedDSA"
-              :options="options"
-              :dataset="dataset"
-              :reference-dataset="selectedDSA"
-              :selected-species="selectedSpecies"
-              @selected-dataset="selectedDSB = $event"
-              @uploaded-dataset="selectedDSU = $event"
-            />
+            <div class="h-52">
+              <div class="mb-4">
+                At least one reference dataset must be selected. Upload your own data or select up
+                to three dataset for comparison.
+              </div>
+              <CompareStepB
+                v-if="datasetUpdated && selectedDatasetA.length > 0"
+                v-model="selectedDatasetB"
+                :selected="selectedDatasetA"
+                :dataset="datasetUpdated"
+                @dataset-uploaded="datasetUploaded = $event"
+              />
+            </div>
           </TabPanel>
           <TabPanel header="Select query criteria">
             <div>
@@ -282,11 +293,14 @@ onMounted(() => {
                     label="Submit"
                     :disabled="disabled"
                   />
-                  <small
-                    id="text-error"
-                    class="p-4 select-none font-semibold text-base text-primary-500"
-                    >{{ errorMessage || '&nbsp;' }}</small
-                  >
+                  <small id="text-error" class="p-4 select-none text-sm text-red-700">
+                    <i
+                      :class="[
+                        errorMessage ? 'pi pi-times-circle place-self-center text-red-700' : ''
+                      ]"
+                    />
+                    {{ errorMessage || '&nbsp;' }}
+                  </small>
                 </div>
               </form>
             </div>

@@ -433,6 +433,7 @@ class PublicService:
                 ),
                 DetectionTechnology.tech,
                 Taxa.short_name.label("taxa_sname"),
+                Taxa.id.label("taxa_id"),
                 Organism.cto,
             )
             .join_from(
@@ -585,7 +586,7 @@ class PublicService:
             c_records = get_op(op)(a_records, b_records, s=eval(strand))
             records = [records_factory(op.capitalize(), r)._asdict() for r in c_records]
 
-            return records
+        return records
 
     def _dump(self, query):
         """Serialize a query from a select statement using

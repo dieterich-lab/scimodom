@@ -1,16 +1,11 @@
 <script setup>
 import { ref, computed } from 'vue'
-import {
-  updSpecies,
-  updOrganismFromSpec,
-  updModificationFromOrg,
-  updTechnologyFromOrgAndMod,
-  updDataset
-} from '@/utils/selection.js'
 
+const emit = defineEmits(['datasetUpdated'])
+const model = defineModel()
 const props = defineProps({
-  options: {
-    type: Array,
+  organism: {
+    type: Object,
     required: true
   },
   dataset: {
@@ -19,71 +14,36 @@ const props = defineProps({
   }
 })
 
-const modification = ref()
-const selectedModification = ref()
-const technology = ref()
-const selectedTechnology = ref()
-const species = computed(() => updSpecies(props.options))
-const selectedSpecies = ref()
-const organism = ref()
-const selectedOrganism = ref()
-const datasetSelection = ref()
-const selectedDataset = ref()
+const selectedTaxid = ref()
+const dataset = ref()
 
-const emit = defineEmits(['selectedSpecies', 'selectedDataset'])
-
-const updateOrganism = () => {
-  selectedOrganism.value = undefined
-  selectedModification.value = undefined
-  selectedTechnology.value = undefined
-  selectedDataset.value = undefined
-  organism.value = updOrganismFromSpec(props.options, selectedSpecies.value.label)
-  updateDataset()
-  emit('selectedSpecies', selectedSpecies.value.label)
-}
-
-const updateModification = () => {
-  selectedModification.value = undefined
-  selectedTechnology.value = undefined
-  selectedDataset.value = undefined
-  modification.value = updModificationFromOrg(props.options, selectedOrganism.value)
-  updateDataset()
-}
-
-const updateTechnology = () => {
-  selectedTechnology.value = undefined
-  selectedDataset.value = undefined
-  technology.value = updTechnologyFromOrgAndMod(
-    props.options,
-    selectedOrganism.value,
-    selectedModification.value
+const updateDataset = (value) => {
+  model.value = []
+  let opts = props.dataset.filter((item) => item.taxa_id == value)
+  dataset.value = [...new Map(opts.map((item) => [item['dataset_id'], item])).values()].map(
+    (item) => {
+      return {
+        dataset_id: item.dataset_id,
+        dataset_title: item.dataset_title,
+        dataset_info:
+          '(' + item.rna + ', ' + item.modomics_sname + ', ' + item.cto + ', ' + item.tech + ')'
+      }
+    }
   )
-  updateDataset()
-}
-
-function updateDataset() {
-  selectedDataset.value = undefined
-  emit('selectedDataset', undefined)
-  datasetSelection.value = updDataset(
-    props.options,
-    organism.value,
-    selectedOrganism.value,
-    selectedModification.value,
-    selectedTechnology.value,
-    props.dataset
-  )
+  emit('datasetUpdated', dataset.value)
 }
 </script>
 
 <template>
   <div class="grid grid-cols-4 gap-6">
-    <Dropdown
-      @change="updateOrganism"
-      v-model="selectedSpecies"
-      :options="species"
+    <CascadeSelect
+      @change="updateDataset($event.value)"
+      v-model="selectedTaxid"
+      :options="props.organism"
+      optionValue="key"
       optionLabel="label"
       optionGroupLabel="label"
-      optionGroupChildren="children"
+      :optionGroupChildren="['child1']"
       placeholder="1. Select one organism"
       :pt="{
         root: { class: 'w-full md:w-full' }
@@ -91,58 +51,28 @@ function updateDataset() {
       :ptOptions="{ mergeProps: true }"
     />
     <MultiSelect
-      @change="updateModification"
-      v-model="selectedOrganism"
-      :options="organism"
-      optionLabel="label"
-      placeholder="2. Select cell/tissue"
-      :maxSelectedLabels="3"
-      :pt="{
-        root: { class: 'w-full md:w-full' }
-      }"
-      :ptOptions="{ mergeProps: true }"
-    />
-    <TreeSelect
-      @change="updateTechnology"
-      v-model="selectedModification"
-      :options="modification"
-      selectionMode="checkbox"
-      :metaKeySelection="false"
-      placeholder="3. Select RNA modifications"
-      :pt="{
-        root: { class: 'w-full md:w-full' }
-      }"
-      :ptOptions="{ mergeProps: true }"
-    />
-    <TreeSelect
-      @change="updateDataset"
-      v-model="selectedTechnology"
-      :options="technology"
-      selectionMode="checkbox"
-      :metaKeySelection="false"
-      placeholder="4. Select technologies"
-      :pt="{
-        root: { class: 'w-full md:w-full' }
-      }"
-      :ptOptions="{ mergeProps: true }"
-    />
-    <MultiSelect
-      @change="
-        emit(
-          'selectedDataset',
-          $event.value.map((d) => d.dataset_id)
-        )
-      "
-      v-model="selectedDataset"
-      :options="datasetSelection"
+      v-model="model"
+      :options="dataset"
+      :selectionLimit="3"
       filter
-      optionLabel="dataset_display"
-      placeholder="5. Select dataset"
+      :filterFields="['dataset_id', 'dataset_title', 'dataset_info']"
+      optionValue="dataset_id"
+      optionLabel="dataset_id"
+      placeholder="2. Select dataset"
       :maxSelectedLabels="3"
+      display="chip"
       :pt="{
-        root: { class: 'col-span-4 w-full md:w-full' }
+        root: { class: 'col-span-3 w-full md:w-full' }
       }"
       :ptOptions="{ mergeProps: true }"
-    />
+    >
+      <template #option="slotProps">
+        <div class="flex">
+          <div class="pr-2 text-surface-500">{{ slotProps.option.dataset_id }}</div>
+          <div class="pr-2 font-semibold">{{ slotProps.option.dataset_title }}</div>
+          <div class="italic">{{ slotProps.option.dataset_info }}</div>
+        </div>
+      </template>
+    </MultiSelect>
   </div>
 </template>
