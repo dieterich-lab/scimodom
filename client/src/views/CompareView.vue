@@ -10,6 +10,7 @@ import StyledHeadline from '@/components/ui/StyledHeadline.vue'
 import SubTitle from '@/components/ui/SubTitle.vue'
 
 const active = ref(0)
+const loading = ref(false)
 const disabled = computed(() => isAandB())
 const taxid = ref()
 const dataset = ref()
@@ -57,6 +58,7 @@ const onExport = () => {
 
 function load(operation) {
   records.value = undefined
+  loading.value = true
   HTTP.get('/compare/ops', {
     params: {
       datasetIdsA: selectedDatasetA.value,
@@ -70,6 +72,7 @@ function load(operation) {
   })
     .then(function (response) {
       records.value = response.data
+      loading.value = false
     })
     .catch((error) => {
       console.log(error)
@@ -292,6 +295,7 @@ const buttonPt = {
                     type="submit"
                     label="Submit"
                     :disabled="disabled"
+                    :loading="loading"
                   />
                   <small id="text-error" class="p-4 select-none text-sm text-red-700">
                     <i
@@ -318,6 +322,7 @@ const buttonPt = {
           scrollHeight="400px"
           :virtualScrollerOptions="{ itemSize: 46 }"
           tableStyle="min-w-{50rem}"
+          :loading="loading"
         >
           <template #header>
             <div style="text-align: right">
@@ -330,6 +335,9 @@ const buttonPt = {
                 @click="onExport($event)"
               />
             </div>
+          </template>
+          <template #loading>
+            <ProgressSpinner style="width: 60px; height: 60px" strokeWidth="6" />
           </template>
           <ColumnGroup type="header">
             <Row>
