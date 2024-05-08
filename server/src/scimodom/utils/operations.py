@@ -22,7 +22,7 @@ if os.getenv("APP_TEMPDIR"):
     pybedtools.helpers.set_tempdir(tempdir)
 
 
-def _to_bedtool(records, asl: bool = False):
+def to_bedtool(records, as_list: bool = False):
     """Convert records to BedTool and sort
 
     TODO: records can be str | Path | Sequence[Any], see below get_genomic_annotation!
@@ -31,187 +31,16 @@ def _to_bedtool(records, asl: bool = False):
 
     :param records: Database records (or list of records)
     :type records: Sequence
-    :returns: bedtool
+    :param as_list: Return results as a list of BedTool
+    :type as_list: bool
+    :return: bedtool
     :rtype: BedTool or list of BedTool
     """
-    if asl:
+    if as_list:
         bedtool = [pybedtools.BedTool(record).sort() for record in records]
     else:
         bedtool = pybedtools.BedTool(records).sort()
     return bedtool
-
-
-def get_op(op: str):
-    """Function selection
-
-    :param op: operation
-    :type op: str
-    :returns: selected function
-    :rtype: function
-    """
-    return eval(f"get_{op}")
-
-
-def get_intersect(
-    a_records: Sequence[Any],
-    b_records: Sequence[Any],
-    s: bool = True,
-    sorted: bool = True,
-    n_fields: int = 3,
-) -> list[Any]:
-    """Wrapper for pybedtools.bedtool.BedTool.intersect
-
-    Relies on the behaviour of bedtools -wa -wb option: the first
-    column after the complete -a record lists the file number
-    from which the overlap came.
-
-    :param a_records: DB records (A features)
-    :type a_records: Sequence (list of tuples)
-    :param b_records: DB records (B features)
-    :type b_records: Sequence (list of tuples)
-    :param s: Force strandedness
-    :type s: bool
-    :param sorted: Invoked sweeping algorithm
-    :type sorted: bool
-    :param n_fields: Number of other fields attribute in addition to BED6
-    :type n_fields: int
-    :returns: c_records
-    :rtype: list of tuples
-    """
-
-    # required options
-    # write the original entry in A for each overlap
-    wa: bool = True
-    # write the original entry in B for each overlap
-    wb: bool = True
-
-    # file number index
-    offset = 6 + n_fields
-    filnum_idx = 1
-    if len(b_records) == 1:
-        filnum_idx = 0
-
-    a_bedtool, b_bedtool = _to_bedtool(a_records), _to_bedtool(b_records, asl=True)
-    c_bedtool = a_bedtool.intersect(
-        b=[b.fn for b in b_bedtool], wa=wa, wb=wb, s=s, sorted=sorted
-    )
-    c_records = [
-        tuple(
-            sum(
-                (
-                    [i.chrom, i.start, i.end, i.name, i.score, i.strand],
-                    i.fields[6:offset],
-                    i.fields[(offset + filnum_idx) :],
-                ),
-                [],
-            )
-        )
-        for i in c_bedtool
-    ]
-    return c_records
-
-
-def get_closest(
-    a_records: Sequence[Any],
-    b_records: Sequence[Any],
-    s: bool = True,
-    sorted: bool = True,
-    n_fields: int = 3,
-) -> list[Any]:
-    """Wrapper for pybedtools.bedtool.BedTool.closest
-
-    Relies on the behaviour of bedtools -io -t -mdb -D options: the first
-    column after the complete -a record lists the file number
-    from which the closest interval came.
-
-    :param a_records: DB records (A features)
-    :type a_records: Sequence (list of tuples)
-    :param b_records: DB records (B features)
-    :type b_records: Sequence (list of tuples)
-    :param s: Force strandedness
-    :type s: bool
-    :param sorted: Invoked sweeping algorithm
-    :type sorted: bool
-    :param n_fields: Number of other fields attribute in addition to BED6
-    :type n_fields: int
-    :returns: c_records
-    :rtype: list of tuples
-    """
-
-    # required options
-    # Ignore features in B that overlap A
-    io: bool = True
-    # Report all ties
-    t: str = "all"
-    # Report closest records among all databases
-    mdb: str = "all"
-    # Report distance with respect to A
-    D: str = "a"
-
-    # file number index
-    offset = 6 + n_fields
-    filnum_idx = 1
-    if len(b_records) == 1:
-        filnum_idx = 0
-
-    a_bedtool, b_bedtool = _to_bedtool(a_records), _to_bedtool(b_records, asl=True)
-    c_bedtool = a_bedtool.closest(
-        b=[b.fn for b in b_bedtool], io=io, t=t, mdb=mdb, D=D, s=s, sorted=sorted
-    )
-
-    # Reports “none” for chrom (?) and “-1” for all other fields (?) when a feature
-    # is not found in B on the same chromosome as the feature in A.
-    # Note that "start" (fields) is a string!
-    c_bedtool = c_bedtool.filter(lambda c: c.fields[(offset + filnum_idx + 1)] != "-1")
-    c_records = [
-        tuple(
-            sum(
-                (
-                    [i.chrom, i.start, i.end, i.name, i.score, i.strand],
-                    i.fields[6:offset],
-                    i.fields[(offset + filnum_idx) :],
-                ),
-                [],
-            )
-        )
-        for i in c_bedtool
-    ]
-    return c_records
-
-
-def get_subtract(
-    a_records: Sequence[Any],
-    b_records: Sequence[Any],
-    s: bool = True,
-    sorted: bool = True,
-    n_fields: int = 3,
-) -> list[Any]:
-    """Wrapper for pybedtools.bedtool.BedTool.subtract
-
-    :param a_records: DB records (A features)
-    :type a_records: Sequence (list of tuples)
-    :param b_records: DB records (B features)
-    :type b_records: Sequence (list of tuples)
-    :param s: Force strandedness
-    :type s: bool
-    :param sorted: Invoked sweeping algorithm
-    :type sorted: bool
-    :param n_fields: Number of other fields attribute in addition to BED6
-    :type n_fields: int
-    :returns: c_records
-    :rtype: list of tuples
-    """
-
-    # file number index
-    offset = 6 + n_fields
-
-    a_bedtool, b_bedtool = _to_bedtool(a_records), _to_bedtool(
-        utils.flatten_list(b_records)
-    )
-    c_bedtool = a_bedtool.subtract(b_bedtool, s=s, sorted=sorted)
-    # c_records = [(i.fields[:offset]) for i in c_bedtool]
-    c_records = [tuple(i.fields[:offset]) for i in c_bedtool]
-    return c_records
 
 
 def annotate_data_to_records(
@@ -248,7 +77,7 @@ def annotate_data_to_records(
             if gene_id is not None
         ]
 
-    data_bedtool = _to_bedtool(records)
+    data_bedtool = to_bedtool(records)
     try:
         intergenic_feature = features.pop("intergenic")
     except KeyError as exc:
@@ -409,7 +238,7 @@ def liftover_to_file(
     :returns: File with liftedOver features
     :rtype: str
     """
-    bedtool = _to_bedtool(records)
+    bedtool = to_bedtool(records)
     result = pybedtools.BedTool._tmp()
     if unmapped is None:
         unmapped = pybedtools.BedTool._tmp()
@@ -425,6 +254,29 @@ def liftover_to_file(
         raise Exception(msg) from exc
     # except subprocess.TimeoutExpired as exc:
     return result
+
+
+def _remove_extra_feature(feature, n_fields=9):
+    """This function is to be passed
+    as argument to BedTool.each(), to
+    generate a BED-like Interval. This is used
+    to "strip" the returned interval from the
+    "additional column describing the file number"
+    when calling intersect or closest (with -wa and
+    -wb). The default format is BED6+3, where
+    3 additional fields are "dataset_id", "coverage",
+    and "frequency".
+
+    :param feature: A feature from a BED file.
+    :type feature: pybedtools.Interval
+    :return: New interval
+    :rtype: pybedtools interval
+    """
+    target = 2 * n_fields + 1
+    line = [f for f in feature.fields]
+    if len(feature.fields) == target:
+        line.pop(n_fields)
+    return pybedtools.cbedtools.create_interval_from_list(line)
 
 
 def _get_gtf_attrs(feature):

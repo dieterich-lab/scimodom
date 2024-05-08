@@ -29,14 +29,9 @@ from scimodom.database.models import (
     Selection,
 )
 import scimodom.database.queries as queries
-from scimodom.services.importer import get_bed_importer
 from scimodom.services.annotation import AnnotationService
 from scimodom.services.assembly import AssemblyService
 import scimodom.utils.specifications as specs
-
-# TODO
-from scimodom.utils.models import records_factory
-from scimodom.utils.operations import get_op
 
 
 class PublicService:
@@ -464,69 +459,6 @@ class PublicService:
         )
 
         return self._dump(query)
-
-    def get_comparison(self, reference_ids, comparison_ids, upload, query_operation):
-        """Retrieve ..."""
-        # TODO: refactor
-        # API call in compare, thenquery_operation pass as params to SPA components
-        # but sending all datasets may be too large?
-        # final call after dataset selection + query
-        # + lazy loading of results?
-
-        query = (
-            select(
-                Data.chrom,
-                Data.start,
-                Data.end,
-                Data.name,
-                Data.score,
-                Data.strand,
-                Association.dataset_id,
-                # Data.dataset_id,
-                Data.coverage,
-                Data.frequency,
-            )
-            .join_from(Data, Association, Data.inst_association)
-            .where(Association.dataset_id.in_(reference_ids))
-            # .order_by(Data.chrom.asc(), Data.start.asc())
-        )
-        a_records = self._session.execute(query).all()
-
-        # AD HOC - EUF VERSION SHOULD COME FROM SOMEWHERE ELSE!
-        if upload:
-            importer = get_bed_importer(upload)
-            importer.parse_records()
-            importer.close()
-            b_records = importer.get_buffer()
-            # records = [tuple([val for key, val in record.items()]) for record in b_records]
-            # print(b_records)
-        else:
-            b_records = []
-            for idx in comparison_ids:
-                query = (
-                    select(
-                        Data.chrom,
-                        Data.start,
-                        Data.end,
-                        Data.name,
-                        Data.score,
-                        Data.strand,
-                        Association.dataset_id,
-                        # Data.dataset_id,
-                        Data.coverage,
-                        Data.frequency,
-                    )
-                    .join_from(Data, Association, Data.inst_association)
-                    .where(Association.dataset_id == idx)
-                    # .where(Data.dataset_id == idx)
-                )
-                b_records.append(get_session().execute(query).all())
-
-        op, strand = query_operation.split("S")
-        c_records = get_op(op)(a_records, b_records, s=eval(strand))
-        records = [records_factory(op.capitalize(), r)._asdict() for r in c_records]
-
-        return records
 
     def _dump(self, query):
         """Serialize a query from a select statement using
