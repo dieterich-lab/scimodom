@@ -20,7 +20,7 @@ from scimodom.database.models import (
 import scimodom.database.queries as queries
 from scimodom.services.annotation import AnnotationService
 from scimodom.services.assembly import AssemblyService, AssemblyVersionError
-from scimodom.services.importer import get_importer, get_bed_importer
+from scimodom.services.importer import get_importer
 import scimodom.utils.specifications as specs
 import scimodom.utils.utils as utils
 

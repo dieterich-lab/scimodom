@@ -117,18 +117,18 @@ def get_browse():
     return public_service.get_dataset()
 
 
-@api.route("/compare/<step>", methods=["GET"])
+@api.route("/compare", methods=["GET"])
 @cross_origin(supports_credentials=True)
-def get_compare(step):
+def get_compare():
     """Compare view API."""
-    dataset_ids_a = request.args.getlist("datasetIdsA", type=str)
-    dataset_ids_b = request.args.getlist("datasetIdsB", type=str)
-    dataset_upload = request.args.get("datasetUpload", type=str)
-    query_operation = request.args.get("queryOperation", type=str)
+    reference_ids = request.args.getlist("reference", type=str)
+    comparison_ids = request.args.getlist("comparison", type=str)
+    upload_path = request.args.get("upload", type=str)
+    query_operation = request.args.get("operation", type=str)
 
     public_service = get_public_service()
     response = public_service.get_comparison(
-        step, dataset_ids_a, dataset_ids_b, dataset_upload, query_operation
+        reference_ids, comparison_ids, upload_path, query_operation
     )
     return response
 

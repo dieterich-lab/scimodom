@@ -29,7 +29,7 @@ from scimodom.database.models import (
     Selection,
 )
 import scimodom.database.queries as queries
-from scimodom.services.importer import BEDImporter
+from scimodom.services.importer import get_bed_importer
 from scimodom.services.annotation import AnnotationService
 from scimodom.services.assembly import AssemblyService
 import scimodom.utils.specifications as specs
@@ -465,9 +465,7 @@ class PublicService:
 
         return self._dump(query)
 
-    def get_comparison(
-        self, step, dataset_ids_a, dataset_ids_b, dataset_upload, query_operation
-    ):
+    def get_comparison(self, reference_ids, comparison_ids, upload, query_operation):
         """Retrieve ..."""
         # TODO: refactor
         # API call in compare, thenquery_operation pass as params to SPA components
@@ -475,116 +473,58 @@ class PublicService:
         # final call after dataset selection + query
         # + lazy loading of results?
 
-        # TODO: this will not work... dataset vs. modification?
-        if step == "dataset":
-            query = (
-                select(
-                    Dataset.id.label("dataset_id"),
-                    Dataset.title.label("dataset_title"),
-                    Modification.id.label("modification_id"),
-                    DetectionTechnology.id.label("technology_id"),
-                    Organism.id.label("organism_id"),
-                )
-                .join_from(Dataset, Association, Dataset.id == Association.dataset_id)
-                .join_from(
-                    Association, Selection, Association.selection_id == Selection.id
-                )
-                .join_from(
-                    Selection,
-                    Modification,
-                    Selection.modification_id == Modification.id,
-                )
-                .join_from(
-                    Selection,
-                    DetectionTechnology,
-                    Selection.technology_id == DetectionTechnology.id,
-                )
-                .join_from(Selection, Organism, Selection.organism_id == Organism.id)
+        query = (
+            select(
+                Data.chrom,
+                Data.start,
+                Data.end,
+                Data.name,
+                Data.score,
+                Data.strand,
+                Association.dataset_id,
+                # Data.dataset_id,
+                Data.coverage,
+                Data.frequency,
             )
+            .join_from(Data, Association, Data.inst_association)
+            .where(Association.dataset_id.in_(reference_ids))
+            # .order_by(Data.chrom.asc(), Data.start.asc())
+        )
+        a_records = self._session.execute(query).all()
 
-            records = self._dump(query)
-
-            # query = (
-            # select(Taxa.short_name.distinct(), Taxonomy.kingdom)
-            # .join_from(Taxa, Taxonomy, Taxa.taxonomy_id == Taxonomy.id)
-            # .join_from(Taxa, Organism, Taxa.id == Organism.taxa_id)
-            # )
-
-            ## so far no order
-            ## [('H. sapiens', 'Animalia'), ('M. musculus', 'Animalia')]
-            ## we need to reformat to fit the "grouped dropdown component"
-            ## we also probably need to add ids to retrieve the final selection
-            ## i.e. taxa, modification, and technology ids
-            ## same below
-
-            # query = select(
-            # Modification.rna.distinct(),
-            # Modomics.short_name,
-            # ).join_from(Modification, Modomics, Modification.modomics_id == Modomics.id)
-
-            ## [('mRNA', 'm6A'), ('mRNA', 'm5C'), ('rRNA', 'm6A'), ('mRNA', 'Y'), ('tRNA', 'Y')]
-
-            # query = select(DetectionMethod.meth.distinct(), DetectionTechnology.tech).join_from(
-            # DetectionMethod,
-            # DetectionTechnology,
-            # DetectionMethod.id == DetectionTechnology.method_id,
-            # )
-
-            ## [('Chemical-assisted sequencing', 'm6A-SAC-seq'), ('Native RNA sequencing', 'Nanopore'), ('Chemical-assisted sequencing', 'GLORI'), ('Enzyme/protein-assisted sequencing', 'm5C-miCLIP'), ('Enzyme/protein-assisted sequencing', 'm6ACE-seq'), ('Chemical-assisted sequencing', 'BID-seq'), ('Antibody-based sequencing', 'm6A-seq/MeRIP'), ('Enzyme/protein-assisted sequencing', 'eTAM-seq')]
-
-        elif step == "ops":
-            query = (
-                select(
-                    Data.chrom,
-                    Data.start,
-                    Data.end,
-                    Data.name,
-                    Data.score,
-                    Data.strand,
-                    Association.dataset_id,
-                    # Data.dataset_id,
-                    Data.coverage,
-                    Data.frequency,
-                )
-                .join_from(Data, Association, Data.inst_association)
-                .where(Association.dataset_id.in_(dataset_ids_a))
-                # .order_by(Data.chrom.asc(), Data.start.asc())
-            )
-            a_records = self._session.execute(query).all()
-
-            # AD HOC - EUF VERSION SHOULD COME FROM SOMEWHERE ELSE!
-            if dataset_upload:
-                filen = Path(dataset_upload).stem
-                b_records = [
-                    BEDImporter(
-                        filen, open(dataset_upload, "r"), filen, "1.7"
-                    ).get_records()
-                ]
-            else:
-                b_records = []
-                for idx in dataset_ids_b:
-                    query = (
-                        select(
-                            Data.chrom,
-                            Data.start,
-                            Data.end,
-                            Data.name,
-                            Data.score,
-                            Data.strand,
-                            Association.dataset_id,
-                            # Data.dataset_id,
-                            Data.coverage,
-                            Data.frequency,
-                        )
-                        .join_from(Data, Association, Data.inst_association)
-                        .where(Association.dataset_id == idx)
-                        # .where(Data.dataset_id == idx)
+        # AD HOC - EUF VERSION SHOULD COME FROM SOMEWHERE ELSE!
+        if upload:
+            importer = get_bed_importer(upload)
+            importer.parse_records()
+            importer.close()
+            b_records = importer.get_buffer()
+            # records = [tuple([val for key, val in record.items()]) for record in b_records]
+            # print(b_records)
+        else:
+            b_records = []
+            for idx in comparison_ids:
+                query = (
+                    select(
+                        Data.chrom,
+                        Data.start,
+                        Data.end,
+                        Data.name,
+                        Data.score,
+                        Data.strand,
+                        Association.dataset_id,
+                        # Data.dataset_id,
+                        Data.coverage,
+                        Data.frequency,
                     )
-                    b_records.append(get_session().execute(query).all())
+                    .join_from(Data, Association, Data.inst_association)
+                    .where(Association.dataset_id == idx)
+                    # .where(Data.dataset_id == idx)
+                )
+                b_records.append(get_session().execute(query).all())
 
-            op, strand = query_operation.split("S")
-            c_records = get_op(op)(a_records, b_records, s=eval(strand))
-            records = [records_factory(op.capitalize(), r)._asdict() for r in c_records]
+        op, strand = query_operation.split("S")
+        c_records = get_op(op)(a_records, b_records, s=eval(strand))
+        records = [records_factory(op.capitalize(), r)._asdict() for r in c_records]
 
         return records
 

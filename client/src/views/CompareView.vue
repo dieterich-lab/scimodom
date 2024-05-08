@@ -59,12 +59,12 @@ const onExport = () => {
 function load(operation) {
   records.value = undefined
   loading.value = true
-  HTTP.get('/compare/ops', {
+  HTTP.get('/compare', {
     params: {
-      datasetIdsA: selectedDatasetA.value,
-      datasetIdsB: selectedDatasetB.value,
-      datasetUpload: datasetUploaded.value,
-      queryOperation: operation
+      reference: selectedDatasetA.value,
+      comparison: selectedDatasetB.value,
+      upload: datasetUploaded.value,
+      operation: operation
     },
     paramsSerializer: {
       indexes: null
