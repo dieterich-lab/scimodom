@@ -75,7 +75,7 @@ const onOverlay = (record) => {
 }
 
 onMounted(() => {
-  HTTP.get('/browse')
+  HTTP.get('/dataset/list_all')
     .then(function (response) {
       records.value = response.data
     })

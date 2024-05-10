@@ -1,23 +1,17 @@
 <script setup>
-import { ref, computed, onMounted, defineAsyncComponent } from 'vue'
+import { ref, onMounted, defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDialog } from 'primevue/usedialog'
 import { useForm } from 'vee-validate'
 import { object, array, string, number } from 'yup'
 import { HTTP, HTTPSecure } from '@/services/API'
-import { toTree, toCascade, nestedSort } from '@/utils/index.js'
-import {
-  updOrganismFromMod,
-  updTechnologyFromModAndOrg,
-  updSelectionFromAll
-} from '@/utils/selection.js'
+import Instructions from '@/components/ui/Instructions.vue'
+import { updOrganismFromMod, updTechnologyFromModAndOrg } from '@/utils/selection.js'
 
 import FormDropdown from '@/components/ui/FormDropdown.vue'
 import FormMultiSelect from '@/components/ui/FormMultiSelect.vue'
 import FormCascade from '@/components/ui/FormCascade.vue'
 import FormTextInput from '@/components/ui/FormTextInput.vue'
-import FormTextArea from '@/components/ui/FormTextArea.vue'
-import FormButton from '@/components/ui/FormButton.vue'
 
 const router = useRouter()
 
@@ -206,7 +200,7 @@ onMounted(() => {
 <template>
   <div>
     <form @submit.prevent="onSubmit">
-      <h3 class="mt-0 mb-4 dark:text-white/80">
+      <Instructions>
         Fill a submission form for each dataset (bedRMod file) that belongs to this project. For
         more information on the bedRMod format, consult the
         <RouterLink
@@ -218,7 +212,7 @@ onMounted(() => {
         Click <span class="inline font-semibold">"Upload"</span> to submit the form. You cannot go
         back after this step. Click <span class="inline font-semibold">"Cancel"</span> to drop the
         request. In the latter case, all information that you entered will be lost.
-      </h3>
+      </Instructions>
       <div class="grid grid-cols-2 gap-y-2 gap-x-8">
         <div class="flex flex-row">
           <FormTextInput v-model="smid" :error="errors.smid" placeholder="XXXXXXXX"
