@@ -5,9 +5,7 @@ from scimodom.config import Config
 
 API_PREFIX = "api/v0"  # must fit with client/public/config.js
 USER_API_ROUTE = f"/{API_PREFIX}/user"
-ACCESS_API_ROUTE = f"/{API_PREFIX}/access"
 DATASET_API_ROUTE = f"/{API_PREFIX}/dataset"
-UPLOAD_API_ROUTE = f"/{API_PREFIX}/upload"
 TRANSFER_API_ROUTE = f"/{API_PREFIX}/transfer"
 DATA_MANAGEMENT_API_ROUTE = f"/{API_PREFIX}/management"
 

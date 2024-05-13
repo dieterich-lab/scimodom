@@ -6,7 +6,6 @@ from flask_cors import cross_origin
 
 from scimodom.services.dataset import get_dataset_service
 from scimodom.services.public import get_public_service
-from scimodom.services.comparison import get_comparison_service
 
 api = Blueprint("api", __name__)
 
@@ -109,20 +108,6 @@ def get_search():
         multi_sort,
     )
     return response
-
-
-@api.route("/compare", methods=["GET"])
-@cross_origin(supports_credentials=True)
-def get_compare():
-    """Compare view API."""
-    reference_ids = request.args.getlist("reference", type=str)
-    comparison_ids = request.args.getlist("comparison", type=str)
-    upload_path = request.args.get("upload", type=str)
-    query_operation = request.args.get("operation", type=str)
-
-    # TODO
-    compare_service = get_comparison_service()
-    return "Not implemented", 404
 
 
 @api.route("/upload", methods=["POST"])

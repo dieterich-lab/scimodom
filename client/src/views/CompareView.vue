@@ -59,7 +59,7 @@ const onExport = () => {
 function load(operation) {
   records.value = undefined
   loading.value = true
-  HTTP.get('/compare', {
+  HTTP.get('/dataset/compare', {
     params: {
       reference: selectedDatasetA.value,
       comparison: selectedDatasetB.value,
