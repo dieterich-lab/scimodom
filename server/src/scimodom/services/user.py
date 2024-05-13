@@ -62,7 +62,7 @@ class UserService:
         :type password: str
         """
         try:
-            self._get_user_by_email(email)
+            self.get_user_by_email(email)
             raise UserExists(f"User with email address '{email} exists already")
         except NoSuchUser:
             pass
@@ -84,7 +84,7 @@ class UserService:
             self._session.rollback()
             raise exc
 
-    def _get_user_by_email(self, email: str) -> User:
+    def get_user_by_email(self, email: str) -> User:
         """Get user.
 
         :param email: User name (email address).
@@ -119,7 +119,7 @@ class UserService:
         """
         try:
             try:
-                user = self._get_user_by_email(email)
+                user = self.get_user_by_email(email)
             except NoSuchUser:
                 raise _DetailedWrongUserOrPassword(
                     f"Received confirmation for unknown user '{email}'"
@@ -150,7 +150,7 @@ class UserService:
         :param email: User name (email address).
         :type email: str
         """
-        user = self._get_user_by_email(email)
+        user = self.get_user_by_email(email)
         user.confirmation_token = self._get_random_token()
         self._session.commit()
         self._mail_service.send_password_reset_token(email, user.confirmation_token)
@@ -169,7 +169,7 @@ class UserService:
         """
         try:
             try:
-                user = self._get_user_by_email(email)
+                user = self.get_user_by_email(email)
             except NoSuchUser:
                 raise _DetailedWrongUserOrPassword(
                     f"Unknown user '{email}' tried to change the password"
@@ -193,7 +193,7 @@ class UserService:
         :type new_password: str
         """
         try:
-            user = self._get_user_by_email(email)
+            user = self.get_user_by_email(email)
         except NoSuchUser:
             raise _DetailedWrongUserOrPassword(
                 f"Unknown user '{email}' tried to change the password"
@@ -213,7 +213,7 @@ class UserService:
         :type password: str
         """
         try:
-            user = self._get_user_by_email(email)
+            user = self.get_user_by_email(email)
         except NoSuchUser:
             logger.warning(f"WARNING: Unknown user '{email}' tried to login")
             return False

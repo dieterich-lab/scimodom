@@ -407,3 +407,18 @@ class User(Base):
     state: Mapped[UserState] = mapped_column(Enum(UserState), nullable=False)
     password_hash: Mapped[str] = mapped_column(String(128), nullable=True)
     confirmation_token: Mapped[str] = mapped_column(String(32), nullable=True)
+
+
+class BamFile(Base):
+    __tablename__ = "bam_file"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    original_file_name: Mapped[str] = mapped_column(String(1024))
+    storage_file_name: Mapped[str] = mapped_column(String(256), unique=True)
+    dataset_id: Mapped[str] = mapped_column(ForeignKey("dataset.id"), index=True)
+
+
+class UserProjectAssociation(Base):
+    __tablename__ = "user_project_association"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), index=True)
+    project_id: Mapped[str] = mapped_column(ForeignKey("project.id"), index=True)

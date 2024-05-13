@@ -94,7 +94,7 @@ function isAandB() {
 }
 
 onMounted(() => {
-  HTTP.get('/browse')
+  HTTP.get('/dataset/list_all')
     .then(function (response) {
       dataset.value = response.data
     })

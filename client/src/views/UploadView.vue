@@ -2,6 +2,7 @@
 import UploadForm from '@/components/upload/UploadForm.vue'
 import StyledHeadline from '@/components/ui/StyledHeadline.vue'
 import SubTitle from '@/components/ui/SubTitle.vue'
+import AttachBamForm from '@/components/upload/AttachBamForm.vue'
 </script>
 
 <template>
@@ -34,17 +35,10 @@ import SubTitle from '@/components/ui/SubTitle.vue'
           <template #header>
             <div class="flex items-center gap-2">
               <i class="pi pi-paperclip" />
-              <span class="font-bold whitespace-nowrap">Attach other files</span>
+              <span class="font-bold whitespace-nowrap">Attach BAM files</span>
             </div>
           </template>
-          <p class="m-0">
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor
-            incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud
-            exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure
-            dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
-            Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt
-            mollit anim id est laborum.
-          </p>
+          <AttachBamForm />
         </TabPanel>
       </TabView>
     </SectionLayout>

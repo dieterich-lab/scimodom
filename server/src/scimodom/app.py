@@ -7,6 +7,7 @@ from sqlalchemy.orm import scoped_session
 
 from scimodom.api.public import api
 from scimodom.api.user import user_api
+from scimodom.api.dataset import dataset_api
 from scimodom.api.access import access_api
 from scimodom.api.management import management_api
 from scimodom.api.upload import upload_api
@@ -28,6 +29,7 @@ from scimodom.utils.url_routes import (
     API_PREFIX,
     USER_API_ROUTE,
     ACCESS_API_ROUTE,
+    DATASET_API_ROUTE,
     UPLOAD_API_ROUTE,
     TRANSFER_API_ROUTE,
     DATA_MANAGEMENT_API_ROUTE,
@@ -53,6 +55,7 @@ def create_app():
     app.register_blueprint(api, url_prefix=f"/{API_PREFIX}")
     app.register_blueprint(user_api, url_prefix=USER_API_ROUTE)
     app.register_blueprint(access_api, url_prefix=ACCESS_API_ROUTE)
+    app.register_blueprint(dataset_api, url_prefix=DATASET_API_ROUTE)
     app.register_blueprint(upload_api, url_prefix=UPLOAD_API_ROUTE)
     app.register_blueprint(transfer_api, url_prefix=TRANSFER_API_ROUTE)
     app.register_blueprint(management_api, url_prefix=DATA_MANAGEMENT_API_ROUTE)

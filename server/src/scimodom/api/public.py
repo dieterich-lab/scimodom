@@ -4,6 +4,7 @@ from pathlib import Path
 from flask import Blueprint, request
 from flask_cors import cross_origin
 
+from scimodom.services.dataset import get_dataset_service
 from scimodom.services.public import get_public_service
 from scimodom.services.comparison import get_comparison_service
 
@@ -108,14 +109,6 @@ def get_search():
         multi_sort,
     )
     return response
-
-
-@api.route("/browse", methods=["GET"])
-@cross_origin(supports_credentials=True)
-def get_browse():
-    """Browse view API."""
-    public_service = get_public_service()
-    return public_service.get_dataset()
 
 
 @api.route("/compare", methods=["GET"])
