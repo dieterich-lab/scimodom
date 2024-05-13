@@ -13,16 +13,24 @@ const props = defineProps({
     type: Boolean,
     required: false,
     default: true
+  },
+  selectLimit: {
+    type: Number,
+    required: false
+  },
+  maxSelectedLabels: {
+    type: Number,
+    required: false
+  },
+  placeholder: {
+    type: String,
+    required: false,
+    default: 'Select a dataset'
   }
 })
 
 const model = defineModel()
 const datasets = ref([])
-const datasetsById = ref(new Map())
-
-function getLabel(dataset) {
-  return `${dataset.dataset_title} ${dataset.dataset_id}`
-}
 
 function getEmptyMessage() {
   return props.myDatasetsOnly
@@ -31,30 +39,29 @@ function getEmptyMessage() {
 }
 
 onMounted(() => {
-  loadDatasets(datasets, datasetsById, props.myDatasetsOnly, true)
+  loadDatasets(datasets, null, props.myDatasetsOnly, true)
 })
 </script>
 <template>
-  <Dropdown
+  <MultiSelect
     v-model="model"
     :options="datasets"
+    :selectionLimit="selectLimit"
+    :emptyMessage="getEmptyMessage()"
     filter
+    :filterFields="['dataset_id', 'dataset_title', 'dataset_info']"
     optionValue="dataset_id"
-    :optionLabel="getLabel"
-    placeholder="Select a dataset"
-    :empty-message="getEmptyMessage()"
-    class="w-full"
+    optionLabel="dataset_id"
+    :placeholder="placeholder"
+    :maxSelectedLabels="maxSelectedLabels"
+    display="chip"
+    :pt="{
+      root: { class: 'col-span-3 w-full md:w-full' }
+    }"
+    :ptOptions="{ mergeProps: true }"
   >
-    <template #value="slotProps">
-      <div v-if="slotProps.value">
-        <DatasetItem :dataset="datasetsById[slotProps.value]" />
-      </div>
-      <span v-else>
-        {{ slotProps.placeholder }}
-      </span>
-    </template>
     <template #option="slotProps">
       <DatasetItem :dataset="slotProps.option" />
     </template>
-  </Dropdown>
+  </MultiSelect>
 </template>

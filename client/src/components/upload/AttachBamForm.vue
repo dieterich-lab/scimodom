@@ -5,6 +5,7 @@ import Instructions from '@/components/ui/Instructions.vue'
 import DatasetSelection from '@/components/ui/DatasetSelection.vue'
 import FileUpload from '@/components/upload/FileUpload.vue'
 import UploadCard from '@/components/upload/UploadCard.vue'
+import LabeledItem from '@/components/ui/LabeledItem.vue'
 import { useUploadManager } from '@/stores/UploadManager.js'
 
 const ILLEGAL_FILENAME_CHAR_REGEXP = /[^a-zA-Z0-9.,_-]/g
@@ -23,7 +24,9 @@ async function scheduleUpload(file) {
     Here you can attach BAM and BAI files to existing datasets (bedRMod).
   </Instructions>
   <div class="grid gap-y-2 gap-x-8">
-    <DatasetSelection v-model="dataset_id" :my-datasets-only="true" />
+    <LabeledItem label="Dataset" class="w-full">
+      <DatasetSelection v-model="dataset_id" :my-datasets-only="true" />
+    </LabeledItem>
 
     <FileUpload
       v-if="dataset_id !== undefined"

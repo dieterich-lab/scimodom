@@ -59,6 +59,9 @@ async function uploader(event) {
       :maxFileSize="MAX_FILE_SIZE"
       :accept="props.accept"
       :disabled="props.disabled"
+      :auto="true"
+      :showUploadButton="false"
+      :showCancelButton="false"
     >
       <template #empty>
         <p>{{ props.placeholder }}</p>
