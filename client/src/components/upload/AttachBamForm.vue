@@ -10,13 +10,14 @@ import { useUploadManager } from '@/stores/UploadManager.js'
 
 const ILLEGAL_FILENAME_CHAR_REGEXP = /[^a-zA-Z0-9.,_-]/g
 
-const datasetId = defineModel()
+const dataset = defineModel()
 const uploadManager = useUploadManager()
 const { uploads } = storeToRefs(uploadManager)
 
 async function scheduleUpload(file) {
   const cleaned_file_name = encodeURI(file.name.replace(ILLEGAL_FILENAME_CHAR_REGEXP, '_'))
-  uploadManager.schedule(file, `/bam_file/${datasetId.value}/${cleaned_file_name}`)
+  const info = `${dataset.value.dataset_title} [${dataset.value.dataset_id}]`
+  uploadManager.schedule(file, `/bam_file/${dataset.value.dataset_id}/${cleaned_file_name}`, info)
 }
 </script>
 <template>
@@ -25,11 +26,11 @@ async function scheduleUpload(file) {
   </Instructions>
   <div class="grid gap-y-2 gap-x-8">
     <LabeledItem label="Dataset" class="w-full">
-      <DatasetSelection v-model="datasetId" :my-datasets-only="true" />
+      <DatasetSelection v-model="dataset" :my-datasets-only="true" />
     </LabeledItem>
 
     <FileUpload
-      v-if="datasetId !== undefined"
+      v-if="dataset !== undefined"
       label="BAM/BAI Files"
       accept="application/octet-stream,.bam,.bai"
       :multiple="true"

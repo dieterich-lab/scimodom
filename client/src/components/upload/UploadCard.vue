@@ -42,6 +42,7 @@ const text_classes = `${text_color} font-normal `
       <h5 class="mb-1 text-xl font-semibold tracking-tight text-gray-900 dark:text-white/80">
         <i :class="icon" class="p-0 px-1 dark:text-white/80" />
         {{ upload.file.name }}
+        <span class="font-thin ml-4 text-gray-500 dark:text-surface-400">{{ upload.info }}</span>
       </h5>
       <p :class="text_classes">
         {{ text }}

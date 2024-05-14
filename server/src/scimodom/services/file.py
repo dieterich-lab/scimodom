@@ -96,7 +96,7 @@ class FileService:
         bam_file = BamFile(
             dataset_id=dataset.id,
             original_file_name=name,
-            storage_file_name=f"{dataset.id}_{uuid4()}_name"[:256],
+            storage_file_name=f"{dataset.id}_{uuid4()}_{name}"[:256],
         )
         path = self._get_bam_file_path(bam_file)
         self._stream_to_file(data_stream, path)

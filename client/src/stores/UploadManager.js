@@ -19,12 +19,13 @@ function sleep(ms) {
 }
 
 class ScheduledUpload {
-  constructor(file, url, removeCallback) {
+  constructor(file, url, info, removeCallback) {
     let randomNumber = new Uint32Array(1)
     crypto.getRandomValues(randomNumber)
     this.id = randomNumber[0]
     this.file = file
     this.url = url
+    this.info = info
     this.state = UPLOAD_STATE.WAITING
     this.errorMessage = ''
     this.removeCallback = removeCallback
@@ -66,11 +67,11 @@ const useUploadManager = defineStore('uploadManager', {
     }
   },
   actions: {
-    schedule(file, post_request) {
+    schedule(file, post_request, info) {
       const removeCallback = (x) => {
         this.remove(x)
       }
-      const newUpload = new ScheduledUpload(file, post_request, removeCallback)
+      const newUpload = new ScheduledUpload(file, post_request, info, removeCallback)
       this.uploads = [...this.uploads, newUpload]
       this.tryToStartUpload()
     },

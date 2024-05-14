@@ -39,7 +39,6 @@ onMounted(() => {
     v-model="model"
     :options="datasets"
     filter
-    optionValue="dataset_id"
     :optionLabel="getLabel"
     placeholder="Select a dataset"
     :empty-message="getEmptyMessage()"
@@ -47,7 +46,7 @@ onMounted(() => {
   >
     <template #value="slotProps">
       <div v-if="slotProps.value">
-        <DatasetItem :dataset="datasetsById[slotProps.value]" />
+        <DatasetItem :dataset="slotProps.value" />
       </div>
       <span v-else>
         {{ slotProps.placeholder }}
