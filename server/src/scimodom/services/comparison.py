@@ -1,16 +1,17 @@
 from collections.abc import Sequence
 from logging import getLogger
 from pathlib import Path
-from typing import Any, Optional, Literal, get_args
+from typing import Any, Optional, Literal, ClassVar, get_args
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from scimodom.database.database import get_session
 from scimodom.database.models import Data, Association
-from scimodom.utils.operations import to_bedtool, _remove_extra_feature
+from scimodom.utils.operations import to_bedtool, _remove_filno
 from scimodom.utils.models import records_factory
 from scimodom.services.importer import get_bed_importer
+from scimodom.utils.specifications import SPECS_EUF
 import scimodom.utils.utils as utils
 
 logger = getLogger(__name__)
@@ -32,47 +33,49 @@ class ComparisonService:
 
     :param session: SQLAlchemy ORM session
     :type session: Session
-    :param query_operation: Comparison to perform:
-    intersect, closest, or subtract (difference)
-    :type query_operation: str
-    :param is_strand: Perform strand-aware query
-    :type is_strand: bool
     """
 
     OPERATIONS = Literal["intersect", "closest", "subtract"]
+    # must match exactly incl. order of utils.models
+    COLUMNS: ClassVar[list[str]] = [
+        v
+        for k, v in SPECS_EUF[SPECS_EUF["versions"][-1]]["columns"].items()
+        if k not in ["thickStart", "thickEnd", "itemRgb"]
+    ]
+    COLUMNS.insert(6, "dataset_id")
 
-    def __init__(
-        self,
-        session: Session,
-        query_operation: OPERATIONS,
-        is_strand: bool,
-    ) -> None:
+    def __init__(self, session: Session) -> None:
         """Initializer method."""
         self._session = session
-        self._query_operation = query_operation
-        self._is_strand = is_strand
 
+        self._query_operation: str
+        self._is_strand: bool
         self._reference_records: Sequence[Any]
         self._comparison_records: Sequence[Any]
 
-        operations = get_args(self.OPERATIONS)
-        assert (
-            query_operation in operations
-        ), f"Undefined '{query_operation}'. Allowed values are {operations}."
-
     @staticmethod
-    def upload_file(file_path: Path) -> list[dict[str, Any]]:
+    def upload_file(file_path: Path, is_euf: bool) -> list[dict[str, Any]]:
         """Upload bed-like file.
 
         :param file_path: Path to file
         :type file_path: Path
+        :param is_euf: BED6 or bedRMod (EUF)
+        :type is_euf: bool
         :return: Uploaded records
         :rtype: list of dict of {str: Any}
         """
-        importer = get_bed_importer(file_path)
+
+        def _patch_upload(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+            """Patch BED6 or bedRMod for comparison."""
+            fields = {"dataset_id": "Upload"}
+            if not is_euf:
+                fields = fields | {"coverage": 0, "frequency": 0}
+            return [r | fields for r in records]
+
+        importer = get_bed_importer(file_path, is_euf=is_euf)
         importer.parse_records()
         importer.close()
-        return importer.get_buffer()
+        return _patch_upload(importer.get_buffer())
 
     def query_reference_records(self, ids: list[str]) -> None:
         """Query the database for reference records.
@@ -152,23 +155,27 @@ class ComparisonService:
                 raise NoRecordsFoundError
             self._comparison_records.append(records)
 
-    def upload_records(self, upload: str):
+    def upload_records(self, upload: str, is_euf: bool):
         """Upload records.
 
         :param upload: Uploaded dataset to compare
         :type upload: str | Path
+        :param is_euf: BED6 or bedRMod (EUF)
+        :type is_euf: bool
         """
         upload_path = Path(upload)
         if not upload_path.is_file():
             msg = f"No such file or directory: {upload_path.as_posix()}"
             raise FileNotFoundError(msg)
         try:
-            db_records = ComparisonService.upload_file(upload_path)
+            db_records = ComparisonService.upload_file(upload_path, is_euf)
         except Exception as exc:
             # upload itself is "fail-safe", catch eveything else...
             msg = f"Failed to upload {upload_path.as_posix()}. "
             raise FailedUploadError(msg)
-        records = [tuple([val for key, val in record.items()]) for record in db_records]
+        records = [
+            tuple([record[key] for key in self.COLUMNS]) for record in db_records
+        ]
         # ... but records might be "skipped" for various reasons
         if not records:
             raise NoRecordsFoundError
@@ -217,9 +224,8 @@ class ComparisonService:
             s=self._is_strand,
             sorted=is_sorted,
         )
-        stream = bedtool.each(_remove_extra_feature)
-        records = [tuple(s.fields) for s in stream]
-        return records
+        stream = bedtool.each(_remove_filno)
+        return [tuple(s.fields) for s in stream]
 
     def _closest(self, is_sorted: bool = True) -> list[Any]:
         """Wrapper for pybedtools.bedtool.BedTool.closest
@@ -244,6 +250,9 @@ class ComparisonService:
         # Report distance with respect to A
         D: str = "a"
 
+        # BED6+3
+        n_fields = 9
+
         a_bedtool = to_bedtool(self._reference_records)
         b_bedtool = to_bedtool(self._comparison_records, as_list=True)
         bedtool = a_bedtool.closest(
@@ -255,17 +264,12 @@ class ComparisonService:
             s=self._is_strand,
             sorted=is_sorted,
         )
-        stream = bedtool.each(_remove_extra_feature)
-        records = [tuple(s.fields) for s in stream]
-
-        # TODO
-        # Reports “none” for chrom (?) and “-1” for all other fields (?) when a feature
+        # Reports “none” for chrom (.) and “-1” for all other fields (start/end) when a feature
         # is not found in B on the same chromosome as the feature in A.
-        # Note that "start" (fields) is a string!
-        # 9 + 0/1 + 1
-        # c_bedtool = c_bedtool.filter(lambda c: c.fields[(offset + filnum_idx + 1)] != "-1")
-
-        return records
+        stream = bedtool.each(_remove_filno, is_closest=True).filter(
+            lambda c: c.fields[n_fields + 1] != "-1"
+        )
+        return [tuple(s.fields) for s in stream]
 
     def _subtract(self, is_sorted: bool = True) -> list[Any]:
         """Wrapper for pybedtools.bedtool.BedTool.subtract
@@ -279,10 +283,29 @@ class ComparisonService:
         a_bedtool = to_bedtool(self._reference_records)
         b_bedtool = to_bedtool(utils.flatten_list(self._comparison_records))
         bedtool = a_bedtool.subtract(b_bedtool, s=self._is_strand, sorted=is_sorted)
-        # records = [(i.fields[:offset]) for i in c_bedtool]
-        # TODO ??? offset = 6 + 3
-        # records = [tuple(i.fields[:offset]) for i in c_bedtool]
-        # return records
+        return [tuple(s.fields) for s in bedtool]
+
+    def _init(
+        self,
+        query_operation: OPERATIONS,
+        is_strand: bool,
+    ) -> None:
+        """Force initialize when a cached service
+        exists but there is a change in parameters.
+
+        :param query_operation: Comparison to perform:
+        intersect, closest, or subtract (difference)
+        :type query_operation: str
+        :param is_strand: Perform strand-aware query
+        :type is_strand: bool
+        """
+        self._query_operation = query_operation
+        self._is_strand = is_strand
+
+        operations = get_args(self.OPERATIONS)
+        assert (
+            query_operation in operations
+        ), f"Undefined '{query_operation}'. Allowed values are {operations}."
 
 
 _cached_comparison_service: Optional[ComparisonService] = None
@@ -301,7 +324,6 @@ def get_comparison_service(query_operation: str, is_strand: bool) -> ComparisonS
     """
     global _cached_comparison_service
     if _cached_comparison_service is None:
-        _cached_comparison_service = ComparisonService(
-            session=get_session(), query_operation=query_operation, is_strand=is_strand
-        )
+        _cached_comparison_service = ComparisonService(session=get_session())
+    _cached_comparison_service._init(query_operation, is_strand)
     return _cached_comparison_service

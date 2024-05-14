@@ -256,7 +256,7 @@ def liftover_to_file(
     return result
 
 
-def _remove_extra_feature(feature, n_fields=9):
+def _remove_filno(feature, n_fields: int = 9, is_closest: bool = False):
     """This function is to be passed
     as argument to BedTool.each(), to
     generate a BED-like Interval. This is used
@@ -265,16 +265,21 @@ def _remove_extra_feature(feature, n_fields=9):
     when calling intersect or closest (with -wa and
     -wb). The default format is BED6+3, where
     3 additional fields are "dataset_id", "coverage",
-    and "frequency".
+    and "frequency". For closest, distance is appended
+    at the end.
 
     :param feature: A feature from a BED file.
     :type feature: pybedtools.Interval
+    :param n_fields: BED format
+    :type n_fields: int
+    :param is_closest: Add distance field
+    :type is_closest: bool
     :return: New interval
     :rtype: pybedtools interval
     """
-    target = 2 * n_fields + 1
+    target = 2 * n_fields + int(is_closest)
     line = [f for f in feature.fields]
-    if len(feature.fields) == target:
+    if len(feature.fields) != target:
         line.pop(n_fields)
     return pybedtools.cbedtools.create_interval_from_list(line)
 

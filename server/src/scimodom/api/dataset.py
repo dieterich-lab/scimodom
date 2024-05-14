@@ -36,20 +36,25 @@ def compare():
     print(f"{reference_ids}, {comparison_ids}, {upload_path}, {query_operation}")
 
     # TODO
+    is_euf = True
+
     operation, strand = query_operation.split("S")
     comparison_service = get_comparison_service(operation, eval(strand))
+
     if upload_path:
-        try:
-            comparison_service.upload_records(upload_path)
-        except:  # FileNotFoundError, FailedUploadError, NoRecordsFoundError
-            pass
+        # try:
+        comparison_service.upload_records(upload_path, is_euf)
+        # except:  # FileNotFoundError, FailedUploadError, NoRecordsFoundError
+        #    pass
     else:
-        try:
-            comparison_service.query_comparison_records(comparison_ids)
-        except:  # NoRecordsFoundErrror - querying from FE this will not occur...
-            pass
+        # try:
+        comparison_service.query_comparison_records(comparison_ids)
+        # except:  # NoRecordsFoundErrror - querying from FE this will not occur...
+        #    pass
     comparison_service.query_reference_records(reference_ids)
     # try:
     return comparison_service.compare_dataset()
+    # print(f"API {tata[:2]}")
+    # return tata
     # except: # what errors pybedtools can rise here?
     #    return jsonify({"message": "Failed"}), 400
