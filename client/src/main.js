@@ -39,6 +39,7 @@ import StepperPanel from 'primevue/stepperpanel'
 import TabPanel from 'primevue/tabpanel'
 import TabView from 'primevue/tabview'
 import Textarea from 'primevue/textarea'
+import ToggleButton from 'primevue/togglebutton'
 import TreeSelect from 'primevue/treeselect'
 // layout components
 import DefaultLayout from '@/components/layout/DefaultLayout.vue'
@@ -86,6 +87,7 @@ app.component('StepperPanel', StepperPanel)
 app.component('TabPanel', TabPanel)
 app.component('TabView', TabView)
 app.component('Textarea', Textarea)
+app.component('ToggleButton', ToggleButton)
 app.component('TreeSelect', TreeSelect)
 
 app.component('DefaultLayout', DefaultLayout)

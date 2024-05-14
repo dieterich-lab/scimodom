@@ -14,7 +14,7 @@ const props = defineProps({
     required: true
   }
 })
-
+const isEUF = ref()
 const dataset = ref()
 const disabled = ref(false)
 const uploadURL = HTTP.getUri() + '/upload'
@@ -53,6 +53,7 @@ const clear = () => {
       >Dataset file
     </InputText>
     <div class="flex flex-row">
+      <ToggleButton v-model="isEUF" onLabel="bedRMod" offLabel="BED6" class="w-[8rem] mr-4" />
       <FileUpload
         mode="basic"
         name="file"
@@ -69,7 +70,7 @@ const clear = () => {
         @click="clear"
         icon="pi pi-times"
         severity="danger"
-        class="ml-4 max-h-[1.9rem] place-self-center"
+        class="ml-4 max-h-[1.9rem] place-self-center text-nowrap"
       />
     </div>
     <MultiSelect
