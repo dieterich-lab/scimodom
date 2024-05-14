@@ -7,7 +7,8 @@ const DIALOG = Object.freeze({
   ALERT: Symbol('ALERT'),
   REGISTER_ENTER_DATA: Symbol('REGISTER_ENTER_DATA'),
   RESET_PASSWORD_REQUEST: Symbol('RESET_PASSWORD_REQUEST'),
-  CHANGE_PASSWORD: Symbol('CHANGE_PASSWORD')
+  CHANGE_PASSWORD: Symbol('CHANGE_PASSWORD'),
+  CONFIRM: Symbol('CONFIRM')
 })
 
 const useDialogState = defineStore('dialogState', {
@@ -17,7 +18,8 @@ const useDialogState = defineStore('dialogState', {
       email: null,
       token: null,
       newPassword: null,
-      message: null
+      message: null,
+      confirmCallback: null
     }
   },
   actions: {
@@ -57,6 +59,14 @@ const useDialogState = defineStore('dialogState', {
       console.log(full_message)
       const new_state = { ...new_state_template, message: full_message }
       this.$patch(new_state)
+    },
+    confirm() {
+      if (this.confirmCallback !== null) {
+        const func = this.confirmCallback
+        this.confirmCallback = null
+        this.state = DIALOG.NONE
+        func()
+      }
     }
   }
 })
