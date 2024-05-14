@@ -149,7 +149,7 @@ class ComparisonService:
 
         self._comparison_records = []
         for idx in ids:
-            query = _construct_query([idx])
+            query = _construct_query(idx)
             records = self._session.execute(query).all()
             if not records:
                 raise NoRecordsFoundError
