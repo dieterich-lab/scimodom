@@ -9,6 +9,7 @@ import CompareStepB from '@/components/compare/CompareStepB.vue'
 import StyledHeadline from '@/components/ui/StyledHeadline.vue'
 import SubTitle from '@/components/ui/SubTitle.vue'
 
+const uploadMessage = ref()
 const active = ref(0)
 const loading = ref(false)
 const disabled = computed(() => isAandB())
@@ -75,6 +76,7 @@ function load(operation) {
       loading.value = false
     })
     .catch((error) => {
+      uploadMessage.value = error.response.data.message
       console.log(error)
     })
 }
@@ -300,10 +302,12 @@ const buttonPt = {
                   <small id="text-error" class="p-4 select-none text-sm text-red-700">
                     <i
                       :class="[
-                        errorMessage ? 'pi pi-times-circle place-self-center text-red-700' : ''
+                        errorMessage || uploadMessage
+                          ? 'pi pi-times-circle place-self-center text-red-700'
+                          : ''
                       ]"
                     />
-                    {{ errorMessage || '&nbsp;' }}
+                    {{ errorMessage || uploadMessage || '&nbsp;' }}
                   </small>
                 </div>
               </form>

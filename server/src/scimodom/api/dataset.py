@@ -1,10 +1,18 @@
+import logging
+
 from flask import Blueprint, request, jsonify
 from flask_cors import cross_origin
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
-from scimodom.services.comparison import get_comparison_service
+from scimodom.services.comparison import (
+    get_comparison_service,
+    FailedUploadError,
+    NoRecordsFoundError,
+)
 from scimodom.services.dataset import get_dataset_service
 from scimodom.services.user import get_user_service
+
+logger = logging.getLogger(__name__)
 
 dataset_api = Blueprint("dataset_api", __name__)
 
@@ -42,19 +50,46 @@ def compare():
     comparison_service = get_comparison_service(operation, eval(strand))
 
     if upload_path:
-        # try:
-        comparison_service.upload_records(upload_path, is_euf)
-        # except:  # FileNotFoundError, FailedUploadError, NoRecordsFoundError
-        #    pass
-    else:
-        # try:
+        try:
+            comparison_service.upload_records(upload_path, is_euf)
+        except FileNotFoundError as exc:
+            return (
+                jsonify({"message": f"{exc}."}),
+                404,
+            )
+        except FailedUploadError as exc:
+            logger.error(f"Failed upload: {exc}")
+            return (
+                jsonify(
+                    {"message": "Failed to upload file. Contact the administrator."}
+                ),
+                500,
+            )
+        except NoRecordsFoundError:
+            return (
+                jsonify(
+                    {
+                        "message": "Failed to upload file. No records were found. Allowed formats are BED6 or bedRMod. Chromosomes must be formatted following the Ensembl short format. For more information, consult the Documentaion."
+                    }
+                ),
+                500,
+            )
+    else:  # we don't expect NoRecordsFoundErrror
         comparison_service.query_comparison_records(comparison_ids)
-        # except:  # NoRecordsFoundErrror - querying from FE this will not occur...
-        #    pass
+
     comparison_service.query_reference_records(reference_ids)
-    # try:
-    return comparison_service.compare_dataset()
-    # print(f"API {tata[:2]}")
-    # return tata
-    # except: # what errors pybedtools can rise here?
-    #    return jsonify({"message": "Failed"}), 400
+
+    try:
+        return comparison_service.compare_dataset()
+    except Exception as exc:
+        # all records at this point have beed adequately formatted
+        # what exceptions can pybedtools throw? catch-all...
+        logger.error(f"Failed comparison: {exc}")
+        return (
+            jsonify(
+                {
+                    "message": "Failed to perform comparison. The server encountered an unexpected error. Contact the administrator."
+                }
+            ),
+            500,
+        )

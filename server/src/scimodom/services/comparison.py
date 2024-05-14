@@ -171,8 +171,7 @@ class ComparisonService:
             db_records = ComparisonService.upload_file(upload_path, is_euf)
         except Exception as exc:
             # upload itself is "fail-safe", catch eveything else...
-            msg = f"Failed to upload {upload_path.as_posix()}. "
-            raise FailedUploadError(msg)
+            raise FailedUploadError(exc)
         records = [
             tuple([record[key] for key in self.COLUMNS]) for record in db_records
         ]
