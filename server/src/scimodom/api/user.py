@@ -4,7 +4,10 @@ from smtplib import SMTPException
 
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
+from sqlalchemy.exc import NoResultFound
 
+from scimodom.services.dataset import get_dataset_service
+from scimodom.services.permission import get_permission_service
 from scimodom.services.user import (
     get_user_service,
     UserExists,
@@ -115,3 +118,24 @@ def change_password():
         new_password=request.json["password"],
     )
     return jsonify({"result": "OK"})
+
+
+@user_api.route("/may_change_dataset/<dataset_id>", methods=["GET"])
+@jwt_required()
+def may_change_dataset(dataset_id):
+    email = get_jwt_identity()
+
+    user_service = get_user_service()
+    dataset_service = get_dataset_service()
+    permission_service = get_permission_service()
+
+    try:
+        user = user_service.get_user_by_email(email)
+    except NoSuchUser:
+        return {"message": "No such user"}, 404
+    try:
+        dataset = dataset_service.get_by_id(dataset_id)
+    except NoResultFound:
+        return {"message": "Unknown dataset"}, 404
+
+    return {"write_access": permission_service.may_change_dataset(user, dataset)}

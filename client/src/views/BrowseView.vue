@@ -4,6 +4,7 @@ import { FilterMatchMode, FilterOperator } from 'primevue/api'
 import { HTTP, getApiUrl } from '@/services/API.js'
 import StyledHeadline from '@/components/ui/StyledHeadline.vue'
 import SubTitle from '@/components/ui/SubTitle.vue'
+import DatasetInfo from '@/components/dataset/DatasetInfo.vue'
 
 const props = defineProps({
   eufid: {
@@ -14,16 +15,9 @@ const props = defineProps({
 })
 
 const records = ref()
-const recordsOverlay = ref(false)
-const thisRecord = ref({})
+const showDetails = ref(false)
+const selectedDataset = ref({})
 const dt = ref()
-const columns = [
-  { field: 'project_id', header: 'SMID' },
-  { field: 'project_title', header: 'Title' },
-  { field: 'project_summary', header: 'Summary' },
-  { field: 'date_added', header: 'Added' },
-  { field: 'date_published', header: 'Published' }
-]
 
 // todo
 const status = ref(['public', 'restricted'])
@@ -65,13 +59,9 @@ const onExport = () => {
   dt.value.exportCSV()
 }
 
-const splitStr = (str) => {
-  return str.split(',')
-}
-
 const onOverlay = (record) => {
-  thisRecord.value = { ...record }
-  recordsOverlay.value = true
+  selectedDataset.value = { ...record }
+  showDetails.value = true
 }
 
 onMounted(() => {
@@ -280,57 +270,7 @@ onMounted(() => {
           </DataTable>
         </div>
 
-        <Dialog
-          v-model:visible="recordsOverlay"
-          header="Project information"
-          :modal="true"
-          :pt="{
-            root: { class: 'w-fit' },
-            closeButton: { class: 'focus:ring-secondary-400 dark:focus:ring-secondary-300' }
-          }"
-          :ptOptions="{ mergeProps: true }"
-        >
-          <div>
-            <div class="flex space-x-12 mb-6 whitespace-pre-line">
-              This dataset is part of the following project:
-            </div>
-            <DataTable
-              :value="records.filter((val) => val.dataset_id == thisRecord.dataset_id)"
-              tableStyle="min-width: 50rem"
-            >
-              <Column
-                v-for="col of columns"
-                :key="col.field"
-                :field="col.field"
-                :header="col.header"
-              ></Column>
-              <Column field="doi" header="DOI">
-                <template #body="{ data }">
-                  <ul class="list-none" v-for="doi in splitStr(data.doi)">
-                    <a
-                      class="text-secondary-500 pr-12"
-                      target="_blank"
-                      :href="`https://doi.org/${doi}`"
-                      >{{ doi }}</a
-                    >
-                  </ul>
-                </template>
-              </Column>
-              <Column field="pmid" header="PMID">
-                <template #body="{ data }">
-                  <ul class="list-none" v-for="pmid in splitStr(data.pmid)">
-                    <a
-                      class="text-secondary-500"
-                      target="_blank"
-                      :href="`http://www.ncbi.nlm.nih.gov/pubmed/${pmid}`"
-                      >{{ pmid }}</a
-                    >
-                  </ul>
-                </template>
-              </Column>
-            </DataTable>
-          </div>
-        </Dialog>
+        <DatasetInfo v-model:visible="showDetails" :dataset="selectedDataset" />
       </div>
     </SectionLayout>
   </DefaultLayout>

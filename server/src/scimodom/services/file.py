@@ -1,7 +1,7 @@
 import logging
-from os import unlink, rename, makedirs
+from os import unlink, rename, makedirs, stat
 from os.path import join, exists, dirname
-from typing import Optional, IO
+from typing import Optional, IO, List, Dict
 from uuid import uuid4
 
 from sqlalchemy import select
@@ -12,7 +12,6 @@ from sqlalchemy.sql.operators import and_
 from scimodom.config import Config
 from scimodom.database.database import get_session
 from scimodom.database.models import Dataset, BamFile
-
 
 logger = logging.getLogger(__name__)
 
@@ -97,11 +96,39 @@ class FileService:
         bam_file = BamFile(
             dataset_id=dataset.id,
             original_file_name=name,
-            storage_file_name=f"{dataset.id}_{uuid4()}_name"[:256],
+            storage_file_name=f"{dataset.id}_{uuid4()}_{name}"[:256],
         )
         path = self._get_bam_file_path(bam_file)
         self._stream_to_file(data_stream, path)
         self._db_session.add(bam_file)
+        self._db_session.commit()
+
+    def open_bam_file(self, bam_file: BamFile) -> IO[bytes]:
+        path = self._get_bam_file_path(bam_file)
+        return open(path, "rb")
+
+    def get_bam_file_list(self, dataset: Dataset) -> List[Dict[str, any]]:
+        items = self._db_session.scalars(
+            select(BamFile).where(BamFile.dataset_id == dataset.id)
+        ).all()
+        return [self._get_bam_file_info(i) for i in items]
+
+    def _get_bam_file_info(self, bam_file):
+        path = self._get_bam_file_path(bam_file)
+        stat_info = stat(path)
+        return {
+            "original_file_name": bam_file.original_file_name,
+            "size_in_bytes": stat_info.st_size,
+            "mtime_epoch": stat_info.st_mtime,
+        }
+
+    def remove_bam_file(self, bam_file: BamFile):
+        path = self._get_bam_file_path(bam_file)
+        try:
+            unlink(path)
+        except FileNotFoundError:
+            pass
+        self._db_session.delete(bam_file)
         self._db_session.commit()
 
 

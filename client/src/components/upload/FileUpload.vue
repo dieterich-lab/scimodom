@@ -42,8 +42,6 @@ const props = defineProps({
   }
 })
 
-const MAX_FILE_SIZE = 1024 * 1024 * 1024
-
 async function uploader(event) {
   return await event.files.forEach((file) => props.handleFile(file))
 }
@@ -56,9 +54,11 @@ async function uploader(event) {
       url="/api/upload"
       @uploader="uploader"
       :multiple="props.multiple"
-      :maxFileSize="MAX_FILE_SIZE"
       :accept="props.accept"
       :disabled="props.disabled"
+      :auto="true"
+      :showUploadButton="false"
+      :showCancelButton="false"
     >
       <template #empty>
         <p>{{ props.placeholder }}</p>

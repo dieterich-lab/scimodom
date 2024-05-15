@@ -11,7 +11,7 @@ class PermissionService:
     def __init__(self, session: Session):
         self._db_session = session
 
-    def may_attach_to_dataset(self, user: User, dataset: Dataset) -> bool:
+    def may_change_dataset(self, user: User, dataset: Dataset) -> bool:
         query = select(UserProjectAssociation).where(
             and_(
                 UserProjectAssociation.user_id == user.id,
