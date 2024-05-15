@@ -1,6 +1,7 @@
 import logging
 from os import unlink, rename, makedirs, stat
 from os.path import join, exists, dirname
+from pathlib import Path
 from typing import Optional, IO, List, Dict
 from uuid import uuid4
 
@@ -8,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.operators import and_
+from werkzeug.utils import secure_filename
 
 from scimodom.config import Config
 from scimodom.database.database import get_session
@@ -21,6 +23,17 @@ class FileService:
 
     def __init__(self, session: Session):
         self._db_session = session
+
+    # general
+
+    @staticmethod
+    def upload_default(file_storage):
+        filename = secure_filename(file_storage.filename)
+        response = Path(Config.UPLOAD_PATH, filename)
+        file_storage.save(response)
+        return response.as_posix()
+
+    # BAM file
 
     def create_or_update_bam_file(
         self, dataset: Dataset, name: str, data_stream: IO[bytes]

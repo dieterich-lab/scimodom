@@ -108,25 +108,3 @@ def get_search():
         multi_sort,
     )
     return response
-
-
-@api.route("/upload", methods=["POST"])
-@cross_origin(supports_credentials=True)
-def upload_file():
-    # TODO: define app.config['UPLOAD_PATH'] = UPLOAD_FOLDER
-    # ALLOWED_EXTENSIONS are dealt with PrimeVue FileUpload
-    # PEP8 import
-
-    from werkzeug.utils import secure_filename
-
-    upload = os.getenv("UPLOAD_PATH")
-    if "file" not in request.files:
-        # this shouldn't happen, but ...
-        pass
-    # or empty file without a filename should not happen
-    rfile = request.files["file"]
-    filename = secure_filename(rfile.filename)
-    response = Path(upload, filename)
-    rfile.save(response)
-
-    return response.as_posix()

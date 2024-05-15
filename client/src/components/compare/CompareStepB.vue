@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch } from 'vue'
-import { HTTP } from '@/services/API.js'
+import { getApiUrl } from '@/services/API.js'
 import DatasetSelectionMulti from '@/components/ui/DatasetSelectionMulti.vue'
 
 const emit = defineEmits(['datasetUploaded'])
@@ -19,7 +19,7 @@ const props = defineProps({
 
 const remainingDatasets = ref()
 const disabled = ref(false)
-const uploadURL = HTTP.getUri() + '/upload'
+const uploadURL = getApiUrl('transfer/tmp_upload')
 const uploadedFile = ref()
 
 watch(

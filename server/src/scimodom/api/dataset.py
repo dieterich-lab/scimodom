@@ -47,9 +47,6 @@ def compare():
     operation = request.args.get("operation", type=str)
     is_strand = request.args.get("strand", type=is_true)
     is_euf = request.args.get("euf", type=is_true)
-    print(
-        f"{reference_ids}, {comparison_ids}, {upload_path}, {operation}, {is_strand}, {is_euf}"
-    )
 
     comparison_service = get_comparison_service(operation, is_strand)
     if upload_path:

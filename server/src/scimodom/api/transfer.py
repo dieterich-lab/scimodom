@@ -1,7 +1,8 @@
-from flask import Blueprint, Response, stream_with_context
+from flask import Blueprint, Response, stream_with_context, request
 from flask_cors import cross_origin
 
 from scimodom.services.exporter import get_exporter, NoSuchDataset
+from scimodom.services.file import FileService
 
 transfer_api = Blueprint("transfer_api", __name__)
 
@@ -19,3 +20,14 @@ def export_dataset(dataset_id: str):
         )
     except NoSuchDataset as exc:
         return {"message": str(exc)}, 404
+
+
+@transfer_api.route("/tmp_upload", methods=["POST"])
+@cross_origin(supports_credentials=True)
+def upload_tmp_file():
+    try:
+        rfile = request.files["file"]
+    except KeyError:
+        return {"message": "Bad Request"}, 400
+    else:
+        return FileService.upload_default(rfile)
