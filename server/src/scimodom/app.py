@@ -19,6 +19,7 @@ from scimodom.plugins.cli import (
     add_annotation,
     add_assembly,
     add_project,
+    add_user_to_project,
     add_dataset,
     add_all,
     validate_dataset_title,
@@ -113,12 +114,34 @@ def create_app():
         "project", epilog="Check docs at https://dieterich-lab.github.io/scimodom/."
     )
     @click.argument("template", type=click.Path(exists=True))
-    def project(template):
+    @click.option(
+        "--skip-add-user",
+        is_flag=True,
+        show_default=True,
+        default=False,
+        help="Do not add user to project.",
+    )
+    def project(template, skip_add_user):
         """Add a new project to the database.
 
         TEMPLATE is the path to a project template (json).
         """
-        add_project(template)
+        add_user = not skip_add_user
+        add_project(template, add_user=add_user)
+
+    @app.cli.command(
+        "permission", epilog="Check docs at https://dieterich-lab.github.io/scimodom/."
+    )
+    @click.argument("username", type=click.STRING)
+    @click.argument("smid", type=click.STRING)
+    def permission(username, smid):
+        """Force add a user to a project.
+
+        \b
+        USERNAME is the user email.
+        SMID is the project ID to which this user is to be associated.
+        """
+        add_user_to_project(username, smid)
 
     @app.cli.command(
         "dataset", epilog="Check docs at https://dieterich-lab.github.io/scimodom/."

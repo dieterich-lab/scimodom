@@ -4,12 +4,13 @@ from datetime import datetime, timezone
 import json
 import logging
 from pathlib import Path
-from typing import ClassVar
+from typing import ClassVar, Optional
 
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func
 
 from scimodom.config import Config
+from scimodom.database.database import get_session
 from scimodom.database.models import (
     Project,
     ProjectSource,
@@ -18,10 +19,12 @@ from scimodom.database.models import (
     DetectionTechnology,
     Organism,
     Selection,
+    User,
 )
 import scimodom.database.queries as queries
 from scimodom.services.annotation import AnnotationService
 from scimodom.services.assembly import AssemblyService
+from scimodom.services.permission import get_permission_service
 import scimodom.utils.specifications as specs
 import scimodom.utils.utils as utils
 
@@ -35,12 +38,10 @@ class DuplicateProjectError(Exception):
 
 
 class ProjectService:
-    """Utility class to create a project.
+    """Utility class to create/manage a project.
 
     :param session: SQLAlchemy ORM session
     :type session: Session
-    :param project: Project description (json template)
-    :type project: dict
     :param SMID_LENGTH: Length of Sci-ModoM ID (SMID)
     :type SMID_LENGTH: int
     :param DATA_PATH: Data path
@@ -54,14 +55,15 @@ class ProjectService:
     DATA_SUB_PATH: ClassVar[str] = "metadata"
     DATA_SUB_PATH_SUB: ClassVar[str] = "project_requests"
 
-    def __init__(self, session: Session, project: dict) -> None:
+    def __init__(self, session: Session) -> None:
         """Initializer method."""
         self._session = session
-        self._project = project
+
+        self._project: dict
         self._smid: str
         self._assemblies: set[tuple[int, str]] = set()
 
-    def __new__(cls, session: Session, project: dict):
+    def __new__(cls, session: Session):
         """Constructor method."""
         if cls.DATA_PATH is None:
             msg = "Missing environment variable: DATA_PATH. Terminating!"
@@ -121,8 +123,16 @@ class ProjectService:
             json.dump(project, f, indent="\t")
         return uuid
 
-    def create_project(self, wo_assembly: bool = False) -> None:
-        """Project constructor."""
+    def create_project(self, project: dict, wo_assembly: bool = False) -> None:
+        """Project constructor.
+
+        :param project: Project description (json template)
+        :type project: dict
+        :param wo_assembly: Skip assembly set up
+        :type wo_assembly: bool
+        """
+        self._project = project
+
         self._validate_keys()
         self._validate_entry()
         self._add_selection()
@@ -141,13 +151,39 @@ class ProjectService:
                     session=self._session, taxa_id=taxid
                 ).create_annotation()
 
+    def associate_project_to_user(self, user: User, smid: str | None = None):
+        """Associate a project to a user.
+        When called after project creation, the SMID is
+        available (default), else nothing is done, unless
+        it is passed as argument.
+
+        :param smid: SMID. There is no check
+        on the validity of this value, this must be done
+        before calling this function.
+        :type smid: str
+        """
+        if not smid:
+            try:
+                smid = self._smid
+            except AttributeError:
+                msg = "Undefined SMID. Nothing will be done."
+                logger.warning(msg)
+                return
+        permission_service = get_permission_service()
+        permission_service.insert_into_user_project_association(user, smid)
+
     def get_smid(self) -> str:
-        """Return newly created SMID.
+        """Return newly created SMID, else
+        raises a ValueError.
 
         :returns: SMID
         :rtype: str
         """
-        return self._smid
+        try:
+            return self._smid
+        except AttributeError:
+            msg = "Undefined SMID. This is only defined when creating a project."
+            raise AttributeError(msg)
 
     def _validate_keys(self) -> None:
         """Validate keys from project description (dictionary)."""
@@ -353,3 +389,18 @@ class ProjectService:
         parent = Path(self.DATA_PATH, self.DATA_SUB_PATH)
         with open(Path(parent, f"{self._smid}.json"), "w") as f:
             json.dump(self._project, f, indent="\t")
+
+
+_cached_project_service: Optional[ProjectService] = None
+
+
+def get_project_service():
+    """Helper function to set up a ProjectService object by injecting its dependencies.
+
+    :returns: Project service instance
+    :rtype: ProjectService
+    """
+    global _cached_project_service
+    if _cached_project_service is None:
+        _cached_project_service = ProjectService(session=get_session())
+    return _cached_project_service

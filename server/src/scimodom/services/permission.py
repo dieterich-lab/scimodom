@@ -9,7 +9,7 @@ from scimodom.database.models import User, Dataset, UserProjectAssociation
 
 class PermissionService:
     def __init__(self, session: Session):
-        self._db_session = session
+        self._session = session
 
     def may_change_dataset(self, user: User, dataset: Dataset) -> bool:
         query = select(UserProjectAssociation).where(
@@ -18,8 +18,22 @@ class PermissionService:
                 UserProjectAssociation.project_id == dataset.project_id,
             )
         )
-        results = self._db_session.execute(query).fetchall()
+        results = self._session.execute(query).fetchall()
         return len(results) > 0
+
+    def insert_into_user_project_association(self, user: User, project_id: str) -> None:
+        """Insert values into table.
+
+        :param user: User
+        :type user: User
+        :param project_id: SMID. There is no check
+        on the validity of this value, this must be done
+        before calling this function.
+        :type project_id: str
+        """
+        permission = UserProjectAssociation(user_id=user.id, project_id=project_id)
+        self._session.add(permission)
+        self._session.commit()
 
 
 _cached_permission_service: Optional[PermissionService] = None

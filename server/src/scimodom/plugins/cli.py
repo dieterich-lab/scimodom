@@ -5,10 +5,12 @@ import sys
 import traceback
 
 import click
+from sqlalchemy import select
 
 from scimodom.config import Config
 from scimodom.database.database import get_session
 from scimodom.database.models import (
+    Project,
     Dataset,
     Modification,
     DetectionTechnology,
@@ -18,9 +20,10 @@ from scimodom.database.models import (
 import scimodom.database.queries as queries
 from scimodom.services.annotation import AnnotationService
 from scimodom.services.assembly import AssemblyService
-from scimodom.services.project import ProjectService
+from scimodom.services.project import get_project_service
 from scimodom.services.dataset import DataService
 from scimodom.services.setup import get_setup_service
+from scimodom.services.user import get_user_service, NoSuchUser
 import scimodom.utils.utils as utils
 
 
@@ -97,14 +100,15 @@ def add_annotation(annotation_id: int) -> None:
     session.close()
 
 
-def add_project(project_template: str | Path) -> None:
+def add_project(project_template: str | Path, add_user: bool = True) -> None:
     """Provides a CLI function to add a new project.
 
     :param project_template: Path to a json file with
     require fields.
     :type project_template: str or Path
+    :param add_user: Associate user and newly created project
+    :type add_user: bool
     """
-    session = get_session()
     # load project metadata
     project = json.load(open(project_template))
     # add project
@@ -115,13 +119,72 @@ def add_project(project_template: str | Path) -> None:
     c = click.getchar()
     if c not in ["y", "Y"]:
         return
-    service = ProjectService(session, project)
-    service.create_project()
+    project_service = get_project_service()
+    project_service.create_project(project)
     click.secho(
-        f"Successfully created. The SMID for this project is {service.get_smid()}.",
+        f"Successfully created. The SMID for this project is {project_service.get_smid()}.",
         fg="green",
     )
-    session.close()
+    if add_user:
+        username = project["contact_email"]
+        click.secho(f"Adding user {username} to newly created project...", fg="green")
+        click.secho("Continue [y/n]?", fg="green")
+        c = click.getchar()
+        if c not in ["y", "Y"]:
+            return
+        user_service = get_user_service()
+        try:
+            user = user_service.get_user_by_email(username)
+        except NoSuchUser:
+            click.secho(
+                f"Unknown user {username}... Aborting!",
+                fg="red",
+            )
+        else:
+            project_service.associate_project_to_user(user)
+            click.secho(
+                "Successfully added user to project.",
+                fg="green",
+            )
+
+
+def add_user_to_project(username: str, smid: str) -> None:
+    """Provides a CLI function to force add a user to a project.
+
+    :param username: Username (email)
+    :type username: str
+    :param smid: SMID
+    :type smid: str
+    """
+    session = get_session()
+    click.secho(f"Adding user {username} to {smid}...", fg="green")
+    click.secho("Continue [y/n]?", fg="green")
+    c = click.getchar()
+    if c not in ["y", "Y"]:
+        return
+    project_service = get_project_service()
+    user_service = get_user_service()
+    try:
+        user = user_service.get_user_by_email(username)
+    except NoSuchUser:
+        click.secho(
+            f"Unknown user {username}... Aborting!",
+            fg="red",
+        )
+    else:
+        query = select(Project.id)
+        smids = session.execute(query).scalars().all()
+        if smid not in smids:
+            click.secho(
+                f"Unrecognised SMID {smid}... Aborting!",
+                fg="red",
+            )
+            return
+        project_service.associate_project_to_user(user, smid=smid)
+        click.secho(
+            "Successfully added user to project.",
+            fg="green",
+        )
 
 
 def add_dataset(
@@ -210,8 +273,8 @@ def add_all(directory: Path, templates: list[str]) -> None:
         project_title = project["title"]
         click.secho(f"Adding {project_title}...", fg="green")
         try:
-            project_service = ProjectService(session, project)
-            project_service.create_project()
+            project_service = get_project_service()
+            project_service.create_project(project)
             smid = project_service.get_smid()
             metadata = _get_dataset(project, extra_cols["file"])
             for filen, meta in metadata.items():

@@ -149,7 +149,9 @@ def test_project_validate_keys_error(
         missing_key=missing_key,
     )
     with pytest.raises(KeyError) as exc:
-        ProjectService(Session(), project)._validate_keys()
+        service = ProjectService(Session())
+        service._project = project
+        service._validate_keys()
     assert str(exc.value) == f"'Keys not found: {missing_key}.'"
     assert exc.type == KeyError
 
@@ -164,7 +166,9 @@ def test_project_add_selection(Session, setup, project_template, data_path):
         metadata_fmt="list",
         missing_key=None,
     )
-    ProjectService(Session(), project)._add_selection()
+    service = ProjectService(Session())
+    service._project = project
+    service._add_selection()
 
     expected_records = [(1, 1, 1, 1), (2, 1, 1, 2), (3, 2, 2, 3), (4, 2, 1, 1)]
     with Session() as session, session.begin():
@@ -228,7 +232,9 @@ def test_project_validate_existing_entry(
     )
 
     with pytest.raises(DuplicateProjectError) as exc:
-        ProjectService(Session(), project)._validate_entry()
+        service = ProjectService(Session())
+        service._project = project
+        service._validate_entry()
     assert (
         str(exc.value)
         == f"At least one similar record exists with SMID = {smid} and title = Title. Aborting transaction!"
@@ -242,7 +248,9 @@ def test_project_validate_entry(Session, project_template, data_path):
         metadata_fmt="list",
         missing_key=None,
     )
-    assert ProjectService(Session(), project)._validate_entry() is None
+    service = ProjectService(Session())
+    service._project = project
+    assert service._validate_entry() is None
 
 
 @pytest.mark.parametrize(
@@ -267,8 +275,8 @@ def test_project_create_project(
         missing_date=missing_date,
     )
     # AssemblyService tested in test_assembly.py
-    project_instance = ProjectService(Session(), project)
-    project_instance.create_project(wo_assembly=True)
+    project_instance = ProjectService(Session())
+    project_instance.create_project(project, wo_assembly=True)
     project_smid = project_instance.get_smid()
 
     date_published = datetime.fromisoformat("2024-01-01")
@@ -300,3 +308,14 @@ def test_project_create_project(
 
     project_template = json.load(open(Path(data_path.META_PATH, f"{smid}.json")))
     assert project_template == project
+
+
+def test_project_no_project(Session):
+    service = ProjectService(Session())
+    with pytest.raises(AttributeError) as exc:
+        smid = service.get_smid()
+        assert (
+            str(exc.value)
+            == "Undefined SMID. This is only defined when creating a project."
+        )
+    assert exc.type == AttributeError
