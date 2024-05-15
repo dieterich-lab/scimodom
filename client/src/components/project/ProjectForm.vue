@@ -62,7 +62,7 @@ const onSubmit = handleSubmit((values) => {
 })
 
 onMounted(() => {
-  HTTPSecure.get('/access/username')
+  HTTPSecure.get('/user/get_username')
     .then((response) => {
       contact_email.value = response.data.username
     })

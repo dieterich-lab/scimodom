@@ -139,3 +139,10 @@ def may_change_dataset(dataset_id):
         return {"message": "Unknown dataset"}, 404
 
     return {"write_access": permission_service.may_change_dataset(user, dataset)}
+
+
+@user_api.route("/get_username", methods=["GET"])
+@jwt_required()
+def get_username():
+    email = get_jwt_identity()
+    return jsonify(username=email), 200
