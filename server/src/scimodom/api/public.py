@@ -116,6 +116,7 @@ def upload_file():
     # TODO: define app.config['UPLOAD_PATH'] = UPLOAD_FOLDER
     # ALLOWED_EXTENSIONS are dealt with PrimeVue FileUpload
     # PEP8 import
+
     from werkzeug.utils import secure_filename
 
     upload = os.getenv("UPLOAD_PATH")

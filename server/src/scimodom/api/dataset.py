@@ -37,18 +37,21 @@ def list_mine():
 @cross_origin(supports_credentials=True)
 def compare():
     """Compare dataset (Compare View)."""
+
+    def is_true(value):
+        return value.lower() == "true"
+
     reference_ids = request.args.getlist("reference", type=str)
     comparison_ids = request.args.getlist("comparison", type=str)
     upload_path = request.args.get("upload", type=str)
-    query_operation = request.args.get("operation", type=str)
-    print(f"{reference_ids}, {comparison_ids}, {upload_path}, {query_operation}")
+    operation = request.args.get("operation", type=str)
+    is_strand = request.args.get("strand", type=is_true)
+    is_euf = request.args.get("euf", type=is_true)
+    print(
+        f"{reference_ids}, {comparison_ids}, {upload_path}, {operation}, {is_strand}, {is_euf}"
+    )
 
-    # TODO
-    is_euf = True
-
-    operation, strand = query_operation.split("S")
-    comparison_service = get_comparison_service(operation, eval(strand))
-
+    comparison_service = get_comparison_service(operation, is_strand)
     if upload_path:
         try:
             comparison_service.upload_records(upload_path, is_euf)

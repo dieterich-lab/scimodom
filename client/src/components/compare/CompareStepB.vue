@@ -4,6 +4,7 @@ import { HTTP } from '@/services/API.js'
 
 const emit = defineEmits(['datasetUploaded'])
 const model = defineModel()
+const isEUF = defineModel('isEUF')
 const props = defineProps({
   selected: {
     type: Array,
@@ -14,7 +15,6 @@ const props = defineProps({
     required: true
   }
 })
-const isEUF = ref()
 const dataset = ref()
 const disabled = ref(false)
 const uploadURL = HTTP.getUri() + '/upload'
@@ -33,6 +33,8 @@ const onUpload = (event) => {
   disabled.value = true
   model.value = []
   uploadedFile.value = event.xhr.response
+  var ext = event.files[0].name.split('.').pop()
+  isEUF.value = ext.toLowerCase() == 'bedrmod' ? true : false
   emit('datasetUploaded', uploadedFile.value)
 }
 
@@ -48,12 +50,11 @@ const clear = () => {
     <InputText
       v-model="uploadedFile"
       :disabled="true"
-      placeholder="filename.bedrmod"
+      placeholder="filename.bed or filename.bedrmod"
       class="col-span-2 w-full"
       >Dataset file
     </InputText>
     <div class="flex flex-row">
-      <ToggleButton v-model="isEUF" onLabel="bedRMod" offLabel="BED6" class="w-[8rem] mr-4" />
       <FileUpload
         mode="basic"
         name="file"
@@ -61,10 +62,12 @@ const clear = () => {
         accept="text/plain,.bed,.bedrmod"
         :maxFileSize="50000000"
         :auto="true"
-        chooseLabel="Select a file (bedRMod)"
+        chooseLabel="Select a file"
+        class="w-[8rem]"
         @upload="onUpload($event)"
       >
       </FileUpload>
+      <ToggleButton v-model="isEUF" onLabel="bedRMod" offLabel="BED6" class="w-[8rem] ml-4" />
       <Button
         label="Clear selection"
         @click="clear"

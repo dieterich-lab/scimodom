@@ -13,6 +13,7 @@ const uploadMessage = ref()
 const active = ref(0)
 const loading = ref(false)
 const disabled = computed(() => isAandB())
+const isEUF = ref(false)
 const taxid = ref()
 const dataset = ref()
 const datasetUpdated = ref()
@@ -60,12 +61,15 @@ const onExport = () => {
 function load(operation) {
   records.value = undefined
   loading.value = true
+  var arrayOp = operation.split('-')
   HTTP.get('/dataset/compare', {
     params: {
       reference: selectedDatasetA.value,
       comparison: selectedDatasetB.value,
       upload: datasetUploaded.value,
-      operation: operation
+      operation: arrayOp[0],
+      strand: arrayOp[1],
+      euf: isEUF.value
     },
     paramsSerializer: {
       indexes: null
@@ -189,6 +193,7 @@ const buttonPt = {
               <CompareStepB
                 v-if="datasetUpdated && selectedDatasetA.length > 0"
                 v-model="selectedDatasetB"
+                v-model:isEUF="isEUF"
                 :selected="selectedDatasetA"
                 :dataset="datasetUpdated"
                 @dataset-uploaded="datasetUploaded = $event"
@@ -204,7 +209,7 @@ const buttonPt = {
                       v-model="queryCriteria"
                       inputId="criteria1"
                       name="step3"
-                      value="intersectSTrue"
+                      value="intersect-true"
                     />
                     <label for="criteria1" class="ml-2">
                       <span class="inline font-bold">Intersection</span>
@@ -218,7 +223,7 @@ const buttonPt = {
                       v-model="queryCriteria"
                       inputId="criteria2"
                       name="step3"
-                      value="intersectSFalse"
+                      value="intersect-false"
                     />
                     <label for="criteria3" class="ml-2">
                       <span class="inline font-bold">Intersection (strand-unaware)</span>
@@ -234,7 +239,7 @@ const buttonPt = {
                       v-model="queryCriteria"
                       inputId="criteria3"
                       name="step3"
-                      value="closestSTrue"
+                      value="closest-true"
                     />
                     <label for="criteria3" class="ml-2">
                       <span class="inline font-bold">Closest</span>
@@ -248,7 +253,7 @@ const buttonPt = {
                       v-model="queryCriteria"
                       inputId="criteria4"
                       name="step3"
-                      value="closestSFalse"
+                      value="closest-false"
                     />
                     <label for="criteria3" class="ml-2">
                       <span class="inline font-bold">Closest (strand-unaware)</span>
@@ -264,7 +269,7 @@ const buttonPt = {
                       v-model="queryCriteria"
                       inputId="criteria5"
                       name="step3"
-                      value="subtractSTrue"
+                      value="subtract-true"
                     />
                     <label for="criteria5" class="ml-2">
                       <span class="inline font-bold">Difference</span>
@@ -279,7 +284,7 @@ const buttonPt = {
                       v-model="queryCriteria"
                       inputId="criteria6"
                       name="step3"
-                      value="subtractSFalse"
+                      value="subtract-false"
                     />
                     <label for="criteria6" class="ml-2">
                       <span class="inline font-bold">Difference (strand-unaware)</span>
