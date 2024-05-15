@@ -162,8 +162,8 @@ const buttonPt = {
                 v-if="datasetUpdated && selectedDatasetA.length > 0"
                 v-model="selectedDatasetB"
                 v-model:isEUF="isEUF"
-                :selected="selectedDatasetA"
-                :dataset="datasetUpdated"
+                :selected-datasets="selectedDatasetA"
+                :datasets="datasetUpdated"
                 @dataset-uploaded="datasetUploaded = $event"
               />
             </div>
