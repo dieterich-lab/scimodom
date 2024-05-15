@@ -1,30 +1,33 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { HTTP } from '@/services/API.js'
+import DatasetSelectionMulti from '@/components/ui/DatasetSelectionMulti.vue'
 
 const emit = defineEmits(['datasetUploaded'])
 const model = defineModel()
 const props = defineProps({
-  selected: {
+  selectedDatasets: {
     type: Array,
     required: true
   },
-  dataset: {
+  datasets: {
     type: Array,
     required: true
   }
 })
 
-const dataset = ref()
+const remainingDatasets = ref()
 const disabled = ref(false)
 const uploadURL = HTTP.getUri() + '/upload'
 const uploadedFile = ref()
 
 watch(
-  () => props.selected,
+  () => props.selectedDatasets,
   () => {
     model.value = []
-    dataset.value = props.dataset.filter((item) => !props.selected.includes(item.dataset_id))
+    remainingDatasets.value = props.datasets.filter(
+      (item) => !props.selectedDatasets.includes(item.dataset_id)
+    )
   },
   { immediate: true }
 )
@@ -72,30 +75,13 @@ const clear = () => {
         class="ml-4 max-h-[1.9rem] place-self-center"
       />
     </div>
-    <MultiSelect
+    <DatasetSelectionMulti
       v-model="model"
-      :options="dataset"
-      :disabled="disabled"
-      :selectionLimit="3"
-      filter
-      :filterFields="['dataset_id', 'dataset_title', 'dataset_info']"
-      optionValue="dataset_id"
-      optionLabel="dataset_id"
+      :datasets="remainingDatasets"
       placeholder="Select dataset"
+      :selectionLimit="3"
       :maxSelectedLabels="3"
-      display="chip"
-      :pt="{
-        root: { class: 'col-span-2 w-full md:w-full' }
-      }"
-      :ptOptions="{ mergeProps: true }"
-    >
-      <template #option="slotProps">
-        <div class="flex">
-          <div class="pr-2 text-surface-500">{{ slotProps.option.dataset_id }}</div>
-          <div class="pr-2 font-semibold">{{ slotProps.option.dataset_title }}</div>
-          <div class="italic">{{ slotProps.option.dataset_info }}</div>
-        </div>
-      </template>
-    </MultiSelect>
+      :disabled="disabled"
+    />
   </div>
 </template>
