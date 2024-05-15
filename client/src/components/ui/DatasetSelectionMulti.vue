@@ -1,9 +1,11 @@
 <script setup>
-import { onMounted, ref } from 'vue'
 import DatasetItem from '@/components/ui/DatasetItem.vue'
-import { loadDatasets } from '@/services/dataset'
 
 const props = defineProps({
+  datasets: {
+    type: Object,
+    required: true
+  },
   myDatasetsOnly: {
     type: Boolean,
     required: false,
@@ -26,21 +28,21 @@ const props = defineProps({
     type: String,
     required: false,
     default: 'Select a dataset'
+  },
+  disabled: {
+    type: Boolean,
+    required: false,
+    default: false
   }
 })
 
 const model = defineModel()
-const datasets = ref([])
 
 function getEmptyMessage() {
   return props.myDatasetsOnly
     ? 'Your projects have no dataset - either get associated with a project or upload a bedRMod'
     : 'No datasets found'
 }
-
-onMounted(() => {
-  loadDatasets(datasets, null, props.myDatasetsOnly, true)
-})
 </script>
 <template>
   <MultiSelect
@@ -59,6 +61,7 @@ onMounted(() => {
       root: { class: 'col-span-3 w-full md:w-full' }
     }"
     :ptOptions="{ mergeProps: true }"
+    :disabled="disabled"
   >
     <template #option="slotProps">
       <DatasetItem :dataset="slotProps.option" />

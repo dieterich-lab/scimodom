@@ -1,8 +1,7 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useField, useForm } from 'vee-validate'
 import { HTTP } from '@/services/API.js'
-import { toTree, toCascade, nestedSort } from '@/utils/index.js'
 
 import CompareStepA from '@/components/compare/CompareStepA.vue'
 import CompareStepB from '@/components/compare/CompareStepB.vue'
@@ -14,8 +13,6 @@ const active = ref(0)
 const loading = ref(false)
 const disabled = computed(() => isAandB())
 const isEUF = ref(false)
-const taxid = ref()
-const dataset = ref()
 const datasetUpdated = ref()
 const datasetUploaded = ref()
 const selectedDatasetA = ref([])
@@ -99,29 +96,6 @@ function isAandB() {
   return isA || (isB && isU)
 }
 
-onMounted(() => {
-  HTTP.get('/dataset/list_all')
-    .then(function (response) {
-      dataset.value = response.data
-    })
-    .catch((error) => {
-      console.log(error)
-    })
-  HTTP.get('/selection')
-    .then(function (response) {
-      let opts = response.data
-      opts = opts.map((item) => {
-        const kingdom = Object.is(item.kingdom, null) ? item.domain : item.kingdom
-        return { ...item, kingdom }
-      })
-      taxid.value = toCascade(toTree(opts, ['kingdom', 'taxa_sname'], 'taxa_id'))
-      nestedSort(taxid.value, ['child1'])
-    })
-    .catch((error) => {
-      console.log(error)
-    })
-})
-
 const buttonPt = {
   root: ({ props, context }) => ({
     class: ['h-12 w-12 p-0 shadow']
@@ -175,13 +149,7 @@ const buttonPt = {
                 Select one organism and choose up to three reference dataset. Use the dataset search
                 bar to find records.
               </div>
-              <CompareStepA
-                v-if="taxid && dataset"
-                v-model="selectedDatasetA"
-                :organism="taxid"
-                :dataset="dataset"
-                @dataset-updated="datasetUpdated = $event"
-              />
+              <CompareStepA v-model="selectedDatasetA" @dataset-updated="datasetUpdated = $event" />
             </div>
           </TabPanel>
           <TabPanel header="Select dataset for comparison">
