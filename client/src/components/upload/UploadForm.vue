@@ -219,7 +219,7 @@ onMounted(() => {
       </Instructions>
       <div class="grid grid-cols-2 gap-y-2 gap-x-8">
         <div class="flex flex-row">
-          <FormTextInput v-model="smid" :error="errors.smid" placeholder="XXXXXXXX"
+          <FormTextInput v-model="smid" :error="errors.smid" :disabled="true" placeholder="XXXXXXXX"
             >Sci-ModoM ID (SMID)
           </FormTextInput>
           <Button
