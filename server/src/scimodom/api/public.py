@@ -38,13 +38,6 @@ def get_modification():
     return public_service.get_modomics()
 
 
-@api.route("/smid", methods=["GET"])
-@cross_origin(supports_credentials=True)
-def get_smid():
-    public_service = get_public_service()
-    return public_service.get_project()
-
-
 @api.route("/method", methods=["GET"])
 @cross_origin(supports_credentials=True)
 def get_method():
