@@ -214,13 +214,14 @@ class ProjectService:
                 Project.title.label("project_title"),
                 Project.summary.label("project_summary"),
                 Project.date_added,
+                Project.date_published,
                 ProjectContact.contact_name,
                 ProjectContact.contact_institution,
                 func.group_concat(ProjectSource.doi.distinct()).label("doi"),
                 func.group_concat(ProjectSource.pmid.distinct()).label("pmid"),
             )
             .join_from(Project, ProjectContact, Project.inst_contact)
-            .join_from(Project, ProjectSource, Project.sources)
+            .join_from(Project, ProjectSource, Project.sources, isouter=True)
         )
         if user is not None:
             query = (

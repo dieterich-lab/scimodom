@@ -158,8 +158,9 @@ onMounted(() => {
             </template>
             <template #empty> No results found. </template>
             <Column field="project_id" header="SMID" style="display: none"></Column>
+            <Column field="project_title" header="Project title" style="display: none"></Column>
             <Column field="dataset_id" header="EUFID" style="width: 5%"></Column>
-            <Column field="dataset_title" header="Title" style="width: 25%"></Column>
+            <Column field="dataset_title" header="Dataset title" style="width: 25%"></Column>
             <Column field="rna" header="RNA" filterField="rna" style="width: 5%">
               <template #body="{ data }">
                 {{ data.rna }}
@@ -244,10 +245,15 @@ onMounted(() => {
             </Column>
 
             <!-- export columns shown in dialog -->
-            <Column field="project_title" header="Project" style="display: none"></Column>
-            <Column field="project_summary" header="Summary" style="display: none"></Column>
-            <Column field="date_added" header="Added" style="display: none"></Column>
-            <Column field="date_published" header="Published" style="display: none"></Column>
+            <Column field="sequencing_platform" header="Platform" style="display: none"></Column>
+            <Column field="basecalling" header="Basecalling" style="display: none"></Column>
+            <Column
+              field="bioinformatics_workflow"
+              header="Bioinformatics"
+              style="display: none"
+            ></Column>
+            <Column field="experiment" header="Experiment" style="display: none"></Column>
+            <Column field="project_summary" header="Project summary" style="display: none"></Column>
             <Column field="doi" header="DOI" style="display: none"></Column>
             <Column field="pmid" header="PMID" style="display: none"></Column>
 

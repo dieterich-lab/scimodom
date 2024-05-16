@@ -1,19 +1,36 @@
 <script setup>
 import DataTable from 'primevue/datatable'
+import { ref, onMounted } from 'vue'
+import { loadProjects } from '@/services/project'
 
 const props = defineProps({
-  projects: {
-    type: Array,
+  projectId: {
+    type: String,
     required: true
   }
 })
 
+const projectsById = ref(new Map())
+const project = ref([])
+
 function splitStr(str) {
   return str.split(',')
 }
+
+onMounted(() => {
+  // list all projects by id
+  loadProjects(null, projectsById)
+    .then((response) => {
+      project.value = [projectsById.value[props.projectId]]
+    })
+    .catch((error) => {
+      console.log(error)
+    })
+})
 </script>
+
 <template>
-  <DataTable :value="projects" tableStyle="min-width: 50rem">
+  <DataTable :value="project" tableStyle="min-width: 50rem">
     <Column field="project_id" header="SMID" />
     <Column field="project_title" header="Title" />
     <Column field="project_summary" header="Summary" />

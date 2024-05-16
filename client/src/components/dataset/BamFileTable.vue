@@ -33,7 +33,6 @@ function refreshData() {
       })
       .catch(() => {})
   }
-  console.log('XYZ')
   HTTP.get(`/bam_file/all/${props.datasetId}`).then((response) => {
     bamFiles.value = response.data
   })

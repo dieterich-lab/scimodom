@@ -11,7 +11,7 @@ const splitStr = (str) => {
 
 onMounted(() => {
   // only list my projects
-  loadProjects(records, true)
+  loadProjects(records, null, true)
 })
 
 function selectProject(data) {

@@ -25,7 +25,7 @@ async function loadAllDatasetsById(datasetsByIdRef, refresh = false) {
     await loadAllDatasets(null, refresh)
   }
   if (allDatasetsByIdCache === null) {
-    allDatasetsByIdCache = mapDatasetsById(allDatasetsByIdCache)
+    allDatasetsByIdCache = mapDatasetsById(allDatasetsCache)
   }
   datasetsByIdRef.value = allDatasetsByIdCache
 }
@@ -76,9 +76,9 @@ async function loadDatasets(
   } else {
     await loadAllDatasets(datasetsRef, refresh)
     if (datasetsByIdRef !== null) {
-      await loadMyDatasetsById(datasetsByIdRef)
+      await loadAllDatasetsById(datasetsByIdRef)
     }
   }
 }
 
-export { loadAllDatasets, loadAllDatasetsById, loadMyDatasets, loadMyDatasetsById, loadDatasets }
+export { loadDatasets }

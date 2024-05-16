@@ -35,7 +35,7 @@ class DatasetService:
         return self._session.scalars(select(Dataset).where(Dataset.id == eufid)).one()
 
     def get_datasets(self, user: Optional[User] = None) -> List[Dict[str, str]]:
-        """Retrieve all datasets.
+        """Retrieve all datasets. Add project-related information.
 
         :param user: Restricts results based on projects assotiated with user.
         :type user: User
@@ -54,8 +54,6 @@ class DatasetService:
                 Dataset.experiment,
                 Project.title.label("project_title"),
                 Project.summary.label("project_summary"),
-                Project.date_published,
-                Project.date_added,
                 func.group_concat(ProjectSource.doi.distinct()).label("doi"),
                 func.group_concat(ProjectSource.pmid.distinct()).label("pmid"),
                 Modification.rna,

@@ -27,7 +27,7 @@ const modelVisible = defineModel('visible')
       <div class="flex space-x-12 mb-6 whitespace-pre-line">
         This dataset is part of the following project:
       </div>
-      <ProjectDetailsTable :projects="[dataset]" />
+      <ProjectDetailsTable :project-id="dataset.project_id" />
       <div class="flex space-x-12 mt-6 mb-6 whitespace-pre-line">
         The following BAM/BAI files are attached to the dataset:
       </div>
