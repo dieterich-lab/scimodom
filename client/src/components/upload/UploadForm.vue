@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useDialog } from 'primevue/usedialog'
 import { useForm } from 'vee-validate'
 import { object, array, string, number } from 'yup'
+import { getApiUrl } from '@/services/API.js'
 import { HTTP, HTTPSecure } from '@/services/API'
 import Instructions from '@/components/ui/Instructions.vue'
 import { updOrganismFromMod, updTechnologyFromModAndOrg } from '@/utils/selection.js'
@@ -23,7 +24,7 @@ const technology = ref([])
 const assembly = ref([])
 const message = ref()
 
-const uploadURL = HTTP.getUri() + '/upload'
+const uploadURL = getApiUrl('transfer/tmp_upload')
 
 const ProjectList = defineAsyncComponent(() => import('@/components/project/ProjectList.vue'))
 const dialog = useDialog()
@@ -49,14 +50,17 @@ const showProjects = () => {
         const summary_and_detail = buttonType
           ? { summary: 'No Product Selected', detail: `Pressed '${buttonType}' button` }
           : { summary: 'Product Selected', detail: data.name }
-        smid.value = data.id
+        smid.value = data.project_id
       }
     }
   })
 }
 
 const validationSchema = object({
-  smid: string().max(8, 'At most 8 characters allowed!').required('SMID is required!'),
+  smid: string()
+    .min(8, 'SMID has 8 characters exactly!')
+    .max(8, 'SMID has 8 characters exactly!')
+    .required('SMID is required!'),
   filename: string().required('A dataset file is required!'),
   path: string().required('A dataset file path is required!'),
   rna_type: string().max(32, 'At most 32 characters allowed!').required('RNA type is required!'),

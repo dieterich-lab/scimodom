@@ -1,6 +1,6 @@
 <script setup>
 import { ref, inject, onMounted } from 'vue'
-import { HTTP } from '@/services/API.js'
+import { loadProjects } from '@/services/project'
 
 const dialogRef = inject('dialogRef')
 const records = ref()
@@ -10,13 +10,8 @@ const splitStr = (str) => {
 }
 
 onMounted(() => {
-  HTTP.get('/smid')
-    .then(function (response) {
-      records.value = response.data
-    })
-    .catch((error) => {
-      console.log(error)
-    })
+  // only list my projects
+  loadProjects(records, true)
 })
 
 function selectProject(data) {
@@ -37,9 +32,9 @@ function selectProject(data) {
         ></Button>
       </template>
     </Column>
-    <Column field="id" header="SMID"></Column>
-    <Column field="title" header="Title"></Column>
-    <Column field="summary" header="Summary"></Column>
+    <Column field="project_id" header="SMID"></Column>
+    <Column field="project_title" header="Title"></Column>
+    <Column field="project_summary" header="Summary"></Column>
     <Column field="date_added" header="Added"></Column>
     <Column field="contact_name" header="Contact"></Column>
     <Column field="contact_institution" header="Institution"></Column>
