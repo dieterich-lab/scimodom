@@ -24,12 +24,14 @@ management_api = Blueprint("management_api", __name__)
 @management_api.route("/project", methods=["POST"])
 @cross_origin(supports_credentials=True)
 @jwt_required()
-def get_project():
+def create_project_request():
     """Create a project request.
 
-    NOTE: Users are not curently allowed to create
-    projects, though this could be the case in the future,
-    and only small changes would be required.
+    NOTE: Users are not allowed to create projects,
+    this must be done via requests. The project
+    is created by the administrator, and the user is
+    associated to the newly created project
+    cf. "flask project" (cli.add_project)
     """
     project_form = request.json
     try:
@@ -69,8 +71,10 @@ def add_dataset():
     values are validated by DataService. Project and
     assembly must exist.
 
-    NOTE: Users are curently allowed to upload
-    dataset to projects.
+    NOTE: Permissions are not handled here. The
+    SMID in the dataset form is coming from
+    one of the "allowed" projects for this user, i.e.
+    the user is only able to select from his own projects.
     """
     dataset_form = request.json
     session = get_session()

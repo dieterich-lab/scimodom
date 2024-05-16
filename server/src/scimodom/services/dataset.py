@@ -22,17 +22,23 @@ from scimodom.database.models import (
 
 class DatasetService:
     def __init__(self, session: Session):
-        self._db_session = session
+        self._session = session
 
-    def get_by_id(self, dataset_id) -> Dataset:
-        return self._db_session.scalars(
-            select(Dataset).where(Dataset.id == dataset_id)
-        ).one()
+    def get_by_id(self, eufid: str) -> Dataset:
+        """Retrieve dataset by EUFID.
+
+        :param eufid: EUFID
+        :type eufid: str
+        :returns: Query result
+        :rtype: list of dict
+        """
+        return self._session.scalars(select(Dataset).where(Dataset.id == eufid)).one()
 
     def get_datasets(self, user: Optional[User] = None) -> List[Dict[str, str]]:
         """Retrieve all datasets.
+
         :param user: Restricts results based on projects assotiated with user.
-        :type name: User
+        :type user: User
         :returns: Query result
         :rtype: list of dict
         """
@@ -96,7 +102,7 @@ class DatasetService:
                 .where(User.id == user.id)
             )
         query = query.group_by(Dataset.project_id, Dataset.id)
-        return [row._asdict() for row in self._db_session.execute(query)]
+        return [row._asdict() for row in self._session.execute(query)]
 
 
 _cached_dataset_service: Optional[DatasetService] = None

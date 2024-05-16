@@ -90,29 +90,6 @@ class PublicService:
         query = select(RNAType.id, RNAType.name.label("label"))
         return self._dump(query)
 
-    def get_project(self):
-        """Get all projects.
-
-        :returns: Query result
-        :rtype: list of dict
-        """
-
-        query = (
-            select(
-                Project.id,
-                Project.title,
-                Project.summary,
-                Project.date_added,
-                ProjectContact.contact_name,
-                ProjectContact.contact_institution,
-                func.group_concat(ProjectSource.doi.distinct()).label("doi"),
-                func.group_concat(ProjectSource.pmid.distinct()).label("pmid"),
-            )
-            .join_from(Project, ProjectContact, Project.inst_contact)
-            .join_from(Project, ProjectSource, Project.sources)
-        ).group_by(Project.id)
-        return self._dump(query)
-
     def get_modomics(self):
         """Get all modifications.
 

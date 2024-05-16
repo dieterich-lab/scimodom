@@ -20,6 +20,7 @@ from scimodom.database.models import (
     Organism,
     Selection,
     User,
+    UserProjectAssociation,
 )
 import scimodom.database.queries as queries
 from scimodom.services.annotation import AnnotationService
@@ -38,7 +39,11 @@ class DuplicateProjectError(Exception):
 
 
 class ProjectService:
-    """Utility class to create/manage a project.
+    """Utility class to create, manage, and
+    query a project.
+
+    NOTE: Some class attributes are only defined
+    for project creation.
 
     :param session: SQLAlchemy ORM session
     :type session: Session
@@ -184,6 +189,50 @@ class ProjectService:
         except AttributeError:
             msg = "Undefined SMID. This is only defined when creating a project."
             raise AttributeError(msg)
+
+    def get_by_id(self, smid: str) -> Project:
+        """Retrieve project by SMID
+
+        :param smid: SMID
+        :type smid: str
+        """
+        return self._session.scalars(select(Project).where(Project.id == smid)).one()
+
+    def get_projects(self, user: Optional[User] = None) -> list[dict[str, str]]:
+        """Retrieve all projects.
+
+        :param user: Optionally restricts the
+        results based on projects assotiated with a user.
+        :type user: User
+        :returns: Query result
+        :rtype: list of dict
+        """
+
+        query = (
+            select(
+                Project.id.label("project_id"),
+                Project.title.label("project_title"),
+                Project.summary.label("project_summary"),
+                Project.date_added,
+                ProjectContact.contact_name,
+                ProjectContact.contact_institution,
+                func.group_concat(ProjectSource.doi.distinct()).label("doi"),
+                func.group_concat(ProjectSource.pmid.distinct()).label("pmid"),
+            )
+            .join_from(Project, ProjectContact, Project.inst_contact)
+            .join_from(Project, ProjectSource, Project.sources)
+        )
+        if user is not None:
+            query = (
+                query.join(
+                    UserProjectAssociation,
+                    UserProjectAssociation.project_id == Project.id,
+                )
+                .join(User, User.id == UserProjectAssociation.user_id)
+                .where(User.id == user.id)
+            )
+        query = query.group_by(Project.id)
+        return [row._asdict() for row in self._session.execute(query)]
 
     def _validate_keys(self) -> None:
         """Validate keys from project description (dictionary)."""

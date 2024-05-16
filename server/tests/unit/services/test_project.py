@@ -8,7 +8,15 @@ import pytest
 import shortuuid
 from sqlalchemy import select
 
-from scimodom.database.models import Project, ProjectSource, ProjectContact, Selection
+from scimodom.database.models import (
+    Project,
+    ProjectSource,
+    ProjectContact,
+    Selection,
+    User,
+    UserState,
+    UserProjectAssociation,
+)
 from scimodom.services.project import ProjectService, DuplicateProjectError
 import scimodom.utils.utils as utils
 
@@ -319,3 +327,48 @@ def test_project_no_project(Session):
             == "Undefined SMID. This is only defined when creating a project."
         )
     assert exc.type == AttributeError
+
+
+def test_query_projects(Session, setup, project_template):
+    with Session() as session, session.begin():
+        session.add_all(setup)
+
+    stamp = datetime.now(timezone.utc).replace(microsecond=0)  # .isoformat()
+    project1 = _get_project(
+        project_template,
+        external_sources_fmt="list",
+        metadata_fmt="list",
+        missing_key=None,
+        missing_date=None,
+    )
+    project_instance = ProjectService(Session())
+    project_instance.create_project(project1, wo_assembly=True)
+    project_smid1 = project_instance.get_smid()
+
+    project2 = _get_project(
+        project_template,
+        external_sources_fmt="list",
+        metadata_fmt="list",
+        missing_key=None,
+        missing_date=None,
+    )
+    project2["title"] = "Title2"
+    project_instance.create_project(project2, wo_assembly=True)
+    project_smid2 = project_instance.get_smid()
+
+    with Session() as session, session.begin():
+        # add permission conditionally
+        user = User(email="contact@email", state=UserState.active, password_hash="xxx")
+        session.add(user)
+        session.flush()
+        user_permission = UserProjectAssociation(
+            user_id=user.id, project_id=project_smid1
+        )
+        session.add(user_permission)
+        session.commit()
+
+    with Session() as session, session.begin():
+        user = session.execute(select(User)).scalar()
+        project_instance = ProjectService(Session())
+        assert len(project_instance.get_projects(user=user)) == 1
+        assert len(project_instance.get_projects()) == 2
