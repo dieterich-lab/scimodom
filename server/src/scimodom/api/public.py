@@ -4,7 +4,6 @@ from pathlib import Path
 from flask import Blueprint, request
 from flask_cors import cross_origin
 
-from scimodom.services.dataset import get_dataset_service
 from scimodom.services.public import get_public_service
 
 api = Blueprint("api", __name__)

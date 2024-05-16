@@ -6,7 +6,7 @@ from flask_cors import cross_origin
 from flask_jwt_extended import jwt_required
 
 from scimodom.database.database import get_session
-from scimodom.services.dataset import (
+from scimodom.services.data import (
     DataService,
     InstantiationError,
     DatasetError,

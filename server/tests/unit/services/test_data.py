@@ -5,7 +5,6 @@ import pytest
 from sqlalchemy import select, func
 
 from scimodom.database.models import (
-    # Assembly,
     Association,
     Selection,
     Dataset,
@@ -17,7 +16,7 @@ from scimodom.database.models import (
     ProjectContact,
 )
 import scimodom.database.queries as queries
-from scimodom.services.dataset import (
+from scimodom.services.data import (
     DataService,
     InstantiationError,
     DatasetError,
@@ -28,36 +27,6 @@ import scimodom.utils.utils as utils
 
 
 # NOTE: force add project directly to avoid using ProjectService
-
-
-# def _get_file(EUF_version):
-#     string = f"""#fileformat=bedRModv{EUF_version}
-#     #organism=9606
-#     #modification_type=RNA
-#     #assembly=GRCh38
-#     #annotation_source=Annotation
-#     #annotation_version=Version
-#     #sequencing_platform=Sequencing platform
-#     #basecalling=
-#     #bioinformatics_workflow=Workflow
-#     #experiment=Description of experiment.
-#     #external_source=
-#     #chrom\tchromStart\tchromEnd\tname\tscore\tstrand\tthickStart\tthickEnd\titemRgb\tcoverage\tfrequency
-#     1\t139219\t139220\tm6A\t100\t+\t139219\t139220\t0,0,0\t50\t10
-#     1\t139220\t139221\tm5C\t5\t+\t139220\t139221\t0,0,0\t100\t5
-#     1\t139221\t139222\tm5C\t5\t+\t139221\t139222\t0,0,0\t300\t5
-#     1\t139222\t139223\tm6A\t500\t+\t139222\t139223\t0,0,0\t250\t100
-#     1\t139223\t139224\tm6A\t5\t+\t139223\t139224\t0,0,0\t10\t5"""
-#     return StringIO(string)
-
-
-# def _get_project(project_template, case=None):
-#     # set selection 2 to m5C, but same cell type as 1
-#     project = project_template.copy()
-#     if case == "two":
-#         project["metadata"][1]["modomics_id"] = "2000000005C"
-#         project["metadata"][1]["organism"]["cto"] = "Cell Type 1"
-#     return project
 
 
 def _add_selection(session, metadata):

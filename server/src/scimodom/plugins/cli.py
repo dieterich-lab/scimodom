@@ -21,7 +21,7 @@ import scimodom.database.queries as queries
 from scimodom.services.annotation import AnnotationService
 from scimodom.services.assembly import AssemblyService
 from scimodom.services.project import get_project_service
-from scimodom.services.dataset import DataService
+from scimodom.services.data import DataService
 from scimodom.services.setup import get_setup_service
 from scimodom.services.user import get_user_service, NoSuchUser
 import scimodom.utils.utils as utils
