@@ -1,7 +1,8 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { FilterMatchMode, FilterOperator } from 'primevue/api'
-import { HTTP, getApiUrl } from '@/services/API.js'
+import { getApiUrl } from '@/services/API.js'
+import { loadDatasets } from '@/services/dataset'
 import StyledHeadline from '@/components/ui/StyledHeadline.vue'
 import SubTitle from '@/components/ui/SubTitle.vue'
 import DatasetInfo from '@/components/dataset/DatasetInfo.vue'
@@ -65,13 +66,7 @@ const onOverlay = (record) => {
 }
 
 onMounted(() => {
-  HTTP.get('/dataset/list_all')
-    .then(function (response) {
-      records.value = response.data
-    })
-    .catch((error) => {
-      console.log(error)
-    })
+  loadDatasets(records, null, false)
 })
 </script>
 
