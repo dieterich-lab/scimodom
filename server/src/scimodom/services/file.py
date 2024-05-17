@@ -18,6 +18,10 @@ from scimodom.database.models import Dataset, BamFile
 logger = logging.getLogger(__name__)
 
 
+class FileTooLarge(Exception):
+    pass
+
+
 class FileService:
     BUFFER_SIZE = 1024 * 1024
 
@@ -36,13 +40,17 @@ class FileService:
     # BAM file
 
     def create_or_update_bam_file(
-        self, dataset: Dataset, name: str, data_stream: IO[bytes]
+        self,
+        dataset: Dataset,
+        name: str,
+        data_stream: IO[bytes],
+        max_size: Optional[int],
     ):
         try:
             bam_file = self.get_bam_file(dataset, name)
-            self._update_bam_file(bam_file, data_stream)
+            self._update_bam_file(bam_file, data_stream, max_size)
         except NoResultFound:
-            self._create_bam_file(dataset, name, data_stream)
+            self._create_bam_file(dataset, name, data_stream, max_size)
 
     def get_bam_file(self, dataset: Dataset, name: str) -> BamFile:
         return self._db_session.scalars(
@@ -53,10 +61,10 @@ class FileService:
             )
         ).one()
 
-    def _update_bam_file(self, bam_file, data_stream):
+    def _update_bam_file(self, bam_file, data_stream, max_size):
         tmp_path = self._get_bam_file_tmp_path(bam_file)
         path = self._get_bam_file_path(bam_file)
-        self._stream_to_file(data_stream, tmp_path)
+        self._stream_to_file(data_stream, tmp_path, max_size)
         try:
             unlink(path)
         except FileNotFoundError:
@@ -80,7 +88,7 @@ class FileService:
     def _get_bam_file_path(bam_file):
         return join(join(Config.DATA_PATH, "bam_files"), bam_file.storage_file_name)
 
-    def _stream_to_file(self, data_stream, path):
+    def _stream_to_file(self, data_stream, path, max_size):
         if exists(path):
             raise Exception(
                 f"FileService._stream_to_file(): Refusing to overwrite existing file: '{path}'!"
@@ -89,30 +97,40 @@ class FileService:
         if not exists(parent):
             makedirs(path)
         try:
+            bytes_written = 0
             with open(path, "wb") as fp:
                 while True:
                     buffer = data_stream.read(self.BUFFER_SIZE)
                     if len(buffer) == 0:
                         break
                     fp.write(buffer)
+                    bytes_written += len(buffer)
+                    if max_size is not None and bytes_written > max_size:
+                        raise FileTooLarge(
+                            f"File is larger than allowed (max {max_size} bytes)"
+                        )
         except Exception as e:
-            logger.warning(
-                f"Failed to create file '{path}': {str(e)} - discarding file."
-            )
-            try:
-                unlink(path)
-            except Exception as unlink_e:
-                logger.warning(f"Failed to to delete '{path}': {str(unlink_e)}.")
-            raise e
+            self._handle_upload_error(e, path)
 
-    def _create_bam_file(self, dataset, name, data_stream):
+    @staticmethod
+    def _handle_upload_error(exception, path):
+        logger.warning(
+            f"Failed to create file '{path}': {str(exception)} - discarding file."
+        )
+        try:
+            unlink(path)
+        except Exception as unlink_e:
+            logger.warning(f"Failed to to delete '{path}': {str(unlink_e)}.")
+        raise exception
+
+    def _create_bam_file(self, dataset, name, data_stream, max_size):
         bam_file = BamFile(
             dataset_id=dataset.id,
             original_file_name=name,
             storage_file_name=f"{dataset.id}_{uuid4()}_{name}"[:256],
         )
         path = self._get_bam_file_path(bam_file)
-        self._stream_to_file(data_stream, path)
+        self._stream_to_file(data_stream, path, max_size)
         self._db_session.add(bam_file)
         self._db_session.commit()
 

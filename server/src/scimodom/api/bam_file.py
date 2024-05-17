@@ -6,7 +6,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy.exc import NoResultFound
 
 from scimodom.services.dataset import get_dataset_service
-from scimodom.services.file import get_file_service
+from scimodom.services.file import get_file_service, FileTooLarge
 from scimodom.services.permission import get_permission_service
 from scimodom.services.user import get_user_service, NoSuchUser
 
@@ -16,6 +16,7 @@ VALID_DATASET_ID_REGEXP = re.compile(r"\A[a-zA-Z0-9]+\Z")
 VALID_FILENAME_REGEXP = re.compile(r"\A[a-zA-Z0-9.,_-]+\Z")
 
 BUFFER_SIZE = 1024 * 1024
+MAX_BAM_FILE_SIZE = 2  # 1024 * 1024 * 1024
 
 
 @bam_file_api.route("/all/<dataset_id>", methods=["GET"])
@@ -49,9 +50,19 @@ def post_bam_file(dataset_id: str, name: str):
     user, error, status = _get_user_with_write_permission_or_error(dataset)
     if user is None:
         return {"message": error}, status
+    if (
+        request.content_length is not None
+        and request.content_length > MAX_BAM_FILE_SIZE
+    ):
+        return {"message": f"File too large (max. {MAX_BAM_FILE_SIZE} bytes)"}, 413
 
     file_service = get_file_service()
-    file_service.create_or_update_bam_file(dataset, name, request.stream)
+    try:
+        file_service.create_or_update_bam_file(
+            dataset, name, request.stream, MAX_BAM_FILE_SIZE
+        )
+    except FileTooLarge:
+        return {"message": f"File too large (max. {MAX_BAM_FILE_SIZE} bytes)"}, 413
     return {"message": "OK"}, 200
 
 

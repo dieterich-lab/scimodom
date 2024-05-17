@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { HTTPSecure } from '@/services/API'
+import { getErrorMessageFromException, getErrorMessageFromResponse } from '@/utils/request'
 
 const UPLOAD_STATE = Object.freeze({
   WAITING: Symbol('WAITING'),
@@ -43,13 +44,9 @@ class ScheduledUpload {
         this.state = UPLOAD_STATE.DONE
         return
       }
-      try {
-        this.errorMessage = `Upload failed with HTTP status ${response.status}: ${response.data.message}`
-      } catch {
-        this.errorMessage = `Upload failed with HTTP status ${response.status}`
-      }
+      this.errorMessage = getErrorMessageFromResponse(response)
     } catch (err) {
-      this.errorMessage = err.toString()
+      this.errorMessage = getErrorMessageFromException(err)
     }
     this.state = UPLOAD_STATE.FAILED
   }

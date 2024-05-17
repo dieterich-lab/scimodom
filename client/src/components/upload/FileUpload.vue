@@ -51,7 +51,6 @@ async function uploader(event) {
     <FileUpload
       customUpload
       name="files[]"
-      url="/api/upload"
       @uploader="uploader"
       :multiple="props.multiple"
       :accept="props.accept"
