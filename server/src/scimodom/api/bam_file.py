@@ -16,7 +16,7 @@ VALID_DATASET_ID_REGEXP = re.compile(r"\A[a-zA-Z0-9]+\Z")
 VALID_FILENAME_REGEXP = re.compile(r"\A[a-zA-Z0-9.,_-]+\Z")
 
 BUFFER_SIZE = 1024 * 1024
-MAX_BAM_FILE_SIZE = 2  # 1024 * 1024 * 1024
+MAX_BAM_FILE_SIZE = 1024 * 1024 * 1024
 
 
 @bam_file_api.route("/all/<dataset_id>", methods=["GET"])
