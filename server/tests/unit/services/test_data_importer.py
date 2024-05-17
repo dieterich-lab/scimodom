@@ -4,7 +4,11 @@ import pytest
 from sqlalchemy import func, select
 
 from scimodom.database.models import Data
-from scimodom.services.importer.base import BaseImporter, MissingHeaderError
+from scimodom.services.importer.base import (
+    BaseImporter,
+    MissingHeaderError,
+    MissingDataError,
+)
 from scimodom.services.importer.data import EUFDataImporter
 
 
@@ -89,7 +93,7 @@ def _get_data_with_header(fmt):
         ("minimum", "Value start: -1 out of range."),
         (
             "chrom",
-            "Unrecognized chrom: A. Ignore this warningfor scaffolds and contigs, otherwise this could be due to misformatting!",
+            "Unrecognized chrom: A. Ignore this warning for scaffolds and contigs, otherwise this could be due to misformatting!",
         ),
         ("strand", "Unrecognized strand: ."),
         ("maximum", "Value score: 200 out of range."),
@@ -276,3 +280,23 @@ def test_base_importer_comment_fail(Session):
         importer = TestBaseImporter()
     assert str(exc.value) == "Maximum length of 1 expected, got 2 for comment."
     assert exc.type == ValueError
+
+
+def test_importer_missing_data(Session, EUF_specs):
+    # pass the raise_missing argument to close
+
+    format, version, specs = EUF_specs
+    handle = _get_data(EUF_specs)
+    importer = EUFDataImporter(
+        session=Session(),
+        filen="filen",
+        handle=handle,
+        association={"m6A": 1},
+        seqids=["1"],
+        specs_ver=version,
+    )
+    # warnings are emitted, this is expected, use caplog to assert them...
+    importer.parse_records()
+    with pytest.raises(MissingDataError) as exc:
+        importer.close(raise_missing=True)
+    assert exc.type == MissingDataError

@@ -325,14 +325,12 @@ class DataService:
                 eufid=self._eufid,
                 title=self._title,
             )
-            # TODO if importer fails, then checkpoint does not exists...
             checkpoint = importer.header.checkpoint
             importer.header.parse_header()
-            # compare input vs. values read from file header
-            # for organism (taxa ID) and assembly
+            # compare input and header
             self.validate_imported("organism", taxa_id, importer.header.taxid)
             self.validate_imported("assembly", assembly_name, importer.header.assembly)
-            importer.header.close()  # commit
+            importer.header.close(no_commit=True)
             # add association = (EUFID, selection)
             # update self._association dict
             self._add_association()  # flush
@@ -341,11 +339,11 @@ class DataService:
                 association=self._association, seqids=seqids, no_flush=is_liftover
             )
             importer.data.parse_records()
+            importer.data.close(raise_missing=True)  # commit unless...
         except:
             checkpoint.rollback()
             raise
         else:
-            importer.data.close()  # commit unless...
             if is_liftover:
                 msg = f"Lifting over dataset from {assembly_name} to {current_assembly_name}..."
                 logger.debug(msg)
@@ -367,6 +365,7 @@ class DataService:
                 filen = assembly_service.liftover(records)
                 importer.reset_data_importer(filen)
                 importer.data.parse_records()
+                # raise missing?
                 importer.data.close()
 
         msg = (
@@ -492,14 +491,7 @@ class DataService:
                     "Aborting transaction!"
                 )
                 raise SelectionExistsError(msg) from exc
-            query = (
-                select(
-                    Modomics.short_name,
-                )
-                .join_from(Modification, Modomics, Modification.inst_modomics)
-                .where(Modification.id == modification_id)
-            )
-            name = self._session.execute(query).scalar_one()
+            name = self._modification_id_to_name(modification_id)
             self._association[name] = selection_id[-1]
         # this cannot actually happen...
         if len(set(selection_id)) != len(selection_id):

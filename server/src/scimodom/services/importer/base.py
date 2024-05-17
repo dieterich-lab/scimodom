@@ -18,6 +18,12 @@ class MissingHeaderError(Exception):
     pass
 
 
+class MissingDataError(Exception):
+    """Exception handling for too many skipped rows."""
+
+    pass
+
+
 class BaseImporter(ABC):
     """Abstract base class for an importer. Reads data from
     file rowwise, buffer records, and perform bulk inserts.
@@ -118,6 +124,8 @@ class BaseImporter(ABC):
         self._buffer: BaseImporter._Buffer
         self._dtypes: dict[str, dict[str, Any]] = dict()
         self._lino: int = skiprows
+        self._numrows: int = 0
+        self._validrows: int = 0
         if comment is not None and len(comment) > 1:
             raise ValueError(
                 f"Maximum length of 1 expected, got {len(comment)} for comment."
@@ -150,11 +158,29 @@ class BaseImporter(ABC):
         for line in itertools.islice(self._handle, self._skiprows, None):
             self._lino += 1
             if self._comment is not None and not line.strip().startswith(self._comment):
+                self._numrows += 1
                 self._read_line(line)
 
-    def close(self) -> None:
-        """Close handle, flush buffer, commit."""
+    def close(self, raise_missing: bool = False, threshold: float = 0.01) -> None:
+        """Close handle. Unless no_flush,
+        flush buffer, and commit. Optionally
+        raise a MissingDataError.
+
+        :param raise_missing: Raise error if too
+        many missing records
+        :type raise_missing: bool
+        :param threshold: Threshold for raising error
+        :type threshold: float
+        """
         self._handle.close()
+
+        if raise_missing:
+            skipped = self._numrows - self._validrows
+            small = True if self._numrows < 100 and skipped > 1 else False
+            large = skipped / self._numrows > threshold
+            if small or large:
+                raise MissingDataError
+
         if not self._no_flush:
             self._buffer.flush()
             self._session.commit()
@@ -225,6 +251,7 @@ class BaseImporter(ABC):
         try:
             validated = self._validate(values)
             records = self.parse_record(validated)
+            self._validrows += 1
             self._buffer.buffer_data(records)
         except ValueError as error:
             msg = f"Skipping: Failed to parse {self._filen} at row {self._lino}: {str(error)}"

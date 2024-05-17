@@ -111,7 +111,7 @@ class EUFDataImporter(BaseImporter):
                 raise ValueError(f"Value {itype}: {crecord[itype]} out of range.")
         if crecord["chrom"] not in self._seqids:
             raise ValueError(
-                f"Unrecognized chrom: {crecord['chrom']}. Ignore this warning"
+                f"Unrecognized chrom: {crecord['chrom']}. Ignore this warning "
                 "for scaffolds and contigs, otherwise this could be due to misformatting!"
             )
         if crecord["strand"] not in self._constraints["strand"]:

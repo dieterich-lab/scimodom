@@ -79,11 +79,18 @@ class EUFHeaderImporter:
         self._parse_lines()
         self._validate_columns()
 
-    def close(self) -> None:
-        """Close handle, insert, and commit."""
+    def close(self, no_commit: bool = False) -> None:
+        """Close handle, insert, and flush or commit.
+
+        :param no_commit: Flush instead of commit
+        :type no_commit: bool
+        """
         self._handle.close()
         self._session.execute(insert(self._model), self._header)
-        self._session.commit()
+        if no_commit:
+            self._session.flush()
+        else:
+            self._session.commit()
 
     def _cast_types(self) -> None:
         """Cast column types for input."""

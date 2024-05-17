@@ -13,6 +13,7 @@ from scimodom.services.data import (
     DatasetExistsError,
     DatasetHeaderError,
 )
+from scimodom.services.importer.base import MissingDataError
 from scimodom.services.importer.header import SpecsError
 from scimodom.services.project import ProjectService
 from scimodom.services.mail import get_mail_service
@@ -116,18 +117,15 @@ def add_dataset():
         return {"message": f"File upload failed. File {str(exc)} is empty!"}, 500
     except SpecsError as exc:
         return {
-            "message": f"File upload failed. File is not conform to bedRMod specifications: {str(exc)}"
+            "message": f"File upload failed. The header is not conform to bedRMod specifications: {str(exc)}"
         }, 500
-
+    except MissingDataError:
+        return {
+            "message": "File upload failed. Too many skipped records. Consult the bedRMod documentation."
+        }, 500
+    # liftover errors
     except Exception as exc:
-        # TODO ...
-        logger.error(f"Failed to create dataset: {exc}")
-        return (
-            jsonify({"result": "Failed to upload dataset. Contact the administrator."}),
-            500,
-        )
+        logger.error(exc)
+        return {"message": "File upload failed. Contact the administrator."}, 500
 
-    # TODO
-    # WARNING scimodom.services.annotation.annotate_data.193 | No records found for Kr6uj7QzWfLJ...
-
-    return jsonify({"result": "Ok"}), 200
+    return {"result": "Ok"}, 200
