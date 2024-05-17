@@ -9,9 +9,11 @@ from scimodom.database.database import get_session
 from scimodom.services.data import (
     DataService,
     InstantiationError,
-    DatasetError,
+    SelectionExistsError,
+    DatasetExistsError,
     DatasetHeaderError,
 )
+from scimodom.services.importer.header import SpecsError
 from scimodom.services.project import ProjectService
 from scimodom.services.mail import get_mail_service
 import scimodom.utils.utils as utils
@@ -67,9 +69,8 @@ def create_project_request():
 @cross_origin(supports_credentials=True)
 @jwt_required()
 def add_dataset():
-    """Add a new dataset to a project. Parameter
-    values are validated by DataService. Project and
-    assembly must exist.
+    """Add a new dataset to a project and import data.
+    Parameter values are validated by DataService.
 
     NOTE: Permissions are not handled here. The
     SMID in the dataset form is coming from
@@ -77,10 +78,9 @@ def add_dataset():
     the user is only able to select from his own projects.
     """
     dataset_form = request.json
-    session = get_session()
     try:
         data_service = DataService.from_new(
-            session,
+            get_session(),
             dataset_form["smid"],
             dataset_form["title"],
             dataset_form["path"],
@@ -89,53 +89,36 @@ def add_dataset():
             technology_id=dataset_form["technology_id"],
             organism_id=dataset_form["organism_id"],
         )
+    except SelectionExistsError:
+        return {
+            "message": "Invalid combination of RNA type, modification, organism, and/or technology. Modify the form and try again."
+        }, 422
     except InstantiationError as exc:
-        # no need to log these errors, users should normally handle them
-        # ValueError during instantiation should not happen as we are using pre-defined values (Dropdown, MultiSelect, CascadeSelect)
-        # unless database corruption...
-        return (
-            jsonify(
-                {
-                    "message": f'Failed to upload dataset. Verify the input value for SMID or select a project using the button. The selected combination of modification, organism, and technology may be invalid for this project. Modify the form and try again. The message received from the server was: "{exc}"'
-                }
-            ),
-            500,
-        )
+        logger.error(f"{exc}. The request was: {dataset_form}.")
+        return {
+            "message": "Invalid selection. Try again or contact the administrator."
+        }, 422
     except Exception as exc:
-        # all others
-        logger.error(
-            f"Failed to instantiate dataservice: {exc}. The form received was: {dataset_form}."
-        )
-        return (
-            jsonify(
-                {"message": "Failed to upload dataset. Contact the administrator."}
-            ),
-            500,
-        )
+        logger.error(f"{exc}. The request was: {dataset_form}.")
+        return {"message": "Failed to create dataset. Contact the administrator."}, 500
 
     try:
         data_service.create_dataset()
-        # TODO: feedback to user e.g. liftover, etc. and finally successful upload (return EUFID?)
-    except DatasetError as exc:
-        # no need to log these errors, users should normally handle them
-        return (
-            jsonify(
-                {
-                    "message": f'Failed to upload dataset. The message received from the server was: "{exc}". If you are unsure about what happened, click "Cancel" and contact the administrator.'
-                }
-            ),
-            500,
-        )
-    except DatasetHeaderError as exc:
-        # no need to log these errors, users should normally handle them
-        return (
-            jsonify(
-                {
-                    "message": f'Failed to upload dataset. Your bedRMod file header does not match the values you entered. Modify the form or the file header and try again. The message received from the server was: "{exc}". If you are unsure about what happened, click "Cancel" and contact the administrator.'
-                }
-            ),
-            500,
-        )
+    except DatasetHeaderError:
+        return {
+            "message": 'File upload failed. The file header does not match the value you entered for organism and/or assembly. Click "Cancel". Modify the form or the file header and start again.'
+        }, 422
+    except DatasetExistsError as exc:
+        return {
+            "message": f"File upload failed. {str(exc).replace('Aborting transaction!', '')} If you are unsure about what happened, click \"Cancel\" and contact the administrator."
+        }, 422
+    except EOFError as exc:
+        return {"message": f"File upload failed. File {str(exc)} is empty!"}, 500
+    except SpecsError as exc:
+        return {
+            "message": f"File upload failed. File is not conform to bedRMod specifications: {str(exc)}"
+        }, 500
+
     except Exception as exc:
         # TODO ...
         logger.error(f"Failed to create dataset: {exc}")

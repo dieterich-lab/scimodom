@@ -2,8 +2,9 @@ import logging
 from pathlib import Path
 from typing import ClassVar, Any
 
-from sqlalchemy import select, func
+from sqlalchemy import select, exists, func
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import NoResultFound
 
 import scimodom.database.queries as queries
 import scimodom.utils.specifications as specs
@@ -33,7 +34,15 @@ class InstantiationError(Exception):
     pass
 
 
-class DatasetError(Exception):
+class SelectionExistsError(Exception):
+    """Exception handling for Dataset instantiation
+    (from new) with a choice of modification, organism,
+    and technology that does not exists."""
+
+    pass
+
+
+class DatasetExistsError(Exception):
     """Exception for handling Dataset instantiation,
     e.g. suspected duplicate entries."""
 
@@ -102,38 +111,39 @@ class DataService:
 
         selection_id = kwargs.get("selection_id", None)
         if selection_id is not None:
-            query = select(Selection.id)
-            ids = self._session.execute(query).scalars().all()
             for sid in selection_id:
-                if sid not in ids:
+                is_found = self._session.query(
+                    exists().where(Selection.id == sid)
+                ).scalar()
+                if not is_found:
                     msg = f"Selection ID = {sid} not found! Aborting transaction!"
-                    raise ValueError(msg)
+                    raise InstantiationError(msg)
             self._selection_id = selection_id
             self._set_ids()
         else:
             modification_id = kwargs.get("modification_id", None)
-            query = select(Modification.id)
-            ids = self._session.execute(query).scalars().all()
             for mid in modification_id:
-                if mid not in ids:
+                try:
+                    _ = self._modification_id_to_name(mid)
+                except NoResultFound:
                     msg = f"Modification ID = {mid} not found! Aborting transaction!"
-                    raise ValueError(msg)
+                    raise InstantiationError(msg)
             self._modification_id = modification_id
             technology_id = kwargs.get("technology_id", None)
-            query = select(DetectionTechnology.id)
-            ids = self._session.execute(query).scalars().all()
-            if technology_id not in ids:
+            try:
+                _ = self._technology_id_to_tech(technology_id)
+            except NoResultFound:
                 msg = (
                     f"Technology ID = {technology_id} not found! Aborting transaction!"
                 )
-                raise ValueError(msg)
+                raise InstantiationError(msg)
             self._technology_id = technology_id
             organism_id = kwargs.get("organism_id", None)
-            query = select(Organism.id)
-            ids = self._session.execute(query).scalars().all()
-            if organism_id not in ids:
+            try:
+                _ = self._organism_id_to_organism(organism_id)
+            except NoResultFound:
                 msg = f"Organism ID = {organism_id} not found! Aborting transaction!"
-                raise ValueError(msg)
+                raise InstantiationError(msg)
             self._organism_id = organism_id
             self._set_selection()
 
@@ -381,7 +391,11 @@ class DataService:
 
     def _set_ids(self) -> None:
         """Set modification_id, technology_id,
-        and organism_id from selection_id."""
+        and organism_id from selection_id.
+
+        A dataset can be associated with more
+        than one selection_id, but organism_id
+        and technology_id must be identical."""
         modification_id: list = []
         technology_id: int
         organism_id: int
@@ -414,9 +428,11 @@ class DataService:
             except:
                 technology_id = selection[2]
             if technology_id != selection[2]:
+                tech1 = self._technology_id_to_tech(technology_id)
+                tech2 = self._technology_id_to_tech(selection[2])
                 msg = (
-                    f"Two different technology IDs {technology_id} and "
-                    f"{selection[2]} are associated with this dataset. "
+                    f"Different technologies {tech1} and {tech2} "
+                    "cannot be associated with the same dataset. "
                     "Aborting transaction!"
                 )
                 raise InstantiationError(msg)
@@ -425,18 +441,21 @@ class DataService:
             except:
                 organism_id = selection[3]
             if organism_id != selection[3]:
+                cto1, org_name1 = self._organism_id_to_organism(organism_id)
+                cto2, org_name2 = self._organism_id_to_organism(selection[3])
                 msg = (
-                    f"Two different organism IDs {organism_id} and "
-                    f"{selection[3]} are associated with this dataset. "
-                    "Aborting transaction!"
+                    f"Different organisms {org_name1} ({cto1}) and "
+                    f"{org_name2} ({cto2}) cannot be associated with the "
+                    "same dataset. Aborting transaction!"
                 )
                 raise InstantiationError(msg)
             self._association[selection[1]] = selection_id
         # this cannot actually happen...
         if len(set(modification_id)) != len(modification_id):
+            m_names = [self._modification_id_to_name(mid) for mid in modification_id]
             msg = (
-                f"Repeated modification IDs {','.join([i for i in modification_id])} are "
-                "associated with this dataset. Aborting transaction!"
+                f"Repeated modifications {','.join([m for m in m_names])} "
+                "cannot be associated with the same dataset. Aborting transaction!"
             )
             raise InstantiationError(msg)
         self._modification_id = modification_id
@@ -444,7 +463,12 @@ class DataService:
         self._organism_id = organism_id
 
     def _set_selection(self) -> None:
-        """Set selection IDs associated with dataset."""
+        """Set selection IDs associated with a
+        dataset. Depending on the choice of
+        modification_id(s), organism_id, and
+        technology_id, a selection_id may or may
+        not exists. If it does not exists, a
+        SelectionExistsError is raised."""
         selection_id = []
         for modification_id in self._modification_id:
             query = queries.query_column_where(
@@ -458,12 +482,16 @@ class DataService:
             )
             try:
                 selection_id.append(self._session.execute(query).scalar_one())
-            except Exception as exc:
+            except NoResultFound as exc:
+                m_name = self._modification_id_to_name(modification_id)
+                tech = self._technology_id_to_tech(self._technology_id)
+                cto, org_name = self._organism_id_to_organism(self._organism_id)
                 msg = (
-                    f"Selection (mod={modification_id}, tech={self._technology_id}, "
-                    f"organism={self._organism_id}) does not exists. Aborting transaction!"
+                    f"Selection (mod={m_name}, tech={tech}, "
+                    f"organism=({org_name}, {cto})) does not exists. "
+                    "Aborting transaction!"
                 )
-                raise InstantiationError(msg) from exc
+                raise SelectionExistsError(msg) from exc
             query = (
                 select(
                     Modomics.short_name,
@@ -498,11 +526,11 @@ class DataService:
             eufid = self._session.execute(query).scalar_one_or_none()
             if eufid:
                 msg = (
-                    f"A similar record with EUFID = {eufid} already exists for project {self._smid} "
-                    f"with title = {self._title}, and the following selection ID {selection_id}. "
+                    f"Suspected duplicate record with EUFID = {eufid} (SMID = {self._smid}), "
+                    f'title = "{self._title}", and selection ID = {selection_id}. '
                     f"Aborting transaction!"
                 )
-                raise DatasetError(msg)
+                raise DatasetExistsError(msg)
 
     def _add_association(self) -> None:
         """Create new association entry for dataset."""
@@ -518,3 +546,38 @@ class DataService:
         query = select(Dataset.id)
         eufids = self._session.execute(query).scalars().all()
         self._eufid = utils.gen_short_uuid(self.EUFID_LENGTH, eufids)
+
+    def _modification_id_to_name(self, idx: int) -> str:
+        """Retrieve modification name for id.
+
+        :param idx: id (PK)
+        :type idx: int
+        """
+        query = (
+            select(Modomics.short_name)
+            .join(Modification, Modomics.modifications)
+            .where(Modification.id == idx)
+        )
+        return self._session.execute(query).scalar_one()
+
+    def _organism_id_to_organism(self, idx: int) -> str:
+        """Retrieve cto and organism name for id.
+
+        :param idx: id (PK)
+        :type idx: int
+        """
+        query = (
+            select(Organism.cto, Taxa.short_name)
+            .join(Taxa, Organism.inst_taxa)
+            .where(Organism.id == idx)
+        )
+        return self._session.execute(query).one()
+
+    def _technology_id_to_tech(self, idx: int) -> str:
+        """Retrieve technology name for id.
+
+        :param idx: id (PK)
+        :type idx: int
+        """
+        query = select(DetectionTechnology.tech).where(DetectionTechnology.id == idx)
+        return self._session.execute(query).scalar_one()

@@ -5,7 +5,7 @@ from sqlalchemy import func, select
 
 from scimodom.database.models import Data
 from scimodom.services.importer.base import BaseImporter, MissingHeaderError
-from scimodom.services.importer.data import EUFDataImporter, SpecsError
+from scimodom.services.importer.data import EUFDataImporter
 
 
 def _get_record(fmt=None):

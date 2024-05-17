@@ -19,7 +19,8 @@ import scimodom.database.queries as queries
 from scimodom.services.data import (
     DataService,
     InstantiationError,
-    DatasetError,
+    SelectionExistsError,
+    DatasetExistsError,
     DatasetHeaderError,
 )
 from scimodom.services.project import ProjectService
@@ -209,7 +210,7 @@ def test_from_new_fail_no_row(Session, setup, project_template):
         session.add_all(setup)
         smid = _mock_project_service(session, project_template)
         session.commit()
-    with pytest.raises(InstantiationError) as exc:
+    with pytest.raises(SelectionExistsError) as exc:
         DataService.from_new(
             session=Session(),
             smid=smid,
@@ -222,9 +223,9 @@ def test_from_new_fail_no_row(Session, setup, project_template):
         )
     assert (
         str(exc.value)
-        == "Selection (mod=2, tech=2, organism=1) does not exists. Aborting transaction!"
+        == "Selection (mod=m5C, tech=Technology 2, organism=(H. sapiens, Cell Type 1)) does not exists. Aborting transaction!"
     )
-    assert exc.type == InstantiationError
+    assert exc.type == SelectionExistsError
 
 
 def test_from_selection_fail(Session, setup, project_template):
@@ -232,7 +233,7 @@ def test_from_selection_fail(Session, setup, project_template):
         session.add_all(setup)
         smid = _mock_project_service(session, project_template)
         session.commit()
-    with pytest.raises(ValueError) as exc:
+    with pytest.raises(InstantiationError) as exc:
         DataService.from_selection(
             session=Session(),
             smid=smid,
@@ -242,7 +243,7 @@ def test_from_selection_fail(Session, setup, project_template):
             selection_id=99,
         )
     assert str(exc.value) == "Selection ID = 99 not found! Aborting transaction!"
-    assert exc.type == ValueError
+    assert exc.type == InstantiationError
 
 
 @pytest.mark.parametrize(
@@ -258,7 +259,7 @@ def test_from_new_fail(modid, techid, orgid, name, Session, setup, project_templ
         session.add_all(setup)
         smid = _mock_project_service(session, project_template)
         session.commit()
-    with pytest.raises(ValueError) as exc:
+    with pytest.raises(InstantiationError) as exc:
         DataService.from_new(
             session=Session(),
             smid=smid,
@@ -270,17 +271,17 @@ def test_from_new_fail(modid, techid, orgid, name, Session, setup, project_templ
             organism_id=orgid,
         )
     assert str(exc.value) == f"{name} ID = 99 not found! Aborting transaction!"
-    assert exc.type == ValueError
+    assert exc.type == InstantiationError
 
 
 @pytest.mark.parametrize(
-    "selid,name",
+    "selid,error",
     [
-        (2, "organism"),
-        (3, "technology"),
+        (2, "organisms H. sapiens (Cell Type 1) and H. sapiens (Cell Type 2)"),
+        (3, "technologies Technology 1 and Technology 2"),
     ],
 )
-def test_ids_fail(selid, name, Session, setup, project_template):
+def test_ids_fail(selid, error, Session, setup, project_template):
     with Session() as session, session.begin():
         session.add_all(setup)
         smid = _mock_project_service(session, project_template)
@@ -296,7 +297,7 @@ def test_ids_fail(selid, name, Session, setup, project_template):
         )
     assert (
         str(exc.value)
-        == f"Two different {name} IDs 1 and 2 are associated with this dataset. Aborting transaction!"
+        == f"Different {error} cannot be associated with the same dataset. Aborting transaction!"
     )
     assert exc.type == InstantiationError
 
@@ -383,14 +384,14 @@ def test_validate_existing_entry(Session, setup, project_template):
         assembly_id=1,
         selection_id=1,
     )
-    with pytest.raises(DatasetError) as exc:
+    with pytest.raises(DatasetExistsError) as exc:
         service._validate_entry()
     assert str(exc.value) == (
-        "A similar record with EUFID = 123456789ABC already exists for "
-        f"project {smid} with title = title, and the following selection ID 1. "
+        "Suspected duplicate record with EUFID = 123456789ABC "
+        f'(SMID = {smid}), title = "title", and selection ID = 1. '
         "Aborting transaction!"
     )
-    assert exc.type == DatasetError
+    assert exc.type == DatasetExistsError
 
 
 def test_add_association(Session, setup, project_template):

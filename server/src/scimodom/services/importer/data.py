@@ -8,12 +8,6 @@ import scimodom.utils.specifications as specs
 import scimodom.utils.utils as utils
 
 
-class SpecsError(Exception):
-    """Exception handling for specification errors."""
-
-    pass
-
-
 class EUFDataImporter(BaseImporter):
     """Utility class to import bedRMod (EU) formatted files.
     This class only handles the actual records, not the header,

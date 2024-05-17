@@ -8,12 +8,6 @@ from scimodom.utils.specifications import SPECS_EUF
 import scimodom.utils.utils as utils
 
 
-class SpecsError(Exception):
-    """Exception handling for specification errors."""
-
-    pass
-
-
 class BEDImporter(BaseImporter):
     """Utility class to import BED formatted files.
     BED6+ files, incl. bedRMod (EUF) are cut down
