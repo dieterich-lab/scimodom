@@ -1,7 +1,7 @@
 import logging
-from os import unlink, rename, makedirs, stat
-from os.path import join, exists, dirname
-from pathlib import Path
+from os import unlink, rename, makedirs, stat, close
+from os.path import join, exists, dirname, basename
+from tempfile import mkstemp
 from typing import Optional, IO, List, Dict
 from uuid import uuid4
 
@@ -9,7 +9,6 @@ from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.operators import and_
-from werkzeug.utils import secure_filename
 
 from scimodom.config import Config
 from scimodom.database.database import get_session
@@ -30,12 +29,39 @@ class FileService:
 
     # general
 
-    @staticmethod
-    def upload_default(file_storage):
-        filename = secure_filename(file_storage.filename)
-        response = Path(Config.UPLOAD_PATH, filename)
-        file_storage.save(response)
-        return response.as_posix()
+    def upload_tmp_file(self, stream, max_file_size):
+        parent = join(Config.DATA_PATH, "tmp")
+        if not exists(parent):
+            makedirs(parent)
+        fp, path = mkstemp(dir=parent)
+        close(fp)
+        file_id = basename(path)
+        self._stream_to_file(stream, path, max_file_size, overwrite_is_ok=True)
+        return file_id
+
+    def _stream_to_file(self, data_stream, path, max_size, overwrite_is_ok=False):
+        if exists(path) and not overwrite_is_ok:
+            raise Exception(
+                f"FileService._stream_to_file(): Refusing to overwrite existing file: '{path}'!"
+            )
+        parent = dirname(path)
+        if not exists(parent):
+            makedirs(path)
+        try:
+            bytes_written = 0
+            with open(path, "wb") as fp:
+                while True:
+                    buffer = data_stream.read(self.BUFFER_SIZE)
+                    if len(buffer) == 0:
+                        break
+                    fp.write(buffer)
+                    bytes_written += len(buffer)
+                    if max_size is not None and bytes_written > max_size:
+                        raise FileTooLarge(
+                            f"File is larger than allowed (max {max_size} bytes)"
+                        )
+        except Exception as e:
+            self._handle_upload_error(e, path)
 
     # BAM file
 
@@ -87,30 +113,6 @@ class FileService:
     @staticmethod
     def _get_bam_file_path(bam_file):
         return join(join(Config.DATA_PATH, "bam_files"), bam_file.storage_file_name)
-
-    def _stream_to_file(self, data_stream, path, max_size):
-        if exists(path):
-            raise Exception(
-                f"FileService._stream_to_file(): Refusing to overwrite existing file: '{path}'!"
-            )
-        parent = dirname(path)
-        if not exists(parent):
-            makedirs(path)
-        try:
-            bytes_written = 0
-            with open(path, "wb") as fp:
-                while True:
-                    buffer = data_stream.read(self.BUFFER_SIZE)
-                    if len(buffer) == 0:
-                        break
-                    fp.write(buffer)
-                    bytes_written += len(buffer)
-                    if max_size is not None and bytes_written > max_size:
-                        raise FileTooLarge(
-                            f"File is larger than allowed (max {max_size} bytes)"
-                        )
-        except Exception as e:
-            self._handle_upload_error(e, path)
 
     @staticmethod
     def _handle_upload_error(exception, path):

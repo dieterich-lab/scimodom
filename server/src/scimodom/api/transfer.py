@@ -2,9 +2,12 @@ from flask import Blueprint, Response, stream_with_context, request
 from flask_cors import cross_origin
 
 from scimodom.services.exporter import get_exporter, NoSuchDataset
-from scimodom.services.file import FileService
+from scimodom.services.file import get_file_service, FileTooLarge
 
 transfer_api = Blueprint("transfer_api", __name__)
+
+
+MAX_TMP_FILE_SIZE = 50 * 1024 * 1024
 
 
 @transfer_api.route("/dataset/<dataset_id>", methods=["GET"])
@@ -25,9 +28,15 @@ def export_dataset(dataset_id: str):
 @transfer_api.route("/tmp_upload", methods=["POST"])
 @cross_origin(supports_credentials=True)
 def upload_tmp_file():
+    if (
+        request.content_length is not None
+        and request.content_length > MAX_TMP_FILE_SIZE
+    ):
+        return {"message": f"File to large (max. {MAX_TMP_FILE_SIZE}"}, 413
+
+    file_service = get_file_service()
     try:
-        rfile = request.files["file"]
-    except KeyError:
-        return {"message": "Bad Request"}, 400
-    else:
-        return FileService.upload_default(rfile)
+        file_id = file_service.upload_tmp_file(request.stream, MAX_TMP_FILE_SIZE)
+        return {"file_id": file_id}
+    except FileTooLarge:
+        return {"message": f"File to large (max. {MAX_TMP_FILE_SIZE}"}, 413
