@@ -269,17 +269,16 @@ class DataService:
         """Dataset constructor."""
         is_liftover: bool = False
 
-        # make sure we do not already have a dataset with
-        # the same combination of SMID, selection, and title
+        # test for duplicate dataset
         self._validate_entry()
 
         # instantiate AssemblyService
-        query = queries.query_column_where(
-            Assembly, ["name", "taxa_id"], filters={"id": self._assembly_id}
-        )
-        assembly_name, taxa_id = self._session.execute(query).all()[0]
-        query = queries.query_column_where(Taxa, "name", filters={"id": taxa_id})
-        organism_name = self._session.execute(query).scalar_one()
+        (
+            assembly_name,
+            current_assembly_name,
+            taxa_id,
+            organism_name,
+        ) = self._query_missing_from_assembly()
         try:
             assembly_service = AssemblyService.from_id(
                 self._session, assembly_id=self._assembly_id
@@ -296,24 +295,13 @@ class DataService:
                 raise AssemblyVersionError(msg)
             is_liftover = True
         finally:
-            query = queries.get_assembly_version()
-            version = self._session.execute(query).scalar_one()
-            query = queries.query_column_where(
-                Assembly, "name", filters={"taxa_id": taxa_id, "version": version}
-            )
-            current_assembly_name = self._session.execute(query).scalar_one()
-            parent, filen = assembly_service.get_chrom_path(
-                organism_name, current_assembly_name
-            )
-            chrom_file = Path(parent, filen)
-            with open(chrom_file, "r") as f:
-                lines = f.readlines()
-            seqids = [l.split()[0] for l in lines]
+            seqids = assembly_service.get_seqids(organism_name, current_assembly_name)
 
         # create EUFID
         self._create_eufid()
 
         # import
+        checkpoint = self._session.begin_nested()
         try:
             try:
                 filen = self._filen.as_posix()  # type: ignore
@@ -325,12 +313,11 @@ class DataService:
                 eufid=self._eufid,
                 title=self._title,
             )
-            checkpoint = importer.header.checkpoint
             importer.header.parse_header()
             # compare input and header
             self.validate_imported("organism", taxa_id, importer.header.taxid)
             self.validate_imported("assembly", assembly_name, importer.header.assembly)
-            importer.header.close(no_commit=True)
+            importer.header.close()  # flush
             # add association = (EUFID, selection)
             # update self._association dict
             self._add_association()  # flush
@@ -339,16 +326,15 @@ class DataService:
                 association=self._association, seqids=seqids, no_flush=is_liftover
             )
             importer.data.parse_records()
-            importer.data.close(raise_missing=True)  # commit unless...
+            importer.data.close(raise_missing=True)  # flush
         except:
             checkpoint.rollback()
             raise
         else:
             if is_liftover:
                 msg = f"Lifting over dataset from {assembly_name} to {current_assembly_name}..."
-                logger.debug(msg)
+                logger.info(msg)
 
-                # ... data has not been written to database yet
                 records = importer.data.get_buffer()
                 # https://github.com/dieterich-lab/scimodom/issues/76
                 # overwrite name with association, remove asociation, add association back after liftover
@@ -362,23 +348,34 @@ class DataService:
                     )
                     for record in records
                 ]
-                filen = assembly_service.liftover(records)
-                importer.reset_data_importer(filen)
-                importer.data.parse_records()
-                # raise missing?
-                importer.data.close()
+                try:
+                    lifted_file = assembly_service.liftover(records)
+                    importer.reset_data_importer(lifted_file)
+                    importer.data.parse_records()
+                    importer.data.close()  # flush
+                except:
+                    checkpoint.rollback()
+                    raise
+
+        msg = "Annotating data now..."
+        logger.debug(msg)
+
+        # annotate newly imported data...
+        annotation_service = AnnotationService(session=self._session, taxa_id=taxa_id)
+        try:
+            annotation_service.annotate_data(self._eufid)
+            self._session.commit()
+        except:
+            checkpoint.rollback()
+            raise
+        # ... update cache
+        annotation_service.update_gene_cache(self._selection_id)
 
         msg = (
             f"Added dataset {self._eufid} to project {self._smid} with title = {self._title}, "
             f"and the following associations: {', '.join([f'{k}:{v}' for k, v in self._association.items()])}. "
-            "Annotating data now..."
         )
         logger.debug(msg)
-
-        # annotate newly imported data, update cache
-        annotation_service = AnnotationService(session=self._session, taxa_id=taxa_id)
-        annotation_service.annotate_data(self._eufid)
-        annotation_service.update_gene_cache(self._selection_id)
 
     def get_eufid(self) -> str:
         """Return newly created EUFID.
@@ -504,7 +501,10 @@ class DataService:
 
     def _validate_entry(self) -> None:
         """Tentatively check if dataset already exists using
-        SMID, title, and selection."""
+        SMID, title, and selection.
+
+        Raises DatasetExistsError
+        """
         for selection_id in self._selection_id:
             query = (
                 select(func.distinct(Dataset.id))
@@ -573,3 +573,25 @@ class DataService:
         """
         query = select(DetectionTechnology.tech).where(DetectionTechnology.id == idx)
         return self._session.execute(query).scalar_one()
+
+    def _query_missing_from_assembly(self) -> tuple[str, str, int, str]:
+        """Retrieve assembly-related information.
+
+        :returns: assembly name for instance and database, taxa ID and
+        organism name
+        :rtype: tuuple of (str, str, int, str)
+        """
+        query = queries.query_column_where(
+            Assembly, ["name", "taxa_id"], filters={"id": self._assembly_id}
+        )
+        assembly_name, taxa_id = self._session.execute(query).one()
+        query = queries.query_column_where(Taxa, "name", filters={"id": taxa_id})
+        organism_name = self._session.execute(query).scalar_one()
+
+        query = queries.get_assembly_version()
+        version = self._session.execute(query).scalar_one()
+        query = queries.query_column_where(
+            Assembly, "name", filters={"taxa_id": taxa_id, "version": version}
+        )
+        current_assembly_name = self._session.execute(query).scalar_one()
+        return assembly_name, current_assembly_name, taxa_id, organism_name

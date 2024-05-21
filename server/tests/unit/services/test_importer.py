@@ -18,6 +18,7 @@ from scimodom.services.importer import get_importer, get_bed_importer, get_buffe
     [(True), (False)],
 )
 def test_importer(close_handle, Session, data_path):
+    checkpoint = Session().begin_nested()
     try:
         importer = get_importer(
             filen=Path(data_path.LOC, "test.bed").as_posix(),
@@ -25,7 +26,6 @@ def test_importer(close_handle, Session, data_path):
             eufid="123456789ABC",
             title="title",
         )
-        checkpoint = importer.header.checkpoint
         importer.header.parse_header()
         if close_handle:
             importer.header.close()
@@ -72,6 +72,7 @@ def test_importer(close_handle, Session, data_path):
 
 
 def test_importer_header_fail(Session, data_path):
+    checkpoint = Session().begin_nested()
     try:
         importer = get_importer(
             filen=Path(data_path.LOC, "test_header_fail.bed").as_posix(),
@@ -79,7 +80,6 @@ def test_importer_header_fail(Session, data_path):
             eufid="123456789ABC",
             title="title",
         )
-        checkpoint = importer.header.checkpoint
         importer.header.parse_header()
         importer.header.close()
         importer.init_data_importer(association={"m6A": 1}, seqids=["1"])
@@ -109,6 +109,7 @@ def test_importer_data_fail(Session, data_path):
     # All "bad" records are discared, e.g. out of range
     # values, non-numerical values where a numerical value
     # is expected, etc.
+    checkpoint = Session().begin_nested()
     try:
         importer = get_importer(
             filen=Path(data_path.LOC, "test_data_fail.bed").as_posix(),
@@ -116,7 +117,6 @@ def test_importer_data_fail(Session, data_path):
             eufid="123456789ABC",
             title="title",
         )
-        checkpoint = importer.header.checkpoint
         importer.header.parse_header()
         importer.header.close()
         importer.init_data_importer(association={"m6A": 1}, seqids=["1"])

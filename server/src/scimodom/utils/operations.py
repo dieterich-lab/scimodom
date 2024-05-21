@@ -221,7 +221,7 @@ def liftover_to_file(
     chain_file: str,
     unmapped: str | None = None,
     chrom_id: str = "s",
-) -> str:
+) -> tuple[str, str]:
     """Liftover records. Handles conversion to BedTool, but not from,
     of the liftedOver features. A file is returned pointing
     to the liftedOver features. The unmapped ones are saved as
@@ -235,8 +235,8 @@ def liftover_to_file(
     :type unmapped: str or None
     :param chrom_id: The style of chromosome IDs (default s).
     :type chrom_id: str
-    :returns: File with liftedOver features
-    :rtype: str
+    :returns: Files with liftedOver and unmapped features
+    :rtype: tuple of (str, str)
     """
     bedtool = to_bedtool(records)
     result = pybedtools.BedTool._tmp()
@@ -253,7 +253,7 @@ def liftover_to_file(
         msg = f"Process failed with {exc.stderr}"
         raise Exception(msg) from exc
     # except subprocess.TimeoutExpired as exc:
-    return result
+    return result, unmapped
 
 
 def _remove_filno(feature, n_fields: int = 9, is_closest: bool = False):

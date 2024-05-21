@@ -1,11 +1,12 @@
 import logging
 from smtplib import SMTPException
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request
 from flask_cors import cross_origin
 from flask_jwt_extended import jwt_required
 
 from scimodom.database.database import get_session
+from scimodom.services.assembly import LiftOverError
 from scimodom.services.data import (
     DataService,
     InstantiationError,
@@ -41,29 +42,19 @@ def create_project_request():
         uuid = ProjectService.create_project_request(project_form)
     except FileNotFoundError as exc:
         logger.error(f"Failed to save the project submission form: {exc}")
-        return (
-            jsonify(
-                {
-                    "message": "Failed to save the project submission form. Contact the administrator."
-                }
-            ),
-            500,
-        )
+        return {
+            "message": "Failed to save the project submission form. Contact the system administrator."
+        }, 500
 
     mail_service = get_mail_service()
     try:
         mail_service.send_project_request_notification(uuid)
     except SMTPException as exc:
         logger.error(f"Failed to send out notification email: {exc}")
-        return (
-            jsonify(
-                {
-                    "message": f"Project form successfully submitted, but failed to send out notification email. Contact the administrator with this ID: {uuid}."
-                }
-            ),
-            500,
-        )
-    return jsonify({"message": "OK"}), 200
+        return {
+            "message": f"Project form successfully submitted, but failed to send out notification email. Contact the system administrator with this ID: {uuid}."
+        }, 500
+    return {"message": "OK"}, 200
 
 
 @management_api.route("/dataset", methods=["POST"])
@@ -97,21 +88,23 @@ def add_dataset():
     except InstantiationError as exc:
         logger.error(f"{exc}. The request was: {dataset_form}.")
         return {
-            "message": "Invalid selection. Try again or contact the administrator."
+            "message": "Invalid selection. Try again or contact the system administrator."
         }, 422
     except Exception as exc:
         logger.error(f"{exc}. The request was: {dataset_form}.")
-        return {"message": "Failed to create dataset. Contact the administrator."}, 500
+        return {
+            "message": "Failed to create dataset. Contact the system administrator."
+        }, 500
 
     try:
         data_service.create_dataset()
     except DatasetHeaderError:
         return {
-            "message": 'File upload failed. The file header does not match the value you entered for organism and/or assembly. Click "Cancel". Modify the form or the file header and start again.'
+            "message": 'File upload failed. Mismatch for organism and/or assembly between the file header and the selected values. Click "Cancel". Modify the form or the file and start again.'
         }, 422
     except DatasetExistsError as exc:
         return {
-            "message": f"File upload failed. {str(exc).replace('Aborting transaction!', '')} If you are unsure about what happened, click \"Cancel\" and contact the administrator."
+            "message": f"File upload failed. {str(exc).replace('Aborting transaction!', '')} If you are unsure about what happened, click \"Cancel\" and contact the system administrator."
         }, 422
     except EOFError as exc:
         return {"message": f"File upload failed. File {str(exc)} is empty!"}, 500
@@ -120,12 +113,13 @@ def add_dataset():
             "message": f"File upload failed. The header is not conform to bedRMod specifications: {str(exc)}"
         }, 500
     except MissingDataError:
+        return {"message": "File upload failed. Too many skipped records."}, 500
+    except LiftOverError:
         return {
-            "message": "File upload failed. Too many skipped records. Consult the bedRMod documentation."
+            "message": "Liftover failed. Check your data, or contact the system administrator."
         }, 500
-    # liftover errors
     except Exception as exc:
         logger.error(exc)
-        return {"message": "File upload failed. Contact the administrator."}, 500
+        return {"message": "File upload failed. Contact the system administrator."}, 500
 
     return {"result": "Ok"}, 200

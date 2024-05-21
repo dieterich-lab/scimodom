@@ -24,6 +24,13 @@ class AssemblyVersionError(Exception):
     pass
 
 
+class LiftOverError(Exception):
+    """Exception for handling too many
+    unmapped records during liftover."""
+
+    pass
+
+
 class AssemblyService:
     """Utility class to manage assemblies.
 
@@ -206,6 +213,25 @@ class AssemblyService:
         parent = Path(path, organism, assembly)
         return parent, AssemblyService.CHROM_FILE
 
+    @staticmethod
+    def get_seqids(organism: str, assembly: str) -> list[str]:
+        """Returns the chromosomes for a given assembly
+        as a list. Relies on get_chrom_path, as such
+        assembly must also match the current assembly.
+
+        :param organism: Organism name
+        :type organism: str
+        :param assembly: Assembly name
+        :type assembly: str
+        :returns: Chromosomes
+        :rtype: list of str
+        """
+        parent, filen = AssemblyService.get_chrom_path(organism, assembly)
+        chrom_file = Path(parent, filen)
+        with open(chrom_file, "r") as f:
+            lines = f.readlines()
+        return [l.split()[0] for l in lines]
+
     def get_chain_path(self) -> tuple[Path, str]:
         """Construct file path (chain file) for organism.
         Only to (not from) current version.
@@ -297,18 +323,41 @@ class AssemblyService:
         with open(Path(parent, "release.json"), "w") as f:
             json.dump(release, f, indent="\t")
 
-    def liftover(self, records: list[tuple[Any, ...]]) -> str:
+    def liftover(self, records: list[tuple[Any, ...]], threshold: float = 0.3) -> str:
         """Liftover records to current assembly.
         Unmapped features are discarded.
 
         :param records: Records to be lifted over
         :type records: List of tuple of (str, ...) - Data records
-        :returns: File pointing to the liftedOver features
+        :param threshold: Threshold for raising LiftOverError
+        :type threshold: float
+        :returns: Files pointing to the liftedOver features
         :rtype: str
         """
         parent, filen = self.get_chain_path()
         chain_file = Path(parent, filen).as_posix()
-        return liftover_to_file(records, chain_file)
+        lifted_file, unmapped_file = liftover_to_file(records, chain_file)
+
+        def _count_lines(reader):
+            b = reader(1024 * 1024)
+            while b:
+                yield b
+                b = reader(1024 * 1024)
+
+        with open(unmapped_file, "rb") as fh:
+            unmapped_lines = sum(
+                line.count(b"\n") for line in _count_lines(fh.raw.read)
+            )
+        failed_liftover = unmapped_lines / len(records) > threshold
+        if failed_liftover:
+            raise LiftOverError
+        msg = (
+            f"{unmapped_lines} records could not be mapped and were discarded... "
+            "Contact the system administrator if you have questions."
+        )
+        logger.warning(msg)
+
+        return lifted_file
 
     def _get_current_name(self) -> str:
         """Get current assembly name. This methods

@@ -256,7 +256,7 @@ def test_importer(Session, EUF_specs):
         title="Title",
     )
     importer.parse_header()
-    importer.close()
+    importer.close(force=True)
     with Session() as session, session.begin():
         records = session.execute(select(Dataset)).scalar()
         assert records.id == "123456789ABC"

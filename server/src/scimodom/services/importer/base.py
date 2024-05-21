@@ -161,11 +161,15 @@ class BaseImporter(ABC):
                 self._numrows += 1
                 self._read_line(line)
 
-    def close(self, raise_missing: bool = False, threshold: float = 0.01) -> None:
+    def close(
+        self, force: bool = False, raise_missing: bool = False, threshold: float = 0.05
+    ) -> None:
         """Close handle. Unless no_flush,
         flush buffer, and commit. Optionally
         raise a MissingDataError.
 
+        :param force: Force commit
+        :type force: bool
         :param raise_missing: Raise error if too
         many missing records
         :type raise_missing: bool
@@ -174,16 +178,19 @@ class BaseImporter(ABC):
         """
         self._handle.close()
 
-        if raise_missing:
-            skipped = self._numrows - self._validrows
-            small = True if self._numrows < 100 and skipped > 1 else False
-            large = skipped / self._numrows > threshold
-            if small or large:
-                raise MissingDataError
+        skipped = self._numrows - self._validrows
+        absolute = int(threshold * 100)
+        small = True if self._numrows <= 100 and skipped > absolute else False
+        large = skipped / self._numrows > threshold
+        if (small or large) and raise_missing:
+            raise MissingDataError
 
         if not self._no_flush:
             self._buffer.flush()
-            self._session.commit()
+            if force:
+                self._session.commit()
+            else:
+                self._session.flush()
 
     def get_buffer(self) -> list[dict[str, Any]]:
         """Return buffer with records.

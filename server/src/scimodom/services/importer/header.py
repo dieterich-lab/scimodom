@@ -55,7 +55,6 @@ class EUFHeaderImporter:
         self._eufid = eufid
         self._title = title
 
-        self.checkpoint = self._session.begin_nested()
         self._model = Dataset
         self._sep: str = self.SPECS["header"]["delimiter"]
         self._tag: str = self.SPECS["header"]["comment"]
@@ -79,18 +78,18 @@ class EUFHeaderImporter:
         self._parse_lines()
         self._validate_columns()
 
-    def close(self, no_commit: bool = False) -> None:
+    def close(self, force: bool = False) -> None:
         """Close handle, insert, and flush or commit.
 
-        :param no_commit: Flush instead of commit
-        :type no_commit: bool
+        :param force: Force commit
+        :type force: bool
         """
         self._handle.close()
         self._session.execute(insert(self._model), self._header)
-        if no_commit:
-            self._session.flush()
-        else:
+        if force:
             self._session.commit()
+        else:
+            self._session.flush()
 
     def _cast_types(self) -> None:
         """Cast column types for input."""

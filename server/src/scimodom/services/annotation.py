@@ -21,6 +21,7 @@ from scimodom.database.models import (
 )
 from scimodom.services.assembly import AssemblyService
 from scimodom.services.importer import get_buffer
+from scimodom.services.importer.base import MissingDataError
 from scimodom.utils.operations import (
     write_annotation_to_bed,
     get_annotation_records,
@@ -206,9 +207,8 @@ class AnnotationService:
         records = self._session.execute(query).all()
 
         if len(records) == 0:
-            msg = f"No records found for {eufid}... "
-            logger.warning(msg)
-            return
+            msg = f"[Annotation] No records found for {eufid}... "
+            raise MissingDataError(msg)
 
         msg = f"Annotating records for EUFID {eufid}..."
         logger.debug(msg)
@@ -224,7 +224,7 @@ class AnnotationService:
         for record in typed_annotated_records:
             buffer.buffer_data(record)
         buffer.flush()
-        self._session.commit()
+        self._session.flush()
 
     def update_gene_cache(self, selection_ids: list[int]) -> None:
         """Update gene cache.
