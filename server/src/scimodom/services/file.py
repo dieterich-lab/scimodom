@@ -30,10 +30,7 @@ class FileService:
     # general
 
     def upload_tmp_file(self, stream, max_file_size):
-        parent = join(Config.DATA_PATH, "tmp")
-        if not exists(parent):
-            makedirs(parent)
-        fp, path = mkstemp(dir=parent)
+        fp, path = mkstemp(dir=Config.UPLOAD_PATH)
         close(fp)
         file_id = basename(path)
         self._stream_to_file(stream, path, max_file_size, overwrite_is_ok=True)

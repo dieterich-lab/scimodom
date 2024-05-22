@@ -155,15 +155,14 @@ class ComparisonService:
                 raise NoRecordsFoundError
             self._comparison_records.append(records)
 
-    def upload_records(self, upload: str, is_euf: bool):
+    def upload_records(self, upload_path: Path, is_euf: bool):
         """Upload records.
 
-        :param upload: Uploaded dataset to compare
-        :type upload: str | Path
+        :param upload_path: Uploaded dataset to compare
+        :type upload_path: Path
         :param is_euf: BED6 or bedRMod (EUF)
         :type is_euf: bool
         """
-        upload_path = Path(upload)
         if not upload_path.is_file():
             msg = f"No such file or directory: {upload_path.as_posix()}"
             raise FileNotFoundError(msg)

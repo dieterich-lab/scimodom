@@ -1,9 +1,11 @@
 import logging
+from pathlib import Path
 
 from flask import Blueprint, request
 from flask_cors import cross_origin
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
+from scimodom.config import Config
 from scimodom.services.comparison import (
     get_comparison_service,
     FailedUploadError,
@@ -43,14 +45,15 @@ def compare():
 
     reference_ids = request.args.getlist("reference", type=str)
     comparison_ids = request.args.getlist("comparison", type=str)
-    upload_path = request.args.get("upload", type=str)
+    upload_id = request.args.get("upload", type=str)
     operation = request.args.get("operation", type=str)
     is_strand = request.args.get("strand", type=is_true)
     is_euf = request.args.get("euf", type=is_true)
 
     comparison_service = get_comparison_service(operation, is_strand)
-    if upload_path:
+    if upload_id:
         try:
+            upload_path = Path(Config.UPLOAD_PATH, upload_id)
             comparison_service.upload_records(upload_path, is_euf)
         except FileNotFoundError as exc:
             return (
