@@ -1,7 +1,9 @@
 <script setup>
 import { ref, watch } from 'vue'
-import { getApiUrl } from '@/services/API.js'
+import { HTTPSecure } from '@/services/API.js'
 import DatasetSelectionMulti from '@/components/ui/DatasetSelectionMulti.vue'
+import { handleRequestWithErrorReporting } from '@/utils/request'
+import { useDialogState } from '@/stores/DialogState'
 
 const emit = defineEmits(['datasetUploaded'])
 const model = defineModel()
@@ -17,9 +19,10 @@ const props = defineProps({
   }
 })
 
+const MAX_UPLOAD_SIZE = 50 * 1024 * 1024
+const dialogState = useDialogState()
 const remainingDatasets = ref()
 const disabled = ref(false)
-const uploadURL = getApiUrl('transfer/tmp_upload')
 const uploadedFile = ref()
 
 watch(
@@ -33,13 +36,21 @@ watch(
   { immediate: true }
 )
 
-const onUpload = (event) => {
-  disabled.value = true
-  model.value = []
-  uploadedFile.value = event.xhr.response
-  var ext = event.files[0].name.split('.').pop()
-  isEUF.value = ext.toLowerCase() == 'bedrmod' ? true : false
-  emit('datasetUploaded', uploadedFile.value)
+function uploader(event) {
+  const file = event.files[0]
+  console.log(`File: ${typeof file}`)
+  handleRequestWithErrorReporting(
+    HTTPSecure.post('transfer/tmp_upload', file),
+    `Failed to upload '${file.name}'`,
+    dialogState
+  ).then((data) => {
+    disabled.value = true
+    model.value = []
+    uploadedFile.value = file.name
+    let ext = file.name.split('.').pop()
+    isEUF.value = ext.toLowerCase() === 'bedrmod'
+    emit('datasetUploaded', data.file_id)
+  })
 }
 
 const clear = () => {
@@ -61,14 +72,13 @@ const clear = () => {
     <div class="flex flex-row">
       <FileUpload
         mode="basic"
-        name="file"
-        :url="uploadURL"
+        customUpload
+        @uploader="uploader"
         accept="text/plain,.bed,.bedrmod"
-        :maxFileSize="50000000"
+        :maxFileSize="MAX_UPLOAD_SIZE"
         :auto="true"
         chooseLabel="Select a file"
         class="w-[8rem]"
-        @upload="onUpload($event)"
       >
       </FileUpload>
       <ToggleButton v-model="isEUF" onLabel="bedRMod" offLabel="BED6" class="w-[8rem] ml-4" />

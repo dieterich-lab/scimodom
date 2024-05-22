@@ -1,6 +1,6 @@
 import logging
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request
 from flask_cors import cross_origin
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
@@ -54,26 +54,20 @@ def compare():
             comparison_service.upload_records(upload_path, is_euf)
         except FileNotFoundError as exc:
             return (
-                jsonify({"message": f"{exc}."}),
+                {"message": f"{exc}."},
                 404,
             )
         except FailedUploadError as exc:
             logger.error(f"Failed upload: {exc}")
-            return (
-                jsonify(
-                    {"message": "Failed to upload file. Contact the administrator."}
-                ),
-                500,
-            )
+            return {"message": "Failed to upload file. Contact the administrator."}, 500
         except NoRecordsFoundError:
-            return (
-                jsonify(
-                    {
-                        "message": "Failed to upload file. No records were found. Allowed formats are BED6 or bedRMod. Chromosomes must be formatted following the Ensembl short format. For more information, consult the Documentaion."
-                    }
-                ),
-                500,
-            )
+            return {
+                "message": (
+                    "Failed to upload file. No records were found. Allowed formats are BED6 or bedRMod. "
+                    "Chromosomes must be formatted following the Ensembl short format. For more information, "
+                    "consult the Documentaion."
+                )
+            }, 500
     else:  # we don't expect NoRecordsFoundErrror
         comparison_service.query_comparison_records(comparison_ids)
 
@@ -85,11 +79,9 @@ def compare():
         # all records at this point have beed adequately formatted
         # what exceptions can pybedtools throw? catch-all...
         logger.error(f"Failed comparison: {exc}")
-        return (
-            jsonify(
-                {
-                    "message": "Failed to perform comparison. The server encountered an unexpected error. Contact the administrator."
-                }
-            ),
-            500,
-        )
+        return {
+            "message": (
+                "Failed to perform comparison. The server encountered an unexpected error. "
+                "Contact the administrator."
+            )
+        }, 500

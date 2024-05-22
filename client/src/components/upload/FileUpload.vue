@@ -50,8 +50,6 @@ async function uploader(event) {
   <LabeledItem :label="label" :ui-style="props.uiStyle" class="w-full">
     <FileUpload
       customUpload
-      name="files[]"
-      url="/api/upload"
       @uploader="uploader"
       :multiple="props.multiple"
       :accept="props.accept"

@@ -7,14 +7,9 @@ async function handleRequestWithErrorReporting(request, failureMessage, dialogSt
     if (response.status === 200) {
       return response.data
     }
-    extraInfo = `HTTP status ${response.status}`
-    for (let field of ['message', 'msg']) {
-      if (response.data.hasOwn(field)) {
-        extraInfo = `${extraInfo} - ${response.data[field]}`
-      }
-    }
+    extraInfo = getErrorMessageFromResponse(response)
   } catch (err) {
-    extraInfo = err.toString()
+    extraInfo = getErrorMessageFromException(err)
   }
   const finalError = `${failureMessage}: ${extraInfo}`
   console.log(finalError)
@@ -23,4 +18,26 @@ async function handleRequestWithErrorReporting(request, failureMessage, dialogSt
   throw new Error(finalError)
 }
 
-export { handleRequestWithErrorReporting }
+function getErrorMessageFromResponse(response) {
+  let message = `HTTP status ${response.status}`
+  for (let field of ['message', 'msg']) {
+    if (field in response.data) {
+      message = `${message} - ${response.data[field]}`
+    }
+  }
+  return message
+}
+
+function getErrorMessageFromException(err) {
+  try {
+    return getErrorMessageFromResponse(err.response)
+  } catch (e) {
+    return err.toString()
+  }
+}
+
+export {
+  handleRequestWithErrorReporting,
+  getErrorMessageFromResponse,
+  getErrorMessageFromException
+}
