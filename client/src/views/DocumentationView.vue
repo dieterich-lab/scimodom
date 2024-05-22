@@ -28,9 +28,9 @@ import SubTitle from '@/components/ui/SubTitle.vue'
           Query nomenclature
         </p>
         <p class="indent-4 text-lg leading-relaxed mt-2 mb-2">
-          Sci-ModoM allows to query RNA modification sites according to RNA type, technology,
-          species, and genomic features (<span class="italic">Search</span>). The classification of
-          detection technologies is taken from
+          Sci-ModoM allows to query RNA modification sites according to RNA type, species,
+          technology, and genomic features (<span class="italic">Search</span>). The classification
+          of detection technologies is based on
           <a
             class="text-primary-500 hover:text-secondary-500"
             href="https://www.nature.com/articles/s12276-022-00821-0"
@@ -44,23 +44,22 @@ import SubTitle from '@/components/ui/SubTitle.vue'
         </p>
         <p class="indent-4 text-lg leading-relaxed mt-2 mb-2">
           Data is also accessible at the study- or dataset-level (<span class="italic">Browse</span
-          >). Modifications are associated with a given dataset. Each dataset is assigned a
-          <span class="font-semibold">EUFID</span> or
+          >). Each dataset is assigned a <span class="font-semibold">EUFID</span> or
           <span class="font-semibold">EUF identifier</span>. One or more dataset can belong to a
-          study or project, <span class="italic">e.g.</span> dataset "Wildtype HEK293T", "Wildtype
-          mESC" belong to the "GLORI" project. Projects are identified using a
+          study or project, <span class="italic">e.g.</span> dataset "Wildtype HEK293T" and
+          "Wildtype mESC" belong to the "GLORI" project. Projects are identified using a
           <span class="font-semibold">SMID</span> or
           <span class="font-semibold">Sci-ModoM identifier</span>. A dataset can include one or more
-          modification, but is uniquely associated with a given technology and species (including
-          cell type, tissue, or organ). Project creation is handled by maintainers via request (more
-          details soon). Once a project is created, users can add data to it.
+          modification, but is uniquely associated with a given species (including cell type,
+          tissue, or organ) and technology.
         </p>
         <p class="indent-4 text-lg underline underline-offset-8 decoration-gb-4/25">
           bedRMod format
         </p>
         <p class="indent-4 text-lg leading-relaxed mt-2 mb-2">
-          It is easy to think of a dataset as RNA modifications stored in a given bedRMod file. The
-          bedRMod or EU (epitranscriptome unified data exchange) format is similar to the
+          Simply put, a dataset consists of per-site records of RNA modifications stored in a given
+          bedRMod file. The bedRMod or EU (epitranscriptome unified data exchange) format is similar
+          to the
           <a
             class="text-primary-500 hover:text-secondary-500"
             href="https://www.encodeproject.org/data-standards/wgbs/"
@@ -68,9 +67,21 @@ import SubTitle from '@/components/ui/SubTitle.vue'
             rel="noopener noreferrer"
             >ENCODE bedMethyl</a
           >
-          format (BED9+2), but includes a header. The bedRMod file is a tabulated count of base
-          modifications from every sequencing read over each reference genomic position. It is a
-          convenient representation of all the modified based information stored in the
+          format (BED9+2), but includes a header. The name (4th column) must conform to the
+          <a
+            class="text-primary-500 hover:text-secondary-500"
+            href="https://www.genesilico.pl/modomics/modifications"
+            target="_blank"
+            rel="noopener noreferrer"
+            >MODOMICS</a
+          >
+          nomenclature for the modification short name, and the score (5th column) is a
+          site-specific measure of confidence.
+        </p>
+        <p class="indent-4 text-lg leading-relaxed mt-2 mb-2">
+          The bedRMod file is a tabulated count of base modifications from every sequencing read
+          over each reference genomic position. It is a convenient representation of the information
+          stored in the
           <a
             class="text-primary-500 hover:text-secondary-500"
             href="http://samtools.github.io/hts-specs/SAMtags.pdf"
@@ -78,8 +89,15 @@ import SubTitle from '@/components/ui/SubTitle.vue'
             rel="noopener noreferrer"
             >MM/ML tags</a
           >
-          stored in BAM alignment files. When aligning or basecalling, most recent software should
-          output these tags.
+          in BAM alignment files. When aligning or basecalling, most recent software should output
+          these tags. For more information, consult the
+          <a
+            class="text-primary-500 hover:text-secondary-500"
+            href="https://dieterich-lab.github.io/scimodom/bedrmod.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            >bedRMod format specification</a
+          >.
         </p>
         <p class="indent-4 text-lg underline underline-offset-8 decoration-gb-4/25">Assembly</p>
         <p class="indent-4 text-lg leading-relaxed mt-2 mb-2">
@@ -109,53 +127,69 @@ import SubTitle from '@/components/ui/SubTitle.vue'
           <span>Search</span>
         </h1>
         <p class="indent-4 text-lg leading-relaxed mt-2 mb-2">
-          To query the database for RNA modifications, first select one RNA type (mRNA, tRNA,
-          <span class="italic">etc.</span>), then available technologies and organisms. Selected
-          records can be exported to CSV.
+          To query the database for RNA modifications, first select a modification and species, then
+          available technologies. Sci-ModoM contains a large amount of records; selecting a
+          particular gene or genomic region can significantly reduce the query time. The search can
+          also be narrowed down by selecting a biotype or a genomic feature. Selected records can be
+          exported to CSV.
         </p>
         <p class="indent-4 text-lg leading-relaxed mt-2 mb-2">
           Columns with arrow signs can be sorted. Multiple columns can be sorted, this requires a
           metaKey (<span class="italic">e.g.</span> ⌘ or Ctrl) to be pressed when clicking a header.
-          A third click removes the sorting from the column. Table filters to be soon available.
+          A third click removes the sorting from the column.
         </p>
         <h1 class="font-ham text-4xl font-semibold m-auto pt-4 pb-4">
           <span>Browse</span>
         </h1>
         <p class="indent-4 text-lg leading-relaxed mt-2 mb-2">
           Query the database to find projects, studies and/or dataset. You can refine your search
-          using global filters (top left), or filter by RNA modification, technology, organism,
-          cell, tissue and/or organ. Click on the + button to see additional information. Records
-          can be exported to CSV.
+          using global filters (top left of table), or table filters (RNA type and modification,
+          organism, cell, tissue and/or organ, or technology). Click the
+          <i class="pi pi-plus -ml-3 mr-1" /> button to see project-related information and
+          additional attachments. A dataset can be downloaded as a bedRMod file. Records can be
+          exported to CSV.
         </p>
         <h1 class="font-ham text-4xl font-semibold m-auto pt-4 pb-4">
           <span>Compare</span>
         </h1>
         <p class="indent-4 text-lg leading-relaxed mt-2 mb-2">
-          Compare dataset by finding modifications common to multiple dataset (intersection) or
-          modifications found in a group of dataset only (difference). You can also find
-          modifications in a given dataset that are close to, but not intersecting with
-          modifications in another dataset (closest). You can perform these operations using
-          available dataset, but you can also compare these dataset with your own data.
+          Compare dataset by finding modification sites common to multiple dataset (intersection) or
+          those only found in a group of dataset (difference). You can also find modification sites
+          in a given dataset that are close to, but not intersecting with sites in other dataset
+          (closest). You can perform these operations using available dataset, but you can also
+          compare dataset with your own data.
         </p>
         <p class="indent-4 text-lg leading-relaxed mt-2 mb-2">
-          <span class="font-bold">A</span> First select a given organism. You can refine your search
-          by cell, tissue and/or organ, RNA modification, and technology, or select dataset directly
-          (drop down or search).
+          <span class="font-bold">A</span> First select a given organism, then select up to 3
+          reference dataset. Use the search bar (dataset dropdown) to narrow down your selection.
         </p>
         <p class="indent-4 text-lg leading-relaxed mt-2 mb-2">
-          <span class="font-bold">B</span> Select dataset for comparison. You can also use your own
-          data. It must be a bedRMod, a BED6, or a BED9+2 file.
+          <span class="font-bold">B</span> Select up to 3 dataset for comparison. You can also use
+          your own data (bedRMod or BED format). BED files with more than 6 columns are cut down to
+          BED6.
+          <span class="italic"
+            >As of June 2024, the header information for the bedRMod format is ignored. Hence there
+            is no organism and/or assembly validation (this is always the case for BED). If your
+            data comes from a different assembly or an inconsistent choice of reference dataset will
+            lead to spurious comparison results.
+          </span>
         </p>
         <p class="indent-4 text-lg leading-relaxed mt-2 mb-2">
           <span class="font-bold">C</span> Select the operation you want to perform on the dataset
-          selected in A and B. Records can be exported to CSV.
+          selected in A and B. The more dataset you select or the larger the dataset, the longer the
+          query time. Records can be exported to CSV.
         </p>
       </div>
       <!-- DATA MANAGEMENT ----  -->
       <div class="text-justify m-6 dark:text-white/80">
         <h1 class="font-ham text-4xl font-semibold m-auto pt-4 pb-4">
-          <span>Data management (for logged in users)</span>
+          <span>Data management</span>
         </h1>
+        <p class="indent-4 text-xl leading-relaxed mt-4 mb-2">
+          Sci-ModoM is freely available, and does not require login or registration. Interested
+          users can however register to propose new projects, and eventually upload dataset and
+          attachments that are made publicly available to all users.
+        </p>
         <p class="indent-4 text-lg underline underline-offset-8 decoration-gb-4/25">
           Project template
         </p>
@@ -187,6 +221,15 @@ import SubTitle from '@/components/ui/SubTitle.vue'
           associated with a different modification, detection technology, and/or organism (incl.
           cell type, tissue, or organ), or <span class="italic">(ii)</span> for each modification
           associated with a single dataset.
+        </p>
+        <p class="indent-4 text-lg underline underline-offset-8 decoration-gb-4/25">
+          Dataset upload
+        </p>
+        <p class="indent-4 text-lg leading-relaxed mt-2 mb-2">
+          To add dataset to an existing project, fill the upload form (Upload bedRMod), accessible
+          for logged-in users through User menu > Data > Dataset upload. Use the Attach BAM files
+          form to upload attachments. Attaching BAM files to a given dataset allow users to access
+          read-level information.
         </p>
       </div>
     </SectionLayout>

@@ -157,7 +157,8 @@ const buttonPt = {
             <div class="h-52">
               <div class="mb-4">
                 At least one reference dataset must be selected. Upload your own data or select up
-                to three dataset for comparison.
+                to three dataset for comparison. For upload, pay attention to the organism and/or
+                the assembly of your data to avoid spurious comparison results.
               </div>
               <CompareStepB
                 v-if="datasetUpdated && selectedDatasetA.length > 0"

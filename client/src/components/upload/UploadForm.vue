@@ -63,7 +63,6 @@ const validationSchema = object({
     .min(8, 'SMID has 8 characters exactly!')
     .max(8, 'SMID has 8 characters exactly!')
     .required('SMID is required!'),
-  // filename: string().required('A dataset file is required!'),
   file_id: string().required('A dataset file is required!'),
   rna_type: string().max(32, 'At most 32 characters allowed!').required('RNA type is required!'),
   modification_id: array()
@@ -213,17 +212,17 @@ onMounted(() => {
   <div>
     <form @submit.prevent="onSubmit">
       <Instructions>
-        Fill a submission form for each dataset (bedRMod file) that belongs to this project. For
-        more information on the bedRMod format, consult the
+        Fill the upload form for each dataset (bedRMod file) that belongs to this project. For more
+        information on the bedRMod format, consult the
         <RouterLink
           :to="{ name: 'documentation' }"
           target="_blank"
           class="inline-flex items-center font-semibold text-primary-500 hover:text-secondary-500"
           >Documentation.
         </RouterLink>
-        Click <span class="inline font-semibold">"Upload"</span> to submit the form. You cannot go
-        back after this step. Click <span class="inline font-semibold">"Cancel"</span> to drop the
-        request. In the latter case, all information that you entered will be lost.
+        Click <span class="inline font-semibold">"Upload"</span> to upload. You cannot go back after
+        this step. Click <span class="inline font-semibold">"Cancel"</span> to drop the request. In
+        the latter case, all information that you entered will be lost.
       </Instructions>
       <div class="grid grid-cols-2 gap-y-2 gap-x-8">
         <div class="flex flex-row">

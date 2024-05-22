@@ -21,9 +21,7 @@ async function scheduleUpload(file) {
 }
 </script>
 <template>
-  <Instructions>
-    Here you can attach BAM and BAI files to existing datasets (bedRMod).
-  </Instructions>
+  <Instructions> Attach BAM files to an existing dataset. </Instructions>
   <div class="grid gap-y-2 gap-x-8">
     <LabeledItem label="Dataset" class="w-full">
       <DatasetSelection v-model="dataset" :my-datasets-only="true" />
@@ -31,16 +29,16 @@ async function scheduleUpload(file) {
 
     <FileUpload
       v-if="dataset !== undefined"
-      label="BAM/BAI Files"
+      label="BAM/BAI files"
       accept="application/octet-stream,.bam,.bai"
       :multiple="true"
       :handle-file="scheduleUpload"
     />
     <div v-else>
-      <p>Please select a dataset first.</p>
+      <p>Select a dataset and upload files.</p>
     </div>
 
-    <SubTitle>Uploads</SubTitle>
+    <div class="underline mt-4">Uploads</div>
     <div v-if="uploads.length === 0">
       <p>(No recent uploads)</p>
     </div>

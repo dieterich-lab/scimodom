@@ -26,7 +26,7 @@ import AttachBamForm from '@/components/upload/AttachBamForm.vue'
           <template #header>
             <div class="flex items-center gap-2">
               <i class="pi pi-file-arrow-up" />
-              <span class="font-bold whitespace-nowrap">Upload EUF (bedRMod)</span>
+              <span class="font-bold whitespace-nowrap">Upload bedRMod</span>
             </div>
           </template>
           <UploadForm />
