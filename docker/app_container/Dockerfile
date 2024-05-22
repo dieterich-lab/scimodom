@@ -7,7 +7,7 @@ COPY client/dist/. /frontend/
 COPY docker/app_container/files/. /app/
 
 RUN apt-get update \
-    && apt-get install -y bedtools \
+    && apt-get install -y bedtools findutils \
     && useradd app \
     && mkdir -p /uploads /app/venv \
     && chown -R app /uploads /install /app/venv \

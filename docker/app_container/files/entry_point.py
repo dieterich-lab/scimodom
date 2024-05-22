@@ -42,6 +42,7 @@ def get_secret(path):
 
 
 write_env_file()
+system("cd /app && /app/mini_cron.sh &")
 system(
     f"exec su - app /app/run_flask.sh {environ.get('HTTP_WORKER_PROCESSES')} {environ.get('HTTP_WORKER_TIMEOUT', 30)}"
 )
