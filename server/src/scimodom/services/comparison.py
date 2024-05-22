@@ -165,7 +165,7 @@ class ComparisonService:
         """
         if not upload_path.is_file():
             msg = f"No such file or directory: {upload_path.as_posix()}"
-            raise FileNotFoundError(msg)
+            raise FailedUploadError(msg)
         try:
             db_records = ComparisonService.upload_file(upload_path, is_euf)
         except Exception as exc:

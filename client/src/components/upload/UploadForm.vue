@@ -4,8 +4,9 @@ import { useRouter } from 'vue-router'
 import { useDialog } from 'primevue/usedialog'
 import { useForm } from 'vee-validate'
 import { object, array, string, number } from 'yup'
-import { getApiUrl } from '@/services/API.js'
 import { HTTP, HTTPSecure } from '@/services/API'
+import { handleRequestWithErrorReporting } from '@/utils/request'
+import { useDialogState } from '@/stores/DialogState'
 import Instructions from '@/components/ui/Instructions.vue'
 import { updOrganismFromMod, updTechnologyFromModAndOrg } from '@/utils/selection.js'
 
@@ -14,6 +15,8 @@ import FormMultiSelect from '@/components/ui/FormMultiSelect.vue'
 import FormCascade from '@/components/ui/FormCascade.vue'
 import FormTextInput from '@/components/ui/FormTextInput.vue'
 
+const MAX_UPLOAD_SIZE = 50 * 1024 * 1024
+const dialogState = useDialogState()
 const router = useRouter()
 
 const rna = ref([])
@@ -23,8 +26,7 @@ const organism = ref([])
 const technology = ref([])
 const assembly = ref([])
 const message = ref()
-
-const uploadURL = getApiUrl('transfer/tmp_upload')
+const filename = ref()
 
 const ProjectList = defineAsyncComponent(() => import('@/components/project/ProjectList.vue'))
 const dialog = useDialog()
@@ -61,8 +63,8 @@ const validationSchema = object({
     .min(8, 'SMID has 8 characters exactly!')
     .max(8, 'SMID has 8 characters exactly!')
     .required('SMID is required!'),
-  filename: string().required('A dataset file is required!'),
-  path: string().required('A dataset file path is required!'),
+  // filename: string().required('A dataset file is required!'),
+  file_id: string().required('A dataset file is required!'),
   rna_type: string().max(32, 'At most 32 characters allowed!').required('RNA type is required!'),
   modification_id: array()
     .of(
@@ -96,8 +98,7 @@ const { defineField, handleSubmit, errors } = useForm({
 })
 
 const [smid, smidProps] = defineField('smid')
-const [filename, filenameProps] = defineField('filename')
-const [path, pathProps] = defineField('path')
+const [file_id, fileProps] = defineField('file_id')
 const [rna_type, rnaProps] = defineField('rna_type')
 const [modification_id, modificationProps] = defineField('modification_id')
 const [organism_id, organismProps] = defineField('organism_id')
@@ -106,6 +107,7 @@ const [technology_id, technologyProps] = defineField('technology_id')
 const [title, titleProps] = defineField('title')
 
 const onSubmit = handleSubmit((values) => {
+  message.value = undefined
   HTTPSecure.post('/management/dataset', values)
     .then((response) => {
       if (response.status == 200) {
@@ -118,10 +120,16 @@ const onSubmit = handleSubmit((values) => {
     })
 })
 
-const onUpload = (event) => {
-  filename.value = event.files[0].name
-  // path is "invisible", we could use path, and derive filename from it...
-  path.value = event.xhr.response
+function uploader(event) {
+  const file = event.files[0]
+  handleRequestWithErrorReporting(
+    HTTPSecure.post('transfer/tmp_upload', file),
+    `Failed to upload '${file.name}'`,
+    dialogState
+  ).then((data) => {
+    filename.value = file.name
+    file_id.value = data.file_id
+  })
 }
 
 const dropForm = () => {
@@ -234,7 +242,7 @@ onMounted(() => {
         <div class="flex flex-row">
           <FormTextInput
             v-model="filename"
-            :error="errors.filename"
+            :error="errors.file_id"
             :disabled="true"
             placeholder="filename.bedrmod"
             class="w-full"
@@ -243,13 +251,12 @@ onMounted(() => {
           <div class="ml-4 place-self-center">
             <FileUpload
               mode="basic"
-              name="file"
-              :url="uploadURL"
+              customUpload
+              @uploader="uploader"
               accept="text/plain,.bed,.bedrmod"
-              :maxFileSize="50000000"
+              :maxFileSize="MAX_UPLOAD_SIZE"
               :auto="true"
               chooseLabel="Select a file"
-              @upload="onUpload($event)"
             >
             </FileUpload>
           </div>

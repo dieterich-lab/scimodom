@@ -1,10 +1,12 @@
 import logging
+from pathlib import Path
 from smtplib import SMTPException
 
 from flask import Blueprint, request
 from flask_cors import cross_origin
 from flask_jwt_extended import jwt_required
 
+from scimodom.config import Config
 from scimodom.database.database import get_session
 from scimodom.services.assembly import LiftOverError
 from scimodom.services.data import (
@@ -70,12 +72,13 @@ def add_dataset():
     the user is only able to select from his own projects.
     """
     dataset_form = request.json
+    upload_path = Path(Config.UPLOAD_PATH, dataset_form["file_id"])
     try:
         data_service = DataService.from_new(
             get_session(),
             dataset_form["smid"],
             dataset_form["title"],
-            dataset_form["path"],
+            upload_path,
             dataset_form["assembly_id"],
             modification_id=dataset_form["modification_id"],
             technology_id=dataset_form["technology_id"],

@@ -55,36 +55,30 @@ def compare():
         try:
             upload_path = Path(Config.UPLOAD_PATH, upload_id)
             comparison_service.upload_records(upload_path, is_euf)
-        except FileNotFoundError as exc:
-            return (
-                {"message": f"{exc}."},
-                404,
-            )
         except FailedUploadError as exc:
-            logger.error(f"Failed upload: {exc}")
-            return {"message": "Failed to upload file. Contact the administrator."}, 500
+            logger.error(f"Failed upload (Comparison): {exc}")
+            return {
+                "message": "File upload failed. Contact the system administrator."
+            }, 500
         except NoRecordsFoundError:
             return {
                 "message": (
-                    "Failed to upload file. No records were found. Allowed formats are BED6 or bedRMod. "
-                    "Chromosomes must be formatted following the Ensembl short format. For more information, "
-                    "consult the Documentaion."
+                    "File upload failed. No records were found. Allowed formats are BED6 or bedRMod, "
+                    "chromosomes must use the Ensembl short format, contigs are discarded. For more "
+                    "information, consult the documentaion."
                 )
             }, 500
-    else:  # we don't expect NoRecordsFoundErrror
+    else:
         comparison_service.query_comparison_records(comparison_ids)
 
     comparison_service.query_reference_records(reference_ids)
-
     try:
         return comparison_service.compare_dataset()
     except Exception as exc:
-        # all records at this point have beed adequately formatted
-        # what exceptions can pybedtools throw? catch-all...
         logger.error(f"Failed comparison: {exc}")
         return {
             "message": (
-                "Failed to perform comparison. The server encountered an unexpected error. "
-                "Contact the administrator."
+                "Failed to compare dataset. The server encountered an unexpected error. "
+                "Contact the system administrator."
             )
         }, 500

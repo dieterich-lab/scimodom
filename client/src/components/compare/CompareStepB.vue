@@ -38,7 +38,6 @@ watch(
 
 function uploader(event) {
   const file = event.files[0]
-  console.log(`File: ${typeof file}`)
   handleRequestWithErrorReporting(
     HTTPSecure.post('transfer/tmp_upload', file),
     `Failed to upload '${file.name}'`,
