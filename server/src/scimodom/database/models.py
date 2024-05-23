@@ -306,6 +306,7 @@ class Dataset(Base):
     project_id: Mapped[str] = mapped_column(
         ForeignKey("project.id"), index=True
     )  # SMID
+    date_added: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     # bedRMod header
     modification_type: Mapped[str] = mapped_column(

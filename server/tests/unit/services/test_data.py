@@ -366,11 +366,13 @@ def test_validate_existing_entry(Session, setup, project_template):
         session.add_all(setup)
         smid = _mock_project_service(session, project_template)
         # force/add dataset manually
+        stamp = datetime.now(timezone.utc).replace(microsecond=0)
         dataset = Dataset(
             id="123456789ABC",
             project_id=smid,
             title="title",
             modification_type="RNA",
+            date_added=stamp,
         )
         association = Association(dataset_id="123456789ABC", selection_id=1)
         session.add_all([dataset, association])

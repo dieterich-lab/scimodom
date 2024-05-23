@@ -12,7 +12,7 @@ async function loadAllDatasets(datasetsRef = null, refresh = false) {
       allDatasetsCache = response.data
       allDatasetsByIdCache = null
     } catch (err) {
-      console.log(`Failed to fetch all dataset: ${error}`)
+      console.log(`Failed to fetch all dataset: ${err}`)
     }
   }
   if (datasetsRef !== null) {
@@ -44,7 +44,7 @@ async function loadMyDatasets(datasetsRef = null, refresh = false) {
       myDatasetsCache = response.data
       myDatasetsByIdCache = null
     } catch (err) {
-      console.log(`Failed to fetch MY dataset: ${error}`)
+      console.log(`Failed to fetch MY dataset: ${err}`)
     }
   }
   if (datasetsRef !== null) {

@@ -27,6 +27,7 @@ const technology = ref([])
 const assembly = ref([])
 const message = ref()
 const filename = ref()
+const loading = ref(false)
 
 const ProjectList = defineAsyncComponent(() => import('@/components/project/ProjectList.vue'))
 const dialog = useDialog()
@@ -63,7 +64,6 @@ const validationSchema = object({
     .min(8, 'SMID has 8 characters exactly!')
     .max(8, 'SMID has 8 characters exactly!')
     .required('SMID is required!'),
-  // filename: string().required('A dataset file is required!'),
   file_id: string().required('A dataset file is required!'),
   rna_type: string().max(32, 'At most 32 characters allowed!').required('RNA type is required!'),
   modification_id: array()
@@ -108,8 +108,10 @@ const [title, titleProps] = defineField('title')
 
 const onSubmit = handleSubmit((values) => {
   message.value = undefined
+  loading.value = true
   HTTPSecure.post('/management/dataset', values)
     .then((response) => {
+      loading.value = false
       if (response.status == 200) {
         router.push({ name: 'home' })
       }
@@ -117,6 +119,7 @@ const onSubmit = handleSubmit((values) => {
     .catch((error) => {
       message.value = error.response.data.message
       console.log(error)
+      loading.value = false
     })
 })
 
@@ -213,17 +216,17 @@ onMounted(() => {
   <div>
     <form @submit.prevent="onSubmit">
       <Instructions>
-        Fill a submission form for each dataset (bedRMod file) that belongs to this project. For
-        more information on the bedRMod format, consult the
+        Fill the upload form for each dataset (bedRMod file) that belongs to this project. For more
+        information on the bedRMod format, consult the
         <RouterLink
           :to="{ name: 'documentation' }"
           target="_blank"
           class="inline-flex items-center font-semibold text-primary-500 hover:text-secondary-500"
           >Documentation.
         </RouterLink>
-        Click <span class="inline font-semibold">"Upload"</span> to submit the form. You cannot go
-        back after this step. Click <span class="inline font-semibold">"Cancel"</span> to drop the
-        request. In the latter case, all information that you entered will be lost.
+        Click <span class="inline font-semibold">"Upload"</span> to upload. You cannot go back after
+        this step. Click <span class="inline font-semibold">"Cancel"</span> to drop the request. In
+        the latter case, all information that you entered will be lost.
       </Instructions>
       <div class="grid grid-cols-2 gap-y-2 gap-x-8">
         <div class="flex flex-row">
@@ -320,8 +323,15 @@ onMounted(() => {
         <Message severity="error" :closable="false">{{ message }}</Message>
       </div>
       <div class="flex flow-row justify-center pt-4 gap-4">
-        <Button label="Upload" size="large" type="submit" />
+        <Button label="Upload" size="large" type="submit" icon="pi pi-sync" :loading="loading" />
         <Button label="Cancel" size="large" severity="danger" @click="dropForm" />
+      </div>
+      <div class="flex justify-center italic mt-4">
+        Do not refresh the page during upload! This may take a few minutes, as we validate,
+        annotate, and eventually lift over your data...
+      </div>
+      <div class="flex justify-center italic">
+        You will be redirected to the main page upon successful upload.
       </div>
     </form>
   </div>

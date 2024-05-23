@@ -505,6 +505,7 @@ def test_query_one_reference(Session, setup):
             project_id=smid,
             title="title",
             modification_type="RNA",
+            date_added=stamp,
         )
         session.add(dataset)
         session.flush()
@@ -577,12 +578,14 @@ def test_query_two_reference(Session, setup):
             project_id=smid,
             title="title",
             modification_type="RNA",
+            date_added=stamp,
         )
         dataset2 = Dataset(
             id="8sQjh8xwioFr",
             project_id=smid,
             title="title",
             modification_type="RNA",
+            date_added=stamp,
         )
         session.add_all([dataset1, dataset2])
         session.flush()
@@ -677,12 +680,14 @@ def test_query_comparison(Session, setup):
             project_id=smid,
             title="title",
             modification_type="RNA",
+            date_added=stamp,
         )
         dataset2 = Dataset(
             id="3HsmkimcHAFA",
             project_id=smid,
             title="title",
             modification_type="RNA",
+            date_added=stamp,
         )
         session.add_all([dataset1, dataset2])
         session.flush()
@@ -747,7 +752,7 @@ def test_query_comparison(Session, setup):
     [(True), (False)],
 )
 def test_upload_bed(is_euf, Session, data_path):
-    filen = Path(data_path.LOC, "test.bed").as_posix()
+    filen = Path(data_path.LOC, "test.bed")
     expected_records = [[("1", 0, 10, "m6A", 1000, "+", "Upload", 0, 0)]]
     if is_euf:
         expected_records = [[("1", 0, 10, "m6A", 1000, "+", "Upload", 10, 1)]]
@@ -804,18 +809,21 @@ def test_operation(operation, Session, setup):
             project_id=smid,
             title="title",
             modification_type="RNA",
+            date_added=stamp,
         )
         dataset2 = Dataset(
             id="FCfhtbEJpbvR",
             project_id=smid,
             title="title",
             modification_type="RNA",
+            date_added=stamp,
         )
         dataset3 = Dataset(
             id="3HsmkimcHAFA",
             project_id=smid,
             title="title",
             modification_type="RNA",
+            date_added=stamp,
         )
         session.add_all([dataset1, dataset2, dataset3])
         session.flush()
@@ -942,12 +950,14 @@ def test_operation_simple(operation, Session, setup):
             project_id=smid,
             title="title",
             modification_type="RNA",
+            date_added=stamp,
         )
         dataset2 = Dataset(
             id="FCfhtbEJpbvR",
             project_id=smid,
             title="title",
             modification_type="RNA",
+            date_added=stamp,
         )
         session.add_all([dataset1, dataset2])
         session.flush()

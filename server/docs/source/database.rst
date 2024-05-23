@@ -3,286 +3,8 @@
 Database
 ========
 
-.. _data_model:
-
 Data model
 ----------
-
-Schema
-^^^^^^
-
-Schema 03.2024.
-Alembic version ``1e684fab4e13``.
-
-.. code-block:: bash
-
-    +--------------------+
-    | Tables_in_scimodom |
-    +--------------------+
-    | alembic_version    |
-    | annotation         |
-    | annotation_version |
-    | assembly           |
-    | assembly_version   |
-    | association        |
-    | data               |
-    | data_annotation    |
-    | dataset            |
-    | genomic_annotation |
-    | method             |
-    | modification       |
-    | modomics           |
-    | ncbi_taxa          |
-    | organism           |
-    | project            |
-    | project_contact    |
-    | project_source     |
-    | selection          |
-    | taxonomy           |
-    | technology         |
-    | user               |
-    +--------------------+
-
-.. code-block:: mysql
-
-    CREATE TABLE `alembic_version` (
-    `version_num` varchar(32) NOT NULL,
-    PRIMARY KEY (`version_num`)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-    CREATE TABLE `annotation` (
-
-    `id` int(11) NOT NULL AUTO_INCREMENT,
-    `release` int(11) NOT NULL,
-    `taxa_id` int(11) NOT NULL,
-    `version` varchar(12) NOT NULL,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `uq_annotation_rtv` (`release`,`taxa_id`,`version`),
-    KEY `ix_annotation_taxa_id` (`taxa_id`),
-    CONSTRAINT `fk_annotation_taxa_id_ncbi_taxa` FOREIGN KEY (`taxa_id`) REFERENCES `ncbi_taxa` (`id`)
-    ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
-    CREATE TABLE `annotation_version` (
-    `version_num` varchar(12) NOT NULL,
-    PRIMARY KEY (`version_num`)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
-    CREATE TABLE `assembly` (
-    `id` int(11) NOT NULL AUTO_INCREMENT,
-    `name` varchar(128) NOT NULL,
-    `taxa_id` int(11) NOT NULL,
-    `version` varchar(12) NOT NULL,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `uq_assembly_ntv` (`name`,`taxa_id`,`version`),
-    UNIQUE KEY `uq_assembly_name` (`name`),
-    KEY `ix_assembly_taxa_id` (`taxa_id`),
-    CONSTRAINT `fk_assembly_taxa_id_ncbi_taxa` FOREIGN KEY (`taxa_id`) REFERENCES `ncbi_taxa` (`id`)
-    ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
-    CREATE TABLE `assembly_version` (
-    `version_num` varchar(12) NOT NULL,
-    PRIMARY KEY (`version_num`)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
-    CREATE TABLE `association` (
-    `id` int(11) NOT NULL AUTO_INCREMENT,
-    `selection_id` int(11) NOT NULL,
-    `dataset_id` varchar(12) NOT NULL,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `idx_assoc` (`selection_id`,`dataset_id`),
-    KEY `ix_association_dataset_id` (`dataset_id`),
-    KEY `ix_association_selection_id` (`selection_id`),
-    CONSTRAINT `fk_association_dataset_id_dataset` FOREIGN KEY (`dataset_id`) REFERENCES `dataset` (`id`),
-    CONSTRAINT `fk_association_selection_id_selection` FOREIGN KEY (`selection_id`) REFERENCES `selection` (`id`)
-    ) ENGINE=InnoDB AUTO_INCREMENT=66 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
-    CREATE TABLE `data` (
-    `id` int(11) NOT NULL AUTO_INCREMENT,
-    `association_id` int(11) NOT NULL,
-    `chrom` varchar(128) NOT NULL,
-    `start` int(11) NOT NULL,
-    `end` int(11) NOT NULL,
-    `name` varchar(32) NOT NULL,
-    `score` int(11) NOT NULL,
-    `strand` varchar(1) NOT NULL,
-    `thick_start` int(11) NOT NULL,
-    `thick_end` int(11) NOT NULL,
-    `item_rgb` varchar(128) NOT NULL,
-    `coverage` int(11) NOT NULL,
-    `frequency` int(11) NOT NULL,
-    PRIMARY KEY (`id`),
-    KEY `idx_data_sort` (`chrom`,`start`,`end`),
-    KEY `ix_data_association_id` (`association_id`),
-    KEY `ix_data_coverage` (`coverage`),
-    KEY `ix_data_frequency` (`frequency`),
-    KEY `ix_data_score` (`score`),
-    CONSTRAINT `fk_data_association_id_association` FOREIGN KEY (`association_id`) REFERENCES `association` (`id`)
-    ) ENGINE=InnoDB AUTO_INCREMENT=3358983 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
-    CREATE TABLE `data_annotation` (
-    `id` int(11) NOT NULL AUTO_INCREMENT,
-    `data_id` int(11) NOT NULL,
-    `gene_id` varchar(128) NOT NULL,
-    `feature` varchar(32) NOT NULL,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `uq_data_annotation_data_id` (`data_id`,`gene_id`,`feature`),
-    KEY `ix_data_annotation_data_id` (`data_id`),
-    KEY `ix_data_annotation_feature` (`feature`),
-    KEY `ix_data_annotation_gene_id` (`gene_id`),
-    CONSTRAINT `fk_data_annotation_data_id_data` FOREIGN KEY (`data_id`) REFERENCES `data` (`id`),
-    CONSTRAINT `fk_data_annotation_gene_id_genomic_annotation` FOREIGN KEY (`gene_id`) REFERENCES `genomic_annotation` (`id`)
-    ) ENGINE=InnoDB AUTO_INCREMENT=6493215 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
-    CREATE TABLE `dataset` (
-    `id` varchar(12) NOT NULL,
-    `project_id` varchar(8) NOT NULL,
-    `title` varchar(255) NOT NULL,
-    `modification_type` varchar(32) NOT NULL,
-    `sequencing_platform` varchar(255) DEFAULT NULL,
-    `basecalling` text DEFAULT NULL,
-    `bioinformatics_workflow` text DEFAULT NULL,
-    `experiment` text DEFAULT NULL,
-    `external_source` varchar(255) DEFAULT NULL,
-    PRIMARY KEY (`id`),
-    KEY `ix_dataset_project_id` (`project_id`),
-    CONSTRAINT `fk_dataset_project_id_project` FOREIGN KEY (`project_id`) REFERENCES `project` (`id`)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
-    CREATE TABLE `genomic_annotation` (
-    `id` varchar(128) NOT NULL,
-    `annotation_id` int(11) NOT NULL,
-    `name` varchar(128) DEFAULT NULL,
-    `biotype` varchar(255) DEFAULT NULL,
-    PRIMARY KEY (`id`),
-    KEY `idx_genomic` (`annotation_id`,`biotype`,`name`),
-    KEY `ix_genomic_annotation_annotation_id` (`annotation_id`),
-    CONSTRAINT `fk_genomic_annotation_annotation_id_annotation` FOREIGN KEY (`annotation_id`) REFERENCES `annotation` (`id`)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
-    CREATE TABLE `method` (
-    `id` varchar(8) NOT NULL,
-    `cls` varchar(32) NOT NULL,
-    `meth` varchar(128) NOT NULL,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `uq_method_meth` (`meth`)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
-    CREATE TABLE `modification` (
-    `id` int(11) NOT NULL AUTO_INCREMENT,
-    `modomics_id` varchar(128) NOT NULL,
-    `rna` varchar(32) NOT NULL,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `uq_modification_modomics_id` (`modomics_id`,`rna`),
-    KEY `ix_modification_modomics_id` (`modomics_id`),
-    CONSTRAINT `fk_modification_modomics_id_modomics` FOREIGN KEY (`modomics_id`) REFERENCES `modomics` (`id`)
-    ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
-    CREATE TABLE `modomics` (
-    `id` varchar(128) NOT NULL,
-    `name` varchar(255) NOT NULL,
-    `short_name` varchar(32) NOT NULL,
-    `moiety` varchar(32) NOT NULL,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `uq_modomics_name` (`name`),
-    UNIQUE KEY `uq_modomics_short_name` (`short_name`)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
-    CREATE TABLE `ncbi_taxa` (
-    `id` int(11) NOT NULL,
-    `name` varchar(128) NOT NULL,
-    `short_name` varchar(128) NOT NULL,
-    `taxonomy_id` varchar(8) NOT NULL,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `uq_ncbi_taxa_name` (`name`),
-    UNIQUE KEY `uq_ncbi_taxa_short_name` (`short_name`),
-    KEY `ix_ncbi_taxa_taxonomy_id` (`taxonomy_id`),
-    CONSTRAINT `fk_ncbi_taxa_taxonomy_id_taxonomy` FOREIGN KEY (`taxonomy_id`) REFERENCES `taxonomy` (`id`)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
-    CREATE TABLE `organism` (
-    `id` int(11) NOT NULL AUTO_INCREMENT,
-    `taxa_id` int(11) NOT NULL,
-    `cto` varchar(255) NOT NULL,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `uq_organism_taxa_id` (`taxa_id`,`cto`),
-    KEY `ix_organism_cto` (`cto`),
-    KEY `ix_organism_taxa_id` (`taxa_id`),
-    CONSTRAINT `fk_organism_taxa_id_ncbi_taxa` FOREIGN KEY (`taxa_id`) REFERENCES `ncbi_taxa` (`id`)
-    ) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
-    CREATE TABLE `project` (
-    `id` varchar(8) NOT NULL,
-    `title` varchar(255) NOT NULL,
-    `summary` text NOT NULL,
-    `contact_id` int(11) NOT NULL,
-    `date_published` datetime NOT NULL,
-    `date_added` datetime NOT NULL,
-    PRIMARY KEY (`id`),
-    KEY `ix_project_contact_id` (`contact_id`),
-    CONSTRAINT `fk_project_contact_id_project_contact` FOREIGN KEY (`contact_id`) REFERENCES `project_contact` (`id`)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
-    CREATE TABLE `project_contact` (
-    `id` int(11) NOT NULL AUTO_INCREMENT,
-    `contact_name` varchar(128) NOT NULL,
-    `contact_institution` varchar(255) NOT NULL,
-    `contact_email` varchar(320) NOT NULL,
-    PRIMARY KEY (`id`)
-    ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
-    CREATE TABLE `project_source` (
-    `id` int(11) NOT NULL AUTO_INCREMENT,
-    `project_id` varchar(8) NOT NULL,
-    `doi` varchar(255) DEFAULT NULL,
-    `pmid` int(11) DEFAULT NULL,
-    PRIMARY KEY (`id`),
-    KEY `ix_project_source_project_id` (`project_id`),
-    CONSTRAINT `fk_project_source_project_id_project` FOREIGN KEY (`project_id`) REFERENCES `project` (`id`)
-    ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
-    CREATE TABLE `selection` (
-    `id` int(11) NOT NULL AUTO_INCREMENT,
-    `modification_id` int(11) NOT NULL,
-    `organism_id` int(11) NOT NULL,
-    `technology_id` int(11) NOT NULL,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `idx_select` (`modification_id`,`organism_id`,`technology_id`),
-    KEY `ix_selection_modification_id` (`modification_id`),
-    KEY `ix_selection_organism_id` (`organism_id`),
-    KEY `ix_selection_technology_id` (`technology_id`),
-    CONSTRAINT `fk_selection_modification_id_modification` FOREIGN KEY (`modification_id`) REFERENCES `modification` (`id`),
-    CONSTRAINT `fk_selection_organism_id_organism` FOREIGN KEY (`organism_id`) REFERENCES `organism` (`id`),
-    CONSTRAINT `fk_selection_technology_id_technology` FOREIGN KEY (`technology_id`) REFERENCES `technology` (`id`)
-    ) ENGINE=InnoDB AUTO_INCREMENT=22 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
-    CREATE TABLE `taxonomy` (
-    `id` varchar(8) NOT NULL,
-    `domain` varchar(32) NOT NULL,
-    `kingdom` varchar(32) DEFAULT NULL,
-    `phylum` varchar(32) DEFAULT NULL,
-    PRIMARY KEY (`id`)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
-    CREATE TABLE `technology` (
-    `id` int(11) NOT NULL AUTO_INCREMENT,
-    `method_id` varchar(8) NOT NULL,
-    `tech` varchar(255) NOT NULL,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `uq_technology_method_id` (`method_id`,`tech`),
-    KEY `ix_technology_method_id` (`method_id`),
-    KEY `ix_technology_tech` (`tech`),
-    CONSTRAINT `fk_technology_method_id_method` FOREIGN KEY (`method_id`) REFERENCES `method` (`id`)
-    ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
-    CREATE TABLE `user` (
-    `id` int(11) NOT NULL AUTO_INCREMENT,
-    `email` varchar(320) NOT NULL,
-    `state` enum('wait_for_confirmation','active') DEFAULT NULL,
-    `password_hash` varchar(128) DEFAULT NULL,
-    `confirmation_token` varchar(32) DEFAULT NULL,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `ix_user_email` (`email`)
-    ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
 
 Model description
 ^^^^^^^^^^^^^^^^^
@@ -328,6 +50,18 @@ Project creation is handled via request. Each project is assigned a **Sci-ModoM*
    be for the same RNA type. A dataset or bedRMod file can only contain ONE RNA type, ONE technology, ONE organism (incl. cell type, tissue,
    or organ), and records from the same assembly. The best way to handle treatment and/or conditions is to have as many bedRMod
    files as required to describe the experimental protocol, and provide a meaningful title for each file.
+
+Workflow
+""""""""
+
+Upon successful project request submission, a draft template is created and an email is sent to the system administrator. A project is created and
+a user is associated with the newly created project. The actual project creation and user-project association is currently only handled
+by ``flask`` commands, see `_data_setup`_. Once a project is created, a user is allowed to upload dataset (bedRMod) and to attach BAM files to a dataset.
+This is handled by the user using the upload forms (Upload bedRMod, Attach BAM files).
+
+A number of validation routines are implemented to ensure that the uploaded dataset is conform to bedRMod specifications, that the dataset metadata
+is consistent with the chosen project selection, *etc.* Dataset that are of a different assembly version are lifted over before being written to
+the database. Finally, dataset are annotated and the gene cache is updated.
 
 
 Nomenclature
@@ -430,25 +164,33 @@ The upsert can be done for one model/table at a time, or forced with
 
 .. code-block:: bash
 
-    flask setup [options]
+    flask setup [OPTIONS]
 
 Projects are added with
 
 .. code-block:: bash
 
-    flask project [options] template
+    flask project [OPTIONS] TEMPLATE
 
+A user is automatically associated with a project upon creation using the email address given in the ``TEMPLATE``.
 After project creation, dataset can be added with
 
 .. code-block:: bash
 
     flask dataset [OPTIONS] SMID TITLE FILENAME
 
-These steps can be done all at once with
+Dataset upload is normally done via POST request upon login to the running application, accessible through User menu > Data > Dataset upload.
+These steps, except user-project association, can be done all at once with
 
 .. code-block:: bash
 
-    flask batch [OPTIONS] DIRECTORY [TEMPLATES]..
+    flask batch DIRECTORY [TEMPLATES]
+
+Permissions can be updated with
+
+.. code-block:: bash
+
+    flask permission USERNAME SMID
 
 To manage assemblies or annotations, use
 
@@ -461,3 +203,341 @@ To manage assemblies or annotations, use
     flask assembly [OPTIONS]
 
 For OPTIONS, use the ``--help`` flag, *e.g.* ``flask assembly --help``.
+
+
+.. _data_model:
+
+
+Schema
+^^^^^^
+
+Schema 05.2024.
+Alembic version ``ac1b984c4751``.
+
+.. code-block:: bash
+
+    +--------------------------+
+    | Tables_in_scimodom       |
+    +--------------------------+
+    | alembic_version          |
+    | annotation               |
+    | annotation_version       |
+    | assembly                 |
+    | assembly_version         |
+    | association              |
+    | bam_file                 |
+    | data                     |
+    | data_annotation          |
+    | dataset                  |
+    | genomic_annotation       |
+    | method                   |
+    | modification             |
+    | modomics                 |
+    | ncbi_taxa                |
+    | organism                 |
+    | project                  |
+    | project_contact          |
+    | project_source           |
+    | rna_type                 |
+    | selection                |
+    | taxonomy                 |
+    | technology               |
+    | user                     |
+    | user_project_association |
+    +--------------------------+
+
+.. code-block:: mysql
+
+    DROP TABLE IF EXISTS `alembic_version`;
+    CREATE TABLE `alembic_version` (
+    `version_num` varchar(32) NOT NULL,
+    PRIMARY KEY (`version_num`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+    DROP TABLE IF EXISTS `annotation`;
+    CREATE TABLE `annotation` (
+    `id` int(11) NOT NULL AUTO_INCREMENT,
+    `release` int(11) NOT NULL,
+    `taxa_id` int(11) NOT NULL,
+    `version` varchar(12) NOT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_annotation_rtv` (`release`,`taxa_id`,`version`),
+    KEY `ix_annotation_taxa_id` (`taxa_id`),
+    CONSTRAINT `fk_annotation_taxa_id_ncbi_taxa` FOREIGN KEY (`taxa_id`) REFERENCES `ncbi_taxa` (`id`)
+    ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+    DROP TABLE IF EXISTS `annotation_version`;
+    CREATE TABLE `annotation_version` (
+    `version_num` varchar(12) NOT NULL,
+    PRIMARY KEY (`version_num`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+    DROP TABLE IF EXISTS `assembly`;
+    CREATE TABLE `assembly` (
+    `id` int(11) NOT NULL AUTO_INCREMENT,
+    `name` varchar(128) NOT NULL,
+    `taxa_id` int(11) NOT NULL,
+    `version` varchar(12) NOT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_assembly_ntv` (`name`,`taxa_id`,`version`),
+    UNIQUE KEY `uq_assembly_name` (`name`),
+    KEY `ix_assembly_taxa_id` (`taxa_id`),
+    CONSTRAINT `fk_assembly_taxa_id_ncbi_taxa` FOREIGN KEY (`taxa_id`) REFERENCES `ncbi_taxa` (`id`)
+    ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+    DROP TABLE IF EXISTS `assembly_version`;
+    CREATE TABLE `assembly_version` (
+    `version_num` varchar(12) NOT NULL,
+    PRIMARY KEY (`version_num`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+    DROP TABLE IF EXISTS `association`;
+    CREATE TABLE `association` (
+    `id` int(11) NOT NULL AUTO_INCREMENT,
+    `selection_id` int(11) NOT NULL,
+    `dataset_id` varchar(12) NOT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `idx_assoc` (`selection_id`,`dataset_id`),
+    KEY `ix_association_dataset_id` (`dataset_id`),
+    KEY `ix_association_selection_id` (`selection_id`),
+    CONSTRAINT `fk_association_dataset_id_dataset` FOREIGN KEY (`dataset_id`) REFERENCES `dataset` (`id`),
+    CONSTRAINT `fk_association_selection_id_selection` FOREIGN KEY (`selection_id`) REFERENCES `selection` (`id`)
+    ) ENGINE=InnoDB AUTO_INCREMENT=128 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+    DROP TABLE IF EXISTS `bam_file`;
+    CREATE TABLE `bam_file` (
+    `id` int(11) NOT NULL AUTO_INCREMENT,
+    `original_file_name` varchar(1024) NOT NULL,
+    `storage_file_name` varchar(256) NOT NULL,
+    `dataset_id` varchar(12) NOT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_bam_file_storage_file_name` (`storage_file_name`),
+    KEY `ix_bam_file_dataset_id` (`dataset_id`),
+    CONSTRAINT `fk_bam_file_dataset_id_dataset` FOREIGN KEY (`dataset_id`) REFERENCES `dataset` (`id`)
+    ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+    DROP TABLE IF EXISTS `data`;
+    CREATE TABLE `data` (
+    `id` int(11) NOT NULL AUTO_INCREMENT,
+    `association_id` int(11) NOT NULL,
+    `chrom` varchar(128) NOT NULL,
+    `start` int(11) NOT NULL,
+    `end` int(11) NOT NULL,
+    `name` varchar(32) NOT NULL,
+    `score` int(11) NOT NULL,
+    `strand` varchar(1) NOT NULL,
+    `thick_start` int(11) NOT NULL,
+    `thick_end` int(11) NOT NULL,
+    `item_rgb` varchar(128) NOT NULL,
+    `coverage` int(11) NOT NULL,
+    `frequency` int(11) NOT NULL,
+    PRIMARY KEY (`id`),
+    KEY `idx_data_sort` (`chrom`,`start`,`end`),
+    KEY `ix_data_association_id` (`association_id`),
+    KEY `ix_data_coverage` (`coverage`),
+    KEY `ix_data_frequency` (`frequency`),
+    KEY `ix_data_score` (`score`),
+    CONSTRAINT `fk_data_association_id_association` FOREIGN KEY (`association_id`) REFERENCES `association` (`id`)
+    ) ENGINE=InnoDB AUTO_INCREMENT=3492749 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+    DROP TABLE IF EXISTS `data_annotation`;
+    CREATE TABLE `data_annotation` (
+    `id` int(11) NOT NULL AUTO_INCREMENT,
+    `data_id` int(11) NOT NULL,
+    `gene_id` varchar(128) NOT NULL,
+    `feature` varchar(32) NOT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_data_annotation_data_id` (`data_id`,`gene_id`,`feature`),
+    KEY `ix_data_annotation_data_id` (`data_id`),
+    KEY `ix_data_annotation_feature` (`feature`),
+    KEY `ix_data_annotation_gene_id` (`gene_id`),
+    CONSTRAINT `fk_data_annotation_data_id_data` FOREIGN KEY (`data_id`) REFERENCES `data` (`id`),
+    CONSTRAINT `fk_data_annotation_gene_id_genomic_annotation` FOREIGN KEY (`gene_id`) REFERENCES `genomic_annotation` (`id`)
+    ) ENGINE=InnoDB AUTO_INCREMENT=6749262 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+    DROP TABLE IF EXISTS `dataset`;
+    CREATE TABLE `dataset` (
+    `id` varchar(12) NOT NULL,
+    `project_id` varchar(8) NOT NULL,
+    `title` varchar(255) NOT NULL,
+    `modification_type` varchar(32) NOT NULL,
+    `sequencing_platform` varchar(255) DEFAULT NULL,
+    `basecalling` text DEFAULT NULL,
+    `bioinformatics_workflow` text DEFAULT NULL,
+    `experiment` text DEFAULT NULL,
+    `external_source` varchar(255) DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    KEY `ix_dataset_project_id` (`project_id`),
+    CONSTRAINT `fk_dataset_project_id_project` FOREIGN KEY (`project_id`) REFERENCES `project` (`id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+    DROP TABLE IF EXISTS `genomic_annotation`;
+    CREATE TABLE `genomic_annotation` (
+    `id` varchar(128) NOT NULL,
+    `annotation_id` int(11) NOT NULL,
+    `name` varchar(128) DEFAULT NULL,
+    `biotype` varchar(255) DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    KEY `idx_genomic` (`annotation_id`,`biotype`,`name`),
+    KEY `ix_genomic_annotation_annotation_id` (`annotation_id`),
+    CONSTRAINT `fk_genomic_annotation_annotation_id_annotation` FOREIGN KEY (`annotation_id`) REFERENCES `annotation` (`id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+    DROP TABLE IF EXISTS `method`;
+    CREATE TABLE `method` (
+    `id` varchar(8) NOT NULL,
+    `cls` varchar(32) NOT NULL,
+    `meth` varchar(128) NOT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_method_meth` (`meth`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+    DROP TABLE IF EXISTS `modification`;
+    CREATE TABLE `modification` (
+    `id` int(11) NOT NULL AUTO_INCREMENT,
+    `modomics_id` varchar(128) NOT NULL,
+    `rna` varchar(32) NOT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_modification_modomics_id` (`modomics_id`,`rna`),
+    KEY `ix_modification_modomics_id` (`modomics_id`),
+    KEY `fk_modification_rna_rna_type` (`rna`),
+    CONSTRAINT `fk_modification_modomics_id_modomics` FOREIGN KEY (`modomics_id`) REFERENCES `modomics` (`id`),
+    CONSTRAINT `fk_modification_rna_rna_type` FOREIGN KEY (`rna`) REFERENCES `rna_type` (`id`)
+    ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+    DROP TABLE IF EXISTS `modomics`;
+    CREATE TABLE `modomics` (
+    `id` varchar(128) NOT NULL,
+    `name` varchar(255) NOT NULL,
+    `short_name` varchar(32) NOT NULL,
+    `moiety` varchar(32) NOT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_modomics_name` (`name`),
+    UNIQUE KEY `uq_modomics_short_name` (`short_name`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+    DROP TABLE IF EXISTS `ncbi_taxa`;
+    CREATE TABLE `ncbi_taxa` (
+    `id` int(11) NOT NULL,
+    `name` varchar(128) NOT NULL,
+    `short_name` varchar(128) NOT NULL,
+    `taxonomy_id` varchar(8) NOT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_ncbi_taxa_name` (`name`),
+    UNIQUE KEY `uq_ncbi_taxa_short_name` (`short_name`),
+    KEY `ix_ncbi_taxa_taxonomy_id` (`taxonomy_id`),
+    CONSTRAINT `fk_ncbi_taxa_taxonomy_id_taxonomy` FOREIGN KEY (`taxonomy_id`) REFERENCES `taxonomy` (`id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+    DROP TABLE IF EXISTS `organism`;
+    CREATE TABLE `organism` (
+    `id` int(11) NOT NULL AUTO_INCREMENT,
+    `taxa_id` int(11) NOT NULL,
+    `cto` varchar(255) NOT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_organism_taxa_id` (`taxa_id`,`cto`),
+    KEY `ix_organism_cto` (`cto`),
+    KEY `ix_organism_taxa_id` (`taxa_id`),
+    CONSTRAINT `fk_organism_taxa_id_ncbi_taxa` FOREIGN KEY (`taxa_id`) REFERENCES `ncbi_taxa` (`id`)
+    ) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+    DROP TABLE IF EXISTS `project`;
+    CREATE TABLE `project` (
+    `id` varchar(8) NOT NULL,
+    `title` varchar(255) NOT NULL,
+    `summary` text NOT NULL,
+    `contact_id` int(11) NOT NULL,
+    `date_published` datetime DEFAULT NULL,
+    `date_added` datetime NOT NULL,
+    PRIMARY KEY (`id`),
+    KEY `ix_project_contact_id` (`contact_id`),
+    CONSTRAINT `fk_project_contact_id_project_contact` FOREIGN KEY (`contact_id`) REFERENCES `project_contact` (`id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+    DROP TABLE IF EXISTS `project_contact`;
+    CREATE TABLE `project_contact` (
+    `id` int(11) NOT NULL AUTO_INCREMENT,
+    `contact_name` varchar(128) NOT NULL,
+    `contact_institution` varchar(255) NOT NULL,
+    `contact_email` varchar(320) NOT NULL,
+    PRIMARY KEY (`id`)
+    ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+    DROP TABLE IF EXISTS `project_source`;
+    CREATE TABLE `project_source` (
+    `id` int(11) NOT NULL AUTO_INCREMENT,
+    `project_id` varchar(8) NOT NULL,
+    `doi` varchar(255) DEFAULT NULL,
+    `pmid` int(11) DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    KEY `ix_project_source_project_id` (`project_id`),
+    CONSTRAINT `fk_project_source_project_id_project` FOREIGN KEY (`project_id`) REFERENCES `project` (`id`)
+    ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+    DROP TABLE IF EXISTS `rna_type`;
+    CREATE TABLE `rna_type` (
+    `id` varchar(32) NOT NULL,
+    `name` varchar(128) NOT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_rna_type_name` (`name`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+    DROP TABLE IF EXISTS `selection`;
+    CREATE TABLE `selection` (
+    `id` int(11) NOT NULL AUTO_INCREMENT,
+    `modification_id` int(11) NOT NULL,
+    `organism_id` int(11) NOT NULL,
+    `technology_id` int(11) NOT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `idx_select` (`modification_id`,`organism_id`,`technology_id`),
+    KEY `ix_selection_modification_id` (`modification_id`),
+    KEY `ix_selection_organism_id` (`organism_id`),
+    KEY `ix_selection_technology_id` (`technology_id`),
+    CONSTRAINT `fk_selection_modification_id_modification` FOREIGN KEY (`modification_id`) REFERENCES `modification` (`id`),
+    CONSTRAINT `fk_selection_organism_id_organism` FOREIGN KEY (`organism_id`) REFERENCES `organism` (`id`),
+    CONSTRAINT `fk_selection_technology_id_technology` FOREIGN KEY (`technology_id`) REFERENCES `technology` (`id`)
+    ) ENGINE=InnoDB AUTO_INCREMENT=22 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+    DROP TABLE IF EXISTS `taxonomy`;
+    CREATE TABLE `taxonomy` (
+    `id` varchar(8) NOT NULL,
+    `domain` varchar(32) NOT NULL,
+    `kingdom` varchar(32) DEFAULT NULL,
+    `phylum` varchar(32) DEFAULT NULL,
+    PRIMARY KEY (`id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+    DROP TABLE IF EXISTS `technology`;
+    CREATE TABLE `technology` (
+    `id` int(11) NOT NULL AUTO_INCREMENT,
+    `method_id` varchar(8) NOT NULL,
+    `tech` varchar(255) NOT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_technology_method_id` (`method_id`,`tech`),
+    KEY `ix_technology_method_id` (`method_id`),
+    KEY `ix_technology_tech` (`tech`),
+    CONSTRAINT `fk_technology_method_id_method` FOREIGN KEY (`method_id`) REFERENCES `method` (`id`)
+    ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+    DROP TABLE IF EXISTS `user`;
+    CREATE TABLE `user` (
+    `id` int(11) NOT NULL AUTO_INCREMENT,
+    `email` varchar(320) NOT NULL,
+    `state` enum('wait_for_confirmation','active') NOT NULL,
+    `password_hash` varchar(128) DEFAULT NULL,
+    `confirmation_token` varchar(32) DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `ix_user_email` (`email`)
+    ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+    DROP TABLE IF EXISTS `user_project_association`;
+    CREATE TABLE `user_project_association` (
+    `id` int(11) NOT NULL AUTO_INCREMENT,
+    `user_id` int(11) NOT NULL,
+    `project_id` varchar(8) NOT NULL,
+    PRIMARY KEY (`id`),
+    KEY `ix_user_project_association_project_id` (`project_id`),
+    KEY `ix_user_project_association_user_id` (`user_id`),
+    CONSTRAINT `fk_user_project_association_project_id_project` FOREIGN KEY (`project_id`) REFERENCES `project` (`id`),
+    CONSTRAINT `fk_user_project_association_user_id_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`)
+    ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

@@ -160,7 +160,7 @@ onMounted(() => {
             <Column field="project_id" header="SMID" style="display: none"></Column>
             <Column field="project_title" header="Project title" style="display: none"></Column>
             <Column field="dataset_id" header="EUFID" style="width: 5%"></Column>
-            <Column field="dataset_title" header="Dataset title" style="width: 25%"></Column>
+            <Column field="dataset_title" header="Dataset title" style="width: 30%"></Column>
             <Column field="rna" header="RNA" filterField="rna" style="width: 5%">
               <template #body="{ data }">
                 {{ data.rna }}
@@ -192,19 +192,6 @@ onMounted(() => {
                 />
               </template>
             </Column>
-            <Column field="tech" header="Technology" filterField="tech" style="width: 15%">
-              <template #body="{ data }">
-                {{ data.tech }}
-              </template>
-              <template #filter="{ filterModel }">
-                <InputText
-                  v-model="filterModel.value"
-                  type="text"
-                  class="p-column-filter"
-                  placeholder="Search by technology"
-                />
-              </template>
-            </Column>
             <Column
               field="taxa_sname"
               header="Organism"
@@ -233,6 +220,19 @@ onMounted(() => {
                   type="text"
                   class="p-column-filter"
                   placeholder="Search by cell, tissue, organ"
+                />
+              </template>
+            </Column>
+            <Column field="tech" header="Technology" filterField="tech" style="width: 10%">
+              <template #body="{ data }">
+                {{ data.tech }}
+              </template>
+              <template #filter="{ filterModel }">
+                <InputText
+                  v-model="filterModel.value"
+                  type="text"
+                  class="p-column-filter"
+                  placeholder="Search by technology"
                 />
               </template>
             </Column>

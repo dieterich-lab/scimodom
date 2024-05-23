@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from io import StringIO
 
 import pytest
@@ -21,6 +21,7 @@ from scimodom.services.exporter import Exporter
 
 @pytest.fixture
 def dataset(Session, setup):
+    stamp = datetime.now(timezone.utc).replace(microsecond=0)
     organism = Organism(id=1, taxa_id=9606, cto="Cell Type 1")
     modomics = Modomics(id="m1", name="Mod1", short_name="Mod1", moiety="moiety")
     modification = Modification(id=1, modomics_id=modomics.id, rna="Bla")
@@ -56,6 +57,7 @@ def dataset(Session, setup):
         sequencing_platform="sp1",
         experiment="experiment 1",
         external_source="ext. source 1",
+        date_added=stamp,
     )
     association = Association(id=1, dataset_id=dataset.id, selection_id=selection.id)
     data1 = Data(

@@ -59,6 +59,7 @@ const onExport = () => {
 function load(operation) {
   records.value = undefined
   loading.value = true
+  uploadMessage.value = undefined
   var arrayOp = operation.split('-')
   HTTP.get('/dataset/compare', {
     params: {
@@ -80,6 +81,8 @@ function load(operation) {
     .catch((error) => {
       uploadMessage.value = error.response.data.message
       console.log(error)
+      records.value = undefined
+      loading.value = false
     })
 }
 
@@ -101,6 +104,12 @@ const buttonPt = {
   root: ({ props, context }) => ({
     class: ['h-12 w-12 p-0 shadow']
   })
+}
+// https://github.com/primefaces/primevue-tailwind/issues/168
+const tablePt = {
+  virtualScrollerSpacer: {
+    class: 'flex'
+  }
 }
 </script>
 
@@ -157,7 +166,8 @@ const buttonPt = {
             <div class="h-52">
               <div class="mb-4">
                 At least one reference dataset must be selected. Upload your own data or select up
-                to three dataset for comparison.
+                to three dataset for comparison. For upload, pay attention to the organism and/or
+                the assembly of your data to avoid spurious comparison results.
               </div>
               <CompareStepB
                 v-if="datasetUpdated && selectedDatasetA.length > 0"
@@ -211,6 +221,7 @@ const buttonPt = {
           :virtualScrollerOptions="{ itemSize: 46 }"
           tableStyle="min-w-{50rem}"
           :loading="loading"
+          :pt="tablePt"
         >
           <template #header>
             <div style="text-align: right">

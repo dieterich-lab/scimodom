@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from pathlib import Path
 import re
 from typing import TextIO, Iterable, ClassVar, Any
@@ -59,6 +60,7 @@ class EUFHeaderImporter:
         self._sep: str = self.SPECS["header"]["delimiter"]
         self._tag: str = self.SPECS["header"]["comment"]
         self._lino = 0
+        self._stamp = datetime.now(timezone.utc).replace(microsecond=0)
 
         self.taxid: int
         self.assembly: str
@@ -178,6 +180,14 @@ class EUFHeaderImporter:
         self._header["id"] = self._dtypes["id"].__call__(self._eufid)
         self._header["project_id"] = self._dtypes["project_id"].__call__(self._smid)
         self._header["title"] = self._dtypes["title"].__call__(self._title)
+        self._header["date_added"] = self._dtypes["date_added"].__call__(
+            self._stamp.year,
+            self._stamp.month,
+            self._stamp.day,
+            self._stamp.hour,
+            self._stamp.minute,
+            self._stamp.second,
+        )
         # unassigned, but used to validate association
         self.taxid = int(_get_header("organism"))
         self.assembly = str(_get_header("assembly"))

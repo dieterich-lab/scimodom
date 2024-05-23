@@ -268,3 +268,9 @@ def test_importer(Session, EUF_specs):
         assert records.bioinformatics_workflow == "Workflow"
         assert records.experiment == "Description of experiment."
         assert records.external_source is None
+        assert records.date_added.year == importer._stamp.year
+        assert records.date_added.month == importer._stamp.month
+        assert records.date_added.day == importer._stamp.day
+        assert records.date_added.hour == importer._stamp.hour
+        assert records.date_added.minute == importer._stamp.minute
+        assert records.date_added.second == importer._stamp.second
