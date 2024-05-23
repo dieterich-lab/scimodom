@@ -12,7 +12,7 @@ async function loadAllProjects(projectsRef = null, refresh = false) {
       allProjectsCache = response.data
       allProjectsByIdCache = null
     } catch (err) {
-      console.log(`Failed to fetch all projects: ${error}`)
+      console.log(`Failed to fetch all projects: ${err}`)
     }
   }
   if (projectsRef !== null) {
@@ -44,7 +44,7 @@ async function loadMyProjects(projectsRef = null, refresh = false) {
       myProjectsCache = response.data
       myProjectsByIdCache = null
     } catch (err) {
-      console.log(`Failed to fetch my projects: ${error}`)
+      console.log(`Failed to fetch my projects: ${err}`)
     }
   }
   if (projectsRef !== null) {
