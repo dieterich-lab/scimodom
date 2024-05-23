@@ -31,6 +31,7 @@ UPLOAD_PATH=/uploads
 IMPORT_PATH=/import
 DATA_PATH=/data
 FRONTEND_PATH=/frontend
+BEDTOOLS_TMP_PATH=/tmp/bedtools
 """,
             file=fp,
         )
