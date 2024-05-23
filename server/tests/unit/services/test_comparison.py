@@ -747,7 +747,7 @@ def test_query_comparison(Session, setup):
     [(True), (False)],
 )
 def test_upload_bed(is_euf, Session, data_path):
-    filen = Path(data_path.LOC, "test.bed").as_posix()
+    filen = Path(data_path.LOC, "test.bed")
     expected_records = [[("1", 0, 10, "m6A", 1000, "+", "Upload", 0, 0)]]
     if is_euf:
         expected_records = [[("1", 0, 10, "m6A", 1000, "+", "Upload", 10, 1)]]
