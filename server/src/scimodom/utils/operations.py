@@ -2,8 +2,9 @@
 """
 
 from collections.abc import Sequence
-import os
+from os import makedirs
 import logging
+from os.path import isdir
 from pathlib import Path
 import shlex
 import subprocess
@@ -13,13 +14,14 @@ from typing import Any
 import pybedtools  # type: ignore
 
 import scimodom.utils.utils as utils
+from scimodom.config import Config
 
 logger = logging.getLogger(__name__)
 
 
-if os.getenv("APP_TEMPDIR"):
-    tempdir = os.environ["APP_TEMPDIR"]
-    pybedtools.helpers.set_tempdir(tempdir)
+_tempdir = Config.BEDTOOLS_TMP_PATH
+makedirs(_tempdir, exist_ok=True)
+pybedtools.helpers.set_tempdir(_tempdir)
 
 
 def to_bedtool(records, as_list: bool = False):
@@ -256,7 +258,7 @@ def liftover_to_file(
     return result, unmapped
 
 
-def _remove_filno(feature, n_fields: int = 9, is_closest: bool = False):
+def remove_filno(feature, n_fields: int = 9, is_closest: bool = False):
     """This function is to be passed
     as argument to BedTool.each(), to
     generate a BED-like Interval. This is used

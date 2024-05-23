@@ -60,6 +60,9 @@ class Config:
     FRONTEND_PATH: ClassVar[Path] = Path(
         os.getenv("FRONTEND_PATH", DEFAULT_FRONTEND_PATH)
     )
+    BEDTOOLS_TMP_PATH: ClassVar[str | Path] = os.getenv(
+        "BEDTOOLS_TMP_PATH", "/tmp/bedtools"
+    )
 
     LOGGING = dict(
         version=1,

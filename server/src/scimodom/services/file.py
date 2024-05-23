@@ -1,6 +1,6 @@
 import logging
 from os import unlink, rename, makedirs, stat, close
-from os.path import join, exists, dirname, basename
+from os.path import join, exists, dirname, basename, isfile
 from tempfile import mkstemp
 from typing import Optional, IO, List, Dict
 from uuid import uuid4
@@ -35,6 +35,11 @@ class FileService:
         file_id = basename(path)
         self._stream_to_file(stream, path, max_file_size, overwrite_is_ok=True)
         return file_id
+
+    @staticmethod
+    def check_tmp_file_id(file_id: str) -> bool:
+        path = join(Config.UPLOAD_PATH, file_id)
+        return isfile(path)
 
     def _stream_to_file(self, data_stream, path, max_size, overwrite_is_ok=False):
         if exists(path) and not overwrite_is_ok:
