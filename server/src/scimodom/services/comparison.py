@@ -1,14 +1,14 @@
 from collections.abc import Sequence
 from logging import getLogger
 from pathlib import Path
-from typing import Any, Optional, Literal, ClassVar, get_args
+from typing import Any, Literal, ClassVar
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from scimodom.database.database import get_session
 from scimodom.database.models import Data, Association
-from scimodom.utils.operations import to_bedtool, _remove_filno
+from scimodom.utils.operations import to_bedtool, remove_filno
 from scimodom.utils.models import records_factory
 from scimodom.services.importer import get_bed_importer
 from scimodom.utils.specifications import SPECS_EUF
@@ -32,7 +32,12 @@ class ComparisonService:
     database.
 
     :param session: SQLAlchemy ORM session
-    :type session: Session
+    :type session: sqlalchemy.orm.Session
+    :param query_operation: Comparison to perform:
+    intersect, closest, or subtract (difference)
+    :type query_operation: str
+    :param is_strand: Perform strand-aware query
+    :type is_strand: bool
     """
 
     OPERATIONS = Literal["intersect", "closest", "subtract"]
@@ -44,14 +49,18 @@ class ComparisonService:
     ]
     COLUMNS.insert(6, "dataset_id")
 
-    def __init__(self, session: Session) -> None:
-        """Initializer method."""
-        self._session = session
+    def __init__(
+        self, session: Session, query_operation: OPERATIONS, is_strand: bool
+    ) -> None:
+        assert (
+            query_operation in self.OPERATIONS
+        ), f"Undefined '{query_operation}'. Allowed values are {self.OPERATIONS}."
 
-        self._query_operation: str
-        self._is_strand: bool
-        self._reference_records: Sequence[Any]
-        self._comparison_records: Sequence[Any]
+        self._session = session
+        self._query_operation = query_operation
+        self._is_strand = is_strand
+        self._reference_records: Sequence[Any] = []
+        self._comparison_records: Sequence[Any] = []
 
     @staticmethod
     def upload_file(file_path: Path, is_euf: bool) -> list[dict[str, Any]]:
@@ -84,15 +93,13 @@ class ComparisonService:
         :type ids: list of str
         """
 
-        def _construct_query(ids: list[str]):
+        def _construct_query():
             """Query constructor.
 
-            :param ids: EUFID(s)
-            :type ids: list of str
             :return: Query
             :rtype: SQLAlchemy query
             """
-            query = (
+            return (
                 select(
                     Data.chrom,
                     Data.start,
@@ -107,9 +114,8 @@ class ComparisonService:
                 .join_from(Data, Association, Data.inst_association)
                 .where(Association.dataset_id.in_(ids))
             )
-            return query
 
-        query = _construct_query(ids)
+        query = _construct_query()
         records = self._session.execute(query).all()
         if not records:
             raise NoRecordsFoundError
@@ -122,15 +128,8 @@ class ComparisonService:
         :type ids: list of str
         """
 
-        def _construct_query(idx: str):
-            """Query constructor.
-
-            :param idx: EUFID
-            :type idx: str
-            :return: Query
-            :rtype: SQLAlchemy query
-            """
-            query = (
+        def _construct_query():
+            return (
                 select(
                     Data.chrom,
                     Data.start,
@@ -145,11 +144,10 @@ class ComparisonService:
                 .join_from(Data, Association, Data.inst_association)
                 .where(Association.dataset_id == idx)
             )
-            return query
 
         self._comparison_records = []
         for idx in ids:
-            query = _construct_query(idx)
+            query = _construct_query()
             records = self._session.execute(query).all()
             if not records:
                 raise NoRecordsFoundError
@@ -222,7 +220,7 @@ class ComparisonService:
             s=self._is_strand,
             sorted=is_sorted,
         )
-        stream = bedtool.each(_remove_filno)
+        stream = bedtool.each(remove_filno)
         return [tuple(s.fields) for s in stream]
 
     def _closest(self, is_sorted: bool = True) -> list[Any]:
@@ -264,7 +262,7 @@ class ComparisonService:
         )
         # Reports “none” for chrom (.) and “-1” for all other fields (start/end) when a feature
         # is not found in B on the same chromosome as the feature in A.
-        stream = bedtool.each(_remove_filno, is_closest=True).filter(
+        stream = bedtool.each(remove_filno, is_closest=True).filter(
             lambda c: c.fields[n_fields + 1] != "-1"
         )
         return [tuple(s.fields) for s in stream]
@@ -283,33 +281,10 @@ class ComparisonService:
         bedtool = a_bedtool.subtract(b_bedtool, s=self._is_strand, sorted=is_sorted)
         return [tuple(s.fields) for s in bedtool]
 
-    def _init(
-        self,
-        query_operation: OPERATIONS,
-        is_strand: bool,
-    ) -> None:
-        """Force initialize when a cached service
-        exists but there is a change in parameters.
 
-        :param query_operation: Comparison to perform:
-        intersect, closest, or subtract (difference)
-        :type query_operation: str
-        :param is_strand: Perform strand-aware query
-        :type is_strand: bool
-        """
-        self._query_operation = query_operation
-        self._is_strand = is_strand
-
-        operations = get_args(self.OPERATIONS)
-        assert (
-            query_operation in operations
-        ), f"Undefined '{query_operation}'. Allowed values are {operations}."
-
-
-_cached_comparison_service: Optional[ComparisonService] = None
-
-
-def get_comparison_service(query_operation: str, is_strand: bool) -> ComparisonService:
+def get_comparison_service(
+    query_operation: ComparisonService.OPERATIONS, is_strand: bool
+) -> ComparisonService:
     """Instantiate a ComparisonService.
 
     :param query_operation: Comparison to perform:
@@ -319,9 +294,11 @@ def get_comparison_service(query_operation: str, is_strand: bool) -> ComparisonS
     :type is_strand: bool
     :return: ComparisonService instance
     :rtype: ComparisonService
+
+    The ComparisonService loads a substantial amount of data from various
+    source. So it is best to create a new one for each request to ensure
+    that the object is freed soon when it's scope ends.
     """
-    global _cached_comparison_service
-    if _cached_comparison_service is None:
-        _cached_comparison_service = ComparisonService(session=get_session())
-    _cached_comparison_service._init(query_operation, is_strand)
-    return _cached_comparison_service
+    return ComparisonService(
+        session=get_session(), query_operation=query_operation, is_strand=is_strand
+    )

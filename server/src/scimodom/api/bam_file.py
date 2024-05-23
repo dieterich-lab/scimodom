@@ -1,19 +1,17 @@
-import re
-
 from flask import Blueprint, request, Response
 from flask_cors import cross_origin
-from flask_jwt_extended import jwt_required, get_jwt_identity
-from sqlalchemy.exc import NoResultFound
+from flask_jwt_extended import jwt_required
 
-from scimodom.services.dataset import get_dataset_service
+from scimodom.api.helpers import (
+    get_validate_dataset,
+    get_user_with_write_permission_on_dataset,
+    get_valid_bam_file,
+    ClientResponseException,
+    validate_request_size,
+)
 from scimodom.services.file import get_file_service, FileTooLarge
-from scimodom.services.permission import get_permission_service
-from scimodom.services.user import get_user_service, NoSuchUser
 
 bam_file_api = Blueprint("bam_file_api", __name__)
-
-VALID_DATASET_ID_REGEXP = re.compile(r"\A[a-zA-Z0-9]+\Z")
-VALID_FILENAME_REGEXP = re.compile(r"\A[a-zA-Z0-9.,_-]+\Z")
 
 BUFFER_SIZE = 1024 * 1024
 MAX_BAM_FILE_SIZE = 1024 * 1024 * 1024
@@ -22,7 +20,7 @@ MAX_BAM_FILE_SIZE = 1024 * 1024 * 1024
 @bam_file_api.route("/all/<dataset_id>", methods=["GET"])
 @cross_origin(supports_credentials=True)
 def list_bam_files(dataset_id: str):
-    dataset, error, status = _get_dataset_or_error(dataset_id)
+    dataset, error, status = get_validate_dataset(dataset_id)
     if dataset is None:
         return {"message": error}, status
 
@@ -30,31 +28,16 @@ def list_bam_files(dataset_id: str):
     return file_service.get_bam_file_list(dataset)
 
 
-def _get_dataset_or_error(dataset_id):
-    if not VALID_DATASET_ID_REGEXP.match(dataset_id):
-        return None, "Bad dataset ID", 400
-    dataset_service = get_dataset_service()
-    try:
-        return dataset_service.get_by_id(dataset_id), None, None
-    except NoResultFound:
-        return None, "Unknown dataset", 404
-
-
 @bam_file_api.route("/<dataset_id>/<name>", methods=["POST"])
 @cross_origin(supports_credentials=True)
 @jwt_required()
 def post_bam_file(dataset_id: str, name: str):
-    dataset, error, status = _get_dataset_or_error(dataset_id)
-    if dataset is None:
-        return {"message": error}, status
-    user, error, status = _get_user_with_write_permission_or_error(dataset)
-    if user is None:
-        return {"message": error}, status
-    if (
-        request.content_length is not None
-        and request.content_length > MAX_BAM_FILE_SIZE
-    ):
-        return {"message": f"File too large (max. {MAX_BAM_FILE_SIZE} bytes)"}, 413
+    try:
+        dataset = get_validate_dataset(dataset_id)
+        _ = get_user_with_write_permission_on_dataset(dataset)
+        validate_request_size(MAX_BAM_FILE_SIZE)
+    except ClientResponseException as e:
+        return e.response_tupel
 
     file_service = get_file_service()
     try:
@@ -66,31 +49,14 @@ def post_bam_file(dataset_id: str, name: str):
     return {"message": "OK"}, 200
 
 
-def _get_user_with_write_permission_or_error(dataset):
-    email = get_jwt_identity()
-    user_service = get_user_service()
-    permission_service = get_permission_service()
-
-    try:
-        user = user_service.get_user_by_email(email)
-    except NoSuchUser:
-        return None, "Unknown user", 404
-
-    if permission_service.may_change_dataset(user, dataset):
-        return user, None, None
-    else:
-        return False, "Not your dataset", 401
-
-
 @bam_file_api.route("/<dataset_id>/<name>", methods=["GET"])
 @cross_origin(supports_credentials=True)
 def get_bam_file(dataset_id: str, name: str):
-    dataset, error, status = _get_dataset_or_error(dataset_id)
-    if dataset is None:
-        return {"message": error}, status
-    bam_file, error, status = _get_bam_file_or_error(dataset, name)
-    if bam_file is None:
-        return {"message": error}, status
+    try:
+        dataset, error, status = get_validate_dataset(dataset_id)
+        bam_file, error, status = get_valid_bam_file(dataset, name)
+    except ClientResponseException as e:
+        return e.response_tupel
 
     file_service = get_file_service()
 
@@ -111,29 +77,16 @@ def get_bam_file(dataset_id: str, name: str):
     )
 
 
-def _get_bam_file_or_error(dataset, name):
-    if not VALID_FILENAME_REGEXP.match(name):
-        return None, "Bad file name", 400
-    file_service = get_file_service()
-    try:
-        return file_service.get_bam_file(dataset, name), None, None
-    except NoResultFound:
-        return None, "Unknown file name", 404
-
-
 @bam_file_api.route("/<dataset_id>/<name>", methods=["DELETE"])
 @cross_origin(supports_credentials=True)
 @jwt_required()
 def delete_bam_file(dataset_id: str, name: str):
-    dataset, error, status = _get_dataset_or_error(dataset_id)
-    if dataset is None:
-        return {"message": error}, status
-    user, error, status = _get_user_with_write_permission_or_error(dataset)
-    if user is None:
-        return {"message": error}, status
-    bam_file, error, status = _get_bam_file_or_error(dataset, name)
-    if bam_file is None:
-        return {"message": error}, status
+    try:
+        dataset = get_validate_dataset(dataset_id)
+        _ = get_user_with_write_permission_on_dataset(dataset)
+        bam_file = get_valid_bam_file(dataset, name)
+    except ClientResponseException as e:
+        return e.response_tupel
 
     file_service = get_file_service()
     file_service.remove_bam_file(bam_file)

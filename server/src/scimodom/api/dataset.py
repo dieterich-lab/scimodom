@@ -1,15 +1,23 @@
 import logging
 from pathlib import Path
+from typing import get_args
 
 from flask import Blueprint, request
 from flask_cors import cross_origin
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
+from scimodom.api.helpers import (
+    get_valid_dataset_id_list_from_request_parameter,
+    get_valid_tmp_file_id_from_request_parameter,
+    get_valid_boolean_from_request_parameter_or_error,
+    ClientResponseException,
+)
 from scimodom.config import Config
 from scimodom.services.comparison import (
     get_comparison_service,
     FailedUploadError,
     NoRecordsFoundError,
+    ComparisonService,
 )
 from scimodom.services.dataset import get_dataset_service
 from scimodom.services.user import get_user_service
@@ -40,15 +48,16 @@ def list_mine():
 def compare():
     """Compare dataset (Compare View)."""
 
-    def is_true(value):
-        return value.lower() == "true"
-
-    reference_ids = request.args.getlist("reference", type=str)
-    comparison_ids = request.args.getlist("comparison", type=str)
-    upload_id = request.args.get("upload", type=str)
-    operation = request.args.get("operation", type=str)
-    is_strand = request.args.get("strand", type=is_true)
-    is_euf = request.args.get("euf", type=is_true)
+    try:
+        reference_ids = get_valid_dataset_id_list_from_request_parameter("reference")
+        comparison_ids = get_valid_dataset_id_list_from_request_parameter("comparison")
+        upload_id = get_valid_tmp_file_id_from_request_parameter("upload")
+        operation = _get_operation()
+        is_strand = get_valid_boolean_from_request_parameter_or_error("strand")
+        is_euf = get_valid_boolean_from_request_parameter_or_error("is_euf")
+    except ClientResponseException as e:
+        print(e.response_tupel)
+        return e.response_tupel
 
     comparison_service = get_comparison_service(operation, is_strand)
     if upload_id:
@@ -65,7 +74,7 @@ def compare():
                 "message": (
                     "File upload failed. No records were found. Allowed formats are BED6 or bedRMod, "
                     "chromosomes must use the Ensembl short format, contigs are discarded. For more "
-                    "information, consult the documentaion."
+                    "information, consult the documentation."
                 )
             }, 500
     else:
@@ -82,3 +91,10 @@ def compare():
                 "Contact the system administrator."
             )
         }, 500
+
+
+def _get_operation():
+    operation = request.args.get("operation", type=str)
+    if operation not in get_args(ComparisonService.OPERATIONS):
+        raise ClientResponseException(400, "Unsupported operation")
+    return operation
