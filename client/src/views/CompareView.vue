@@ -105,6 +105,12 @@ const buttonPt = {
     class: ['h-12 w-12 p-0 shadow']
   })
 }
+// https://github.com/primefaces/primevue-tailwind/issues/168
+const tablePt = {
+  virtualScrollerSpacer: {
+    class: 'flex'
+  }
+}
 </script>
 
 <template>
@@ -215,6 +221,7 @@ const buttonPt = {
           :virtualScrollerOptions="{ itemSize: 46 }"
           tableStyle="min-w-{50rem}"
           :loading="loading"
+          :pt="tablePt"
         >
           <template #header>
             <div style="text-align: right">
