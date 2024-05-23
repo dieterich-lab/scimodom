@@ -505,6 +505,7 @@ def test_query_one_reference(Session, setup):
             project_id=smid,
             title="title",
             modification_type="RNA",
+            date_added=stamp,
         )
         session.add(dataset)
         session.flush()
@@ -577,12 +578,14 @@ def test_query_two_reference(Session, setup):
             project_id=smid,
             title="title",
             modification_type="RNA",
+            date_added=stamp,
         )
         dataset2 = Dataset(
             id="8sQjh8xwioFr",
             project_id=smid,
             title="title",
             modification_type="RNA",
+            date_added=stamp,
         )
         session.add_all([dataset1, dataset2])
         session.flush()
@@ -677,12 +680,14 @@ def test_query_comparison(Session, setup):
             project_id=smid,
             title="title",
             modification_type="RNA",
+            date_added=stamp,
         )
         dataset2 = Dataset(
             id="3HsmkimcHAFA",
             project_id=smid,
             title="title",
             modification_type="RNA",
+            date_added=stamp,
         )
         session.add_all([dataset1, dataset2])
         session.flush()
@@ -804,18 +809,21 @@ def test_operation(operation, Session, setup):
             project_id=smid,
             title="title",
             modification_type="RNA",
+            date_added=stamp,
         )
         dataset2 = Dataset(
             id="FCfhtbEJpbvR",
             project_id=smid,
             title="title",
             modification_type="RNA",
+            date_added=stamp,
         )
         dataset3 = Dataset(
             id="3HsmkimcHAFA",
             project_id=smid,
             title="title",
             modification_type="RNA",
+            date_added=stamp,
         )
         session.add_all([dataset1, dataset2, dataset3])
         session.flush()
@@ -941,12 +949,14 @@ def test_operation_simple(operation, Session, setup):
             project_id=smid,
             title="title",
             modification_type="RNA",
+            date_added=stamp,
         )
         dataset2 = Dataset(
             id="FCfhtbEJpbvR",
             project_id=smid,
             title="title",
             modification_type="RNA",
+            date_added=stamp,
         )
         session.add_all([dataset1, dataset2])
         session.flush()

@@ -51,6 +51,12 @@ def test_importer(close_handle, Session, data_path):
         assert records.bioinformatics_workflow == "Workflow"
         assert records.experiment == "Description of experiment."
         assert records.external_source is None
+        assert records.date_added.year == importer.header._stamp.year
+        assert records.date_added.month == importer.header._stamp.month
+        assert records.date_added.day == importer.header._stamp.day
+        assert records.date_added.hour == importer.header._stamp.hour
+        assert records.date_added.minute == importer.header._stamp.minute
+        assert records.date_added.second == importer.header._stamp.second
 
         stmt = select(func.count()).select_from(Data)
         num_records = session.execute(stmt).scalar()
