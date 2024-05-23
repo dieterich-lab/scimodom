@@ -886,9 +886,10 @@ def test_operation(operation, Session, setup):
         session.add_all(data)
         session.commit()
 
-        comparison_service = ComparisonService(session=Session())
+        comparison_service = ComparisonService(
+            session=Session(), query_operation=operation, is_strand=True
+        )
         # is_strand = True
-        comparison_service._init(operation, True)
         comparison_service.query_reference_records([eufid1])
         comparison_service.query_comparison_records([eufid2, eufid3])
         records = comparison_service.compare_dataset()
@@ -999,7 +1000,7 @@ def test_operation_simple(operation, Session, setup):
 
         comparison_service = ComparisonService(session=Session())
         # is_strand = True
-        comparison_service._init(operation, True)
+        comparison_service.setup(operation, True)
         comparison_service.query_reference_records([eufid1])
         comparison_service.query_comparison_records([eufid2])
         records = comparison_service.compare_dataset()

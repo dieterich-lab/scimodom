@@ -256,7 +256,7 @@ def liftover_to_file(
     return result, unmapped
 
 
-def _remove_filno(feature, n_fields: int = 9, is_closest: bool = False):
+def remove_filno(feature, n_fields: int = 9, is_closest: bool = False):
     """This function is to be passed
     as argument to BedTool.each(), to
     generate a BED-like Interval. This is used

@@ -1,3 +1,6 @@
+from pathlib import Path
+from typing import Union
+
 from scimodom.database.database import get_session
 from scimodom.services.importer.base import BaseImporter
 from scimodom.services.importer.data import EUFDataImporter
@@ -111,7 +114,7 @@ def get_importer(filen: str, smid: str, eufid: str, title: str):
     )
 
 
-def get_bed_importer(filen: str, **kwargs):
+def get_bed_importer(filen: Union[str, Path], **kwargs):
     """Instantiate BED Importer.
 
     :param filen: File path
