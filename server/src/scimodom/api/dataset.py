@@ -56,7 +56,6 @@ def compare():
         is_strand = get_valid_boolean_from_request_parameter("strand", default=False)
         is_euf = get_valid_boolean_from_request_parameter("is_euf", default=False)
     except ClientResponseException as e:
-        print(e.response_tupel)
         return e.response_tupel
 
     comparison_service = get_comparison_service(operation, is_strand)
