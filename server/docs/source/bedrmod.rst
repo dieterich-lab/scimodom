@@ -1,7 +1,7 @@
 .. _euf:
 
-bedRMod format specification
-============================
+bedRMod format
+==============
 
 The bedRMod format specification working group.
 
@@ -15,13 +15,14 @@ The bedRMod, previously known as the EU (epitranscriptome unified data exchange)
 
 The bedRMod file is a tabulated count of base modifications from every sequencing read over each reference genomic position or modification site. It is a convenient representation of the information stored in the MM/ML tags in BAM alignment files.
 
-Sci-ModoM requirements
-""""""""""""""""""""""
+.. note::
 
-A given dataset or bedRMod file can contain more than one modification, as reported in column 4 (MODOMICS short name), but this should
-be for the same RNA type. A dataset or bedRMod file can only contain ONE RNA type, ONE technology, ONE organism (incl. cell type, tissue,
-or organ), and records from the same assembly. The best way to handle treatment and/or conditions is to have as many bedRMod
-files as required to describe the experimental protocol, and provide a meaningful title and metadata for each file.
+  Sci-ModoM requirements
+
+  A given dataset or bedRMod file can contain more than one modification, as reported in column 4 (MODOMICS short name), but this should
+  be for the same RNA type. A dataset or bedRMod file can only contain ONE RNA type, ONE technology, ONE organism (incl. cell type, tissue,
+  or organ), and records from the same assembly. The best way to handle treatment and/or conditions is to have as many bedRMod
+  files as required to describe the experimental protocol, and provide a meaningful title and metadata for each file.
 
 
 The header section
@@ -94,6 +95,11 @@ The first nine columns generally follow the standard `BED specification <https:/
     Only chromosomes are considered, records from contigs/scaffolds are discarded. The modification name (4th column) must match exactly the chosen
     modifications, according to the `MODOMICS <https://www.genesilico.pl/modomics/modifications>`_ nomenclature for the modification short name. Rows with
     undefined strand (6th column) are discarded. Rows with out-of-range values for score (5th column) or frequency (11th column) are discarded.
+
+.. warning::
+
+    File upload will fail if there are too many skipped records.
+
 
 Additional columns
 """"""""""""""""""

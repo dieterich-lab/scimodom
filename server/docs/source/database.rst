@@ -6,10 +6,11 @@ Database
 Data model
 ----------
 
-Model description
-^^^^^^^^^^^^^^^^^
+Description and workflow
+^^^^^^^^^^^^^^^^^^^^^^^^
 
-Project creation is handled via request. Each project is assigned a **Sci-ModoM** identifier or SMID. The request form is accessible upon login to **Sci-ModoM** and must be completed online. In the background, the following standard template is created:
+To create a project request, go to User menu > Data > Project template. Upon successful project request submission, a draft template is
+created and an email is sent to the system administrator. In the background, the following standard template is created:
 
 .. code-block:: json
 
@@ -42,26 +43,36 @@ Project creation is handled via request. Each project is assigned a **Sci-ModoM*
         ]
     }
 
-``"external_sources": null`` is allowed, ``"doi": null`` or ``"pmid": null`` are allowed, but not both simultaneously. ``"external_sources"`` can be a list of entries, or a single entry (as above). ``"date_published": null`` is allowed (no public sources). ``"metadata"`` can be a list of entries (as above), or a single entry (at least one entry is required, and all keys are required). Each ``"metadata"`` entry provides information for a given dataset (bedRMod file). Upon successful upload, a dataset is assigned a EUF identifier or EUFID. A given project (SMID) can thus have one or more dataset (EUFID) attached to it. A single dataset may also require two or more entries for ``metadata`` *e.g.* if two or more modifications are given in the same bedRMod file.
+``"external_sources": null`` is allowed, ``"doi": null`` or ``"pmid": null`` are allowed, but not both simultaneously. ``"external_sources"`` can be a list of entries, or a single entry (as above). ``"date_published": null`` is allowed (no public sources). ``"metadata"`` can be a list of entries (as above), or a single entry (at least one entry is required, and all keys are required). Each ``"metadata"`` entry provides information for a given dataset (bedRMod file).
+A single dataset may also require two or more entries for ``metadata`` *e.g.* if two or more modifications are given in the same bedRMod file.
+
+A project is then created and you are associated with the newly created project. Each project is assigned a Sci-ModoM identifier or SMID.
+The actual project creation and user-project association is currently only handled by ``flask`` commands, see `data_setup`_. Once a project is created,
+you can see it under User menu > Settings. You are then allowed to upload dataset (bedRMod) and to attach BAM files to a dataset.
+This is done using the upload forms (Upload bedRMod, Attach BAM files) under User menu > Data > Dataset upload.
+Upon successful upload, a dataset is assigned a EUF identifier or EUFID. A given project (SMID) can thus have one or more dataset (EUFID) attached to it.
+
+Once created, projects are immediately made public. On upload, dataset are immediately made public. Projects and dataset cannot be changed or deleted.
+You can however decide to upload and/or remove dataset attachments (BAM files).
+
 
 .. attention::
 
-   A given dataset or bedRMod file can contain more than one modification, as reported in column 4 (MODOMICS short name), but this should
-   be for the same RNA type. A dataset or bedRMod file can only contain ONE RNA type, ONE technology, ONE organism (incl. cell type, tissue,
-   or organ), and records from the same assembly. The best way to handle treatment and/or conditions is to have as many bedRMod
-   files as required to describe the experimental protocol, and provide a meaningful title for each file.
+    A given dataset or bedRMod file can contain more than one modification, as reported in column 4 (MODOMICS short name), but this should
+    be for the same RNA type. A dataset or bedRMod file can only contain ONE RNA type, ONE technology, ONE organism (incl. cell type, tissue,
+    or organ), and records from the same assembly. The best way to handle treatment and/or conditions is to have as many bedRMod
+    files as required to describe the experimental protocol, and provide a meaningful title for each file.
 
-Workflow
-""""""""
+.. attention::
 
-Upon successful project request submission, a draft template is created and an email is sent to the system administrator. A project is created and
-a user is associated with the newly created project. The actual project creation and user-project association is currently only handled
-by ``flask`` commands, see `_data_setup`_. Once a project is created, a user is allowed to upload dataset (bedRMod) and to attach BAM files to a dataset.
-This is handled by the user using the upload forms (Upload bedRMod, Attach BAM files).
+    Dataset upload will fail if there are too many skipped records *e.g.* due to inconsistent format specifications. The threshold is set at 5%, *i.e.*
+    up to 5% of your records can be discarded silently before upload fails. This allows *e.g.* to upload dataset where a small number of entries
+    are from contigs or scaffolds, where strand is undefined, *etc.*
 
-A number of validation routines are implemented to ensure that the uploaded dataset is conform to bedRMod specifications, that the dataset metadata
-is consistent with the chosen project selection, *etc.* Dataset that are of a different assembly version are lifted over before being written to
-the database. Finally, dataset are annotated and the gene cache is updated.
+    Dataset that are of a different assembly version are lifted over before being written to the database. Typically, a number of features may
+    not be "mappable". Since contigs/scaffolds are discarded, that data has been validated for organism, assembly, *etc.*, the number
+    of ummaped features should be small. The threshold is currently set a 30%, *i.e.* up to 30% of your records are allowed to de discarded
+    silently before upload fails.
 
 
 Nomenclature
@@ -90,9 +101,9 @@ How does it work?
 
 .. attention::
 
-   Chromosomes must be formatted following the Ensembl short format *e.g.* 1 and not chr1, or MT and not chrM. The ``#assembly`` header
-   entry from the bedRMod file must match exactly the chosen assembly from the database, and must follow the Ensembl nomenclature *e.g.*
-   GRCh38 for human.
+    Chromosomes must be formatted following the Ensembl short format *e.g.* 1 and not chr1, or MT and not chrM. The ``#assembly`` header
+    entry from the bedRMod file must match exactly the chosen assembly from the database, and must follow the Ensembl nomenclature *e.g.*
+    GRCh38 for human.
 
 Database upgrade
 """"""""""""""""
@@ -124,10 +135,16 @@ During dataset upload, records are annotated "on the fly" to ``DataAnnotation`` 
 
 A given modification can thus be annotated *e.g.* as Exon, 3'UTR, and CDS, possibly with different ``gene_name`` or ``gene_id``, resulting in more than one entry in ``DataAnnotation``. This has the advantage of allowing a fine-grain annotation.
 
+Finally, upon successful upload and annotation, the gene cache is updated. This cache consist of sets of gene symbols (``GenomicAnnotation.name``)
+coming from ``DataAnnotation`` for all dataset associated with a given *selection* (RNA modification, organism, and technology). These gene sets are
+used to feed the gene selection ``AutoComplete`` in the Search View.
+
+
 .. note::
 
    ``GenomicAnnotation`` has eventually unused column ``annotation_id``, since only ONE annotation is actually allowed for the
    current database ``annotation_version``. Would using partitions make sense?
+
 
 
 Database upgrade
@@ -138,71 +155,6 @@ It is currently not possible to perform a full database upgrade. A method implem
 * Update ``Annotation``, ``AnnotationVersion``.
 * Call ``AnnotationService.create_annotation``, but before we clean ``DataAnnotation`` and ``GenomicAnnotation`` as explained above. Here
   we don't delete ``Data``, but just re-annotate records.
-
-
-.. _data_setup:
-
-Setup
------
-
-At lauchtime, the app uses tables defined in ``config.py`` to perform an ``INSERT... ON DUPLICATE KEY UPDATE``
-
-.. code-block:: python
-
-    setup_service = get_setup_service()
-    setup_service.upsert_all()
-
-These tables (``rna_type``, ``modomics``, ``method``, ``taxonomy``, ``ncbi_taxa``, ``assembly``, ``assembly_version``, ``annotation``, and ``annotation_version``) allow to define base options for project creation, and establish a standard terminology for the application. The import format is *CSV*, and the header must match the column names (including *id*) from the corresponding database table, *e.g. ncbi_taxa.csv*
-
-.. code-block:: bash
-
-    id,name,short_name,taxonomy_id
-    9606,Homo sapiens,H. sapiens,8128e900
-    10090,Mus musculus,M. musculus,8128e900
-
-The upsert can be done for one model/table at a time, or forced with
-
-.. code-block:: bash
-
-    flask setup [OPTIONS]
-
-Projects are added with
-
-.. code-block:: bash
-
-    flask project [OPTIONS] TEMPLATE
-
-A user is automatically associated with a project upon creation using the email address given in the ``TEMPLATE``.
-After project creation, dataset can be added with
-
-.. code-block:: bash
-
-    flask dataset [OPTIONS] SMID TITLE FILENAME
-
-Dataset upload is normally done via POST request upon login to the running application, accessible through User menu > Data > Dataset upload.
-These steps, except user-project association, can be done all at once with
-
-.. code-block:: bash
-
-    flask batch DIRECTORY [TEMPLATES]
-
-Permissions can be updated with
-
-.. code-block:: bash
-
-    flask permission USERNAME SMID
-
-To manage assemblies or annotations, use
-
-.. code-block:: bash
-
-    flask annotation [OPTIONS] ID
-
-.. code-block:: bash
-
-    flask assembly [OPTIONS]
-
-For OPTIONS, use the ``--help`` flag, *e.g.* ``flask assembly --help``.
 
 
 .. _data_model:
@@ -541,3 +493,68 @@ Alembic version ``ac1b984c4751``.
     CONSTRAINT `fk_user_project_association_project_id_project` FOREIGN KEY (`project_id`) REFERENCES `project` (`id`),
     CONSTRAINT `fk_user_project_association_user_id_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`)
     ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+
+.. _data_setup:
+
+Setup
+-----
+
+At lauchtime, the app uses tables defined in ``config.py`` to perform an ``INSERT... ON DUPLICATE KEY UPDATE``
+
+.. code-block:: python
+
+    setup_service = get_setup_service()
+    setup_service.upsert_all()
+
+These tables (``rna_type``, ``modomics``, ``method``, ``taxonomy``, ``ncbi_taxa``, ``assembly``, ``assembly_version``, ``annotation``, and ``annotation_version``) allow to define base options for project creation, and establish a standard terminology for the application. The import format is *CSV*, and the header must match the column names (including *id*) from the corresponding database table, *e.g. ncbi_taxa.csv*
+
+.. code-block:: bash
+
+    id,name,short_name,taxonomy_id
+    9606,Homo sapiens,H. sapiens,8128e900
+    10090,Mus musculus,M. musculus,8128e900
+
+The upsert can be done for one model/table at a time, or forced with
+
+.. code-block:: bash
+
+    flask setup [OPTIONS]
+
+Projects are added with
+
+.. code-block:: bash
+
+    flask project [OPTIONS] TEMPLATE
+
+A user is automatically associated with a project upon creation using the email address given in the ``TEMPLATE``.
+After project creation, dataset can be added with
+
+.. code-block:: bash
+
+    flask dataset [OPTIONS] SMID TITLE FILENAME
+
+Dataset upload is normally done via POST request upon login to the running application, accessible through User menu > Data > Dataset upload.
+These steps, except user-project association, can be done all at once with
+
+.. code-block:: bash
+
+    flask batch DIRECTORY [TEMPLATES]
+
+Permissions can be updated with
+
+.. code-block:: bash
+
+    flask permission USERNAME SMID
+
+To manage assemblies or annotations, use
+
+.. code-block:: bash
+
+    flask annotation [OPTIONS] ID
+
+.. code-block:: bash
+
+    flask assembly [OPTIONS]
+
+For OPTIONS, use the ``--help`` flag, *e.g.* ``flask assembly --help``.
