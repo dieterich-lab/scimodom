@@ -63,9 +63,8 @@ def compare():
         except NoRecordsFoundError:
             return {
                 "message": (
-                    "File upload failed. No records were found. Allowed formats are BED6 or bedRMod, "
-                    "chromosomes must use the Ensembl short format, contigs are discarded. For more "
-                    "information, consult the documentaion."
+                    "File upload failed. No records were found. Allowed formats are BED6 or bedRMod. "
+                    "For more information, consult the documentation."
                 )
             }, 500
     else:

@@ -59,6 +59,7 @@ const onExport = () => {
 function load(operation) {
   records.value = undefined
   loading.value = true
+  uploadMessage.value = undefined
   var arrayOp = operation.split('-')
   HTTP.get('/dataset/compare', {
     params: {
@@ -80,6 +81,8 @@ function load(operation) {
     .catch((error) => {
       uploadMessage.value = error.response.data.message
       console.log(error)
+      records.value = undefined
+      loading.value = false
     })
 }
 

@@ -27,6 +27,7 @@ const technology = ref([])
 const assembly = ref([])
 const message = ref()
 const filename = ref()
+const loading = ref(false)
 
 const ProjectList = defineAsyncComponent(() => import('@/components/project/ProjectList.vue'))
 const dialog = useDialog()
@@ -107,8 +108,10 @@ const [title, titleProps] = defineField('title')
 
 const onSubmit = handleSubmit((values) => {
   message.value = undefined
+  loading.value = true
   HTTPSecure.post('/management/dataset', values)
     .then((response) => {
+      loading.value = false
       if (response.status == 200) {
         router.push({ name: 'home' })
       }
@@ -116,6 +119,7 @@ const onSubmit = handleSubmit((values) => {
     .catch((error) => {
       message.value = error.response.data.message
       console.log(error)
+      loading.value = false
     })
 })
 
@@ -319,8 +323,15 @@ onMounted(() => {
         <Message severity="error" :closable="false">{{ message }}</Message>
       </div>
       <div class="flex flow-row justify-center pt-4 gap-4">
-        <Button label="Upload" size="large" type="submit" />
+        <Button label="Upload" size="large" type="submit" icon="pi pi-sync" :loading="loading" />
         <Button label="Cancel" size="large" severity="danger" @click="dropForm" />
+      </div>
+      <div class="flex justify-center italic mt-4">
+        Do not refresh the page during upload! This may take a few minutes, as we validate,
+        annotate, and eventually lift over your data...
+      </div>
+      <div class="flex justify-center italic">
+        You will be redirected to the main page upon successful upload.
       </div>
     </form>
   </div>

@@ -24,7 +24,7 @@ import SubTitle from '@/components/ui/SubTitle.vue'
           <!-- </a> -->
           <!-- </div> -->
         </p>
-        <p class="indent-4 text-lg underline underline-offset-8 decoration-gb-4/25">
+        <p class="indent-4 text-lg underline underline-offset-8 decoration-gb-4/25 font-semibold">
           Query nomenclature
         </p>
         <p class="indent-4 text-lg leading-relaxed mt-2 mb-2">
@@ -39,7 +39,7 @@ import SubTitle from '@/components/ui/SubTitle.vue'
             >Detection technologies for RNA modifications</a
           >.
         </p>
-        <p class="indent-4 text-lg underline underline-offset-8 decoration-gb-4/25">
+        <p class="indent-4 text-lg underline underline-offset-8 decoration-gb-4/25 font-semibold">
           Project and dataset
         </p>
         <p class="indent-4 text-lg leading-relaxed mt-2 mb-2">
@@ -53,7 +53,7 @@ import SubTitle from '@/components/ui/SubTitle.vue'
           modification, but is uniquely associated with a given species (including cell type,
           tissue, or organ) and technology.
         </p>
-        <p class="indent-4 text-lg underline underline-offset-8 decoration-gb-4/25">
+        <p class="indent-4 text-lg underline underline-offset-8 decoration-gb-4/25 font-semibold">
           bedRMod format
         </p>
         <p class="indent-4 text-lg leading-relaxed mt-2 mb-2">
@@ -99,13 +99,17 @@ import SubTitle from '@/components/ui/SubTitle.vue'
             >bedRMod format specification</a
           >.
         </p>
-        <p class="indent-4 text-lg underline underline-offset-8 decoration-gb-4/25">Assembly</p>
+        <p class="indent-4 text-lg underline underline-offset-8 decoration-gb-4/25 font-semibold">
+          Assembly
+        </p>
         <p class="indent-4 text-lg leading-relaxed mt-2 mb-2">
           Available assemblies for different organisms define the assembly version used in
           Sci-ModoM. Dataset that do not match the database assembly version are lifted over. Only
           chromosomes are considered.
         </p>
-        <p class="indent-4 text-lg underline underline-offset-8 decoration-gb-4/25">Annotation</p>
+        <p class="indent-4 text-lg underline underline-offset-8 decoration-gb-4/25 font-semibold">
+          Annotation
+        </p>
         <p class="indent-4 text-lg leading-relaxed mt-2 mb-2">
           Annotation are created by intersecting dataset records with features (UTRs, CDS, ...)
           merged across transcripts extracted from a given Ensembl GTF file.
@@ -121,7 +125,7 @@ import SubTitle from '@/components/ui/SubTitle.vue'
           >.
         </p>
       </div>
-      <!-- HOW TO ----  -->
+      <!-- HOW TO -->
       <div class="text-justify m-6 dark:text-white/80">
         <h1 class="font-ham text-4xl font-semibold m-auto pt-4 pb-4">
           <span>Search</span>
@@ -180,7 +184,7 @@ import SubTitle from '@/components/ui/SubTitle.vue'
           query time. Records can be exported to CSV.
         </p>
       </div>
-      <!-- DATA MANAGEMENT ----  -->
+      <!-- DATA MANAGEMENT -->
       <div class="text-justify m-6 dark:text-white/80">
         <h1 class="font-ham text-4xl font-semibold m-auto pt-4 pb-4">
           <span>Data management</span>
@@ -190,7 +194,7 @@ import SubTitle from '@/components/ui/SubTitle.vue'
           users can however register to propose new projects, and eventually upload dataset and
           attachments that are made publicly available to all users.
         </p>
-        <p class="indent-4 text-lg underline underline-offset-8 decoration-gb-4/25">
+        <p class="indent-4 text-lg underline underline-offset-8 decoration-gb-4/25 font-semibold">
           Project template
         </p>
         <p class="indent-4 text-lg leading-relaxed mt-2 mb-2">
@@ -222,7 +226,7 @@ import SubTitle from '@/components/ui/SubTitle.vue'
           cell type, tissue, or organ), or <span class="italic">(ii)</span> for each modification
           associated with a single dataset.
         </p>
-        <p class="indent-4 text-lg underline underline-offset-8 decoration-gb-4/25">
+        <p class="indent-4 text-lg underline underline-offset-8 decoration-gb-4/25 font-semibold">
           Dataset upload
         </p>
         <p class="indent-4 text-lg leading-relaxed mt-2 mb-2">
@@ -230,6 +234,46 @@ import SubTitle from '@/components/ui/SubTitle.vue'
           for logged-in users through User menu > Data > Dataset upload. Use the Attach BAM files
           form to upload attachments. Attaching BAM files to a given dataset allow users to access
           read-level information.
+        </p>
+        <p class="indent-4 text-lg underline underline-offset-8 decoration-gb-4/25 font-semibold">
+          Dataset upload errors
+        </p>
+        <p class="indent-4 text-lg leading-relaxed mt-2 mb-2">
+          Data must be formatted according to the latest
+          <a
+            class="text-primary-500 hover:text-secondary-500"
+            href="https://dieterich-lab.github.io/scimodom/bedrmod.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            >bedRMod format specification</a
+          >. Pay particular attention to the header, which must meet strict requirements. Most
+          errors are due to a badly formatted header, or a mismatch between a header tag, value pair
+          and a corresponding value that you entered when filling the upload form. Most of these
+          errors can be resolved quickly without the need to contact us.
+        </p>
+        <p class="indent-4 text-lg leading-relaxed mt-2 mb-2">
+          If you get a
+          <span class="italic">File upload failed. Too many skipped records</span> error, this is
+          generally due one of the following:
+        </p>
+        <div class="pl-8">
+          <ul class="list-disc">
+            <li>wrong format for chromosome (1st column)</li>
+            <li>too many contigs/scaffolds (only chromosomes are used)</li>
+            <li>wrong modification name (4th column)</li>
+            <li>mismatch between the modification name (4th column) and that chosen at upload</li>
+            <li>too many rows with undefined strand (6th column)</li>
+            <li>
+              too many rows with out-of-range values for score (5th column) or frequency (11th
+              column)
+            </li>
+          </ul>
+        </div>
+        <p class="indent-4 text-lg leading-relaxed mt-2 mb-2">
+          If you get a <span class="italic">Liftover failed</span> error, it is likely that your
+          data could not be lifted over (too many unmapped records). Since your data has by then
+          been validated for organism, assembly, missing records, <span class="italic">etc.</span>,
+          this is unlikely to happen. Please contact us.
         </p>
       </div>
     </SectionLayout>
