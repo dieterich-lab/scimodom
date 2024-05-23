@@ -536,7 +536,9 @@ def test_query_one_reference(Session, setup):
         session.add_all(data)
         session.commit()
 
-        comparison_service = ComparisonService(session=Session())
+        comparison_service = ComparisonService(
+            session=Session(), query_operation="intersect", is_strand=False
+        )
         comparison_service.query_reference_records([eufid])
         expected_records, _, _ = _get_expected_records()
         assert comparison_service._reference_records == expected_records
@@ -636,7 +638,9 @@ def test_query_two_reference(Session, setup):
         session.add_all(data)
         session.commit()
 
-        comparison_service = ComparisonService(session=Session())
+        comparison_service = ComparisonService(
+            session=Session(), query_operation="intersect", is_strand=False
+        )
         comparison_service.query_reference_records([eufid1, eufid2])
 
         # order is not guaranteed
@@ -738,7 +742,9 @@ def test_query_comparison(Session, setup):
         session.add_all(data)
         session.commit()
 
-        comparison_service = ComparisonService(session=Session())
+        comparison_service = ComparisonService(
+            session=Session(), query_operation="intersect", is_strand=False
+        )
         comparison_service.query_comparison_records([eufid1, eufid2])
 
         _, expected_records1, expected_records2 = _get_expected_records()
@@ -757,7 +763,9 @@ def test_upload_bed(is_euf, Session, data_path):
     if is_euf:
         expected_records = [[("1", 0, 10, "m6A", 1000, "+", "Upload", 10, 1)]]
     with Session() as session, session.begin():
-        comparison_service = ComparisonService(session=Session())
+        comparison_service = ComparisonService(
+            session=Session(), query_operation="intersect", is_strand=False
+        )
         comparison_service.upload_records(filen, is_euf)
         comparison_service._comparison_records == expected_records
 
@@ -1008,9 +1016,10 @@ def test_operation_simple(operation, Session, setup):
         session.add_all(data)
         session.commit()
 
-        comparison_service = ComparisonService(session=Session())
+        comparison_service = ComparisonService(
+            session=Session(), query_operation=operation, is_strand=True
+        )
         # is_strand = True
-        comparison_service.setup(operation, True)
         comparison_service.query_reference_records([eufid1])
         comparison_service.query_comparison_records([eufid2])
         records = comparison_service.compare_dataset()

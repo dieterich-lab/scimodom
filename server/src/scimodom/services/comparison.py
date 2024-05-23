@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 from logging import getLogger
 from pathlib import Path
-from typing import Any, Literal, ClassVar
+from typing import Any, Literal, ClassVar, get_args
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -52,8 +52,8 @@ class ComparisonService:
     def __init__(
         self, session: Session, query_operation: OPERATIONS, is_strand: bool
     ) -> None:
-        assert (
-            query_operation in self.OPERATIONS
+        assert query_operation in get_args(
+            self.OPERATIONS
         ), f"Undefined '{query_operation}'. Allowed values are {self.OPERATIONS}."
 
         self._session = session

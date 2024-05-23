@@ -9,7 +9,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from scimodom.api.helpers import (
     get_valid_dataset_id_list_from_request_parameter,
     get_valid_tmp_file_id_from_request_parameter,
-    get_valid_boolean_from_request_parameter_or_error,
+    get_valid_boolean_from_request_parameter,
     ClientResponseException,
 )
 from scimodom.config import Config
@@ -53,8 +53,8 @@ def compare():
         comparison_ids = get_valid_dataset_id_list_from_request_parameter("comparison")
         upload_id = get_valid_tmp_file_id_from_request_parameter("upload")
         operation = _get_operation()
-        is_strand = get_valid_boolean_from_request_parameter_or_error("strand")
-        is_euf = get_valid_boolean_from_request_parameter_or_error("is_euf")
+        is_strand = get_valid_boolean_from_request_parameter("strand", default=False)
+        is_euf = get_valid_boolean_from_request_parameter("is_euf", default=False)
     except ClientResponseException as e:
         print(e.response_tupel)
         return e.response_tupel
