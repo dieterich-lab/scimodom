@@ -15,9 +15,7 @@ const remainingWords = words.slice(1).join(' ')
   >
     <span
       class="text-transparent bg-clip-text bg-gradient-to-r from-gg-2 from-10% via-gg-1 via-40% via-gb-2 via-60% to-gb-4 to-100"
-    >
-      {{ firstWord }}
-    </span>
-    {{ remainingWords }}
+      >{{ firstWord }}&nbsp;</span
+    >{{ remainingWords }}
   </h1>
 </template>
