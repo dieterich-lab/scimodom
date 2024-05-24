@@ -10,11 +10,12 @@ Draft or long-running issues, WIP, triage, and additional references or context 
 - [ ] ~pre-commit run --all-files~ under server (.pre-commit-config.yaml) runs for all files incl. client.
 - [X] Add *CrossMap* to requirements.
 
-** TODO STYLE [1/19]
+** TODO STYLE [1/20]
 
 - [ ] DEADLINE: <2024-09-30 Mon> To harmonize style across views, components, and presets (colours, behaviour, dark mode, /etc./).
 
 - [ ] CascadeSelect :: "No available options" is not defined, /cf./ TreeSelect or Dropdown. Styling is different.
+- [ ] In ~ProjectMetadata,vue~, some placeholders are grey, others are black/darker (resp. ligher in dark mode).
 - [ ] Dark mode (specific issues)
   - [ ] Logos are displayed in greyscale in dark mode, as invert also inverts the colors. Otherwise, we may have to use 2 logos,
     or create SVGs.
@@ -114,6 +115,9 @@ Draft or long-running issues, WIP, triage, and additional references or context 
   then (3) format filename (this is the current solution).
 - [X] browse :: Additional information for the ~Dialog~ or for the export? /e.g./ ~sequencing_platform~, ~basecalling~, ~bioinformatics_workflow~,
    ~experiment~, and/or ~ProjectContact~ (~Project~ or eventually ~Dataset~ contact).
+- [ ] browse :: Maybe the project ~added_date~ is not needed?
+- [ ] project :: When adding more than 1 metadata sheet, assembly is reset, also resetting the model. This is not critical,
+  since we ask user to write the assembly as input, but would be nice to sort.
 
 - [X] router :: All routes to ~/~ with backward/forward navigation? This does not allow either to open a link in a new tab. Also how would
   that work with route guards, secure routes, /etc./? Finally, with route params (/e.g./ ~Browse~, where EUFID is directly added to the index),

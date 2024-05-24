@@ -541,6 +541,33 @@ These steps, except user-project association, can be done all at once with
 
     flask batch DIRECTORY [TEMPLATES]
 
+This requires a non-standard project template (json) with additional keys: ``file_name`` and ``data_title`` for each ``metadata`` value, *e.g.*
+
+.. code-block:: json
+
+    {
+        ...
+        "metadata": {
+            "rna": "mRNA",
+            "modomics_id": "2000000006A",
+            "tech": "m6A-SAC-seq",
+            "method_id": "e00d694d",
+            "organism": {"taxa_id": 9606, "cto": "HeLa", "assembly": "GRCh38"},
+            "file_name": "filename.bedrmod",
+            "data_title": "HeLa WT treatment A replicate 1",
+            "extra": [
+                "Homo sapiens",
+                "HeLa",
+                "wild type",
+                "treatment A",
+                "polyA RNA"
+            ]
+        }
+    }
+
+Additional keys are ignored and can be used for documentation. All templates and bedRMod files must be under the same directory.
+Values in the template are used *as is* to query and update the database.
+
 Permissions can be updated with
 
 .. code-block:: bash
