@@ -20,9 +20,10 @@ MAX_BAM_FILE_SIZE = 1024 * 1024 * 1024
 @bam_file_api.route("/all/<dataset_id>", methods=["GET"])
 @cross_origin(supports_credentials=True)
 def list_bam_files(dataset_id: str):
-    dataset, error, status = get_validate_dataset(dataset_id)
-    if dataset is None:
-        return {"message": error}, status
+    try:
+        dataset = get_validate_dataset(dataset_id)
+    except ClientResponseException as e:
+        return e.response_tupel
 
     file_service = get_file_service()
     return file_service.get_bam_file_list(dataset)
