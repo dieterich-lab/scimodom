@@ -55,7 +55,7 @@ Make sure that the ports, paths and names in the _.env_ files don't collide!
 ## Set up your .env file
 
 Create a file .env in the same folder as the docker-compose.yml you use.
-An example may be found here: server/env_example
+An example may be found here: [../server/env_example](env_example).
 
 ## Set up the local directories
 

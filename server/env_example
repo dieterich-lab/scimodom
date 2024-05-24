@@ -19,14 +19,18 @@ SMTP_FROM_ADDRESS=scimodom@my-site.org
 SMTP_TO_ADDRESS=scimodom@my-site.org
 
 ##
-## Local part - only use if the Flask App runs locally
+## Local part - only use if the Flask app runs locally
 ##
 
 # DATABASE_URI=mysql+mysqldb://scimodom:XXX-DB_PASSWORD-XXX@127.0.0.1:3306/scimodom
 # SECRET_KEY=asgddfgsdfgshbsfrdaDSAS
 SESSION_COOKIE_SAMESITE=None
 SESSION_COOKIE_SECURE=True
+
+IMPORT_PATH=/path/to/scimodom/server/import
 UPLOAD_PATH=/path/to/upload
+DATA_PATH=/path/to/data
+BEDTOOLS_TMP_PATH=/path/to/tmp
 
 ##
 ## Container part - only use with docker-compose.yml
@@ -49,7 +53,6 @@ APP_IMAGE_NAME=scimodom_app:latest
 
 # Here the database backup goes
 HOST_BACKUP_DIR=backup
-
 # Find here auto-configured passwords
 HOST_SECRETS_DIR=secrets
 
@@ -64,3 +67,8 @@ MARIADB_USER=scimodom
 MARIADB_DATABASE=scimodom
 MARIADB_ROOT_PASSWORD_FILE=/run/secrets/mariadb-root
 MARIADB_PASSWORD_FILE=/run/secrets/mariadb-scimodom
+
+# If running the app locally with a database container (docker-compose-db-only.yml)
+# the parameters below are required and need to be adjusted accordingly
+HOST_DEV_DB_DATA_DIR=db_data_dev
+MARIADB_DEV_PORT=3307
