@@ -10,28 +10,22 @@ Draft or long-running issues, WIP, triage, and additional references or context 
 - [ ] ~pre-commit run --all-files~ under server (.pre-commit-config.yaml) runs for all files incl. client.
 - [X] Add *CrossMap* to requirements.
 
-** TODO STYLE [0/21]
+** TODO STYLE [1/19]
 
-- [ ] Upload :: The PV ~FileUpload~ component has it's own error handling, but the display is currently
-  not "customized" and results in moving/resizing of DOM elements, see /e.g./ ~UploadForm~ (select unsupported file type).
+- [ ] DEADLINE: <2024-09-30 Mon> To harmonize style across views, components, and presets (colours, behaviour, dark mode, /etc./).
+
 - [ ] CascadeSelect :: "No available options" is not defined, /cf./ TreeSelect or Dropdown. Styling is different.
-- [ ] DEADLINE: <2024-08-30 Fri> To harmonize CSS vars/style across views, components, and presets (colours, behaviour, /etc./), to do
-  when addressing [[https://github.com/dieterich-lab/scimodom/issues/14][responsive design]] and accessibility in Q3. Harmonize dark mode and styles for hover, focus, /etc./ across presets.
-- [ ] Add dark mode
+- [ ] Dark mode (specific issues)
   - [ ] Logos are displayed in greyscale in dark mode, as invert also inverts the colors. Otherwise, we may have to use 2 logos,
     or create SVGs.
-  - [ ] Component color, /e.g./ ~TreeSelect~ in Search /vs./ Compare (~TabView~ has a different bg color). We could
-  add a custom ~Panel~ to Search, /etc./
-  - [ ] Add dark mode to and style using ~pt~ all recently added components (login/sign up, /etc./).
   - [ ] ~DataTable~: ~stripedRows~ removed, it doesn't work well with dark mode. Modify the preset?
-- [ ] URGENT :: Missing presets: draft ~FileUpload~ only for Wind (changed to newly added preset), ~VirtualScroll~ not working, see
-  also [[https://github.com/primefaces/primevue-tailwind/issues/108][Missing preset for VirtualScroller.]]
+- [ ] URGENT :: ~VirtualScroll~ not working, see [[https://github.com/primefaces/primevue-tailwind/issues/108][Missing preset for VirtualScroller]] and [[https://github.com/primefaces/primevue-tailwind/issues/168][VirtualScroller not working with DataTabe.]]
 - [ ] Placeholder text color ~TreeSelect~ /vs./ ~MultiSelect~.
 - [ ] Default preset color is secondary for ~DataTable~, ~Paginator~, and ~tabView~. Why not use a local ~ptOptions~
   with ~mergeSections="false"~? Else this has to be documented.
-- [ ] Use fill and stroke for svg/icons, instead of text color.
+- [ ] Use fill and stroke for svg/icons, instead of text color, see also [[https://github.com/dieterich-lab/scimodom/issues/64][Add icon to InputText not working]].
 - [ ] Button presets adapted for /primary/ and /secondary/ by redefining the API for severity. Should we redefine the API
-  or add another option?
+  or add another option, or just leave it as is?
 - [ ] ~DataTable~ filters /e.g./ ~filterMatchModeDropdown~ show a mix of primary and default green colors (where is this
   defined in presets? Can we use ~pt~?)
 - [-] [[https://github.com/dieterich-lab/scimodom/issues/18][Customize UI components]]: additional items
@@ -43,13 +37,10 @@ Draft or long-running issues, WIP, triage, and additional references or context 
 - [ ] (Browse) ~InputText~ and ~Dialog~ local ~pt~ has no effect with alpha modifier for secondary color using **Wind** preset.
   Temporarily removed ~/50~ for ~dialog~ and ~inputtext~ (focus). Local ~pt~ description currently follows the **Lara** preset.
 - [ ] To harmonize ~DataTable~ header across views.
-- [ ] p-float-label
+- [ ] Add p-float-label?
 - [ ] ~Divider~ styling, thickness and color.
-- [ ] ~Search~ view filters (~Dropdown~, ~CascaseSelect~, and ~TreeSelect~) have slighlty different styles, and the "no available options"
-  is styled differently in each.
-- [ ] How to custom style ~FormTextInput~ (class/style binding), incl.secondary colour for sign up.
-- [ ] Form validation and warning/message styling for login/sign up/reset components (re-usable style binding with sensible defaults).
-  Check InlineMessage (PV).
+- [X] Custom style ~FormTextInput~ (class/style binding), incl.secondary colour for sign up.
+- [ ] Form validation and warnings/messages styling/text for login/sign up/reset components.
 - [ ] Large numbers don't show nicely in the Search paginator.
 - [ ] Outdated presets for Lara. Remove?
 
@@ -79,95 +70,84 @@ Draft or long-running issues, WIP, triage, and additional references or context 
 - [ ] Harmonize docstrings /e.g./ ~str~ /vs./ ~String~ /etc./. Order of arguments. Add ~Raises~. Add docstrings where missing.
 - [X] [2024-02-03 Sat] [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/src/scimodom/api/__init__.py::E402 module level import not at top of file]]
 
-** TODO GENERAL [8/41]
+** TODO GENERAL [20/35]
 
-- [ ] refactor :: the API (/e.g./ public all selection-type requests can be grouped under a common route, etc.).
-
-- [ ] download :: Download view temporarily removed (do we want selective/schema DB dumps?), this feature is relegated. Do we want
+- [ ] download :: Download view temporarily removed, this feature is relegated. Do we want selective/schema DB dumps? Do we want
   to allow ~Export~ to export "all" selected records, not only those lazy loaded and shown on the screen (~SearchView.vue~)? See
   also [[https://github.com/dieterich-lab/scimodom/issues/62][Search view data export]]
 
 - [ ] dependencies :: replace pandas in ~SetupService~.
 
-- [ ] refactor :: Move ~upsert.py~ to importer (get_ function), call at startup, so we don't have to call it manually. Keep upsert
-  for the CLI.
+- [X] refactor :: Move ~upsert.py~. Call at startup.
 - [ ] refactor :: Can we add type casting methods directly in each ORM model class?
 - [ ] refactor :: ~getUserName~ in ~headerLayout~ to store getter.
 
-- [ ] models :: ~contact_email~ nullable.
-- [ ] models :: Add ~Dataset~ contact and/or date added?
+- [X] models :: Add ~Dataset~ contact and/or date added?
 - [X] models :: ~assembly_id: Mapped[int] = mapped_column(ForeignKey("assembly.id"))~ in ~Dataset~ (and relationships) is redundant,
   we don't need to know the assembly, as there is only one in the DB!
-- [ ] models :: RNA type nomenclature enforcement.
+- [X] models :: RNA type nomenclature enforcement. /Partly implemented, see [[https://github.com/dieterich-lab/scimodom/issues/97][RNA types]] for the rest/.
 
-- [ ] import :: [2024-02-16 Fri] Add exception if /e.g./ more than 30% of features are unmapped.
+- [X] import :: [2024-02-16 Fri] Add exception if /e.g./ more than 30% of features are unmapped.
   [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/src/scimodom/services/assembly.py::Unmapped features are discarded.]]
-- [ ] import :: What happens if /e.g./ too many rows are skipped or in the worst case there is no records (/e.g./ if chroms are
+- [X] import :: What happens if /e.g./ too many rows are skipped or in the worst case there is no records (/e.g./ if chroms are
   not formatted short/Ensembl-style)? Maybe we should have a "no commit" fallback and warning/error. See /e.g./ during testing upload
   with mock data: ~WARNING scimodom.services.annotation.annotate_data.193 | No records found for Kr6uj7QzWfLJ...~.
-- [ ] import :: ~_validate_columns~ (EUFHeaderImporter) adjusted to check first /non-comment/ row, and raises a ~SpecsError~ if the column
+- [X] import :: ~_validate_columns~ (EUFHeaderImporter) adjusted to check first /non-comment/ row, and raises a ~SpecsError~ if the column
   count does not match (or if emtpy). On the other hand, EUFDataImporter ignore bad rows. Maybe it would make more sense to NOT
   validate the column count in EUFHEaderImporter, leave it to EUFDataImporter to handle it, and add a test to check how
   many rows were skipped (/e.g./ if a file has chrom long format style, it will be skipped entirely), or if the file was empty,
   before writing to the database.
-- [ ] import :: Buffer by chunk (no flush)?
+- [X] import :: Buffer by chunk (no flush)?
 - [ ] import :: Title is ~VARCHAR(255)~ (dataset/project) but there is no check on project/dataset creation (batch or dataset).
   For the FE forms, add a max. length/validation.
-
-- [X] Biotype mapping: how to? Write into table, and use only mapping, or map on the fly?
-
-- [X] ~Datatable dataKey="id"~
-- [X] Default ordering of data (Search, Browse, Compare). EUF import does not need to be sorted. Sorting is done on the fly for annotation.
-  Default sort order in Search + sorting enabled. No default sort in Browse. For Compare, data is returned after sorting for intersect,
-  closest, or subtract.
 
 - [ ] test :: [2024-02-18 Sun] [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/tests/unit/conftest.py::def data_path(tmp_path_factory, monkeypatch):]]
   I see no other choice than using ~scope=sesion~, with either *pytest-dotenv* or setting a global env (=pyproject.toml=) for all tests, and
   using a single directory. What I would like to is to use ~monkeypatch.setenv~ to /dynamically/ set ~DATA_PATH~ to ~loc~ (tmp directory for test),
   to isolate each test, but calling ~AssemblyService~ or ~AnnotationService~ overrides ~DATA_PATH~, as this loads the config, which in turn
   loads the dotenv file.
-- [ ] test :: Recent changes don't have unit tests. Go through the codebase and check where we need to add unit tests (refactor where necessary).
-  In particular Flask API.
 - [ ] test :: Integration tests?
 
 - [ ] search :: Features and biotypes are fixed, but /e.g./ do biotypes change with organism?
-- [ ] search :: Export: (1) add additional columns /e.g./ taxa_id, cto, RNA type, /etc./ that are hidden from the table, but that requires adding these
+- [X] search :: Export: (1) add additional columns /e.g./ taxa_id, cto, RNA type, /etc./ that are hidden from the table, but that requires adding these
   to the select query, we need to see if that impacts performance; if not, then (2) add a header with at least modification, taxa_id, and cto; if not
   then (3) format filename (this is the current solution).
 - [X] browse :: Additional information for the ~Dialog~ or for the export? /e.g./ ~sequencing_platform~, ~basecalling~, ~bioinformatics_workflow~,
    ~experiment~, and/or ~ProjectContact~ (~Project~ or eventually ~Dataset~ contact).
 
-- [ ] router :: All routes to ~/~ with backward/forward navigation? This does not allow either to open a link in a new tab. Also how would
+- [X] router :: All routes to ~/~ with backward/forward navigation? This does not allow either to open a link in a new tab. Also how would
   that work with route guards, secure routes, /etc./? Finally, with route params (/e.g./ ~Browse~, where EUFID is directly added to the index),
   this sounds like a strange choice... For ~Browse~ in particular, when clicking on EUFID in ~Search~, we want a new tab, to avoid loosing
-  the current search results.
-- [ ] router :: https://router.vuejs.org/guide/essentials/redirect-and-alias#Alias (would this work?)
+  the current search results. /Moved to an issue, see [[https://github.com/dieterich-lab/scimodom/issues/16][Set-up routing configuration]]/.
 
-- [ ] store :: Import/use pinia before router. Options /vs./ Compostion. Add pinia as argument to router ~beforeEach~. Check =ways-to-use-pinia=.
-- [ ] store :: About "refresh" one way is to persist the store, this is easy with https://vueuse.org/core/useLocalStorage/, but somehow got
-- [ ] store :: No need for a logout action, we can just reset the store. Use router push inside the store on logout?
-  unexpected behaviour. Check also Pinia plugin.
+- [ ] store :: Import/use pinia before router. Options /vs./ Composition. Add pinia as argument to router ~beforeEach~. Check =ways-to-use-pinia=.
 
-- [ ] forms :: Add lazy validation to form fields, in particular for login/sign up. Check also strict, see https://github.com/jquense/yup
+- [ ] forms :: Add lazy validation to form fields, in particular for login/sign up? Check also strict, see https://github.com/jquense/yup
 - [ ] forms :: Do not load the full ~yup~ package, but only what is needed. Customize validation (login /vs./ sign up). Revisit messages. See
   /e.g./ https://tailwind.primevue.org/inputtext/#helptext. Classes are wrong, there is no ~p-error~, /etc./
 
 - [X] email :: Env vars (SMTP, /etc./) probably need to go to the =docker-compose.yml= for production, /etc./? Also do we have twice the same
   env var for PUBLIC SERVER?
 
-- [ ] operations/specs :: Does bedtools support strand ~.~? Constraints to Data model in import.
+- [ ] operations/specs :: Does bedtools support strand ~.~? Constraints to Data model in import?
 
 - [X] docs :: Only Ensembl short format for chrom, they will be ignored.
 - [X] docs :: bedRMod = 1 organism (incl. cell type/tissue), 1 technology, 1 RNA type (mRNA, tRNA, /etc./), but 1+ modification (name field).
 - [ ] docs :: Only GTF format (annotation).
-- [ ] docs :: The header in bedRMod and selection must match exactly /e.g./ GRCh38 and hg38 will throw an exception.
-- [ ] docs :: Flask CLI.
+- [X] docs :: The header in bedRMod and selection must match exactly /e.g./ GRCh38 and hg38 will throw an exception.
+- [X] docs :: Flask CLI.
 - [ ] docs :: Dataset/project title length (json template or project creation form).
 
 - [ ] [2024-02-22 Thu] [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/src/scimodom/plugins/cli.py::session.rollback()]]
   Session does not rollback. Why? Does this also happens somewhere else?
-- [ ] How to consistently and robustly handle suspected discrepancies at upload (form fields vs. header,
+- [X] How to consistently and robustly handle suspected discrepancies at upload (form fields vs. header,
   form fields vs. data records) to avoid DB transactions?
+
+- [X] Biotype mapping: how to? Write into table, and use only mapping, or map on the fly?
+- [X] ~Datatable dataKey="id"~
+- [X] Default ordering of data (Search, Browse, Compare). EUF import does not need to be sorted. Sorting is done on the fly for annotation.
+  Default sort order in Search + sorting enabled. No default sort in Browse. For Compare, data is returned after sorting for intersect,
+  closest, or subtract.
 
 *** TODO FEATURE REQUEST [0/2]
 
