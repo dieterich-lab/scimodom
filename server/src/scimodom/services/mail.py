@@ -56,24 +56,13 @@ class MailService:
         link = get_user_registration_link(email, token)
         self._send(
             to_address=email,
-            subject="SCI-MODOM - please confirm your email address",
+            subject="Sci-ModoM - Confirm your email",
             text=f"""
-To whom it concerns,
-
-you just registered an account with your email address
-
-        {email}
-
-on the SCI-MODOM server. To activate the account, please
-visit this link:
+Please verify your email {email} to complete registration by clicking this link
 
         {link}
 
-If you did NOT register, please don't click the link and
-consider to report the incident too us.
-
-Best regards
-{self._from_address}
+If you didn't create an account, please ignore this message and consider reporting the incident to {self._from_address}.
 """,
         )
 
@@ -88,24 +77,14 @@ Best regards
         link = get_password_reset_link(email, token)
         self._send(
             to_address=email,
-            subject="SCI-MODOM - password reset",
+            subject="Sci-ModoM - Reset your password",
             text=f"""
-To whom it concerns,
-
-you just requested to reset your password for
-
-        {email}
-
-on the SCI-MODOM server. To set your new password please
-visit this link:
+A new password request was made for {email}.
+If this was you, click this link
 
         {link}
 
-If you did NOT request a password, please don't click the
-link and consider to report the incident too us.
-
-Best regards
-{self._from_address}
+If you didn't request a new password, please ignore this message and consider reporting the incident to {self._from_address}.
 """,
         )
 
@@ -117,7 +96,7 @@ Best regards
         """
         self._send(
             to_address=Config.SMTP_TO_ADDRESS,
-            subject="Sci-ModoM - NEW PROJECT REQUEST RECEIVED",
+            subject="Sci-ModoM - New project request received",
             text=f"""Project template: {uuid}.json""",
         )
 

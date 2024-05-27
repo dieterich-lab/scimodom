@@ -1,5 +1,3 @@
-import logging
-
 from flask import Blueprint, request
 from flask_cors import cross_origin
 from flask_jwt_extended import jwt_required, get_jwt_identity
@@ -7,7 +5,6 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from scimodom.services.project import get_project_service
 from scimodom.services.user import get_user_service
 
-logger = logging.getLogger(__name__)
 
 project_api = Blueprint("project_api", __name__)
 

@@ -1,5 +1,3 @@
-#! /usr/bin/env python3
-
 from datetime import datetime, timezone
 import json
 import logging
@@ -95,6 +93,11 @@ class ProjectService:
             msg = f"DATA PATH {project_request_path} not found! Terminating!"
             raise FileNotFoundError(msg)
 
+        uuid = utils.gen_short_uuid(12, [])
+        filen = Path(project_request_path, f"{uuid}.json")
+
+        logger.info(f"Writing project request to {filen}...")
+
         # reformat project template
         forename = project["forename"]
         surname = project["surname"]
@@ -123,8 +126,7 @@ class ProjectService:
         del project["surname"]
 
         # hard coded length = 12
-        uuid = utils.gen_short_uuid(12, [])
-        with open(Path(project_request_path, f"{uuid}.json"), "w") as f:
+        with open(filen, "w") as f:
             json.dump(project, f, indent="\t")
         return uuid
 
@@ -154,13 +156,11 @@ class ProjectService:
         try:
             for assembly in self._assemblies:
                 taxid, name = assembly
-                msg = f"Calling AssemblyService for {name} ({taxid})..."
-                logger.debug(msg)
+                logger.info(f"Calling AssemblyService for {name} ({taxid})...")
                 AssemblyService.from_new(
                     self._session, name=name, taxa_id=taxid
                 )  # commit, unless ...
-                msg = f"Calling AnnotationService for {taxid}..."
-                logger.debug(msg)
+                logger.info(f"Calling AnnotationService for {taxid}...")
                 AnnotationService(
                     session=self._session, taxa_id=taxid
                 ).create_annotation()  # commit, unless ...
@@ -182,8 +182,7 @@ class ProjectService:
             try:
                 smid = self._smid
             except AttributeError:
-                msg = "Undefined SMID. Nothing will be done."
-                logger.warning(msg)
+                logger.debug("Undefined SMID. Nothing will be done.")
                 return
         permission_service = get_permission_service()
         permission_service.insert_into_user_project_association(user, smid)
@@ -378,10 +377,13 @@ class ProjectService:
             )
             selection_id = self._session.execute(query).scalar_one_or_none()
             if not selection_id:
+                msg = f"Adding selection ID ({modification_id}, {organism_id}, {technology_id})"
+                logger.info(msg)
+
                 selection = Selection(
                     modification_id=modification_id,
-                    technology_id=technology_id,
                     organism_id=organism_id,
+                    technology_id=technology_id,
                 )
                 self._session.add(selection)
                 self._session.flush()
@@ -440,6 +442,9 @@ class ProjectService:
         for s in utils.to_list(self._project["external_sources"]):
             source = ProjectSource(project_id=self._smid, doi=s["doi"], pmid=s["pmid"])
             sources.append(source)
+
+        msg = f"Adding project {self._smid}"
+        logger.info(msg)
 
         self._session.add(project)
         self._session.add_all(sources)

@@ -3,8 +3,12 @@ from typing import Optional
 from sqlalchemy import select, and_
 from sqlalchemy.orm import Session
 
+import logging
+
 from scimodom.database.database import get_session
 from scimodom.database.models import User, Dataset, UserProjectAssociation
+
+logger = logging.getLogger(__name__)
 
 
 class PermissionService:
@@ -32,6 +36,9 @@ class PermissionService:
         :type project_id: str
         """
         permission = UserProjectAssociation(user_id=user.id, project_id=project_id)
+
+        logger.info(f"Adding user {user.email} to {project_id}")
+
         self._session.add(permission)
         self._session.commit()
 

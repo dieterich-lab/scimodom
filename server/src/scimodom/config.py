@@ -69,9 +69,9 @@ class Config:
         disable_existing_loggers=False,
         formatters={
             "default": {
-                "format": "[%(asctime)s:%(msecs)03d] %(levelname)s %(name)s.%(funcName)s.%(lineno)d | %(message)s"
+                "format": "%(asctime)s:%(msecs)03d [%(levelname)s] %(name)s.%(funcName)s.%(lineno)d | %(message)s"
                 if FLASK_DEBUG
-                else "[%(asctime)s] %(levelname)s %(name)s | %(message)s",
+                else "%(asctime)s [%(levelname)s] %(name)s | %(message)s",
                 "datefmt": "%Y-%m-%d %H:%M:%S",
             }
         },
@@ -79,12 +79,12 @@ class Config:
             "default": {
                 "class": "logging.StreamHandler",
                 "formatter": "default",
-                "level": logging.DEBUG if FLASK_DEBUG else logging.INFO,
+                "level": logging.DEBUG if FLASK_DEBUG else logging.WARNING,
             }
         },
         root={
             "handlers": ["default"],
-            "level": logging.DEBUG if FLASK_DEBUG else logging.INFO,
+            "level": logging.DEBUG if FLASK_DEBUG else logging.WARNING,
         },
     )
 

@@ -128,61 +128,47 @@ def write_annotation_to_bed(
     parent = annotation_file.parent
     annotation_bedtool = pybedtools.BedTool(annotation_file.as_posix()).sort()
 
-    msg = (
-        f"Preparing annotation and writing to {parent}. This can take a few minutes..."
-    )
-    logger.debug(msg)
+    msg = f"Preparing annotation and writing to {parent}..."
+    logger.info(msg)
 
     def _annotation_to_stream(feature):
         return annotation_bedtool.filter(lambda a: a.fields[2] == feature).each(
             _get_gtf_attrs
         )
 
-    tempdir = pybedtools.helpers.get_tempdir()
-    try:
-        with tempfile.TemporaryDirectory(dir=tempdir) as workdir:
-            pybedtools.helpers.set_tempdir(workdir)
-            for feature in features["conventional"]:
-                filen = Path(parent, f"{feature}.bed").as_posix()
-                _ = (
-                    _annotation_to_stream(feature)
-                    .merge(s=True, c=[4, 5, 6, 7, 8], o="distinct")
-                    .moveto(filen)
-                )
-            feature = "intron"
-            if feature not in features["extended"]:
-                msg = (
-                    f"Missing feature {feature} from specs. This is due to a change "
-                    "in definition. Aborting transaction!"
-                )
-                raise error(msg)
-            filen = Path(parent, "exon.bed").as_posix()
-            exons = pybedtools.BedTool(filen)
-            filen = Path(parent, f"{feature}.bed").as_posix()
-            # why is the sort order lost after subtract?
-            _ = (
-                _annotation_to_stream("gene")
-                .subtract(exons, s=True, sorted=True)
-                .sort()
-                .merge(s=True, c=[4, 5, 6, 7, 8], o="distinct")
-            ).moveto(filen)
-            feature = "intergenic"
-            if feature not in features["extended"]:
-                msg = (
-                    f"Missing feature {feature} from specs. This is due to a change "
-                    "in definition. Aborting transaction!"
-                )
-                raise error(msg)
-            filen = Path(parent, f"{feature}.bed").as_posix()
-            _ = (
-                _annotation_to_stream("gene")
-                .complement(g=chrom_file.as_posix())
-                .moveto(filen)
+    def _check_feature(feature):
+        if feature not in features["extended"]:
+            msg = (
+                f"Missing feature {feature} from specs. This is due to a change "
+                "in definition. Aborting transaction!"
             )
-    except:
-        raise
-    finally:
-        pybedtools.helpers.set_tempdir(tempdir)
+            raise error(msg)
+        logger.info(f"Writing {feature}...")
+        return Path(parent, f"{feature}.bed").as_posix()
+
+    for feature in features["conventional"]:
+        logger.info(f"Writing {feature}...")
+
+        filen = Path(parent, f"{feature}.bed").as_posix()
+        _ = (
+            _annotation_to_stream(feature)
+            .merge(s=True, c=[4, 5, 6, 7, 8], o="distinct")
+            .moveto(filen)
+        )
+
+    filen = Path(parent, "exon.bed").as_posix()
+    exons = pybedtools.BedTool(filen)
+    filen = _check_feature("intron")
+    # why is the sort order lost after subtract?
+    _ = (
+        _annotation_to_stream("gene")
+        .subtract(exons, s=True, sorted=True)
+        .sort()
+        .merge(s=True, c=[4, 5, 6, 7, 8], o="distinct")
+    ).moveto(filen)
+
+    filen = _check_feature("intergenic")
+    _ = _annotation_to_stream("gene").complement(g=chrom_file.as_posix()).moveto(filen)
 
 
 def get_annotation_records(
@@ -207,7 +193,7 @@ def get_annotation_records(
     :rtype: list of tuples of (str, int, str, str)
     """
     msg = f"Creating annotation for {annotation_file}..."
-    logger.debug(msg)
+    logger.info(msg)
 
     bedtool = pybedtools.BedTool(annotation_file.as_posix()).sort()
     stream = bedtool.filter(lambda f: f.fields[2] == "gene").each(_get_gtf_attrs)
@@ -245,6 +231,9 @@ def liftover_to_file(
     if unmapped is None:
         unmapped = pybedtools.BedTool._tmp()
     cmd = f"CrossMap bed --chromid {chrom_id} --unmap-file {unmapped} {chain_file} {bedtool.fn} {result}"
+
+    logger.debug(f"Calling: {cmd}")
+
     # set a timeout?
     try:
         subprocess.run(shlex.split(cmd), check=True, capture_output=True, text=True)

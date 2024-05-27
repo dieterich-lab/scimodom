@@ -200,7 +200,7 @@ class AnnotationService:
             parent.mkdir(parents=True, exist_ok=False)
         except FileExistsError as exc:
             msg = f"Annotation directory {parent} already exists..."
-            logger.debug(msg)
+            logger.info(msg)
             query = select(GenomicAnnotation).where(
                 GenomicAnnotation.annotation_id == self._annotation_id
             )
@@ -329,7 +329,7 @@ class AnnotationService:
         """Download gene annotation."""
 
         msg = "Downloading annotation info..."
-        logger.debug(msg)
+        logger.info(msg)
 
         filen = self._annotation_file.name
         organism_name = filen.split(".")[0].lower()

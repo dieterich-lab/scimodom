@@ -63,7 +63,7 @@ class UserService:
         """
         try:
             self.get_user_by_email(email)
-            raise UserExists(f"User with email address '{email} exists already")
+            raise UserExists(f"User with address '{email}' already exists")
         except NoSuchUser:
             pass
 
@@ -128,8 +128,8 @@ class UserService:
                 return
             if user.confirmation_token != confirmation_token:
                 raise _DetailedWrongUserOrPassword(
-                    f"Received bad confirmation token '{confirmation_token}'"
-                    + f"for user '{email} during registration'."
+                    f"Received bad confirmation token '{confirmation_token}' "
+                    + f"for user '{email}' during registration"
                 )
 
             user.state = UserState.active
@@ -137,8 +137,8 @@ class UserService:
             self._session.commit()
 
         except _DetailedWrongUserOrPassword as exc:
-            logger.warning(f"WARNING: {str(exc)}")
-            raise WrongUserOrPassword("Go away hacker!")
+            logger.warning(f"{str(exc)}")
+            raise WrongUserOrPassword("Wrong username or password!")
 
     def request_password_reset(self, email: str) -> None:
         """A token is generated and send out by email. Otherwise, the account stays
@@ -181,8 +181,8 @@ class UserService:
                 )
             self.change_password(email, new_password)
         except _DetailedWrongUserOrPassword as exc:
-            logger.warning(f"WARNING: {str(exc)}")
-            raise WrongUserOrPassword("Go away hacker!")
+            logger.warning(f"{str(exc)}")
+            raise WrongUserOrPassword("Wrong username or password!")
 
     def change_password(self, email: str, new_password: str):
         """Change a password for an authorized user.
@@ -215,15 +215,15 @@ class UserService:
         try:
             user = self.get_user_by_email(email)
         except NoSuchUser:
-            logger.warning(f"WARNING: Unknown user '{email}' tried to login")
+            logger.warning(f"Unknown user '{email}' tried to login")
             return False
         if user.state != UserState.active:
             logger.warning(
-                f"WARNING: User '{email}' in unexpected status {user.state.name} tried to login"
+                f"User '{email}' in unexpected status {user.state.name} tried to login"
             )
             return False
         if not check_password_hash(user.password_hash, password):
-            logger.warning(f"WARNING: User '{email}' failed to login")
+            logger.warning(f"User '{email}' failed to login")
             return False
         return True
 

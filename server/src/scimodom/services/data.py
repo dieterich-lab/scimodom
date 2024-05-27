@@ -269,6 +269,8 @@ class DataService:
         """Dataset constructor."""
         is_liftover: bool = False
 
+        logger.info("Creating dataset...")
+
         # test for duplicate dataset
         self._validate_entry()
 
@@ -357,8 +359,7 @@ class DataService:
                     checkpoint.rollback()
                     raise
 
-        msg = "Annotating data now..."
-        logger.debug(msg)
+        logger.info("Annotating data now...")
 
         # annotate newly imported data...
         annotation_service = AnnotationService(session=self._session, taxa_id=taxa_id)
@@ -375,7 +376,7 @@ class DataService:
             f"Added dataset {self._eufid} to project {self._smid} with title = {self._title}, "
             f"and the following associations: {', '.join([f'{k}:{v}' for k, v in self._association.items()])}. "
         )
-        logger.debug(msg)
+        logger.info(msg)
 
     def get_eufid(self) -> str:
         """Return newly created EUFID.

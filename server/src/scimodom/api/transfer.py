@@ -32,11 +32,11 @@ def upload_tmp_file():
         request.content_length is not None
         and request.content_length > MAX_TMP_FILE_SIZE
     ):
-        return {"message": f"File to large (max. {MAX_TMP_FILE_SIZE}"}, 413
+        return {"message": f"File too large (max. {MAX_TMP_FILE_SIZE}"}, 413
 
     file_service = get_file_service()
     try:
         file_id = file_service.upload_tmp_file(request.stream, MAX_TMP_FILE_SIZE)
         return {"file_id": file_id}
     except FileTooLarge:
-        return {"message": f"File to large (max. {MAX_TMP_FILE_SIZE}"}, 413
+        return {"message": f"File too large (max. {MAX_TMP_FILE_SIZE}"}, 413

@@ -60,10 +60,10 @@ class FileService:
                     bytes_written += len(buffer)
                     if max_size is not None and bytes_written > max_size:
                         raise FileTooLarge(
-                            f"File is larger than allowed (max {max_size} bytes)"
+                            f"The file is too large (max {max_size} bytes)"
                         )
-        except Exception as e:
-            self._handle_upload_error(e, path)
+        except Exception as exc:
+            self._handle_upload_error(exc, path)
 
     # BAM file
 
@@ -99,12 +99,12 @@ class FileService:
             pass
         try:
             rename(tmp_path, path)
-        except Exception as e:
+        except Exception as exc:
             logger.error(
-                f"ERROR: Failed to move '{tmp_path} to {path}: {str(e)} - discarding database entry!'"
+                f"Failed to move '{tmp_path}' to '{path}': {str(exc)} - discarding database entry!"
             )
             self._db_session.delete(bam_file)
-            raise e
+            raise exc
 
     @staticmethod
     def _get_bam_file_tmp_path(bam_file):
@@ -124,7 +124,7 @@ class FileService:
         try:
             unlink(path)
         except Exception as unlink_e:
-            logger.warning(f"Failed to to delete '{path}': {str(unlink_e)}.")
+            logger.warning(f"Failed to delete '{path}': {str(unlink_e)}.")
         raise exception
 
     def _create_bam_file(self, dataset, name, data_stream, max_size):

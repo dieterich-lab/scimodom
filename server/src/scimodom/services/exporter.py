@@ -1,7 +1,7 @@
 #
 # The purpose of this module is to write .bedrmod files
 #
-from logging import getLogger
+import logging
 import re
 from typing import Optional, Generator
 
@@ -22,7 +22,8 @@ from scimodom.database.models import (
 )
 from scimodom.utils.specifications import SPECS_EUF
 
-logger = getLogger(__name__)
+
+logger = logging.getLogger(__name__)
 
 
 def _or_default(value, default):
@@ -66,7 +67,7 @@ class Exporter:
         db = self._session
         if len(associations) > 1:
             logger.warning(
-                f"WARNING: Dataset {dataset.id} has multiple associations - just using the first for the header."
+                f"Dataset {dataset.id} has multiple associations - just using the first for the header."
             )
         selection_ids = [a.selection_id for a in associations]
         selections = list(
@@ -95,7 +96,7 @@ class Exporter:
         for i in candidates[1:]:
             if candidates[0] != i:
                 logger.warning(
-                    f"WARNING: Found inconsistent Taxa IDs in data set {dataset.id} ({', '.join(str(candidates))})"
+                    f"Found inconsistent Taxa IDs in data set {dataset.id} ({', '.join(str(candidates))})"
                 )
         return candidates[0]
 
@@ -111,7 +112,7 @@ class Exporter:
         )
         if len(candidates) > 1:
             logger.warning(
-                f"WARNING: Found multiple Assemblies for taxa_id {taxa_id} and Assembly version {assembly_version}!"
+                f"Found multiple Assemblies for taxa_id {taxa_id} and Assembly version {assembly_version}!"
             )
         return candidates[0].name
 
@@ -130,7 +131,7 @@ class Exporter:
         )
         if len(candidates) > 1:
             logger.warning(
-                f"WARNING: Found multiple Annotation for taxa_id {taxa_id} and Annotation version {annotation_version}!"
+                f"Found multiple Annotation for taxa_id {taxa_id} and Annotation version {annotation_version}!"
             )
         return candidates[0].release
 
