@@ -78,6 +78,11 @@ const props = defineProps({
       :optionGroupChildren="props.optionGroupChildren"
       :placeholder="props.placeholder"
       :class="error ? props.errCls : ''"
+      :pt="{
+        root: { class: 'w-full md:w-full' },
+        sublist: { class: 'w-full sm:w-80' }
+      }"
+      :ptOptions="{ mergeProps: true }"
     />
     <span class="inline-flex items-baseline">
       <i :class="error ? props.errIconCls : ''" />
