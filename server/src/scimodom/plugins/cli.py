@@ -5,7 +5,7 @@ import sys
 import traceback
 
 import click
-from sqlalchemy import select
+from sqlalchemy import select, exists
 
 from scimodom.config import Config
 from scimodom.database.database import get_session
@@ -20,7 +20,7 @@ from scimodom.database.models import (
 import scimodom.database.queries as queries
 from scimodom.services.annotation import AnnotationService
 from scimodom.services.assembly import AssemblyService
-from scimodom.services.project import get_project_service
+from scimodom.services.project import ProjectService
 from scimodom.services.data import DataService
 from scimodom.services.setup import get_setup_service
 from scimodom.services.user import get_user_service, NoSuchUser
@@ -55,13 +55,10 @@ def add_assembly(**kwargs) -> None:
         click.secho("Checking if assembly exists...", fg="green")
         assembly_name = kwargs["assembly_name"]
         taxa_id = kwargs["taxa_id"]
-        service = AssemblyService.from_new(session, name=assembly_name, taxa_id=taxa_id)
-        if service._is_new:
-            parent, filen = service.get_chain_path()
-            chain_file = Path(parent, filen)
-            click.secho(f"Done downloading chain file {chain_file}.", fg="green")
-        else:
-            click.secho("Assembly already exists... nothing to do.", fg="green")
+        service = AssemblyService.from_new(
+            session, name=assembly_name, taxa_id=taxa_id
+        )  # commit, unless...
+        click.secho("... done!", fg="green")
         return
 
     click.secho(
@@ -72,7 +69,7 @@ def add_assembly(**kwargs) -> None:
     c = click.getchar()
     if c not in ["y", "Y"]:
         return
-    service.create_new()
+    service.create_new()  # set-up, no commit, ID must already exists
     click.secho("Successfully created.", fg="green")
     session.close()
 
@@ -95,7 +92,7 @@ def add_annotation(annotation_id: int) -> None:
     c = click.getchar()
     if c not in ["y", "Y"]:
         return
-    service.create_annotation()
+    service.create_annotation()  # commit, unless...
     click.secho("Successfully created.", fg="green")
     session.close()
 
@@ -104,11 +101,12 @@ def add_project(project_template: str | Path, add_user: bool = True) -> None:
     """Provides a CLI function to add a new project.
 
     :param project_template: Path to a json file with
-    require fields.
+    required fields.
     :type project_template: str or Path
     :param add_user: Associate user and newly created project
     :type add_user: bool
     """
+    session = get_session()
     # load project metadata
     project = json.load(open(project_template))
     # add project
@@ -119,12 +117,14 @@ def add_project(project_template: str | Path, add_user: bool = True) -> None:
     c = click.getchar()
     if c not in ["y", "Y"]:
         return
-    project_service = get_project_service()
-    project_service.create_project(project)
+    project_service = ProjectService(session)
+    project_service.create_project(project)  # commit, unless...
     click.secho(
         f"Successfully created. The SMID for this project is {project_service.get_smid()}.",
         fg="green",
     )
+    project_service.update_assembly_and_annotation()  # commit, unless...
+    click.secho("Successfully updated assembly and annotation", fg="green")
     if add_user:
         username = project["contact_email"]
         click.secho(f"Adding user {username} to newly created project...", fg="green")
@@ -141,7 +141,7 @@ def add_project(project_template: str | Path, add_user: bool = True) -> None:
                 fg="red",
             )
         else:
-            project_service.associate_project_to_user(user)
+            project_service.associate_project_to_user(user)  # commit
             click.secho(
                 "Successfully added user to project.",
                 fg="green",
@@ -162,7 +162,7 @@ def add_user_to_project(username: str, smid: str) -> None:
     c = click.getchar()
     if c not in ["y", "Y"]:
         return
-    project_service = get_project_service()
+    project_service = ProjectService(session)
     user_service = get_user_service()
     try:
         user = user_service.get_user_by_email(username)
@@ -172,15 +172,14 @@ def add_user_to_project(username: str, smid: str) -> None:
             fg="red",
         )
     else:
-        query = select(Project.id)
-        smids = session.execute(query).scalars().all()
-        if smid not in smids:
+        is_found = session.query(exists().where(Project.id == smid)).scalar()
+        if not is_found:
             click.secho(
                 f"Unrecognised SMID {smid}... Aborting!",
                 fg="red",
             )
             return
-        project_service.associate_project_to_user(user, smid=smid)
+        project_service.associate_project_to_user(user, smid=smid)  # commit
         click.secho(
             "Successfully added user to project.",
             fg="green",
@@ -238,7 +237,7 @@ def add_dataset(
     c = click.getchar()
     if c not in ["y", "Y"]:
         return
-    service.create_dataset()
+    service.create_dataset()  # commit, unless...
     click.secho(
         f"Successfully created. The EUFID for this dataset is {service.get_eufid()}.",
         fg="green",
@@ -273,8 +272,9 @@ def add_all(directory: Path, templates: list[str]) -> None:
         project_title = project["title"]
         click.secho(f"Adding {project_title}...", fg="green")
         try:
-            project_service = get_project_service()
-            project_service.create_project(project)
+            project_service = ProjectService(session)
+            project_service.create_project(project)  # commit, unless...
+            project_service.update_assembly_and_annotation()  # commit, unless
             smid = project_service.get_smid()
             metadata = _get_dataset(project, extra_cols["file"])
             for filen, meta in metadata.items():
@@ -354,7 +354,7 @@ def add_all(directory: Path, templates: list[str]) -> None:
                     technology_id=technology_id,
                     organism_id=organism_id,
                 )
-                data_service.create_dataset()
+                data_service.create_dataset()  # commit, unless...
                 click.secho(
                     f"Successfully created. The EUFID for this dataset is {data_service.get_eufid()}.",
                     fg="green",

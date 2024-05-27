@@ -2,11 +2,12 @@ import json
 import logging
 from pathlib import Path
 from posixpath import join as urljoin
+import shutil
 from typing import ClassVar, Callable, Any
 
 import requests  # type: ignore
 from sqlalchemy.orm import Session
-from sqlalchemy import select, func
+from sqlalchemy import select, exists, func
 
 from scimodom.config import Config
 from scimodom.database.models import Assembly, Taxa
@@ -16,6 +17,12 @@ import scimodom.utils.specifications as specs
 import scimodom.utils.utils as utils
 
 logger = logging.getLogger(__name__)
+
+
+class InstantiationError(Exception):
+    """Exception handling for AssemblyService instantiation."""
+
+    pass
 
 
 class AssemblyVersionError(Exception):
@@ -64,7 +71,6 @@ class AssemblyService:
     def __init__(self, session: Session, **kwargs) -> None:
         """Initializer method."""
         self._session = session
-        self._is_new: bool = False
 
         self._assembly_id: int
         self._db_version: str
@@ -78,18 +84,20 @@ class AssemblyService:
 
         assembly_id = kwargs.get("assembly_id", None)
         if assembly_id is not None:
-            query = select(Assembly.id)
-            if assembly_id not in self._session.execute(query).scalars().all():
+            is_found = self._session.query(
+                exists().where(Assembly.id == assembly_id)
+            ).scalar()
+            if not is_found:
                 msg = f"Assembly ID = {assembly_id} not found! Aborting transaction!"
-                raise ValueError(msg)
+                raise InstantiationError(msg)
             self._assembly_id = assembly_id
             query = queries.query_column_where(
                 Assembly,
-                ["name", "taxa_id", "version"],
+                ["version", "name", "taxa_id"],
                 filters={"id": self._assembly_id},
             )
-            records = [r._asdict() for r in self._session.execute(query)][0]
-            version = records["version"]
+            records = self._session.execute(query).one()
+            version = records[0]
             # forbid instantiation for "other" assembly versions
             if not version == self._db_version:
                 msg = (
@@ -97,19 +105,21 @@ class AssemblyService:
                     f"version ({version}) from assembly ID = {self._assembly_id}. Aborting transaction!"
                 )
                 raise AssemblyVersionError(msg)
-            self._name = records["name"]
-            self._taxid = records["taxa_id"]
+            self._name = records[1]
+            self._taxid = records[2]
         else:
             self._name = kwargs.get("name", None)
             self._taxid = kwargs.get("taxa_id", None)
             if not isinstance(self._name, str):
                 raise TypeError(f"Expected str; got {type(self._name).__name__}")
-            # difficult to validate name, or combination of (name, taxa_id)...
-            # use select(func.dictinct(Organism.taxa_id)) for available IDs
-            query = select(Taxa.id)
-            if self._taxid not in self._session.execute(query).scalars().all():
+            # difficult to validate "name", or combination of (name, taxa_id)
+            # because "name" can be a "new" assembly...
+            is_found = self._session.query(
+                exists().where(Taxa.id == self._taxid)
+            ).scalar()
+            if not is_found:
                 msg = f"Taxonomy ID = {self._taxid} not found! Aborting transaction!"
-                raise ValueError(msg)
+                raise InstantiationError(msg)
             query = queries.query_column_where(
                 Assembly, "id", filters={"name": self._name, "taxa_id": self._taxid}
             )
@@ -119,19 +129,13 @@ class AssemblyService:
                 # there may be limitations to what can be done
                 self._assembly_id = assembly_id
             else:
-                # this version number is unused, no DB version upgrade
-                query = select(func.distinct(Assembly.version))
-                version_nums = self._session.execute(query).scalars().all()
-                version_num = utils.gen_short_uuid(
-                    self.ASSEMBLY_NUM_LENGTH, version_nums
-                )
-                assembly = Assembly(
-                    name=self._name, taxa_id=self._taxid, version=version_num
-                )
-                self._session.add(assembly)
-                self._session.commit()
-                self._assembly_id = assembly.id
-                self._is_new = True
+                # download chain files for "new" assembly
+                try:
+                    self._new()
+                    self._session.commit()  # add "new" assembly ID
+                except:
+                    self._session.rollback()
+                    raise
 
         # chrom file for the current DB assembly version
         self._set_chrom_path()
@@ -177,10 +181,6 @@ class AssemblyService:
         :rtype: AssemblyService
         """
         service = cls(session, name=name, taxa_id=taxa_id)
-        if service._is_new:
-            msg = "Calling new assembly..."
-            logger.debug(msg)
-            service._new()
         return service
 
     @staticmethod
@@ -282,6 +282,7 @@ class AssemblyService:
         )
         request = requests.get(url, headers={"Content-Type": "application/json"})
         if not request.ok:
+            shutil.rmtree(parent)
             request.raise_for_status()
         gene_build = request.json()
         coord_sysver = gene_build["default_coord_system_version"]
@@ -290,6 +291,7 @@ class AssemblyService:
                 f"Mismatch between assembly {self._name} and current coord system "
                 f"version {coord_sysver}. Upgrade your database! Aborting transaction!"
             )
+            shutil.rmtree(parent)
             raise AssemblyVersionError(msg)
 
         chroms = gene_build["karyotype"]
@@ -298,14 +300,9 @@ class AssemblyService:
             for d in gene_build["top_level_region"]
             if d["coord_system"] == "chromosome" and d["name"] in chroms
         }
-        try:
-            with open(self._chrom_file, "x") as cfile:
-                for chrom in sorted(chroms):
-                    cfile.write(f"{chrom}\t{top_level[chrom]}\n")
-        except FileExistsError:
-            # this shoud not happen as we checked for directory above...
-            msg = f"File at {self._chrom_file} exists. Skipping!"
-            logger.warning(msg)
+        with open(self._chrom_file, "x") as cfile:
+            for chrom in sorted(chroms):
+                cfile.write(f"{chrom}\t{top_level[chrom]}\n")
 
         keys = ["assembly_accession", "assembly_date", "assembly_name"]
         gene_build = {k: v for k, v in gene_build.items() if k in keys}
@@ -318,6 +315,7 @@ class AssemblyService:
         )
         request = requests.get(url, headers={"Content-Type": "application/json"})
         if not request.ok:
+            shutil.rmtree(parent)
             request.raise_for_status()
         release = request.json()
         with open(Path(parent, "release.json"), "w") as f:
@@ -401,36 +399,39 @@ class AssemblyService:
         version, see create_new().
         """
 
-        msg = "Setting directories up for new assembly..."
-        logger.debug(msg)
-
-        organism = self._get_organism()
-        parent, _ = self.get_chrom_path(organism, self._name)
-        try:
-            parent.mkdir(parents=True, exist_ok=False)
-        except FileExistsError as error:
-            msg = (
-                f"Assembly directory at {parent} already exists despite calling AssemblyService "
-                "from new... Aborting transaction!"
-            )
-            raise Exception(msg) from error
-
-        msg = "Downloading chain files..."
+        msg = "Setting directories up for a new assembly..."
         logger.debug(msg)
 
         parent, filen = self.get_chain_path()
         chain_file = Path(parent, filen)
+        organism = self._get_organism()
+        try:
+            parent.mkdir(parents=True, exist_ok=False)
+        except FileExistsError as exc:
+            msg = (
+                f"Assembly directory at {parent} already exists despite calling AssemblyService "
+                "from new... Aborting transaction!"
+            )
+            raise Exception(msg) from exc
+
+        msg = "Downloading chain files..."
+        logger.debug(msg)
 
         url = urljoin(
             specs.ENSEMBL_FTP, specs.ENSEMBL_ASM_MAPPING, organism.lower(), filen
         )
         with requests.get(url, stream=True) as request:
             if not request.ok:
+                shutil.rmtree(parent)
                 request.raise_for_status()
-            try:
-                with open(chain_file, "wb") as f:
-                    for chunk in request.iter_content(chunk_size=10 * 1024):
-                        f.write(chunk)
-            except FileExistsError:
-                msg = f"File at {chain_file} exists. Skipping!"
-                logger.warning(msg)
+            with open(chain_file, "wb") as f:
+                for chunk in request.iter_content(chunk_size=10 * 1024):
+                    f.write(chunk)
+
+        query = select(func.distinct(Assembly.version))
+        version_nums = self._session.execute(query).scalars().all()
+        version_num = utils.gen_short_uuid(self.ASSEMBLY_NUM_LENGTH, version_nums)
+        assembly = Assembly(name=self._name, taxa_id=self._taxid, version=version_num)
+        self._session.add(assembly)
+        self._session.flush()
+        self._assembly_id = assembly.id

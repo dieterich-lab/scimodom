@@ -31,30 +31,27 @@ management_api = Blueprint("management_api", __name__)
 @cross_origin(supports_credentials=True)
 @jwt_required()
 def create_project_request():
-    """Create a project request.
+    """Create a project request: write a project
+    template and inform the system administrator.
 
-    NOTE: Users are not allowed to create projects,
-    this must be done via requests. The project
-    is created by the administrator, and the user is
-    associated to the newly created project
-    cf. "flask project" (cli.add_project)
+    NOTE: Users are not allowed to create projects.
     """
     project_form = request.json
     try:
         uuid = ProjectService.create_project_request(project_form)
-    except FileNotFoundError as exc:
-        logger.error(f"Failed to save the project submission form: {exc}")
+    except Exception as exc:
+        logger.error(f"{exc}. The request was: {project_form}.")
         return {
-            "message": "Failed to save the project submission form. Contact the system administrator."
+            "message": "Failed to create request. Contact the system administrator."
         }, 500
 
     mail_service = get_mail_service()
     try:
         mail_service.send_project_request_notification(uuid)
     except SMTPException as exc:
-        logger.error(f"Failed to send out notification email: {exc}")
+        logger.error(f"Project {uuid} saved, but failed to send out email: {exc}")
         return {
-            "message": f"Project form successfully submitted, but failed to send out notification email. Contact the system administrator with this ID: {uuid}."
+            "message": f"An error occurred during submission. Your submission ID is {uuid}. Contact the system administrator."
         }, 500
     return {"message": "OK"}, 200
 

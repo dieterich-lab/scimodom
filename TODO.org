@@ -14,6 +14,7 @@ Draft or long-running issues, WIP, triage, and additional references or context 
 
 - [ ] DEADLINE: <2024-09-30 Mon> To harmonize style across views, components, and presets (colours, behaviour, dark mode, /etc./).
 
+- [ ] CascadeSelect :: /cf./ [[https://github.com/dieterich-lab/scimodom/issues/103][Cascade truncated.]]
 - [ ] CascadeSelect :: "No available options" is not defined, /cf./ TreeSelect or Dropdown. Styling is different.
 - [ ] In ~ProjectMetadata,vue~, some placeholders are grey, others are black/darker (resp. ligher in dark mode).
 - [ ] Dark mode (specific issues)

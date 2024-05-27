@@ -2,11 +2,12 @@ import fcntl
 import logging
 from pathlib import Path
 from posixpath import join as urljoin
+import shutil
 from typing import ClassVar, Callable
 
 import requests  # type: ignore
 from sqlalchemy.orm import Session
-from sqlalchemy import select, insert
+from sqlalchemy import select, exists, insert
 
 from scimodom.config import Config
 import scimodom.database.queries as queries
@@ -31,6 +32,12 @@ from scimodom.utils.models import records_factory
 import scimodom.utils.specifications as specs
 
 logger = logging.getLogger(__name__)
+
+
+class InstantiationError(Exception):
+    """Exception handling for AnnotationService instantiation."""
+
+    pass
 
 
 class AnnotationVersionError(Exception):
@@ -97,20 +104,22 @@ class AnnotationService:
         annotation_id = kwargs.get("annotation_id", None)
         taxa_id = kwargs.get("taxa_id", None)
         if annotation_id is not None:
-            query = select(Annotation.id)
-            if annotation_id not in self._session.execute(query).scalars().all():
+            is_found = self._session.query(
+                exists().where(Annotation.id == annotation_id)
+            ).scalar()
+            if not is_found:
                 msg = (
                     f"Annotation ID = {annotation_id} not found! Aborting transaction!"
                 )
-                raise ValueError(msg)
+                raise InstantiationError(msg)
             self._annotation_id = annotation_id
             query = queries.query_column_where(
                 Annotation,
                 ["version", "release", "taxa_id"],
                 filters={"id": self._annotation_id},
             )
-            records = [r._asdict() for r in self._session.execute(query)][0]
-            version = records["version"]
+            records = self._session.execute(query).one()
+            version = records[0]
             # forbid instantiation for "other" annotation versions
             if not version == self._db_version:
                 msg = (
@@ -118,22 +127,22 @@ class AnnotationService:
                     f"version ({version}) from annotation ID = {self._annotation_id}. Aborting transaction!"
                 )
                 raise AnnotationVersionError(msg)
-            self._release = records["release"]
-            self._taxid = records["taxa_id"]
+            self._release = records[1]
+            self._taxid = records[2]
         elif taxa_id is not None:
-            query = select(Taxa.id)
-            if taxa_id not in self._session.execute(query).scalars().all():
+            is_found = self._session.query(exists().where(Taxa.id == taxa_id)).scalar()
+            if not is_found:
                 msg = f"Taxonomy ID = {taxa_id} not found! Aborting transaction!"
-                raise ValueError(msg)
+                raise InstantiationError(msg)
             self._taxid = taxa_id
             query = queries.query_column_where(
                 Annotation,
                 ["id", "release"],
                 filters={"taxa_id": self._taxid, "version": self._db_version},
             )
-            records = [r._asdict() for r in self._session.execute(query)][0]
-            self._annotation_id = records["id"]
-            self._release = records["release"]
+            records = self._session.execute(query).one()
+            self._annotation_id = records[0]
+            self._release = records[1]
 
         self._get_files_path()
 
@@ -175,14 +184,47 @@ class AnnotationService:
     def create_annotation(self) -> None:
         """Create destination, download gene annotation,
         wrangle and write annotation to disk and to database.
+
+        If destination exists, the first record for the current
+        annotation is queried. If there are no records, raises
+        a FileExistsError (annotation file exists, but the database
+        does not appear to have been updated), else nothing
+        is done (it is assumed that the database has been updated).
+        If the destination does not exist, it is created.
         """
-        ret_code = self._download_annotation()
-        if ret_code == 0:
+        parent = self._annotation_file.parent
+        filen = self._annotation_file.name
+        organism_name = filen.split(".")[0].lower()
+
+        try:
+            parent.mkdir(parents=True, exist_ok=False)
+        except FileExistsError as exc:
+            msg = f"Annotation directory {parent} already exists..."
+            logger.debug(msg)
+            query = select(GenomicAnnotation).where(
+                GenomicAnnotation.annotation_id == self._annotation_id
+            )
+            if self._session.execute(query).first() is None:
+                msg = (
+                    f"{msg} but there is no record in GenomicAnnotation matching "
+                    f"the current annotation {self._annotation_id} ({self._taxid}, {self._release}). "
+                    "Aborting transaction!"
+                )
+                raise Exception(msg) from exc
+            return
+
+        try:
+            self._download_annotation()
             features = {k: list(v.keys()) for k, v in self.FEATURES.items()}
             write_annotation_to_bed(
                 self._annotation_file, self._chrom_file, features, AnnotationFormatError
             )
             self._create_annotation()
+            self._session.commit()
+        except:
+            self._session.rollback()
+            shutil.rmtree(parent)
+            raise
 
     def annotate_data(self, eufid: str) -> None:
         """Annotate Data: add entries to DataAnnotation
@@ -283,42 +325,14 @@ class AnnotationService:
         parent, filen = AssemblyService.get_chrom_path(organism_name, assembly_name)
         self._chrom_file = Path(parent, filen)
 
-    def _download_annotation(self) -> int:
-        """Download gene annotation. If the destination already
-        exists, the first record for the current annotation
-        is queried. If None, this raises a FileExistsError
-        (annotation file exists, but the database does not
-        appear to have been updated). If not None, nothing
-        is done, there is no further check. If the destination
-        does not exist, it is created.
-
-        :returns: Success code. A 1 means that the
-        annotation already exists.
-        :rtype: int
-        """
-        parent = self._annotation_file.parent
-        filen = self._annotation_file.name
-        organism_name = filen.split(".")[0].lower()
-        try:
-            parent.mkdir(parents=True, exist_ok=False)
-        except FileExistsError as exc:
-            msg = f"Annotation directory {parent} already exists..."
-            logger.debug(msg)
-            query = select(GenomicAnnotation).where(
-                GenomicAnnotation.annotation_id == self._annotation_id
-            )
-            if self._session.execute(query).first() is None:
-                msg = (
-                    f"{msg} but there is no record in GenomicAnnotation matching "
-                    f"the current annotation {self._annotation_id} ({self._taxid}, {self._release}). "
-                    "Aborting transaction!"
-                )
-                raise Exception(msg) from exc
-            return 1
+    def _download_annotation(self) -> None:
+        """Download gene annotation."""
 
         msg = "Downloading annotation info..."
         logger.debug(msg)
 
+        filen = self._annotation_file.name
+        organism_name = filen.split(".")[0].lower()
         url = urljoin(
             specs.ENSEMBL_FTP,
             f"release-{self._release}",
@@ -332,7 +346,6 @@ class AnnotationService:
             with open(self._annotation_file, "wb") as fh:
                 for chunk in request.iter_content(chunk_size=10 * 1024):
                     fh.write(chunk)
-        return 0
 
     def _create_annotation(self) -> None:
         """Reads annotation file to records and
@@ -352,4 +365,3 @@ class AnnotationService:
         for record in typed_records:
             buffer.buffer_data(record)
         buffer.flush()
-        self._session.commit()

@@ -128,33 +128,44 @@ class ProjectService:
             json.dump(project, f, indent="\t")
         return uuid
 
-    def create_project(self, project: dict, wo_assembly: bool = False) -> None:
+    def create_project(self, project: dict) -> None:
         """Project constructor.
 
         :param project: Project description (json template)
         :type project: dict
-        :param wo_assembly: Skip assembly set up
-        :type wo_assembly: bool
         """
         self._project = project
 
-        self._validate_keys()
-        self._validate_entry()
-        self._add_selection()
-        self._create_smid()
-        self._write_metadata()
+        try:
+            self._validate_keys()
+            self._validate_entry()
+            self._add_selection()
+            self._create_smid()
+            self._write_metadata()
+            self._session.commit()
+        except:
+            self._session.rollback()
+            raise
 
-        if not wo_assembly:
+    def update_assembly_and_annotation(self) -> None:
+        """Eventually download assembly chain files,
+        genome annotation, and write annotations to
+        disk and to the database."""
+        try:
             for assembly in self._assemblies:
                 taxid, name = assembly
                 msg = f"Calling AssemblyService for {name} ({taxid})..."
                 logger.debug(msg)
-                AssemblyService.from_new(self._session, name=name, taxa_id=taxid)
+                AssemblyService.from_new(
+                    self._session, name=name, taxa_id=taxid
+                )  # commit, unless ...
                 msg = f"Calling AnnotationService for {taxid}..."
                 logger.debug(msg)
                 AnnotationService(
                     session=self._session, taxa_id=taxid
-                ).create_annotation()
+                ).create_annotation()  # commit, unless ...
+        except:
+            raise
 
     def associate_project_to_user(self, user: User, smid: str | None = None):
         """Associate a project to a user.
@@ -322,7 +333,7 @@ class ProjectService:
             if not modification_id:
                 modification = Modification(rna=rna, modomics_id=modomics_id)
                 self._session.add(modification)
-                self._session.commit()
+                self._session.flush()
                 modification_id = modification.id
 
             # technology
@@ -337,7 +348,7 @@ class ProjectService:
             if not technology_id:
                 technology = DetectionTechnology(tech=tech, method_id=method_id)
                 self._session.add(technology)
-                self._session.commit()
+                self._session.flush()
                 technology_id = technology.id
 
             # organism
@@ -352,7 +363,7 @@ class ProjectService:
             if not organism_id:
                 organism = Organism(cto=cto, taxa_id=taxa_id)
                 self._session.add(organism)
-                self._session.commit()
+                self._session.flush()
                 organism_id = organism.id
 
             # selection
@@ -373,7 +384,7 @@ class ProjectService:
                     organism_id=organism_id,
                 )
                 self._session.add(selection)
-                self._session.commit()
+                self._session.flush()
 
     def _add_contact(self):
         """Add new contact."""
@@ -397,7 +408,7 @@ class ProjectService:
                 contact_email=contact_email,
             )
             self._session.add(contact)
-            self._session.commit()
+            self._session.flush()
             contact_id = contact.id
         return contact_id
 
@@ -432,7 +443,7 @@ class ProjectService:
 
         self._session.add(project)
         self._session.add_all(sources)
-        self._session.commit()
+        self._session.flush()
 
     def _write_metadata(self) -> None:
         """Writes a copy of project metadata."""

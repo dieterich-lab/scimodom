@@ -3,17 +3,21 @@ from pathlib import Path
 import pytest
 import requests  # type: ignore
 
-from scimodom.services.assembly import AssemblyService, AssemblyVersionError
+from scimodom.services.assembly import (
+    AssemblyService,
+    AssemblyVersionError,
+    InstantiationError,
+)
 from scimodom.utils.specifications import ENSEMBL_FTP, ENSEMBL_ASM_MAPPING
 
 
 def test_init_from_id_wrong_id(Session, setup, data_path):
     with Session() as session, session.begin():
         session.add_all(setup)
-    with pytest.raises(ValueError) as exc:
+    with pytest.raises(InstantiationError) as exc:
         service = AssemblyService.from_id(Session(), assembly_id=99)
     assert (str(exc.value)) == "Assembly ID = 99 not found! Aborting transaction!"
-    assert exc.type == ValueError
+    assert exc.type == InstantiationError
 
 
 def test_init_from_id_wrong_version(Session, setup, data_path):
@@ -57,14 +61,14 @@ def test_init_from_new_exists(Session, setup, data_path):
         (
             "GRCh38",
             None,
-            ValueError,
+            InstantiationError,
             "Taxonomy ID = None not found! Aborting transaction!",
         ),
         (None, 9606, TypeError, "Expected str; got NoneType"),
         (
             "GRCh38",
             0000,
-            ValueError,
+            InstantiationError,
             "Taxonomy ID = 0 not found! Aborting transaction!",
         ),
     ],

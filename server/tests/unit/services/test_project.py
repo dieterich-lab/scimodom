@@ -284,7 +284,7 @@ def test_project_create_project(
     )
     # AssemblyService tested in test_assembly.py
     project_instance = ProjectService(Session())
-    project_instance.create_project(project, wo_assembly=True)
+    project_instance.create_project(project)
     project_smid = project_instance.get_smid()
 
     date_published = datetime.fromisoformat("2024-01-01")
@@ -342,7 +342,7 @@ def test_query_projects(Session, setup, project_template):
         missing_date=None,
     )
     project_instance = ProjectService(Session())
-    project_instance.create_project(project1, wo_assembly=True)
+    project_instance.create_project(project1)
     project_smid1 = project_instance.get_smid()
 
     project2 = _get_project(
@@ -353,7 +353,7 @@ def test_query_projects(Session, setup, project_template):
         missing_date=None,
     )
     project2["title"] = "Title2"
-    project_instance.create_project(project2, wo_assembly=True)
+    project_instance.create_project(project2)
     project_smid2 = project_instance.get_smid()
 
     with Session() as session, session.begin():
