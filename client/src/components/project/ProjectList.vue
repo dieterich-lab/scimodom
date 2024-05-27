@@ -1,13 +1,10 @@
 <script setup>
 import { ref, inject, onMounted } from 'vue'
+import { splitStr } from '@/utils/index.js'
 import { loadProjects } from '@/services/project'
 
 const dialogRef = inject('dialogRef')
 const records = ref()
-
-const splitStr = (str) => {
-  return str.split(',')
-}
 
 onMounted(() => {
   // only list my projects

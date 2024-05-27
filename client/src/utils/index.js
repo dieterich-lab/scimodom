@@ -72,3 +72,11 @@ export function fmtFilter(object) {
     })
     .filter((item) => item)
 }
+
+export function splitStr(str) {
+  if (typeof str === 'string') {
+    return str.split(',')
+  } else {
+    return []
+  }
+}

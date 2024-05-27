@@ -1,6 +1,7 @@
 <script setup>
 import DataTable from 'primevue/datatable'
 import { ref, onMounted } from 'vue'
+import { splitStr } from '@/utils/index.js'
 import { loadProjects } from '@/services/project'
 
 const props = defineProps({
@@ -12,10 +13,6 @@ const props = defineProps({
 
 const projectsById = ref(new Map())
 const project = ref([])
-
-function splitStr(str) {
-  return str.split(',')
-}
 
 onMounted(() => {
   // list all projects by id
