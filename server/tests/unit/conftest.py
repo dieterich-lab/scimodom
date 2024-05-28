@@ -267,6 +267,9 @@ def data_path(tmp_path_factory):
     META_PATH = loc / "metadata"
     META_PATH.mkdir()
 
+    SUB_PATH = loc / "metadata" / "project_requests"
+    SUB_PATH.mkdir()
+
     with open(Path(loc, "test.bed"), "w") as f:
         f.write(f"#fileformat={format}v{version}\n")
         f.write("#organism=9606\n")

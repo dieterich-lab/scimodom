@@ -154,10 +154,13 @@ class AnnotationService:
         elif not Path(cls.DATA_PATH, cls.DATA_SUB_PATH).is_dir():
             msg = f"DATA PATH {Path(cls.DATA_PATH, cls.DATA_SUB_PATH)} not found! Terminating!"
             raise FileNotFoundError(msg)
-        elif not Path(cls.DATA_PATH, cls.DATA_GENE_CACHE_PATH).is_dir():
-            msg = f"DATA PATH {Path(cls.DATA_PATH, cls.DATA_GENE_CACHE_PATH)} not found! Terminating!"
-            raise FileNotFoundError(msg)
         else:
+            if not Path(cls.DATA_PATH, cls.DATA_GENE_CACHE_PATH).is_dir():
+                msg = f"DATA PATH {Path(cls.DATA_PATH, cls.DATA_GENE_CACHE_PATH)} not found! Creating!"
+                logger.warning(msg)
+                Path(cls.DATA_PATH, cls.DATA_GENE_CACHE_PATH).mkdir(
+                    parents=True, mode=0o755
+                )
             return super(AnnotationService, cls).__new__(cls)
 
     @staticmethod
