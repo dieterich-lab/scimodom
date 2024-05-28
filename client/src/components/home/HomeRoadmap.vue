@@ -50,7 +50,10 @@
                   <h2 class="text-lg font-bold mt-0 mb-2">Data Model & Query Optimization</h2>
                   <p class="mt-0 mb-3 leading-tight">Provide fast sort and filter options.</p>
                   <div class="border-2 border-solid border-gb-2 rounded">
-                    <div class="border-2 border-solid border-gb-2 rounded" style="width: 85%"></div>
+                    <div
+                      class="border-2 border-solid border-gb-2 rounded"
+                      style="width: 100%"
+                    ></div>
                   </div>
                 </div>
                 <div class="p-3 border-l-4 border-solid border-gb-2 rounded-l dark:text-white/80">
@@ -96,7 +99,10 @@
                     Harmonize upload services, data validation, setup for Q2.
                   </p>
                   <div class="border-2 border-solid border-gb-2 rounded">
-                    <div class="border-2 border-solid border-gb-2 rounded" style="width: 45%"></div>
+                    <div
+                      class="border-2 border-solid border-gb-2 rounded"
+                      style="width: 100%"
+                    ></div>
                   </div>
                 </div>
               </div>
@@ -107,7 +113,10 @@
                     Add A&A, user account, data sharing and management, ...
                   </p>
                   <div class="border-2 border-solid border-gb-2 rounded">
-                    <div class="border-2 border-solid border-gb-2 rounded" style="width: 50%"></div>
+                    <div
+                      class="border-2 border-solid border-gb-2 rounded"
+                      style="width: 100%"
+                    ></div>
                   </div>
                 </div>
                 <div class="p-3 border-l-4 border-solid border-gb-2 rounded-l dark:text-white/80">
@@ -116,7 +125,10 @@
                     Add public API, integration with A&A, data access management.
                   </p>
                   <div class="border-2 border-solid border-gb-2 rounded">
-                    <div class="border-2 border-solid border-gb-2 rounded" style="width: 0%"></div>
+                    <div
+                      class="border-2 border-solid border-gb-2 rounded"
+                      style="width: 100%"
+                    ></div>
                   </div>
                 </div>
                 <div class="p-3 border-l-4 border-solid border-gb-2 rounded-l dark:text-white/80">
@@ -125,16 +137,16 @@
                     Provide DB dumps and customizable downloads.
                   </p>
                   <div class="border-2 border-solid border-gb-2 rounded">
-                    <div class="border-2 border-solid border-gb-2 rounded" style="width: 0%"></div>
+                    <div class="border-2 border-solid border-gb-2 rounded" style="width: 80%"></div>
                   </div>
                 </div>
               </div>
               <div class="flex-1 flex gap-3 flex-col">
                 <div class="p-3 border-l-4 border-solid border-gb-2 rounded-l dark:text-white/80">
-                  <h2 class="text-lg font-bold mt-0 mb-2">Genome Browser</h2>
-                  <p class="mt-0 mb-3 line-height-3">Add a genome browser to visualize data.</p>
+                  <h2 class="text-lg font-bold mt-0 mb-2">First release</h2>
+                  <p class="mt-0 mb-3 line-height-3">Add data, release version.</p>
                   <div class="border-2 border-solid border-gb-2 rounded">
-                    <div class="border-2 border-solid border-gb-2 rounded" style="width: 0%"></div>
+                    <div class="border-2 border-solid border-gb-2 rounded" style="width: 25%"></div>
                   </div>
                 </div>
               </div>
@@ -149,6 +161,13 @@
                 <div class="p-3 border-l-4 border-solid border-gb-2 rounded-l dark:text-white/80">
                   <h2 class="text-lg font-bold mt-0 mb-2">Analysis & Visualization</h2>
                   <p class="mt-0 mb-3 line-height-3">DB visualization, online data analysis.</p>
+                  <div class="border-2 border-solid border-gb-2 rounded">
+                    <div class="border-2 border-solid border-gb-2 rounded" style="width: 0%"></div>
+                  </div>
+                </div>
+                <div class="p-3 border-l-4 border-solid border-gb-2 rounded-l dark:text-white/80">
+                  <h2 class="text-lg font-bold mt-0 mb-2">Genome Browser</h2>
+                  <p class="mt-0 mb-3 line-height-3">Add a genome browser to visualize data.</p>
                   <div class="border-2 border-solid border-gb-2 rounded">
                     <div class="border-2 border-solid border-gb-2 rounded" style="width: 0%"></div>
                   </div>
@@ -179,7 +198,7 @@
                     <div class="border-2 border-solid border-gb-4 rounded">
                       <div
                         class="border-2 border-solid border-gb-4 rounded"
-                        style="width: 75%"
+                        style="width: 100%"
                       ></div>
                     </div>
                   </div>
@@ -189,7 +208,7 @@
                     <div class="border-2 border-solid border-gb-4 rounded">
                       <div
                         class="border-2 border-solid border-gb-4 rounded"
-                        style="width: 15%"
+                        style="width: 100%"
                       ></div>
                     </div>
                   </div>
@@ -203,7 +222,7 @@
                     <div class="border-2 border-solid border-gb-4 rounded">
                       <div
                         class="border-2 border-solid border-gb-4 rounded"
-                        style="width: 90%"
+                        style="width: 100%"
                       ></div>
                     </div>
                   </div>
@@ -229,7 +248,7 @@
                     <div class="border-2 border-solid border-gg-2 rounded">
                       <div
                         class="border-2 border-solid border-gg-2 rounded"
-                        style="width: 75%"
+                        style="width: 100%"
                       ></div>
                     </div>
                   </div>
@@ -243,7 +262,7 @@
                     <div class="border-2 border-solid border-gg-2 rounded">
                       <div
                         class="border-2 border-solid border-gg-2 rounded"
-                        style="width: 50%"
+                        style="width: 75%"
                       ></div>
                     </div>
                   </div>
@@ -257,7 +276,7 @@
                     <div class="border-2 border-solid border-gg-2 rounded">
                       <div
                         class="border-2 border-solid border-gg-2 rounded"
-                        style="width: 0%"
+                        style="width: 15%"
                       ></div>
                     </div>
                   </div>
@@ -292,7 +311,7 @@
                     <div class="border-2 border-solid border-gg-1 rounded">
                       <div
                         class="border-2 border-solid border-gg-1 rounded"
-                        style="width: 35%"
+                        style="width: 75%"
                       ></div>
                     </div>
                   </div>
@@ -306,7 +325,7 @@
                     <div class="border-2 border-solid border-gg-1 rounded">
                       <div
                         class="border-2 border-solid border-gg-1 rounded"
-                        style="width: 0%"
+                        style="width: 25%"
                       ></div>
                     </div>
                   </div>
@@ -320,7 +339,7 @@
                     <div class="border-2 border-solid border-gg-1 rounded">
                       <div
                         class="border-2 border-solid border-gg-1 rounded"
-                        style="width: 0%"
+                        style="width: 10%"
                       ></div>
                     </div>
                   </div>
