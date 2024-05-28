@@ -8,6 +8,7 @@ import StyledHeadline from '@/components/ui/StyledHeadline.vue'
 import SubTitle from '@/components/ui/SubTitle.vue'
 import LabeledItem from '@/components/ui/LabeledItem.vue'
 import ItemBox from '@/components/ui/ItemBox.vue'
+import LocalTime from '@/components/ui/LocalTime.vue'
 
 const accessToken = useAccessToken()
 const dialogState = useDialogState()
@@ -52,7 +53,9 @@ onMounted(() => {
       <DataTable :value="records" tableStyle="min-width: 50rem">
         <Column field="project_id" header="SMID" />
         <Column field="project_title" header="Title" />
-        <Column field="date_added" header="Added" />
+        <Column header="Added" #body="{ data }">
+          <LocalTime :epoch="data.date_added" />
+        </Column>
       </DataTable>
     </SectionLayout>
   </DefaultLayout>

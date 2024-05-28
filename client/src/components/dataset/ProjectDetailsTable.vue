@@ -3,6 +3,7 @@ import DataTable from 'primevue/datatable'
 import { ref, onMounted } from 'vue'
 import { splitStr } from '@/utils/index.js'
 import { loadProjects } from '@/services/project'
+import LocalTime from '@/components/ui/LocalTime.vue'
 
 const props = defineProps({
   projectId: {
@@ -31,8 +32,12 @@ onMounted(() => {
     <Column field="project_id" header="SMID" />
     <Column field="project_title" header="Title" />
     <Column field="project_summary" header="Summary" />
-    <Column field="date_added" header="Added" />
-    <Column field="date_published" header="Published" />
+    <Column header="Added" #body="{ data }">
+      <LocalTime :epoch="data.date_added" />
+    </Column>
+    <Column header="Published" #body="{ data }">
+      <LocalTime :epoch="data.date_published" :show-time="false" />
+    </Column>
     <Column field="doi" header="DOI">
       <template #body="{ data }">
         <div class="list-none" v-for="doi in splitStr(data.doi)">

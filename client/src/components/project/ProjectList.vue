@@ -2,6 +2,7 @@
 import { ref, inject, onMounted } from 'vue'
 import { splitStr } from '@/utils/index.js'
 import { loadProjects } from '@/services/project'
+import LocalTime from '@/components/ui/LocalTime.vue'
 
 const dialogRef = inject('dialogRef')
 const records = ref()
@@ -32,7 +33,9 @@ function selectProject(data) {
     <Column field="project_id" header="SMID"></Column>
     <Column field="project_title" header="Title"></Column>
     <Column field="project_summary" header="Summary"></Column>
-    <Column field="date_added" header="Added"></Column>
+    <Column header="Added" #body="{ data }">
+      <LocalTime :epoch="data.date_added" />
+    </Column>
     <Column field="contact_name" header="Contact"></Column>
     <Column field="contact_institution" header="Institution"></Column>
     <Column field="doi" header="DOI">

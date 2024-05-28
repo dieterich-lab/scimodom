@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 import json
 import logging
 from pathlib import Path
-from typing import ClassVar, Optional
+from typing import ClassVar, Optional, List, Dict
 
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func
@@ -208,7 +208,7 @@ class ProjectService:
         """
         return self._session.scalars(select(Project).where(Project.id == smid)).one()
 
-    def get_projects(self, user: Optional[User] = None) -> list[dict[str, str]]:
+    def get_projects(self, user: Optional[User] = None) -> List[Dict[str, any]]:
         """Retrieve all projects.
 
         :param user: Optionally restricts the
@@ -247,7 +247,6 @@ class ProjectService:
 
     def _validate_keys(self) -> None:
         """Validate keys from project description (dictionary)."""
-        from itertools import chain
 
         cols = utils.get_table_columns(
             "Project", remove=["id", "date_added", "contact_id"]

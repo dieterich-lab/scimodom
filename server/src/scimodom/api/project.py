@@ -11,15 +11,22 @@ project_api = Blueprint("project_api", __name__)
 
 @project_api.route("/list_all", methods=["GET"])
 def list_all():
+    return _get_projects_for_network()
+
+
+def _get_projects_for_network(user=None):
     project_service = get_project_service()
-    return project_service.get_projects()
+    projects = project_service.get_projects(user)
+    for project in projects:
+        for field in ["date_added", "date_published"]:
+            project[field] = project[field].timestamp()
+    return projects
 
 
 @project_api.route("/list_mine", methods=["GET"])
 @jwt_required()
 def list_mine():
     user_service = get_user_service()
-    project_service = get_project_service()
     email = get_jwt_identity()
     user = user_service.get_user_by_email(email)
-    return project_service.get_projects(user)
+    return _get_projects_for_network(user)

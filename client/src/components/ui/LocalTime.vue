@@ -3,6 +3,11 @@ const props = defineProps({
   epoch: {
     type: Number,
     required: true
+  },
+  showTime: {
+    type: Boolean,
+    required: false,
+    default: true
   }
 })
 
@@ -21,10 +26,15 @@ const mm = pad(d.getMonth() + 1)
 const dd = pad(
   d.getDate()
 ) /* Really getDate? not getDay or getDayofMonath? Yes - really getDate! */
-const HH = pad(d.getHours())
-const MM = pad(d.getMinutes())
-const SS = pad(d.getSeconds())
-const formattedDate = `${yyyy}-${mm}-${dd} ${HH}:${MM}:${SS}`
+let time = ''
+if (props.showTime) {
+  const HH = pad(d.getHours())
+  const MM = pad(d.getMinutes())
+  const SS = pad(d.getSeconds())
+  time = ` ${HH}:${MM}:${SS}`
+}
+
+const formattedDate = `${yyyy}-${mm}-${dd}${time}`
 </script>
 <template>
   {{ formattedDate }}

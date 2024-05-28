@@ -10,7 +10,7 @@ import HomeRoadmap from '@/components/home/HomeRoadmap.vue'
 import PageMaintenance from '@/components/default/PageMaintenance.vue'
 import PageNotFound from '@/components/default/PageNotFound.vue'
 
-import AccessView from '@/views/AccessView.vue'
+import UserAccountView from '@/views/UserAccountView.vue'
 import ProjectView from '@/views/ProjectView.vue'
 import UploadView from '@/views/UploadView.vue'
 
@@ -60,7 +60,7 @@ const router = createRouter({
     {
       path: '/',
       name: 'access',
-      component: AccessView,
+      component: UserAccountView,
       meta: { requiresAuth: true }
     },
     {
