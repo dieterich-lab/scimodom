@@ -4,6 +4,7 @@
 #
 #
 import json
+from os.path import exists, join
 from urllib.parse import quote
 from flask import Blueprint, redirect
 
@@ -12,14 +13,10 @@ from scimodom.services.user import get_user_service, WrongUserOrPassword
 from scimodom.utils.url_routes import (
     CONFIRM_USER_REGISTRATION_URI,
     REQUEST_PASSWORD_RESET_URI,
+    API_PREFIX,
 )
 
 frontend = Blueprint("frontend", __name__, static_folder=Config.FRONTEND_PATH)
-
-
-@frontend.route("/")
-def index():
-    return frontend.send_static_file("index.html")
 
 
 @frontend.route(f"/{CONFIRM_USER_REGISTRATION_URI}/<email>/<token>")
@@ -47,7 +44,12 @@ def request_password_reset(email: str, token: str):
     return response
 
 
-@frontend.route("/<path:filename>")
-def assets(filename):
-    print(filename)
-    return frontend.send_static_file(filename)
+@frontend.route("/", defaults={"path": "index.html"})
+@frontend.route("/<path:path>")
+def index(path: str):
+    if path.startswith(API_PREFIX):
+        return {"message": "Unknown API call"}, 404
+    if exists(join(Config.FRONTEND_PATH, path)):
+        return frontend.send_static_file(path)
+    else:
+        return frontend.send_static_file("index.html")
