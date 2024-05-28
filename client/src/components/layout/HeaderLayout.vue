@@ -45,7 +45,7 @@ const items = ref([
         label: 'Settings',
         icon: 'pi pi-cog',
         command: () => {
-          router.push({ name: 'access' })
+          router.push({ name: 'user-account' })
         }
       },
       {

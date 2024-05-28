@@ -25,64 +25,64 @@ const router = createRouter({
       component: HomeView
     },
     {
-      path: '/',
+      path: '/search',
       name: 'search',
       component: SearchView
     },
     {
-      path: '/:eufid?',
+      path: '/browse/:eufid?',
       name: 'browse',
       props: true,
       component: BrowseView
     },
     {
-      path: '/',
+      path: '/compare',
       name: 'compare',
       component: CompareView
       // redirect: { name: 'maintenance' }
     },
     {
-      path: '/',
+      path: '/download',
       name: 'download',
       component: DownloadView,
-      redirect: { name: '404' }
+      redirect: { name: 'PageNotFound' }
     },
     {
-      path: '/',
+      path: '/documentation',
       name: 'documentation',
       component: DocumentationView
     },
     {
-      path: '/',
+      path: '/roadmap',
       name: 'roadmap',
       component: HomeRoadmap
     },
     {
-      path: '/',
-      name: 'access',
+      path: '/user-account',
+      name: 'user-account',
       component: UserAccountView,
       meta: { requiresAuth: true }
     },
     {
-      path: '/',
+      path: '/project',
       name: 'project',
       component: ProjectView,
       meta: { requiresAuth: true }
     },
     {
-      path: '/',
+      path: '/upload',
       name: 'upload',
       component: UploadView,
       meta: { requiresAuth: true }
     },
     {
-      path: '/',
+      path: '/maintenance',
       name: 'maintenance',
       component: PageMaintenance
     },
     {
-      path: '/',
-      name: '404',
+      path: '/:pathMatch(.*)*',
+      name: 'PageNotFound',
       component: PageNotFound
     }
     // {
