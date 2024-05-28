@@ -54,8 +54,8 @@ def post_bam_file(dataset_id: str, name: str):
 @cross_origin(supports_credentials=True)
 def get_bam_file(dataset_id: str, name: str):
     try:
-        dataset, error, status = get_validate_dataset(dataset_id)
-        bam_file, error, status = get_valid_bam_file(dataset, name)
+        dataset = get_validate_dataset(dataset_id)
+        bam_file = get_valid_bam_file(dataset, name)
     except ClientResponseException as e:
         return e.response_tupel
 
