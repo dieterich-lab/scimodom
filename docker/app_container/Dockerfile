@@ -9,7 +9,7 @@ COPY docker/app_container/files/. /app/
 RUN apt-get update \
     && apt-get install -y bedtools findutils \
     && useradd app \
-    && mkdir -p /uploads /app/venv \
+    && mkdir -p /uploads /tmp/bedtools /app/venv \
     && chown -R app /uploads /install /app/venv \
     && cp -r /install/migrations /install/alembic.ini /app
 

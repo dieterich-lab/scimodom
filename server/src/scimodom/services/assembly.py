@@ -251,7 +251,7 @@ class AssemblyService:
         maintenance/initial setup. Does not upgrade DB version."""
 
         msg = "Setting directories up for new assembly for current version..."
-        logger.debug(msg)
+        logger.info(msg)
 
         query = queries.query_column_where(
             Assembly, "version", filters={"id": self._assembly_id}
@@ -273,7 +273,7 @@ class AssemblyService:
             raise Exception(msg) from error
 
         msg = "Downloading assembly info..."
-        logger.debug(msg)
+        logger.info(msg)
 
         url = urljoin(
             specs.ENSEMBL_SERVER,
@@ -400,7 +400,7 @@ class AssemblyService:
         """
 
         msg = "Setting directories up for a new assembly..."
-        logger.debug(msg)
+        logger.info(msg)
 
         parent, filen = self.get_chain_path()
         chain_file = Path(parent, filen)
@@ -415,7 +415,7 @@ class AssemblyService:
             raise Exception(msg) from exc
 
         msg = "Downloading chain files..."
-        logger.debug(msg)
+        logger.info(msg)
 
         url = urljoin(
             specs.ENSEMBL_FTP, specs.ENSEMBL_ASM_MAPPING, organism.lower(), filen

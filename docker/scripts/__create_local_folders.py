@@ -23,6 +23,8 @@ HOST_FOLDERS = [
     Path(HOST_DATA_DIR, "metadata", "project_requests"),
     Path(HOST_DATA_DIR, "annotation"),
     Path(HOST_DATA_DIR, "assembly"),
+    Path(HOST_DATA_DIR, "cache", "gene", "selection"),
+    Path(HOST_DATA_DIR, "bam_files"),
 ]
 SECRET_FILES = ["mariadb-root", "mariadb-scimodom", "flask-secret"]
 
@@ -65,7 +67,7 @@ def write_client_config():
 
 umask(0o77)
 for folder in HOST_FOLDERS:
-    Path(folder).mkdir(exist_ok=True)
+    Path(folder).mkdir(parents=True, exist_ok=True)
 for name in SECRET_FILES:
     write_password_file(name)
 write_client_config()

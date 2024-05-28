@@ -74,6 +74,9 @@ class ProjectService:
         elif not Path(cls.DATA_PATH, cls.DATA_SUB_PATH).is_dir():
             msg = f"DATA PATH {Path(cls.DATA_PATH, cls.DATA_SUB_PATH)} not found! Terminating!"
             raise FileNotFoundError(msg)
+        elif not Path(cls.DATA_PATH, cls.DATA_SUB_PATH, cls.DATA_SUB_PATH_SUB).is_dir():
+            msg = f"DATA PATH {Path(cls.DATA_PATH, cls.DATA_SUB_PATH, cls.DATA_SUB_PATH_SUB)} not found! Terminating!"
+            raise FileNotFoundError(msg)
         else:
             return super(ProjectService, cls).__new__(cls)
 
@@ -89,9 +92,6 @@ class ProjectService:
             ProjectService.DATA_SUB_PATH,
             ProjectService.DATA_SUB_PATH_SUB,
         )
-        if not project_request_path.is_dir():
-            msg = f"DATA PATH {project_request_path} not found! Terminating!"
-            raise FileNotFoundError(msg)
 
         uuid = utils.gen_short_uuid(12, [])
         filen = Path(project_request_path, f"{uuid}.json")
