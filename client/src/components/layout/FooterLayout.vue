@@ -23,9 +23,7 @@ import Logo from '@/assets/images/rmap-logo.svg'
               </li>
               <!-- TODO: add contact form -->
               <li>
-                <a
-                  href="mailto:boileau@uni-heidelberg.de"
-                  class="hover:underline dark:text-surface-400"
+                <a href="mailto:it@dieterichlab.org" class="hover:underline dark:text-surface-400"
                   >Contact us</a
                 >
               </li>

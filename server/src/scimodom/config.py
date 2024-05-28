@@ -42,7 +42,9 @@ class Config:
     SECRET_KEY: ClassVar[str] = _get_required_parameter("SECRET_KEY")
     SMTP_SERVER: ClassVar[str] = _get_required_parameter("SMTP_SERVER")
     SMTP_FROM_ADDRESS: ClassVar[str] = _get_required_parameter("SMTP_FROM_ADDRESS")
-    SMTP_TO_ADDRESS: ClassVar[str] = _get_required_parameter("SMTP_TO_ADDRESS")
+    NOTIFICATION_ADDRESS: ClassVar[str] = _get_required_parameter(
+        "NOTIFICATION_ADDRESS"
+    )
     HTTP_PUBLIC_URL: ClassVar[str] = _get_required_parameter("HTTP_PUBLIC_URL")
 
     FLASK_DEBUG: ClassVar[bool] = eval(os.getenv("FLASK_DEBUG", "False"))

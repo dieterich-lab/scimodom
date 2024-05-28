@@ -95,7 +95,7 @@ If you didn't request a new password, please ignore this message and consider re
         :type uuid: str
         """
         self._send(
-            to_address=Config.SMTP_TO_ADDRESS,
+            to_address=Config.NOTIFICATION_ADDRESS,
             subject="Sci-ModoM - New project request received",
             text=f"""Project template: {uuid}.json""",
         )

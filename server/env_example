@@ -16,7 +16,7 @@ SMTP_SERVER=mail-server.my-site.org
 # Email address to use als sender for emails.
 SMTP_FROM_ADDRESS=scimodom@my-site.org
 # Address to sent notifications about user requests to
-SMTP_TO_ADDRESS=scimodom@my-site.org
+NOTIFICATION_ADDRESS=scimodom@my-site.org
 
 ##
 ## Local part - only use if the Flask app runs locally
