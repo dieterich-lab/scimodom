@@ -19,7 +19,8 @@ def _get_projects_for_network(user=None):
     projects = project_service.get_projects(user)
     for project in projects:
         for field in ["date_added", "date_published"]:
-            project[field] = project[field].timestamp()
+            if field in project and project[field] is not None:
+                project[field] = project[field].timestamp()
     return projects
 
 
