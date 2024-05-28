@@ -39,7 +39,7 @@ const useDialogState = defineStore('dialogState', {
         } else if (workflow_status['operation'] == 'password_reset') {
           this.email = workflow_status['email']
           this.token = workflow_status['token']
-          this.state = DIALOG.RESET_PASSWORD_NEW_PASSWORD
+          this.state = DIALOG.CHANGE_PASSWORD
         } else {
           console.log(`Got unexpected operation in workflow_status cookie: ${workflow_status_raw}`)
         }
