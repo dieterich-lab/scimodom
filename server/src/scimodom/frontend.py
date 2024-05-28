@@ -44,12 +44,6 @@ def request_password_reset(email: str, token: str):
     return response
 
 
-@frontend.route("/dist/<path:filename>")
-def assets(filename):
-    print(filename)
-    return frontend.send_static_file(filename)
-
-
 @frontend.route("/", defaults={"path": "index.html"})
 @frontend.route("/<path:path>")
 def index(path: str):
