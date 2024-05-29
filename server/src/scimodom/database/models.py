@@ -45,14 +45,18 @@ class Modification(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     modomics_id: Mapped[str] = mapped_column(ForeignKey("modomics.id"), index=True)
-    # rna: Mapped[str] = mapped_column(String(32), nullable=False)
     rna: Mapped[str] = mapped_column(ForeignKey("rna_type.id"))
 
     __table_args__ = (UniqueConstraint(modomics_id, rna),)
 
     inst_modomics: Mapped["Modomics"] = relationship(back_populates="modifications")
     inst_rna: Mapped["RNAType"] = relationship(back_populates="modifications")
+
     selections: Mapped[List["Selection"]] = relationship(
+        back_populates="inst_modification"
+    )
+    datas: Mapped[List["Data"]] = relationship(back_populates="inst_modification")
+    associations: Mapped[List["DatasetModificationAssociation"]] = relationship(
         back_populates="inst_modification"
     )
 
@@ -83,9 +87,11 @@ class DetectionTechnology(Base):
     __table_args__ = (UniqueConstraint(method_id, tech),)
 
     inst_method: Mapped["DetectionMethod"] = relationship(back_populates="technologies")
+
     selections: Mapped[List["Selection"]] = relationship(
         back_populates="inst_technology"
     )
+    datasets: Mapped[List["Dataset"]] = relationship(back_populates="inst_technology")
 
 
 class Taxonomy(Base):
@@ -112,6 +118,7 @@ class Taxa(Base):
     taxonomy_id: Mapped[int] = mapped_column(ForeignKey("taxonomy.id"), index=True)
 
     inst_taxonomy: Mapped["Taxonomy"] = relationship(back_populates="taxa")
+
     organisms: Mapped[List["Organism"]] = relationship(back_populates="inst_taxa")
     assemblies: Mapped[List["Assembly"]] = relationship(back_populates="inst_taxa")
     annotations: Mapped[List["Annotation"]] = relationship(back_populates="inst_taxa")
@@ -129,11 +136,18 @@ class Organism(Base):
     __table_args__ = (UniqueConstraint(taxa_id, cto),)
 
     inst_taxa: Mapped["Taxa"] = relationship(back_populates="organisms")
+
     selections: Mapped[List["Selection"]] = relationship(back_populates="inst_organism")
+    datasets: Mapped[List["Dataset"]] = relationship(back_populates="inst_organism")
 
 
 class Selection(Base):
-    """Association: Modification, DetectionTechnology, Organism"""
+    """Association: Modification, Organism, DetectionTechnology.
+    This table defines the selections or combinations
+    of modification, organism, and technology IDs that are
+    actually available in the database, i.e. not all combinations
+    of modification, organism, and technology IDs may be
+    available."""
 
     __tablename__ = "selection"
 
@@ -157,10 +171,6 @@ class Selection(Base):
         back_populates="selections"
     )
     inst_organism: Mapped["Organism"] = relationship(back_populates="selections")
-
-    associations: Mapped[List["Association"]] = relationship(
-        back_populates="inst_selection"
-    )
 
 
 class Assembly(Base):
@@ -306,6 +316,8 @@ class Dataset(Base):
     project_id: Mapped[str] = mapped_column(
         ForeignKey("project.id"), index=True
     )  # SMID
+    technology_id: Mapped[int] = mapped_column(ForeignKey("technology.id"), index=True)
+    organism_id: Mapped[int] = mapped_column(ForeignKey("organism.id"), index=True)
     date_added: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     # bedRMod header
@@ -319,10 +331,15 @@ class Dataset(Base):
     external_source: Mapped[str] = mapped_column(String(255), nullable=True)
 
     inst_project: Mapped["Project"] = relationship(back_populates="datasets")
+    inst_technology: Mapped["DetectionTechnology"] = relationship(
+        back_populates="datasets"
+    )
+    inst_organism: Mapped["Organism"] = relationship(back_populates="datasets")
 
-    associations: Mapped[List["Association"]] = relationship(
+    associations: Mapped[List["DatasetModificationAssociation"]] = relationship(
         back_populates="inst_dataset"
     )
+    datas: Mapped[List["Data"]] = relationship(back_populates="inst_dataset")
 
 
 class Data(Base):
@@ -331,8 +348,9 @@ class Data(Base):
     __tablename__ = "data"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    association_id: Mapped[str] = mapped_column(
-        ForeignKey("association.id"), index=True
+    dataset_id: Mapped[str] = mapped_column(ForeignKey("dataset.id"), index=True)
+    modification_id: Mapped[str] = mapped_column(
+        ForeignKey("modification.id"), index=True
     )
     # bedRMod fields - order must match bedRMod columns?
     chrom: Mapped[str] = mapped_column(String(128), nullable=False)
@@ -353,24 +371,27 @@ class Data(Base):
         back_populates="inst_data"
     )
 
-    inst_association: Mapped["Association"] = relationship(back_populates="data")
+    inst_dataset: Mapped["Dataset"] = relationship(back_populates="datas")
+    inst_modification: Mapped["Modification"] = relationship(back_populates="datas")
 
 
-class Association(Base):
-    """Association: Dataset, Selection"""
+class DatasetModificationAssociation(Base):
+    """Association: Dataset, Modification"""
 
-    __tablename__ = "association"
+    __tablename__ = "dataset_modification_association"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    selection_id: Mapped[int] = mapped_column(ForeignKey("selection.id"), index=True)
     dataset_id: Mapped[str] = mapped_column(ForeignKey("dataset.id"), index=True)
+    modification_id: Mapped[int] = mapped_column(
+        ForeignKey("modification.id"), index=True
+    )
 
-    __table_args__ = (Index("idx_assoc", "selection_id", "dataset_id", unique=True),)
+    __table_args__ = (Index("idx_assoc", "dataset_id", "modification_id", unique=True),)
 
     inst_dataset: Mapped["Dataset"] = relationship(back_populates="associations")
-    inst_selection: Mapped["Selection"] = relationship(back_populates="associations")
-
-    data: Mapped[List["Data"]] = relationship(back_populates="inst_association")
+    inst_modification: Mapped["Modification"] = relationship(
+        back_populates="associations"
+    )
 
 
 class DataAnnotation(Base):
