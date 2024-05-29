@@ -212,16 +212,16 @@ def add_dataset(
     """
     session = get_session()
 
-    selection_id = kwargs.get("selection_id", None)
-    if selection_id is not None:
+    selection_ids = kwargs.get("selection_ids", None)
+    if selection_ids is not None:
         service = DataService.from_selection(
-            session, smid, title, filen, assembly_id, selection_id=selection_id
+            session, smid, title, filen, assembly_id, selection_ids=selection_ids
         )
     else:
         modification_id = kwargs["modification_id"]
         technology_id = kwargs["technology_id"]
         organism_id = kwargs["organism_id"]
-        service = DataService.from_new(
+        service = DataService.from_options(
             session,
             smid,
             title,
@@ -344,7 +344,7 @@ def add_all(directory: Path, templates: list[str]) -> None:
                 )
                 assembly_id = session.execute(query).scalar_one()
                 # add dataset to project
-                data_service = DataService.from_new(
+                data_service = DataService.from_options(
                     session,
                     smid,
                     title,

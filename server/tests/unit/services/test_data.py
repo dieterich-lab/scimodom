@@ -139,7 +139,7 @@ def test_instantiation_from_selection_no_smid_fail(Session):
             title="title",
             filen="filen",
             assembly_id=1,
-            selection_id=[1, 1],
+            selection_ids=[1, 1],
         )
     assert (
         str(exc.value) == "Unrecognised SMID 12345678. Cannot instantiate DataService!"
@@ -147,15 +147,15 @@ def test_instantiation_from_selection_no_smid_fail(Session):
     assert exc.type == InstantiationError
 
 
-def test_instantiation_from_new_no_smid_fail(Session):
+def test_instantiation_from_options_no_smid_fail(Session):
     with pytest.raises(InstantiationError) as exc:
-        DataService.from_new(
+        DataService.from_options(
             session=Session(),
             smid="12345678",
             title="title",
             filen="filen",
             assembly_id=1,
-            modification_id=1,
+            modification_ids=1,
             technology_id=1,
             organism_id=1,
         )
@@ -177,25 +177,25 @@ def test_instantiation_from_selection_fail(Session, setup, project_template):
             title="title",
             filen="filen",
             assembly_id=1,
-            selection_id=[1, 1],
+            selection_ids=[1, 1],
         )
     assert str(exc.value) == "Repeated selection IDs. Cannot instantiate DataService!"
     assert exc.type == InstantiationError
 
 
-def test_instantiation_from_new_fail(Session, setup, project_template):
+def test_instantiation_from_options_fail(Session, setup, project_template):
     with Session() as session, session.begin():
         session.add_all(setup)
         smid = _mock_project_service(session, project_template)
         session.commit()
     with pytest.raises(InstantiationError) as exc:
-        DataService.from_new(
+        DataService.from_options(
             session=Session(),
             smid=smid,
             title="title",
             filen="filen",
             assembly_id=1,
-            modification_id=[1, 1],
+            modification_ids=[1, 1],
             technology_id=1,
             organism_id=1,
         )
@@ -205,19 +205,19 @@ def test_instantiation_from_new_fail(Session, setup, project_template):
     assert exc.type == InstantiationError
 
 
-def test_from_new_fail_no_row(Session, setup, project_template):
+def test_from_options_fail_no_row(Session, setup, project_template):
     with Session() as session, session.begin():
         session.add_all(setup)
         smid = _mock_project_service(session, project_template)
         session.commit()
     with pytest.raises(SelectionExistsError) as exc:
-        DataService.from_new(
+        DataService.from_options(
             session=Session(),
             smid=smid,
             title="title",
             filen="filen",
             assembly_id=1,
-            modification_id=2,
+            modification_ids=2,
             technology_id=2,
             organism_id=1,
         )
@@ -240,9 +240,11 @@ def test_from_selection_fail(Session, setup, project_template):
             title="title",
             filen="filen",
             assembly_id=1,
-            selection_id=99,
+            selection_ids=99,
         )
-    assert str(exc.value) == "Selection ID = 99 not found! Aborting transaction!"
+    assert (
+        str(exc.value) == "Selection ID = 99 not found! Cannot instantiate DataService!"
+    )
     assert exc.type == InstantiationError
 
 
@@ -254,23 +256,27 @@ def test_from_selection_fail(Session, setup, project_template):
         (1, 1, 99, "Organism"),
     ],
 )
-def test_from_new_fail(modid, techid, orgid, name, Session, setup, project_template):
+def test_from_options_fail(
+    modid, techid, orgid, name, Session, setup, project_template
+):
     with Session() as session, session.begin():
         session.add_all(setup)
         smid = _mock_project_service(session, project_template)
         session.commit()
     with pytest.raises(InstantiationError) as exc:
-        DataService.from_new(
+        DataService.from_options(
             session=Session(),
             smid=smid,
             title="title",
             filen="filen",
             assembly_id=1,
-            modification_id=modid,
+            modification_ids=modid,
             technology_id=techid,
             organism_id=orgid,
         )
-    assert str(exc.value) == f"{name} ID = 99 not found! Aborting transaction!"
+    assert (
+        str(exc.value) == f"{name} ID = 99 not found! Cannot instantiate DataService!"
+    )
     assert exc.type == InstantiationError
 
 
@@ -293,32 +299,32 @@ def test_ids_fail(selid, error, Session, setup, project_template):
             title="title",
             filen="filen",
             assembly_id=1,
-            selection_id=[1, selid],
+            selection_ids=[1, selid],
         )
     assert (
         str(exc.value)
-        == f"Different {error} cannot be associated with the same dataset. Aborting transaction!"
+        == f"Different {error} cannot be associated with the same dataset. Cannot instantiate DataService!"
     )
     assert exc.type == InstantiationError
 
 
-def test_from_new(Session, setup, project_template):
+def test_from_options(Session, setup, project_template):
     with Session() as session, session.begin():
         session.add_all(setup)
         smid = _mock_project_service(session, project_template)
         session.commit()
-    service = DataService.from_new(
+    service = DataService.from_options(
         session=Session(),
         smid=smid,
         title="title",
         filen="filen",
         assembly_id=1,
-        modification_id=1,
+        modification_ids=1,
         technology_id=1,
         organism_id=1,
     )
-    assert service._selection_id[0] == 1
-    assert len(service._selection_id) == 1
+    assert service._selection_ids[0] == 1
+    assert len(service._selection_ids) == 1
     # with Session() as session, session.begin():
     #     stmt = select(func.count()).select_from(Dataset)
     #     num_records = session.execute(stmt).scalar()
@@ -336,10 +342,10 @@ def test_from_selection(Session, setup, project_template):
         title="title",
         filen="filen",
         assembly_id=1,
-        selection_id=1,
+        selection_ids=1,
     )
-    assert service._modification_id[0] == 1
-    assert len(service._modification_id) == 1
+    assert service._modification_ids[0] == 1
+    assert len(service._modification_ids) == 1
     assert service._technology_id == 1
     assert service._organism_id == 1
 
@@ -356,7 +362,7 @@ def test_validate_entry(Session, setup, project_template):
         title="title",
         filen="filen",
         assembly_id=1,
-        selection_id=1,
+        selection_ids=1,
     )
     assert service._validate_entry() is None
 
@@ -384,7 +390,7 @@ def test_validate_existing_entry(Session, setup, project_template):
         title="title",
         filen="filen",
         assembly_id=1,
-        selection_id=1,
+        selection_ids=1,
     )
     with pytest.raises(DatasetExistsError) as exc:
         service._validate_entry()
@@ -407,7 +413,7 @@ def test_add_association(Session, setup, project_template):
         title="title",
         filen="filen",
         assembly_id=1,
-        selection_id=[1, 4],
+        selection_ids=[1, 4],
     )
     service._create_eufid()
     service._add_association()

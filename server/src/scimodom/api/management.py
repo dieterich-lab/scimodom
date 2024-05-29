@@ -71,13 +71,13 @@ def add_dataset():
     dataset_form = request.json
     upload_path = Path(Config.UPLOAD_PATH, dataset_form["file_id"])
     try:
-        data_service = DataService.from_new(
+        data_service = DataService.from_options(
             get_session(),
             dataset_form["smid"],
             dataset_form["title"],
             upload_path,
             dataset_form["assembly_id"],
-            modification_id=dataset_form["modification_id"],
+            modification_ids=dataset_form["modification_id"],
             technology_id=dataset_form["technology_id"],
             organism_id=dataset_form["organism_id"],
         )

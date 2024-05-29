@@ -71,10 +71,10 @@ class DataService:
     :param assembly_id: Assembly ID. This is not the
     assembly name from a EU formatted file header.
     :type assembly_id: int
-    :param selection_id: Selection ID(s) associated with dataset
-    :type selection_id: int or list of int
-    :param modification_id: Modification ID(s) associated with dataset
-    :type modification_id: int or list of int
+    :param selection_ids: Selection ID(s) associated with dataset
+    :type selection_ids: int or list of int
+    :param modification_ids: Modification ID(s) associated with dataset
+    :type modification_ids: int or list of int
     :param technology_id: Technology ID associated with dataset
     :type technology_id: int
     :param organism_id: Organism ID associated with dataset
@@ -103,49 +103,19 @@ class DataService:
 
         self._association: dict[str, int] = dict()
 
-        self._selection_id: list[int]
-        self._modification_id: list[int]
-        self._technology_id: int
+        self._selection_ids: list[int]
+        self._modification_ids: list[int]
         self._organism_id: int
+        self._technology_id: int
         self._eufid: str
 
-        selection_id = kwargs.get("selection_id", None)
-        if selection_id is not None:
-            for sid in selection_id:
-                is_found = self._session.query(
-                    exists().where(Selection.id == sid)
-                ).scalar()
-                if not is_found:
-                    msg = f"Selection ID = {sid} not found! Aborting transaction!"
-                    raise InstantiationError(msg)
-            self._selection_id = selection_id
-            self._set_ids()
+        selection_ids = kwargs.get("selection_ids", None)
+        if selection_ids is not None:
+            self._selection_ids = selection_ids
         else:
-            modification_id = kwargs.get("modification_id", None)
-            for mid in modification_id:
-                try:
-                    _ = self._modification_id_to_name(mid)
-                except NoResultFound:
-                    msg = f"Modification ID = {mid} not found! Aborting transaction!"
-                    raise InstantiationError(msg)
-            self._modification_id = modification_id
-            technology_id = kwargs.get("technology_id", None)
-            try:
-                _ = self._technology_id_to_tech(technology_id)
-            except NoResultFound:
-                msg = (
-                    f"Technology ID = {technology_id} not found! Aborting transaction!"
-                )
-                raise InstantiationError(msg)
-            self._technology_id = technology_id
-            organism_id = kwargs.get("organism_id", None)
-            try:
-                _ = self._organism_id_to_organism(organism_id)
-            except NoResultFound:
-                msg = f"Organism ID = {organism_id} not found! Aborting transaction!"
-                raise InstantiationError(msg)
-            self._organism_id = organism_id
-            self._set_selection()
+            self._modification_ids = kwargs["modification_ids"]
+            self._organism_id = kwargs["organism_id"]
+            self._technology_id = kwargs["technology_id"]
 
     @classmethod
     def from_selection(
@@ -155,7 +125,7 @@ class DataService:
         title: str,
         filen: str | Path,
         assembly_id: int,
-        selection_id: int | list[int],
+        selection_ids: int | list[int],
     ):
         """Provides DataService factory when selection ID
         is known.
@@ -171,38 +141,44 @@ class DataService:
         :param assembly_id: Assembly ID. This is not the
         assembly name from a EU formatted file header.
         :type assembly_id: int
-        :param selection_id: Selection ID(s)
-        :type selection_id: int or list of int
+        :param selection_ids: Selection ID(s)
+        :type selection_ids: int or list of int
         :returns: DataService class instance
         :rtype: DataService
         """
-        query = select(Project.id)
-        smids = session.execute(query).scalars().all()
-        if smid not in smids:
+        is_found = session.query(exists().where(Project.id == smid)).scalar()
+        if not is_found:
             msg = f"Unrecognised SMID {smid}. Cannot instantiate DataService!"
             raise InstantiationError(msg)
-        ids = utils.to_list(selection_id)
-        if len(set(ids)) != len(ids):
+        sids = utils.to_list(selection_ids)
+        if len(set(sids)) != len(sids):
             msg = "Repeated selection IDs. Cannot instantiate DataService!"
             raise InstantiationError(msg)
-        service = cls(session, smid, title, filen, assembly_id, selection_id=ids)
+        for sid in sids:
+            is_found = session.query(exists().where(Selection.id == sid)).scalar()
+            if not is_found:
+                msg = f"Selection ID = {sid} not found! Cannot instantiate DataService!"
+                raise InstantiationError(msg)
+        service = cls(session, smid, title, filen, assembly_id, selection_ids=sids)
+        # retrieve modification, organism, and technology IDs from selection IDs
+        service._set_ids()
         return service
 
     @classmethod
-    def from_new(
+    def from_options(
         cls,
         session: Session,
         smid: str,
         title: str,
         filen: str | Path,
         assembly_id: int,
-        modification_id: int | list[int],
+        modification_ids: int | list[int],
         technology_id: int,
         organism_id: int,
     ):
         """Provides DataService factory to instantiate class with
-        modification_id, technology_id, and organism_id, which
-        make up a unique selection.
+        selected options: modification_id, technology_id, and
+        organism_id, which make up a unique selection.
 
         :param session: SQLAlchemy ORM session
         :type session: Session
@@ -215,8 +191,8 @@ class DataService:
         :param assembly_id: Assembly ID. This is not the
         assembly name from a EU formatted file header.
         :type assembly_id: int
-        :param modification_id: Modification ID(s) (RNA type, modomics ID)
-        :type modification_id: int or list of int
+        :param modification_ids: Modification ID(s) (RNA type, modomics ID)
+        :type modification_ids: int or list of int
         :param technology_id: Technology ID (method ID, technology)
         :type technology_id: int
         :param organism_id: Organism ID (taxa ID, cto)
@@ -224,25 +200,43 @@ class DataService:
         :returns: DataService class instance
         :rtype: DataService
         """
-        query = select(Project.id)
-        smids = session.execute(query).scalars().all()
-        if smid not in smids:
+        is_found = session.query(exists().where(Project.id == smid)).scalar()
+        if not is_found:
             msg = f"Unrecognised SMID {smid}. Cannot instantiate DataService!"
             raise InstantiationError(msg)
-        ids = utils.to_list(modification_id)
-        if len(set(ids)) != len(ids):
+        mids = utils.to_list(modification_ids)
+        if len(set(mids)) != len(mids):
             msg = "Repeated modification IDs. Cannot instantiate DataService!"
             raise InstantiationError(msg)
+        # actually instantiate, then validate...
         service = cls(
             session,
             smid,
             title,
             filen,
             assembly_id,
-            modification_id=ids,
+            modification_ids=mids,
             technology_id=technology_id,
             organism_id=organism_id,
         )
+        for mid in mids:
+            try:
+                _ = service._modification_id_to_name(mid)
+            except NoResultFound:
+                msg = f"Modification ID = {mid} not found! Cannot instantiate DataService!"
+                raise InstantiationError(msg)
+        try:
+            _ = service._technology_id_to_tech(technology_id)
+        except NoResultFound:
+            msg = f"Technology ID = {technology_id} not found! Cannot instantiate DataService!"
+            raise InstantiationError(msg)
+        try:
+            _ = service._organism_id_to_organism(organism_id)
+        except NoResultFound:
+            msg = f"Organism ID = {organism_id} not found! Cannot instantiate DataService!"
+            raise InstantiationError(msg)
+        # retrieve selection ID from selected options
+        service._set_selection()
         return service
 
     @staticmethod
@@ -370,7 +364,7 @@ class DataService:
             checkpoint.rollback()
             raise
         # ... update cache
-        annotation_service.update_gene_cache(self._selection_id)
+        annotation_service.update_gene_cache(self._selection_ids)
 
         msg = (
             f"Added dataset {self._eufid} to project {self._smid} with title = {self._title}, "
@@ -393,10 +387,10 @@ class DataService:
         A dataset can be associated with more
         than one selection_id, but organism_id
         and technology_id must be identical."""
-        modification_id: list = []
+        modification_ids: list = []
         technology_id: int
         organism_id: int
-        for selection_id in self._selection_id:
+        for selection_id in self._selection_ids:
             query = (
                 select(
                     Modification.id,
@@ -419,7 +413,7 @@ class DataService:
                 .where(Selection.id == selection_id)
             )
             selection = self._session.execute(query).one()
-            modification_id.append(selection[0])
+            modification_ids.append(selection[0])
             try:
                 technology_id  # noqa: F821
             except:
@@ -430,7 +424,7 @@ class DataService:
                 msg = (
                     f"Different technologies {tech1} and {tech2} "
                     "cannot be associated with the same dataset. "
-                    "Aborting transaction!"
+                    "Cannot instantiate DataService!"
                 )
                 raise InstantiationError(msg)
             try:
@@ -443,19 +437,19 @@ class DataService:
                 msg = (
                     f"Different organisms {org_name1} ({cto1}) and "
                     f"{org_name2} ({cto2}) cannot be associated with the "
-                    "same dataset. Aborting transaction!"
+                    "same dataset. Cannot instantiate DataService!"
                 )
                 raise InstantiationError(msg)
             self._association[selection[1]] = selection_id
         # this cannot actually happen...
-        if len(set(modification_id)) != len(modification_id):
-            m_names = [self._modification_id_to_name(mid) for mid in modification_id]
+        if len(set(modification_ids)) != len(modification_ids):
+            m_names = [self._modification_id_to_name(mid) for mid in modification_ids]
             msg = (
                 f"Repeated modifications {','.join([m for m in m_names])} "
-                "cannot be associated with the same dataset. Aborting transaction!"
+                "cannot be associated with the same dataset. Cannot instantiate DataService!"
             )
             raise InstantiationError(msg)
-        self._modification_id = modification_id
+        self._modification_ids = modification_ids
         self._technology_id = technology_id
         self._organism_id = organism_id
 
@@ -466,8 +460,8 @@ class DataService:
         technology_id, a selection_id may or may
         not exists. If it does not exists, a
         SelectionExistsError is raised."""
-        selection_id = []
-        for modification_id in self._modification_id:
+        selection_ids = []
+        for modification_id in self._modification_ids:
             query = queries.query_column_where(
                 Selection,
                 "id",
@@ -478,7 +472,7 @@ class DataService:
                 },
             )
             try:
-                selection_id.append(self._session.execute(query).scalar_one())
+                selection_ids.append(self._session.execute(query).scalar_one())
             except NoResultFound as exc:
                 m_name = self._modification_id_to_name(modification_id)
                 tech = self._technology_id_to_tech(self._technology_id)
@@ -490,15 +484,15 @@ class DataService:
                 )
                 raise SelectionExistsError(msg) from exc
             name = self._modification_id_to_name(modification_id)
-            self._association[name] = selection_id[-1]
+            self._association[name] = selection_ids[-1]
         # this cannot actually happen...
-        if len(set(selection_id)) != len(selection_id):
+        if len(set(selection_ids)) != len(selection_ids):
             msg = (
-                f"Repeated selection IDs {','.join([i for i in selection_id])} are "
-                "associated with this dataset. Aborting transaction!"
+                f"Repeated selection IDs {','.join([i for i in selection_ids])} are "
+                "associated with this dataset. Cannot instantiate DataService!"
             )
             raise InstantiationError(msg)
-        self._selection_id = selection_id
+        self._selection_ids = selection_ids
 
     def _validate_entry(self) -> None:
         """Tentatively check if dataset already exists using
@@ -506,7 +500,7 @@ class DataService:
 
         Raises DatasetExistsError
         """
-        for selection_id in self._selection_id:
+        for selection_id in self._selection_ids:
             query = (
                 select(func.distinct(Dataset.id))
                 .join_from(Dataset, Association, Dataset.associations, isouter=True)

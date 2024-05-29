@@ -194,7 +194,7 @@ def create_app():
         FILENAME is the path to the bedRMod (EU-formatted) file.
         """
         if selection:
-            kwargs = {"selection_id": list(selection)}
+            kwargs = {"selection_ids": list(selection)}
         else:
             if not modification:
                 raise NameError(
