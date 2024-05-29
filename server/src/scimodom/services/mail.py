@@ -1,4 +1,5 @@
 from email.mime.text import MIMEText
+from functools import cache
 from smtplib import SMTP
 from typing import Optional
 
@@ -101,9 +102,7 @@ If you didn't request a new password, please ignore this message and consider re
         )
 
 
-_cached_mail_service: Optional[MailService] = None
-
-
+@cache
 def get_mail_service() -> MailService:
     """
     Helper function to create a MailService by validating and injecting the configuration.
@@ -111,17 +110,14 @@ def get_mail_service() -> MailService:
     :returns: Mail service instance
     :rtype: MailService
     """
-    global _cached_mail_service
-    if _cached_mail_service is None:
-        for required_parameter in ["SMTP_SERVER", "SMTP_FROM_ADDRESS"]:
-            value = getattr(Config, required_parameter)
-            if value is None or value == "":
-                raise Exception(
-                    f"Internal error: Required parameter '{required_parameter}' not set"
-                )
+    for required_parameter in ["SMTP_SERVER", "SMTP_FROM_ADDRESS"]:
+        value = getattr(Config, required_parameter)
+        if value is None or value == "":
+            raise Exception(
+                f"Internal error: Required parameter '{required_parameter}' not set"
+            )
 
-        _cached_mail_service = MailService(
-            smtp_server=Config.SMTP_SERVER,
-            from_address=Config.SMTP_FROM_ADDRESS,
-        )
-    return _cached_mail_service
+    return MailService(
+        smtp_server=Config.SMTP_SERVER,
+        from_address=Config.SMTP_FROM_ADDRESS,
+    )

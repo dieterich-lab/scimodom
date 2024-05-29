@@ -1,4 +1,5 @@
 import logging
+from functools import cache
 from os import unlink, rename, makedirs, stat, close
 from os.path import join, exists, dirname, basename, isfile
 from tempfile import mkstemp
@@ -167,11 +168,6 @@ class FileService:
         self._db_session.commit()
 
 
-_cached_file_service: Optional[FileService] = None
-
-
+@cache
 def get_file_service() -> FileService:
-    global _cached_file_service
-    if _cached_file_service is None:
-        _cached_file_service = FileService(get_session())
-    return _cached_file_service
+    return FileService(get_session())

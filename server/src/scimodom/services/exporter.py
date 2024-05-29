@@ -3,6 +3,7 @@
 #
 import logging
 import re
+from functools import cache
 from typing import Optional, Generator
 
 from sqlalchemy import select
@@ -157,11 +158,6 @@ class Exporter:
             yield "\t".join(parts) + "\n"
 
 
-_cached_exporter: Optional[Exporter] = None
-
-
+@cache
 def get_exporter() -> Exporter:
-    global _cached_exporter
-    if _cached_exporter is None:
-        _cached_exporter = Exporter(session=get_session())
-    return _cached_exporter
+    return Exporter(session=get_session())

@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 import json
 import logging
+from functools import cache
 from pathlib import Path
 from typing import ClassVar, Optional, List, Dict
 
@@ -456,16 +457,11 @@ class ProjectService:
             json.dump(self._project, f, indent="\t")
 
 
-_cached_project_service: Optional[ProjectService] = None
-
-
+@cache
 def get_project_service():
     """Helper function to set up a ProjectService object by injecting its dependencies.
 
     :returns: Project service instance
     :rtype: ProjectService
     """
-    global _cached_project_service
-    if _cached_project_service is None:
-        _cached_project_service = ProjectService(session=get_session())
-    return _cached_project_service
+    return ProjectService(session=get_session())
