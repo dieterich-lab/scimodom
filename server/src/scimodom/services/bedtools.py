@@ -1,0 +1,468 @@
+"""pybedtools
+"""
+
+from functools import cache
+from os import makedirs
+import logging
+from pathlib import Path
+import shlex
+import subprocess
+from typing import Iterable, Sequence
+
+import pybedtools  # type: ignore
+from pybedtools import BedTool
+
+import scimodom.utils.utils as utils
+from scimodom.config import Config
+from scimodom.utils.bedtools_dto import (
+    ModificationRecord,
+    DataAnnotationRecord,
+    GenomicAnnotationRecord,
+    IntersectRecord,
+    Strand,
+    ClosestRecord,
+    SubtractRecord,
+)
+
+logger = logging.getLogger(__name__)
+
+
+class AnnotationError(Exception):
+    pass
+
+
+def _get_gtf_attrs(feature):
+    """This function is to be passed
+    as argument to BedTool.each(), to
+    generate a BED-like Interval. The
+    format is BED6+2, where 2 additional
+    fields are "gene_id", "gene_biotype".
+
+    Note: The value in Interval.start will
+    always contain the 0-based start position,
+    even if it came from a GFF or other 1-based
+    feature. The contents of Interval.fields
+    will always be strings, which in turn always
+    represent the original line in the file.
+
+    :param feature: A feature from a GTF file.
+    :type feature: pybedtools.Interval
+    """
+    line = [
+        feature.chrom,
+        feature.start,
+        feature.end,
+        feature.name,
+        feature.score,
+        feature.strand,
+        feature.attrs["gene_id"],
+        feature.attrs["gene_biotype"],
+    ]
+    return pybedtools.cbedtools.create_interval_from_list(line)
+
+
+def _remove_filno(feature, n_fields: int = 9, is_closest: bool = False):
+    """This function is to be passed
+    as argument to BedTool.each(), to
+    generate a BED-like Interval. This is used
+    to "strip" the returned interval from the
+    "additional column describing the file number"
+    when calling intersect or closest (with -wa and
+    -wb). The default format is BED6+3, where
+    3 additional fields are "dataset_id", "coverage",
+    and "frequency". For closest, distance is appended
+    at the end.
+
+    :param feature: A feature from a BED file.
+    :type feature: pybedtools.Interval
+    :param n_fields: BED format
+    :type n_fields: int
+    :param is_closest: Add distance field
+    :type is_closest: bool
+    :return: New interval
+    :rtype: pybedtools interval
+    """
+    target = 2 * n_fields + int(is_closest)
+    line = [f for f in feature.fields]
+    if len(feature.fields) != target:
+        line.pop(n_fields)
+    return pybedtools.cbedtools.create_interval_from_list(line)
+
+
+class BedToolsService:
+    def __init__(self, tempdir):
+        makedirs(tempdir, exist_ok=True)
+        pybedtools.helpers.set_tempdir(tempdir)
+
+    @staticmethod
+    def get_modifications_as_bedtool_records(
+        records: Iterable[ModificationRecord],
+    ) -> BedTool:
+        def generator():
+            for record in records:
+                yield (
+                    record.chrom,
+                    record.start,
+                    record.end,
+                    record.name,
+                    record.score,
+                    record.strand.value,
+                    record.coverage,
+                    record.frequency,
+                    record.dataset_id,
+                )
+
+        return BedTool(generator()).sort()
+
+    def annotate_data_to_records(
+        self,
+        annotation_path: Path,
+        features: dict[str, str],
+        records: Iterable[ModificationRecord],
+    ) -> Iterable[DataAnnotationRecord]:
+        """Annotate data records, i.e. create
+        records for DataAnnotation. Columns
+        order is (gene_id, data_id, feature).
+        There is no type coercion.
+
+        :param annotation_path: Path to annotation
+        :type annotation_path: Path
+        :param records: Data records as BED6+1-like,
+        where the additional field is the "data_id".
+        :type records: Iterable[ModificationRecord]
+        :param features: Genomic features for which
+        annotation must be created.
+        :type features: dict of {str: str}
+        :returns: Records for DataAnnotation
+        :rtype: Iterable[ModificationRecord]
+        """
+
+        bedtool_records = self.get_modifications_as_bedtool_records(records)
+        if "intergenic" not in features:
+            raise AnnotationError(
+                "Missing feature intergenic from specs. This is due to a change "
+                "in definition. Aborting transaction!"
+            )
+        intergenic_feature = features.pop("intergenic")
+        prefix = None
+        for feature, pretty_feature in features.items():
+            file_name = Path(annotation_path, f"{feature}.bed").as_posix()
+            feature_bedtool = pybedtools.BedTool(file_name)
+            if prefix is None:
+                # any feature_bedtool, exc. intergenic has a gene_id at fields 6...
+                prefix = utils.get_ensembl_prefix(
+                    feature_bedtool[0].fields[6].split(",")[0]
+                )
+            for item in self._intersect_for_annotation(
+                bedtool_records, feature_bedtool, pretty_feature
+            ):
+                yield item
+
+        gene_id = f"{prefix}{intergenic_feature}"
+        file_name = Path(annotation_path, "intergenic.bed").as_posix()
+        feature_bedtool = pybedtools.BedTool(file_name)
+        stream = bedtool_records.intersect(
+            b=feature_bedtool, wa=True, wb=True, s=False, sorted=True
+        )
+        for s in stream:
+            yield DataAnnotationRecord(
+                gene_id=gene_id, data_id=s[6], feature=intergenic_feature
+            )
+
+    @staticmethod
+    def _intersect_for_annotation(bedtool_records, annotation, feature):
+        # delim (collapse) Default: ","
+        stream = bedtool_records.intersect(
+            b=annotation, wa=True, wb=True, s=True, sorted=True
+        )
+        for s in stream:
+            for gene_id in s[13].split(","):
+                yield DataAnnotationRecord(
+                    gene_id=gene_id, data_id=s[6], feature=feature
+                )
+
+    def write_annotation_to_bed(
+        self, annotation_file: Path, chrom_file: Path, features: dict[str, list[str]]
+    ) -> None:
+        """Prepare annotation in BED format for genomic
+        features given in "features". The files are
+        written to the parent directory of "annotation_file"
+        using "features" as stem, and bed as extension.
+
+        :param annotation_file: Path to annotation file.
+        The format is implicitely assumed to be GTF.
+        :type annotation_file: Path
+        :param chrom_file: Path to chrom file
+        :type chrom_file: Path
+        :param features: Genomic features for which
+        annotation must be created.
+        :type features: dict of {str: list of str}
+        """
+        parent = annotation_file.parent
+        annotation_bedtool = pybedtools.BedTool(annotation_file.as_posix()).sort()
+
+        logger.info(f"Preparing annotation and writing to {parent}...")
+
+        for feature in features["conventional"]:
+            logger.info(f"Writing {feature}...")
+
+            file_name = Path(parent, f"{feature}.bed").as_posix()
+            _ = (
+                self._annotation_to_stream(annotation_bedtool, feature)
+                .merge(s=True, c=[4, 5, 6, 7, 8], o="distinct")
+                .moveto(file_name)
+            )
+
+        file_name = Path(parent, "exon.bed").as_posix()
+        exons = pybedtools.BedTool(file_name)
+        file_name = self._check_feature("intron", features, parent)
+        # why is the sort order lost after subtract?
+        _ = (
+            self._annotation_to_stream(annotation_bedtool, "gene")
+            .subtract(exons, s=True, sorted=True)
+            .sort()
+            .merge(s=True, c=[4, 5, 6, 7, 8], o="distinct")
+        ).moveto(file_name)
+
+        file_name = self._check_feature("intergenic", features, parent)
+        _ = (
+            self._annotation_to_stream(annotation_bedtool, "gene")
+            .complement(g=chrom_file.as_posix())
+            .moveto(file_name)
+        )
+
+    @staticmethod
+    def _annotation_to_stream(annotation_bedtool, feature):
+        return annotation_bedtool.filter(lambda a: a.fields[2] == feature).each(
+            _get_gtf_attrs
+        )
+
+    @staticmethod
+    def _check_feature(feature, features, parent):
+        if feature not in features["extended"]:
+            raise AnnotationError(
+                f"Missing feature {feature} from specs. This is due to a change "
+                "in definition. Aborting transaction!"
+            )
+        logger.info(f"Writing {feature}...")
+        return Path(parent, f"{feature}.bed").as_posix()
+
+    @staticmethod
+    def get_annotation_records(
+        annotation_file: Path, annotation_id: int, intergenic_feature: str
+    ) -> Iterable[GenomicAnnotationRecord]:
+        """Create records for GenomicAnnotation from
+        annotation file. Columns order is
+        (gene_id, annotation_id, gene_name, gene_biotype).
+        There is no type coercion.
+
+        :param annotation_file: Path to annotation file.
+        The format is implicitely assumed to be GTF.
+        :type annotation_file: Path
+        :param annotation_id: Annotation ID
+        :type annotation_id: int
+        :param intergenic_feature: Name for intergenic
+        feature. This name must come from Annotation
+        specifications, as it must match that used
+        when creating annotation for data records.
+        :type intergenic_feature: str
+        :returns: Annotation records as tuple of columns
+        :rtype: Iterable[GenomicAnnotationRecord]
+        """
+        logger.info(f"Creating annotation for {annotation_file}...")
+
+        bedtool = pybedtools.BedTool(annotation_file.as_posix()).sort()
+        stream = bedtool.filter(lambda f: f.fields[2] == "gene").each(_get_gtf_attrs)
+        prefix = None
+        for s in stream:
+            yield GenomicAnnotationRecord(
+                id=s[6], annotation_id=annotation_id, name=s[3], biotype=s[7]
+            )
+            if prefix is None:
+                # get a "dummy" record for intergenic annotation
+                prefix = utils.get_ensembl_prefix(s[6])
+        yield GenomicAnnotationRecord(
+            id=f"{prefix}{intergenic_feature}", annotation_id=annotation_id
+        )
+
+    def liftover_to_file(
+        self,
+        records: Iterable[ModificationRecord],
+        chain_file: str,
+        unmapped: str | None = None,
+        chrom_id: str = "s",
+    ) -> tuple[str, str]:
+        """Liftover records. Handles conversion to BedTool, but not from,
+        of the liftedOver features. A file is returned pointing
+        to the liftedOver features. The unmapped ones are saved as
+        "unmapped", or discarded.
+
+        :param records: Data records to liftover
+        :type records: List of tuple of (str, ...) - Data records
+        :param chain_file: Chain file
+        :type chain_file: str
+        :param unmapped: File to write unmapped features
+        :type unmapped: str or None
+        :param chrom_id: The style of chromosome IDs (default s).
+        :type chrom_id: str
+        :returns: Files with liftedOver and unmapped features
+        :rtype: tuple of (str, str)
+        """
+        bedtool_records = self.get_modifications_as_bedtool_records(records)
+        result = pybedtools.BedTool._tmp()  # noqa
+        if unmapped is None:
+            unmapped = pybedtools.BedTool._tmp()  # noqa
+        cmd = f"CrossMap bed --chromid {chrom_id} --unmap-file {unmapped} {chain_file} {bedtool_records.fn} {result}"
+
+        logger.debug(f"Calling: {cmd}")
+
+        # set a timeout?
+        try:
+            subprocess.run(shlex.split(cmd), check=True, capture_output=True, text=True)
+        except FileNotFoundError:
+            raise Exception("Process failed: CrossMap executable could not be found!")
+        except subprocess.CalledProcessError as exc:
+            msg = f"Process failed with {exc.stderr}"
+            raise Exception(msg) from exc
+        # except subprocess.TimeoutExpired as exc:
+        return result, unmapped
+
+    def intersect(
+        self,
+        a_records: Iterable[ModificationRecord],
+        b_records: Iterable[ModificationRecord],
+        is_strand: bool,
+        is_sorted: bool = True,
+    ) -> Iterable[IntersectRecord]:
+        """Wrapper for pybedtools.bedtool.BedTool.intersect
+
+        Relies on the behaviour of bedtools -wa -wb option: the first
+        column after the complete -a record lists the file number
+        from which the overlap came.
+
+        :param a_records: Left operand of insect operation
+        :type a_records: Iterable[ModificationRecord]
+        :param b_records: Right operand of insect operation
+        :type b_records: Iterable[ModificationRecord]
+        :parm is_strand: Perform strand-aware query
+        :type is_strand: bool
+        :param is_sorted: Invoked sweeping algorithm
+        :type is_sorted: bool
+        :returns: records
+        :rtype: list of tuples
+        """
+
+        a_bedtool = self.get_modifications_as_bedtool_records(a_records)
+        b_bedtools = [self.get_modifications_as_bedtool_records(r) for r in b_records]
+        bedtool = a_bedtool.intersect(
+            b=[b.fn for b in b_bedtools],
+            wa=True,  # write the original entry in A for each overlap
+            wb=True,  # write the original entry in B for each overlap
+            s=is_strand,
+            sorted=is_sorted,
+        )
+        stream = bedtool.each(_remove_filno)
+        for s in stream:
+            yield IntersectRecord(
+                a=self.get_modifications_as_bedtool_records(s[:9]),
+                b=self.get_modifications_as_bedtool_records(s[9:]),
+            )
+
+    @staticmethod
+    def _get_modification_bedtools_data(s: Sequence[str]):
+        return ModificationRecord(
+            chrom=s[0],
+            start=s[1],
+            end=s[2],
+            name=s[3],
+            score=s[4],
+            strand=Strand(s[5]),
+            coverage=s[6],
+            frequency=s[7],
+            dataset_id=s[8],
+        )
+
+    def closest(
+        self,
+        a_records: Iterable[ModificationRecord],
+        b_records: Iterable[ModificationRecord],
+        is_strand: bool,
+        is_sorted: bool = True,
+    ) -> Iterable[ClosestRecord]:
+        """Wrapper for pybedtools.bedtool.BedTool.closest
+
+        Relies on the behaviour of bedtools -io -t -mdb -D options: the first
+        column after the complete -a record lists the file number
+        from which the closest interval came.
+
+        :param a_records: Left operand of operation
+        :type a_records: Iterable[ModificationRecord]
+        :param b_records: Right operand of operation
+        :type b_records: Iterable[ModificationRecord]
+        :parm is_strand: Perform strand-aware query
+        :type is_strand: bool
+        :param is_sorted: Invoked sweeping algorithm
+        :type is_sorted: bool
+        :returns: records
+        :rtype: list of tuples
+        """
+
+        # BED6+3
+        n_fields = 9
+
+        a_bedtool = self.get_modifications_as_bedtool_records(a_records)
+        b_bedtools = [self.get_modifications_as_bedtool_records(r) for r in b_records]
+        bedtool = a_bedtool.closest(
+            b=[b.fn for b in b_bedtools],
+            io=True,  # Ignore features in B that overlap A
+            t="all",  # Report all ties
+            mdb="all",  # Report closest records among all databases
+            D="a",  # Report distance with respect to A
+            s=is_strand,
+            sorted=is_sorted,
+        )
+        # Reports “none” for chrom (.) and “-1” for all other fields (start/end) when a feature
+        # is not found in B on the same chromosome as the feature in A.
+        stream = bedtool.each(_remove_filno, is_closest=True).filter(
+            lambda c: c.fields[n_fields + 1] != "-1"
+        )
+        for s in stream:
+            yield ClosestRecord(
+                a=self.get_modifications_as_bedtool_records(s[:9]),
+                b=self.get_modifications_as_bedtool_records(s[9:18]),
+                distance=s[18],
+            )
+
+    def subtract(
+        self,
+        a_records: Iterable[ModificationRecord],
+        b_records: Iterable[ModificationRecord],
+        is_strand: bool,
+        is_sorted: bool = True,
+    ) -> Iterable[SubtractRecord]:
+        """Wrapper for pybedtools.bedtool.BedTool.subtract
+
+        :param a_records: Left operand of operation
+        :type a_records: Iterable[ModificationRecord]
+        :param b_records: Right operand of operation
+        :type b_records: Iterable[ModificationRecord]
+        :parm is_strand: Perform strand-aware query
+        :type is_strand: bool
+        :param is_sorted: Invoked sweeping algorithm
+        :type is_sorted: bool
+        :returns: records
+        :rtype: list of tuples
+        """
+
+        a_bedtool = self.get_modifications_as_bedtool_records(a_records)
+        b_bedtool = utils.flatten_list(
+            self.get_modifications_as_bedtool_records(b_records)
+        )
+        bedtool = a_bedtool.subtract(b_bedtool, s=is_strand, sorted=is_sorted)
+        for s in bedtool:
+            yield self.get_modifications_as_bedtool_records(s.fields)
+
+
+@cache
+def get_bedtools_service():
+    return BedToolsService(tempdir=Config.BEDTOOLS_TMP_PATH)
