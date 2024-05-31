@@ -315,7 +315,7 @@ class PublicService:
             .where(
                 Data.modification_id == modification_id,
                 Dataset.organism_id == organism_id,
-                Dataset.technology_id._in(technology_ids),
+                Dataset.technology_id.in_(technology_ids),
             )
         )
 

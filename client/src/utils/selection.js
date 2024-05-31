@@ -59,7 +59,7 @@ export const updSelectionFromAll = (selection, slctMod, slctOrg, slctTech) => {
   )
   let selection_id = opts.map((item) => item.selection_id)
   let taxid = [...new Set(opts.map((item) => item.taxa_id))]
-  return { selection: selection_id, taxid: taxid }
+  return { selection: selection_id, technology: idsTech, taxid: taxid[0] }
 }
 
 // Compare View
