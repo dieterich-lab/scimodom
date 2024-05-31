@@ -58,7 +58,9 @@ class DatasetHeaderError(Exception):
 
 class DataService:
     """Utility class to create a dataset and import
-    data records.
+    data records. Upon instantiation, a number of
+    validation routines are called to check the
+    consistency of the input parameters.
 
     :param session: SQLAlchemy ORM session
     :type session: Session
@@ -104,6 +106,7 @@ class DataService:
         self._organism_id: organism_id
         self._technology_id: technology_id
 
+        # a dict with key: value pair as sort_name: modification_id
         self._modification_names: dict[str, int] = dict()
         self._selection_ids: list[int]
         self._eufid: str
@@ -181,6 +184,8 @@ class DataService:
                 smid=self._smid,
                 eufid=self._eufid,
                 title=self._title,
+                organism_id=self._organism_id,
+                technology_id=self._technology_id,
             )
             importer.header.parse_header()
             # compare input and header
@@ -222,8 +227,6 @@ class DataService:
                 ]
                 try:
                     lifted_file = assembly_service.liftover(records)
-                    # TODO work out importer to remove old trick, and simply update using same dictionary for modification
-                    # and re-add dataset id
                     importer.reset_data_importer(lifted_file)
                     importer.data.parse_records()
                     importer.data.close()  # flush
@@ -244,8 +247,11 @@ class DataService:
             checkpoint.rollback()
             raise
         # ... update cache
-        # TODO: cache call
-        annotation_service.update_gene_cache(self._selection_ids)
+        selections = {
+            idx: self._get_modification_from_selection(idx)
+            for idx in self._selection_ids
+        }
+        annotation_service.update_gene_cache(self._eufid, selections)
 
         msg = (
             f"Added dataset {self._eufid} to project {self._smid} with title = {self._title}, "
@@ -260,38 +266,6 @@ class DataService:
         :rtype: str
         """
         return self._eufid
-
-    def _validate_selection_ids(self) -> None:
-        """Retrieve and validate selection IDs associated with a
-        dataset. Depending on the choice of modification_id(s),
-        organism_id, and technology_id, a selection_id may
-        or may not exists in the database. If successful, update
-        selection_ids.
-
-        Raises a SelectionExistsError if a selection_id
-        does not exist.
-        """
-        for mname, mid in self._modification_names.items():
-            query = queries.query_column_where(
-                Selection,
-                "id",
-                filters={
-                    "modification_id": mid,
-                    "technology_id": self._technology_id,
-                    "organism_id": self._organism_id,
-                },
-            )
-            try:
-                self._selection_ids.append(self._session.execute(query).scalar_one())
-            except NoResultFound as exc:
-                tech = self._technology_id_to_tech(self._technology_id)
-                cto, organism = self._organism_id_to_organism(self._organism_id)
-                msg = (
-                    f"Selection (mod={mname}, tech={tech}, "
-                    f"organism=({organism}, {cto})) does not exists. "
-                    "Aborting transaction!"
-                )
-                raise SelectionExistsError(msg) from exc
 
     def _validate_entry(self) -> None:
         """Tentatively check if dataset already exists using
@@ -340,6 +314,8 @@ class DataService:
 
         :param idx: id (PK)
         :type idx: int
+        :returns: Modification short_name
+        :rtype: str
         """
         query = (
             select(Modomics.short_name)
@@ -348,11 +324,13 @@ class DataService:
         )
         return self._session.execute(query).scalar_one()
 
-    def _organism_id_to_organism(self, idx: int) -> str:
+    def _organism_id_to_organism(self, idx: int) -> tuple[str, str]:
         """Retrieve cto and organism name for id.
 
         :param idx: id (PK)
         :type idx: int
+        :returns: CTO and Taxa (name)
+        :rtype: tuple of (str, str)
         """
         query = (
             select(Organism.cto, Taxa.name)
@@ -366,8 +344,21 @@ class DataService:
 
         :param idx: id (PK)
         :type idx: int
+        :returns: Technology
+        :rtype: str
         """
         query = select(DetectionTechnology.tech).where(DetectionTechnology.id == idx)
+        return self._session.execute(query).scalar_one()
+
+    def _get_modification_from_selection(self, idx: int) -> int:
+        """Retrieve modification_id from selection_id.
+
+        :param idx: selection ID
+        :type idx: int
+        :returns: Modification ID
+        :rtype: int
+        """
+        query = select(Selection.modification_id).where(Selection.id == idx)
         return self._session.execute(query).scalar_one()
 
     def _validate_args(self) -> None:
@@ -404,6 +395,39 @@ class DataService:
         except NoResultFound:
             msg = f"Organism ID = {self._organism_id} not found! Cannot instantiate DataService!"
             raise InstantiationError(msg)
+
+    def _validate_selection_ids(self) -> None:
+        """Retrieve and validate selection IDs associated with a
+        dataset. Depending on the choice of modification_id(s),
+        organism_id, and technology_id, a selection_id may
+        or may not exists in the database. If successful, update
+        selection_ids.
+
+        Raises a SelectionExistsError if a selection_id
+        does not exist. A MultipleResultsFound cannot happen,
+        due to the unique index on Selection.
+        """
+        for mname, mid in self._modification_names.items():
+            query = queries.query_column_where(
+                Selection,
+                "id",
+                filters={
+                    "modification_id": mid,
+                    "technology_id": self._technology_id,
+                    "organism_id": self._organism_id,
+                },
+            )
+            try:
+                self._selection_ids.append(self._session.execute(query).scalar_one())
+            except NoResultFound as exc:
+                tech = self._technology_id_to_tech(self._technology_id)
+                cto, organism = self._organism_id_to_organism(self._organism_id)
+                msg = (
+                    f"Selection (mod={mname}, tech={tech}, "
+                    f"organism=({organism}, {cto})) does not exists. "
+                    "Aborting transaction!"
+                )
+                raise SelectionExistsError(msg) from exc
 
     def _set_from_assembly(self) -> None:
         """Retrieve and set assembly-related variables.

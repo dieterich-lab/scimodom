@@ -33,6 +33,10 @@ class EUFHeaderImporter:
     :type eufid: str
     :param title: Title associated with EUF/bedRMod dataset
     :type title: str
+    :param organism_id: Organism ID
+    :type organism_id: int
+    :param technology_id: Technology ID
+    :type technology_id: int
     :param SPECS: Default specs
     :type SPECS: dict
     """
@@ -47,6 +51,8 @@ class EUFHeaderImporter:
         smid: str,
         eufid: str,
         title: str,
+        organism_id: int,
+        technology_id: int,
     ) -> None:
         """Initializer method."""
         self._session = session
@@ -55,6 +61,8 @@ class EUFHeaderImporter:
         self._smid = smid
         self._eufid = eufid
         self._title = title
+        self._organism_id = organism_id
+        self._technology_id = technology_id
 
         self._model = Dataset
         self._sep: str = self.SPECS["header"]["delimiter"]
@@ -179,6 +187,12 @@ class EUFHeaderImporter:
         # add model columns that are not read from the header
         self._header["id"] = self._dtypes["id"].__call__(self._eufid)
         self._header["project_id"] = self._dtypes["project_id"].__call__(self._smid)
+        self._header["organism_id"] = self._dtypes["organism_id"].__call__(
+            self._organism_id
+        )
+        self._header["technology_id"] = self._dtypes["technology_id"].__call__(
+            self._technology_id
+        )
         self._header["title"] = self._dtypes["title"].__call__(self._title)
         self._header["date_added"] = self._dtypes["date_added"].__call__(
             self._stamp.year,

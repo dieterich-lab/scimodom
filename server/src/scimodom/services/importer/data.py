@@ -19,10 +19,10 @@ class EUFDataImporter(BaseImporter):
     :type filen: str
     :param handle: File handle
     :type handle: TextIO
-    :param association: A dictionary of association IDs of the form
-    {name: association_id}, where name is the modification short_name.
-    The association ID provides information about the dataset (EUFID),
-    the modification, the organism, and the technology used.
+    :param eufid: EUFID (dataset ID)
+    :type eufid: str
+    :param association: A dictionary of the form {short_name: modification_id},
+    where short_name is the modification short_name.
     :type association: dict of {str: int}
     :param seqids: List of chromosomes or scaffolds. The seqid must be
     one used with Ensembl, e.g. standard Ensembl chromosome name w/o
@@ -30,9 +30,6 @@ class EUFDataImporter(BaseImporter):
     :type seqids: list of str
     :param specs_ver: Version of EUF specs to use
     :type specs_ver: str
-    :param is_lifted: Indicate if this is a liftedOver feature. In that
-    case, "name" is actually the "association_id".
-    :type is_lifted: bool
     :param SPECS: Default specs
     :type SPECS: dict
     """
@@ -44,20 +41,20 @@ class EUFDataImporter(BaseImporter):
         session: Session,
         filen: str,
         handle: TextIO,
+        eufid: str,
         association: dict[str, int],
         seqids: list[str],
         specs_ver: str,
-        is_lifted: bool = False,
         **kwargs,
     ) -> None:
         """Initializer method."""
         self._session = session
         self._filen = filen
         self._handle = handle
+        self._eufid = eufid
         self._association = association
         self._seqids = seqids
         self._specs_ver = specs_ver
-        self._is_lifted = is_lifted
 
         self._model = Data
         self._sep: str = self.SPECS["delimiter"]
@@ -67,7 +64,6 @@ class EUFDataImporter(BaseImporter):
 
         self._dtypes: dict[str, Any]
         self._itypes: list[str]
-        self._reverse_association: dict[str, str]
 
         super().__init__(
             session=session,
@@ -81,11 +77,6 @@ class EUFDataImporter(BaseImporter):
         )
 
         self._cast_types()
-
-        if self._is_lifted:
-            self._reverse_association = {
-                str(val): key for key, val in self._association.items()
-            }
 
     def parse_record(self, record: dict[str, str]) -> dict[str, Any]:
         """Data parser.
@@ -103,8 +94,6 @@ class EUFDataImporter(BaseImporter):
         # raises ValueError: could not convert string to float if value is non numerical
         frecord = {k: float(v) if k in self._itypes else v for k, v in record.items()}
         crecord = {k: self._dtypes[k].__call__(v) for k, v in frecord.items()}
-        if self._is_lifted:
-            crecord["name"] = self._reverse_association[crecord["name"]]
         # validate record
         for itype in self._itypes:
             if crecord[itype] < 0:
@@ -120,8 +109,9 @@ class EUFDataImporter(BaseImporter):
             if not eval(self._constraints[c], {}, {c: crecord[c]}):
                 raise ValueError(f"Value score: {crecord[c]} out of range.")
         # add missing columns for model table
+        crecord["dataset_id"] = self._eufid
         try:
-            crecord["association_id"] = self._association[crecord["name"]]
+            crecord["modification_id"] = self._association[crecord["name"]]
         except:
             raise ValueError(f"Unrecognized name: {crecord['name']}.")
 

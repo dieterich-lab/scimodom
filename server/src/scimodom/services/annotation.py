@@ -14,7 +14,6 @@ import scimodom.database.queries as queries
 from scimodom.database.models import (
     Annotation,
     Assembly,
-    Association,
     Data,
     DataAnnotation,
     GenomicAnnotation,
@@ -233,19 +232,15 @@ class AnnotationService:
         :param eufid: EUF ID
         :type eufid: str
         """
-        query = (
-            select(
-                Data.chrom,
-                Data.start,
-                Data.end,
-                Data.name,
-                Data.score,
-                Data.strand,
-                Data.id,
-            )
-            .join_from(Data, Association, Data.inst_association)
-            .where(Association.dataset_id == eufid)
-        )
+        query = select(
+            Data.chrom,
+            Data.start,
+            Data.end,
+            Data.name,
+            Data.score,
+            Data.strand,
+            Data.id,
+        ).where(Data.dataset_id == eufid)
         records = self._session.execute(query).all()
 
         if len(records) == 0:
@@ -268,26 +263,26 @@ class AnnotationService:
         buffer.flush()
         self._session.flush()
 
-    def update_gene_cache(self, selection_ids: list[int]) -> None:
+    def update_gene_cache(self, eufid: str, selections: dict[int, int]) -> None:
         """Update gene cache.
 
-        :param selection_ids: Selection ID(s)
-        :type selection_ids: list of int
+        :param eufid: EUFID (dataset ID)
+        :type eufid: str
+        :param selections: Dict of selection ID(s): modification ID(s)
+        :type selections: dict of {int: int}
         """
         cache_path = self.get_gene_cache_path()
-        for selection_id in selection_ids:
-            query = (
-                select(Data.id)
-                .join_from(Data, Association, Data.inst_association)
-                .where(Association.selection_id == selection_id)
+        for selection_id, modification_id in selections.items():
+            query = select(Data.id).where(
+                Data.dataset_id == eufid, Data.modification_id == modification_id
             )
-            dataset_ids = self._session.execute(query).scalars().all()
+            data_ids = self._session.execute(query).scalars().all()
             query = (
                 select(GenomicAnnotation.name)
                 .join_from(
                     GenomicAnnotation, DataAnnotation, GenomicAnnotation.annotations
                 )
-                .where(DataAnnotation.data_id.in_(dataset_ids))
+                .where(DataAnnotation.data_id.in_(data_ids))
             ).distinct()
             genes = list(
                 filter(

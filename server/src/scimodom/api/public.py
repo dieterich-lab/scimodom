@@ -77,7 +77,9 @@ def get_chrom(taxid):
 @cross_origin(supports_credentials=True)
 def get_search():
     """Search view API."""
-    selection_ids = request.args.getlist("selection", type=int)
+    modification_id = request.args.get("modification", type=int)
+    organism_id = request.args.get("organism", type=int)
+    technology_ids = request.args.getlist("technology", type=int)
     taxa_id = request.args.get("taxid", type=int)
     gene_filter = request.args.getlist("geneFilter", type=str)
     chrom = request.args.get("chrom", type=str)
@@ -89,7 +91,9 @@ def get_search():
 
     public_service = get_public_service()
     response = public_service.get_search(
-        selection_ids,
+        modification_id,
+        organism_id,
+        technology_ids,
         taxa_id,
         gene_filter,
         chrom,
