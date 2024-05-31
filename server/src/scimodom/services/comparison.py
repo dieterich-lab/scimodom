@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from scimodom.database.database import get_session
-from scimodom.database.models import Data, Association
+from scimodom.database.models import Data
 from scimodom.utils.operations import to_bedtool, remove_filno
 from scimodom.utils.models import records_factory
 from scimodom.services.importer import get_bed_importer
@@ -99,21 +99,17 @@ class ComparisonService:
             :return: Query
             :rtype: SQLAlchemy query
             """
-            return (
-                select(
-                    Data.chrom,
-                    Data.start,
-                    Data.end,
-                    Data.name,
-                    Data.score,
-                    Data.strand,
-                    Association.dataset_id,
-                    Data.coverage,
-                    Data.frequency,
-                )
-                .join_from(Data, Association, Data.inst_association)
-                .where(Association.dataset_id.in_(ids))
-            )
+            return select(
+                Data.chrom,
+                Data.start,
+                Data.end,
+                Data.name,
+                Data.score,
+                Data.strand,
+                Data.dataset_id,
+                Data.coverage,
+                Data.frequency,
+            ).where(Data.dataset_id.in_(ids))
 
         query = _construct_query()
         records = self._session.execute(query).all()
@@ -129,21 +125,17 @@ class ComparisonService:
         """
 
         def _construct_query():
-            return (
-                select(
-                    Data.chrom,
-                    Data.start,
-                    Data.end,
-                    Data.name,
-                    Data.score,
-                    Data.strand,
-                    Association.dataset_id,
-                    Data.coverage,
-                    Data.frequency,
-                )
-                .join_from(Data, Association, Data.inst_association)
-                .where(Association.dataset_id == idx)
-            )
+            return select(
+                Data.chrom,
+                Data.start,
+                Data.end,
+                Data.name,
+                Data.score,
+                Data.strand,
+                Data.dataset_id,
+                Data.coverage,
+                Data.frequency,
+            ).where(Data.dataset_id == idx)
 
         self._comparison_records = []
         for idx in ids:

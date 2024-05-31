@@ -343,14 +343,7 @@ class PublicService:
         # index speed up on annotation_id + biotypes + name
         biotype_flt = next((flt for flt in gene_filter if "gene_biotype" in flt), None)
         if biotype_flt:
-            version_query = queries.get_annotation_version()
-            version = self._session.execute(version_query).scalar_one()
-            annotation_query = queries.query_column_where(
-                Annotation,
-                "id",
-                filters={"taxa_id": taxa_id, "version": version},
-            )
-            annotation_id = self._session.execute(annotation_query).scalar_one()
+            annotation_id = self._get_annotation_id(taxa_id)
             _, mapped_biotypes, _ = _get_flt(biotype_flt)
             biotypes = [k for k, v in self.BIOTYPES.items() if v in mapped_biotypes]
             query = query.where(GenomicAnnotation.annotation_id == annotation_id).where(
@@ -383,6 +376,16 @@ class PublicService:
         response["records"] = self._dump(query)
 
         return response
+
+    def _get_annotation_id(self, taxid: int) -> int:
+        version_query = queries.get_annotation_version()
+        version = self._session.execute(version_query).scalar_one()
+        query = queries.query_column_where(
+            Annotation,
+            "id",
+            filters={"taxa_id": taxid, "version": version},
+        )
+        return self._session.execute(query).scalar_one()
 
     def _dump(self, query):
         """Serialize a query from a select statement using
