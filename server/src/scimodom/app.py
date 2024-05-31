@@ -154,14 +154,6 @@ def create_app():
     @click.argument("filename", type=click.Path(exists=True))
     @click.option("--assembly", required=True, type=click.INT, help="Assembly ID.")
     @click.option(
-        "-s",
-        "--selection",
-        default=[],
-        multiple=True,
-        type=click.INT,
-        help="Selection ID(s). Repeat parameter to pass multiple selection IDs. This parameter, if given, overrides all other options.",
-    )
-    @click.option(
         "-m",
         "--modification",
         default=[],
@@ -183,9 +175,7 @@ def create_app():
         type=click.INT,
         help="Technology ID. This option must be used with [--modification] and [--organism].",
     )
-    def dataset(
-        smid, title, filename, assembly, selection, modification, organism, technology
-    ):
+    def dataset(smid, title, filename, assembly, modification, organism, technology):
         """Add a new dataset to the database.
 
         \b
@@ -193,27 +183,19 @@ def create_app():
         TITLE is the title of this dataset. String must be quoted.
         FILENAME is the path to the bedRMod (EU-formatted) file.
         """
-        if selection:
-            kwargs = {"selection_ids": list(selection)}
-        else:
-            if not modification:
-                raise NameError(
-                    "Name [--modification] is not defined. One of [--selection] or [--modification] is required."
-                )
-            if technology is None:
-                raise NameError(
-                    "Name [--technology] is not defined. It is required with [--modification]."
-                )
-            if organism is None:
-                raise NameError(
-                    "Name [--organism] is not defined. It is required with [--modification]."
-                )
-            kwargs = {
-                "modification_id": list(modification),
-                "technology_id": technology,
-                "organism_id": organism,
-            }
-        add_dataset(smid, title, filename, assembly, **kwargs)
+        if not modification:
+            raise NameError("Name [--modification] is not defined.")
+        if technology is None:
+            raise NameError(
+                "Name [--technology] is not defined. It is required with [--modification]."
+            )
+        if organism is None:
+            raise NameError(
+                "Name [--organism] is not defined. It is required with [--modification]."
+            )
+        add_dataset(
+            smid, title, filename, assembly, list(modification), organism, technology
+        )
 
     @app.cli.command(
         "batch", epilog="Check docs at https://dieterich-lab.github.io/scimodom/."

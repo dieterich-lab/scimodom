@@ -98,6 +98,9 @@ class EUFDataImporter(BaseImporter):
         for itype in self._itypes:
             if crecord[itype] < 0:
                 raise ValueError(f"Value {itype}: {crecord[itype]} out of range.")
+        for c in self._constraints["strict"]:
+            if not crecord[c] > 0:
+                raise ValueError(f"Value {c}: {crecord[c]} out of range.")
         if crecord["chrom"] not in self._seqids:
             raise ValueError(
                 f"Unrecognized chrom: {crecord['chrom']}. Ignore this warning "
@@ -107,7 +110,7 @@ class EUFDataImporter(BaseImporter):
             raise ValueError(f"Unrecognized strand: {crecord['strand']}.")
         for c in ["score", "frequency"]:
             if not eval(self._constraints[c], {}, {c: crecord[c]}):
-                raise ValueError(f"Value score: {crecord[c]} out of range.")
+                raise ValueError(f"Value {c}: {crecord[c]} out of range.")
         # add missing columns for model table
         crecord["dataset_id"] = self._eufid
         try:

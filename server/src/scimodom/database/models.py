@@ -2,7 +2,16 @@ import enum
 from datetime import datetime
 from typing import List, Optional
 
-from sqlalchemy import String, Text, DateTime, Index, ForeignKey, UniqueConstraint, Enum
+from sqlalchemy import (
+    String,
+    Text,
+    DateTime,
+    Index,
+    ForeignKey,
+    UniqueConstraint,
+    CheckConstraint,
+    Enum,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from scimodom.database.database import Base
@@ -36,6 +45,7 @@ class Modomics(Base):
     modifications: Mapped[List["Modification"]] = relationship(
         back_populates="inst_modomics"
     )
+    # datas: Mapped[List["Data"]] = relationship(back_populates="inst_modomics")
 
 
 class Modification(Base):
@@ -356,7 +366,7 @@ class Data(Base):
     chrom: Mapped[str] = mapped_column(String(128), nullable=False)
     start: Mapped[int] = mapped_column(nullable=False)
     end: Mapped[int] = mapped_column(nullable=False)
-    name: Mapped[str] = mapped_column(String(32), nullable=False)
+    name: Mapped[str] = mapped_column(ForeignKey("modomics.short_name"))
     score: Mapped[int] = mapped_column(nullable=False, index=True)
     strand: Mapped[str] = mapped_column(String(1), nullable=False)
     thick_start: Mapped[int] = mapped_column(nullable=False)
@@ -365,7 +375,18 @@ class Data(Base):
     coverage: Mapped[int] = mapped_column(nullable=False, index=True)
     frequency: Mapped[int] = mapped_column(nullable=False, index=True)
 
-    __table_args__ = (Index("idx_data_sort", "chrom", "start", "end"),)
+    __table_args__ = (
+        Index("idx_data_sort", "chrom", "start", "end"),
+        CheckConstraint("start >= 0", name="start"),
+        CheckConstraint("start < end", name="start_end"),
+        CheckConstraint("thick_start >= 0", name="tstart"),
+        CheckConstraint("thick_start < thick_end", name="tstart_end"),
+        CheckConstraint("score >= 0", name="score"),
+        CheckConstraint("score <= 1000", name="score_max"),
+        CheckConstraint("coverage > 0", name="cov_strict"),
+        CheckConstraint("frequency > 0", name="freq_strict"),
+        CheckConstraint("frequency <= 100", name="freq_max"),
+    )
 
     annotations: Mapped[List["DataAnnotation"]] = relationship(
         back_populates="inst_data"
@@ -373,6 +394,7 @@ class Data(Base):
 
     inst_dataset: Mapped["Dataset"] = relationship(back_populates="datas")
     inst_modification: Mapped["Modification"] = relationship(back_populates="datas")
+    # inst_modomics: Mapped["Modomics"] = relationship(back_populates="datas")
 
 
 class DatasetModificationAssociation(Base):

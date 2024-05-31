@@ -102,13 +102,14 @@ class DataService:
         self._title = title
         self._filen = filen
         self._assembly_id = assembly_id
-        self._modification_ids: modification_ids
-        self._organism_id: organism_id
-        self._technology_id: technology_id
+        self._modification_ids = modification_ids
+        self._organism_id = organism_id
+        self._technology_id = technology_id
 
         # a dict with key: value pair as sort_name: modification_id
         self._modification_names: dict[str, int] = dict()
-        self._selection_ids: list[int]
+        self._selection_ids: list[int] = []
+
         self._eufid: str
         self._assembly_name: str
         self._current_assembly_name: str

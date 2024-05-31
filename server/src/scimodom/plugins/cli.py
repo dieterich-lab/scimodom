@@ -187,7 +187,13 @@ def add_user_to_project(username: str, smid: str) -> None:
 
 
 def add_dataset(
-    smid: str, title: str, filen: str | Path, assembly_id: int, **kwargs
+    smid: str,
+    title: str,
+    filen: str | Path,
+    assembly_id: int,
+    modification_ids: list[int],
+    organism_id: int,
+    technology_id: int,
 ) -> None:
     """Provides a CLI function to add a new dataset
     to a project. Parameter values are validated by
@@ -201,10 +207,8 @@ def add_dataset(
     :type filen: str or Path
     :param assembly_id: Assembly ID
     :type assembly_id: int
-    :param selection_id: Selection ID(s)
-    :type selection_id: int or list of int
-    :param modification_id: Modification ID(s) (RNA type, modomics ID)
-    :type modification_id: int or list of int
+    :param modification_ids: Modification ID(s) (RNA type, modomics ID)
+    :type modification_ids: int or list of int
     :param technology_id: Technology ID (method ID, technology)
     :type technology_id: int
     :param organism_id: Organism ID (taxa ID, cto)
@@ -212,26 +216,17 @@ def add_dataset(
     """
     session = get_session()
 
-    selection_ids = kwargs.get("selection_ids", None)
-    if selection_ids is not None:
-        service = DataService.from_selection(
-            session, smid, title, filen, assembly_id, selection_ids=selection_ids
-        )
-    else:
-        modification_id = kwargs["modification_id"]
-        technology_id = kwargs["technology_id"]
-        organism_id = kwargs["organism_id"]
-        service = DataService.from_options(
-            session,
-            smid,
-            title,
-            filen,
-            assembly_id,
-            modification_id=modification_id,
-            technology_id=technology_id,
-            organism_id=organism_id,
-        )
-    msg = f"Adding dataset {service._filen} to project with SMID={service._smid} for assembly ID={service._assembly_id}, with modification IDs={', '.join([str(m) for m in service._modification_id])}, technology ID={service._technology_id}, and organism ID={service._organism_id} to {Config.DATABASE_URI}..."
+    service = DataService(
+        session,
+        smid,
+        title,
+        filen,
+        assembly_id,
+        modification_ids=modification_ids,
+        technology_id=technology_id,
+        organism_id=organism_id,
+    )
+    msg = f"Adding dataset {service._filen} to project with SMID={service._smid} for assembly ID={service._assembly_id}, with modification IDs={', '.join([str(m) for m in service._modification_ids])}, technology ID={service._technology_id}, and organism ID={service._organism_id} to {Config.DATABASE_URI}..."
     click.secho(msg, fg="green")
     click.secho("Continue [y/n]?", fg="green")
     c = click.getchar()
@@ -344,7 +339,7 @@ def add_all(directory: Path, templates: list[str]) -> None:
                 )
                 assembly_id = session.execute(query).scalar_one()
                 # add dataset to project
-                data_service = DataService.from_options(
+                data_service = DataService(
                     session,
                     smid,
                     title,

@@ -76,7 +76,7 @@ class DatasetService:
             .join_from(
                 DatasetModificationAssociation,
                 Modification,
-                DatasetModificationAssociation.int_modification,
+                DatasetModificationAssociation.inst_modification,
             )
             .join_from(Modification, Modomics, Modification.inst_modomics)
             .join_from(Dataset, DetectionTechnology, Dataset.inst_technology)

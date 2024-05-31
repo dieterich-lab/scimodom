@@ -71,7 +71,7 @@ def add_dataset():
     dataset_form = request.json
     upload_path = Path(Config.UPLOAD_PATH, dataset_form["file_id"])
     try:
-        data_service = DataService.from_options(
+        data_service = DataService(
             get_session(),
             dataset_form["smid"],
             dataset_form["title"],

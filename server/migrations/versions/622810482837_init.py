@@ -1,8 +1,8 @@
 """init
 
-Revision ID: ea1cabad52e4
+Revision ID: 622810482837
 Revises:
-Create Date: 2024-02-26 15:54:53.828616
+Create Date: 2024-05-31 14:50:48.817608
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = "ea1cabad52e4"
+revision = "622810482837"
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -55,6 +55,13 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id", name=op.f("pk_project_contact")),
     )
     op.create_table(
+        "rna_type",
+        sa.Column("id", sa.String(length=32), autoincrement=False, nullable=False),
+        sa.Column("name", sa.String(length=128), nullable=False),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_rna_type")),
+        sa.UniqueConstraint("name", name=op.f("uq_rna_type_name")),
+    )
+    op.create_table(
         "taxonomy",
         sa.Column("id", sa.String(length=8), autoincrement=False, nullable=False),
         sa.Column("domain", sa.String(length=32), nullable=False),
@@ -62,6 +69,20 @@ def upgrade() -> None:
         sa.Column("phylum", sa.String(length=32), nullable=True),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_taxonomy")),
     )
+    op.create_table(
+        "user",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("email", sa.String(length=320), nullable=False),
+        sa.Column(
+            "state",
+            sa.Enum("wait_for_confirmation", "active", name="userstate"),
+            nullable=False,
+        ),
+        sa.Column("password_hash", sa.String(length=128), nullable=True),
+        sa.Column("confirmation_token", sa.String(length=32), nullable=True),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_user")),
+    )
+    op.create_index(op.f("ix_user_email"), "user", ["email"], unique=True)
     op.create_table(
         "modification",
         sa.Column("id", sa.Integer(), nullable=False),
@@ -71,6 +92,9 @@ def upgrade() -> None:
             ["modomics_id"],
             ["modomics.id"],
             name=op.f("fk_modification_modomics_id_modomics"),
+        ),
+        sa.ForeignKeyConstraint(
+            ["rna"], ["rna_type.id"], name=op.f("fk_modification_rna_rna_type")
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_modification")),
         sa.UniqueConstraint(
@@ -107,7 +131,7 @@ def upgrade() -> None:
         sa.Column("title", sa.String(length=255), nullable=False),
         sa.Column("summary", sa.Text(), nullable=False),
         sa.Column("contact_id", sa.Integer(), nullable=False),
-        sa.Column("date_published", sa.DateTime(), nullable=False),
+        sa.Column("date_published", sa.DateTime(), nullable=True),
         sa.Column("date_added", sa.DateTime(), nullable=False),
         sa.ForeignKeyConstraint(
             ["contact_id"],
@@ -164,25 +188,6 @@ def upgrade() -> None:
     )
     op.create_index(op.f("ix_assembly_taxa_id"), "assembly", ["taxa_id"], unique=False)
     op.create_table(
-        "dataset",
-        sa.Column("id", sa.String(length=12), autoincrement=False, nullable=False),
-        sa.Column("project_id", sa.String(length=8), nullable=False),
-        sa.Column("title", sa.String(length=255), nullable=False),
-        sa.Column("modification_type", sa.String(length=32), nullable=False),
-        sa.Column("sequencing_platform", sa.String(length=255), nullable=True),
-        sa.Column("basecalling", sa.Text(), nullable=True),
-        sa.Column("bioinformatics_workflow", sa.Text(), nullable=True),
-        sa.Column("experiment", sa.Text(), nullable=True),
-        sa.Column("external_source", sa.String(length=255), nullable=True),
-        sa.ForeignKeyConstraint(
-            ["project_id"], ["project.id"], name=op.f("fk_dataset_project_id_project")
-        ),
-        sa.PrimaryKeyConstraint("id", name=op.f("pk_dataset")),
-    )
-    op.create_index(
-        op.f("ix_dataset_project_id"), "dataset", ["project_id"], unique=False
-    )
-    op.create_table(
         "organism",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("taxa_id", sa.Integer(), nullable=False),
@@ -213,6 +218,73 @@ def upgrade() -> None:
         "project_source",
         ["project_id"],
         unique=False,
+    )
+    op.create_table(
+        "user_project_association",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("user_id", sa.Integer(), nullable=False),
+        sa.Column("project_id", sa.String(length=8), nullable=False),
+        sa.ForeignKeyConstraint(
+            ["project_id"],
+            ["project.id"],
+            name=op.f("fk_user_project_association_project_id_project"),
+        ),
+        sa.ForeignKeyConstraint(
+            ["user_id"],
+            ["user.id"],
+            name=op.f("fk_user_project_association_user_id_user"),
+        ),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_user_project_association")),
+    )
+    op.create_index(
+        op.f("ix_user_project_association_project_id"),
+        "user_project_association",
+        ["project_id"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_user_project_association_user_id"),
+        "user_project_association",
+        ["user_id"],
+        unique=False,
+    )
+    op.create_table(
+        "dataset",
+        sa.Column("id", sa.String(length=12), autoincrement=False, nullable=False),
+        sa.Column("project_id", sa.String(length=8), nullable=False),
+        sa.Column("technology_id", sa.Integer(), nullable=False),
+        sa.Column("organism_id", sa.Integer(), nullable=False),
+        sa.Column("date_added", sa.DateTime(), nullable=False),
+        sa.Column("title", sa.String(length=255), nullable=False),
+        sa.Column("modification_type", sa.String(length=32), nullable=False),
+        sa.Column("sequencing_platform", sa.String(length=255), nullable=True),
+        sa.Column("basecalling", sa.Text(), nullable=True),
+        sa.Column("bioinformatics_workflow", sa.Text(), nullable=True),
+        sa.Column("experiment", sa.Text(), nullable=True),
+        sa.Column("external_source", sa.String(length=255), nullable=True),
+        sa.ForeignKeyConstraint(
+            ["organism_id"],
+            ["organism.id"],
+            name=op.f("fk_dataset_organism_id_organism"),
+        ),
+        sa.ForeignKeyConstraint(
+            ["project_id"], ["project.id"], name=op.f("fk_dataset_project_id_project")
+        ),
+        sa.ForeignKeyConstraint(
+            ["technology_id"],
+            ["technology.id"],
+            name=op.f("fk_dataset_technology_id_technology"),
+        ),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_dataset")),
+    )
+    op.create_index(
+        op.f("ix_dataset_organism_id"), "dataset", ["organism_id"], unique=False
+    )
+    op.create_index(
+        op.f("ix_dataset_project_id"), "dataset", ["project_id"], unique=False
+    )
+    op.create_index(
+        op.f("ix_dataset_technology_id"), "dataset", ["technology_id"], unique=False
     )
     op.create_table(
         "genomic_annotation",
@@ -281,38 +353,27 @@ def upgrade() -> None:
         op.f("ix_selection_technology_id"), "selection", ["technology_id"], unique=False
     )
     op.create_table(
-        "association",
+        "bam_file",
         sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("selection_id", sa.Integer(), nullable=False),
+        sa.Column("original_file_name", sa.String(length=1024), nullable=False),
+        sa.Column("storage_file_name", sa.String(length=256), nullable=False),
         sa.Column("dataset_id", sa.String(length=12), nullable=False),
         sa.ForeignKeyConstraint(
-            ["dataset_id"],
-            ["dataset.id"],
-            name=op.f("fk_association_dataset_id_dataset"),
+            ["dataset_id"], ["dataset.id"], name=op.f("fk_bam_file_dataset_id_dataset")
         ),
-        sa.ForeignKeyConstraint(
-            ["selection_id"],
-            ["selection.id"],
-            name=op.f("fk_association_selection_id_selection"),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_bam_file")),
+        sa.UniqueConstraint(
+            "storage_file_name", name=op.f("uq_bam_file_storage_file_name")
         ),
-        sa.PrimaryKeyConstraint("id", name=op.f("pk_association")),
     )
     op.create_index(
-        "idx_assoc", "association", ["selection_id", "dataset_id"], unique=True
-    )
-    op.create_index(
-        op.f("ix_association_dataset_id"), "association", ["dataset_id"], unique=False
-    )
-    op.create_index(
-        op.f("ix_association_selection_id"),
-        "association",
-        ["selection_id"],
-        unique=False,
+        op.f("ix_bam_file_dataset_id"), "bam_file", ["dataset_id"], unique=False
     )
     op.create_table(
         "data",
         sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("association_id", sa.Integer(), nullable=False),
+        sa.Column("dataset_id", sa.String(length=12), nullable=False),
+        sa.Column("modification_id", sa.Integer(), nullable=False),
         sa.Column("chrom", sa.String(length=128), nullable=False),
         sa.Column("start", sa.Integer(), nullable=False),
         sa.Column("end", sa.Integer(), nullable=False),
@@ -324,20 +385,73 @@ def upgrade() -> None:
         sa.Column("item_rgb", sa.String(length=128), nullable=False),
         sa.Column("coverage", sa.Integer(), nullable=False),
         sa.Column("frequency", sa.Integer(), nullable=False),
+        sa.CheckConstraint("coverage > 0", name=op.f("ck_data_cov_strict")),
+        sa.CheckConstraint("frequency <= 100", name=op.f("ck_data_freq_max")),
+        sa.CheckConstraint("frequency > 0", name=op.f("ck_data_freq_strict")),
+        sa.CheckConstraint("score <= 1000", name=op.f("ck_data_score_max")),
+        sa.CheckConstraint("score >= 0", name=op.f("ck_data_score")),
+        sa.CheckConstraint("start < end", name=op.f("ck_data_start_end")),
+        sa.CheckConstraint("start >= 0", name=op.f("ck_data_start")),
+        sa.CheckConstraint("thick_start < thick_end", name=op.f("ck_data_tstart_end")),
+        sa.CheckConstraint("thick_start >= 0", name=op.f("ck_data_tstart")),
         sa.ForeignKeyConstraint(
-            ["association_id"],
-            ["association.id"],
-            name=op.f("fk_data_association_id_association"),
+            ["dataset_id"], ["dataset.id"], name=op.f("fk_data_dataset_id_dataset")
+        ),
+        sa.ForeignKeyConstraint(
+            ["modification_id"],
+            ["modification.id"],
+            name=op.f("fk_data_modification_id_modification"),
+        ),
+        sa.ForeignKeyConstraint(
+            ["name"], ["modomics.short_name"], name=op.f("fk_data_name_modomics")
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_data")),
     )
     op.create_index("idx_data_sort", "data", ["chrom", "start", "end"], unique=False)
-    op.create_index(
-        op.f("ix_data_association_id"), "data", ["association_id"], unique=False
-    )
     op.create_index(op.f("ix_data_coverage"), "data", ["coverage"], unique=False)
+    op.create_index(op.f("ix_data_dataset_id"), "data", ["dataset_id"], unique=False)
     op.create_index(op.f("ix_data_frequency"), "data", ["frequency"], unique=False)
+    op.create_index(
+        op.f("ix_data_modification_id"), "data", ["modification_id"], unique=False
+    )
     op.create_index(op.f("ix_data_score"), "data", ["score"], unique=False)
+    op.create_table(
+        "dataset_modification_association",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("dataset_id", sa.String(length=12), nullable=False),
+        sa.Column("modification_id", sa.Integer(), nullable=False),
+        sa.ForeignKeyConstraint(
+            ["dataset_id"],
+            ["dataset.id"],
+            name=op.f("fk_dataset_modification_association_dataset_id_dataset"),
+        ),
+        sa.ForeignKeyConstraint(
+            ["modification_id"],
+            ["modification.id"],
+            name=op.f(
+                "fk_dataset_modification_association_modification_id_modification"
+            ),
+        ),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_dataset_modification_association")),
+    )
+    op.create_index(
+        "idx_assoc",
+        "dataset_modification_association",
+        ["dataset_id", "modification_id"],
+        unique=True,
+    )
+    op.create_index(
+        op.f("ix_dataset_modification_association_dataset_id"),
+        "dataset_modification_association",
+        ["dataset_id"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_dataset_modification_association_modification_id"),
+        "dataset_modification_association",
+        ["modification_id"],
+        unique=False,
+    )
     op.create_table(
         "data_annotation",
         sa.Column("id", sa.Integer(), nullable=False),
@@ -375,16 +489,25 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_data_annotation_feature"), table_name="data_annotation")
     op.drop_index(op.f("ix_data_annotation_data_id"), table_name="data_annotation")
     op.drop_table("data_annotation")
+    op.drop_index(
+        op.f("ix_dataset_modification_association_modification_id"),
+        table_name="dataset_modification_association",
+    )
+    op.drop_index(
+        op.f("ix_dataset_modification_association_dataset_id"),
+        table_name="dataset_modification_association",
+    )
+    op.drop_index("idx_assoc", table_name="dataset_modification_association")
+    op.drop_table("dataset_modification_association")
     op.drop_index(op.f("ix_data_score"), table_name="data")
+    op.drop_index(op.f("ix_data_modification_id"), table_name="data")
     op.drop_index(op.f("ix_data_frequency"), table_name="data")
+    op.drop_index(op.f("ix_data_dataset_id"), table_name="data")
     op.drop_index(op.f("ix_data_coverage"), table_name="data")
-    op.drop_index(op.f("ix_data_association_id"), table_name="data")
     op.drop_index("idx_data_sort", table_name="data")
     op.drop_table("data")
-    op.drop_index(op.f("ix_association_selection_id"), table_name="association")
-    op.drop_index(op.f("ix_association_dataset_id"), table_name="association")
-    op.drop_index("idx_assoc", table_name="association")
-    op.drop_table("association")
+    op.drop_index(op.f("ix_bam_file_dataset_id"), table_name="bam_file")
+    op.drop_table("bam_file")
     op.drop_index(op.f("ix_selection_technology_id"), table_name="selection")
     op.drop_index(op.f("ix_selection_organism_id"), table_name="selection")
     op.drop_index(op.f("ix_selection_modification_id"), table_name="selection")
@@ -395,13 +518,24 @@ def downgrade() -> None:
     )
     op.drop_index("idx_genomic", table_name="genomic_annotation")
     op.drop_table("genomic_annotation")
+    op.drop_index(op.f("ix_dataset_technology_id"), table_name="dataset")
+    op.drop_index(op.f("ix_dataset_project_id"), table_name="dataset")
+    op.drop_index(op.f("ix_dataset_organism_id"), table_name="dataset")
+    op.drop_table("dataset")
+    op.drop_index(
+        op.f("ix_user_project_association_user_id"),
+        table_name="user_project_association",
+    )
+    op.drop_index(
+        op.f("ix_user_project_association_project_id"),
+        table_name="user_project_association",
+    )
+    op.drop_table("user_project_association")
     op.drop_index(op.f("ix_project_source_project_id"), table_name="project_source")
     op.drop_table("project_source")
     op.drop_index(op.f("ix_organism_taxa_id"), table_name="organism")
     op.drop_index(op.f("ix_organism_cto"), table_name="organism")
     op.drop_table("organism")
-    op.drop_index(op.f("ix_dataset_project_id"), table_name="dataset")
-    op.drop_table("dataset")
     op.drop_index(op.f("ix_assembly_taxa_id"), table_name="assembly")
     op.drop_table("assembly")
     op.drop_index(op.f("ix_annotation_taxa_id"), table_name="annotation")
@@ -415,7 +549,10 @@ def downgrade() -> None:
     op.drop_table("ncbi_taxa")
     op.drop_index(op.f("ix_modification_modomics_id"), table_name="modification")
     op.drop_table("modification")
+    op.drop_index(op.f("ix_user_email"), table_name="user")
+    op.drop_table("user")
     op.drop_table("taxonomy")
+    op.drop_table("rna_type")
     op.drop_table("project_contact")
     op.drop_table("modomics")
     op.drop_table("method")
