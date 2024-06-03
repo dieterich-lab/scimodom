@@ -164,3 +164,30 @@ def test_create_new_exists(Session, setup, data_path):
         str(exc.value)
         == f"Assembly directory at {parent} already exists... Aborting transaction!"
     )
+
+
+def test_get_organism(Session, setup):
+    with Session() as session, session.begin():
+        session.add_all(setup)
+    service = AssemblyService.from_id(Session(), assembly_id=1)
+    assert service._get_organism() == "Homo_sapiens"
+
+
+def test_get_current_name(Session, setup):
+    with Session() as session, session.begin():
+        session.add_all(setup)
+    service = AssemblyService.from_new(Session(), name="GRCh37", taxa_id=9606)
+    assert service._get_current_name() == "GRCh38"
+
+
+def test_get_seqids(Session, setup, data_path):
+    with Session() as session, session.begin():
+        session.add_all(setup)
+    service = AssemblyService.from_id(Session(), assembly_id=1)
+    parent = service._chrom_file.parent
+    parent.mkdir(parents=True, exist_ok=True)
+    string = "1\t12345\n2\t123456"
+    with open(service._chrom_file, "w") as chrom_file:
+        chrom_file.write(string)
+    seqids = service.get_seqids("Homo sapiens", "GRCh38")
+    assert set(seqids) == {"1", "2"}
