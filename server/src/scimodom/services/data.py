@@ -102,7 +102,7 @@ class DataService:
         self._title = title
         self._filen = filen
         self._assembly_id = assembly_id
-        self._modification_ids = modification_ids
+        self._modification_ids: list[int] = utils.to_list(modification_ids)
         self._organism_id = organism_id
         self._technology_id = technology_id
 
@@ -375,11 +375,10 @@ class DataService:
         if not is_found:
             msg = f"Unrecognised SMID {self._smid}. Cannot instantiate DataService!"
             raise InstantiationError(msg)
-        mids = utils.to_list(self._modification_ids)
-        if len(set(mids)) != len(mids):
+        if len(set(self._modification_ids)) != len(self._modification_ids):
             msg = "Repeated modification IDs. Cannot instantiate DataService!"
             raise InstantiationError(msg)
-        for mid in mids:
+        for mid in self._modification_ids:
             try:
                 mname = self._modification_id_to_name(mid)
                 self._modification_names[mname] = mid
