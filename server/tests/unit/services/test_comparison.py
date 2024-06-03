@@ -6,10 +6,10 @@ from sqlalchemy import select
 
 from scimodom.services.comparison import ComparisonService
 from scimodom.database.models import (
-    Association,
     Selection,
     Dataset,
     Data,
+    DatasetModificationAssociation,
     Project,
     ProjectContact,
 )
@@ -503,6 +503,8 @@ def test_query_one_reference(Session, setup):
         dataset = Dataset(
             id="KEyK5s3pcKjE",
             project_id=smid,
+            organism_id=1,
+            technology_id=1,
             title="title",
             modification_type="RNA",
             date_added=stamp,
@@ -510,7 +512,9 @@ def test_query_one_reference(Session, setup):
         session.add(dataset)
         session.flush()
         eufid = dataset.id
-        association = Association(dataset_id=eufid, selection_id=selection_id)
+        association = DatasetModificationAssociation(
+            dataset_id=eufid, modification_id=1
+        )
         session.add(association)
         session.flush()
         association_id = association.id
@@ -518,7 +522,8 @@ def test_query_one_reference(Session, setup):
         rows, _, _ = _get_data()
         data = [
             Data(
-                association_id=association_id,
+                dataset_id=eufid,
+                modification_id=1,
                 chrom=chrom,
                 start=start,
                 end=end,
@@ -578,6 +583,8 @@ def test_query_two_reference(Session, setup):
         dataset1 = Dataset(
             id="KEyK5s3pcKjE",
             project_id=smid,
+            organism_id=1,
+            technology_id=1,
             title="title",
             modification_type="RNA",
             date_added=stamp,
@@ -585,6 +592,8 @@ def test_query_two_reference(Session, setup):
         dataset2 = Dataset(
             id="8sQjh8xwioFr",
             project_id=smid,
+            organism_id=1,
+            technology_id=1,
             title="title",
             modification_type="RNA",
             date_added=stamp,
@@ -593,8 +602,12 @@ def test_query_two_reference(Session, setup):
         session.flush()
         eufid1 = dataset1.id
         eufid2 = dataset2.id
-        association1 = Association(dataset_id=eufid1, selection_id=selection_id)
-        association2 = Association(dataset_id=eufid2, selection_id=selection_id)
+        association1 = DatasetModificationAssociation(
+            dataset_id=eufid1, modification_id=1
+        )
+        association2 = DatasetModificationAssociation(
+            dataset_id=eufid2, modification_id=1
+        )
         session.add_all([association1, association2])
         session.flush()
         association_id1 = association1.id
@@ -603,7 +616,8 @@ def test_query_two_reference(Session, setup):
         rows, _, _ = _get_data()
         data = [
             Data(
-                association_id=association_id1,
+                dataset_id=eufid1,
+                modification_id=1,
                 chrom=chrom,
                 start=start,
                 end=end,
@@ -620,7 +634,8 @@ def test_query_two_reference(Session, setup):
         ]
         data.extend(
             Data(
-                association_id=association_id2,
+                dataset_id=eufid2,
+                modification_id=1,
                 chrom=chrom,
                 start=start,
                 end=end,
@@ -682,6 +697,8 @@ def test_query_comparison(Session, setup):
         dataset1 = Dataset(
             id="FCfhtbEJpbvR",
             project_id=smid,
+            organism_id=1,
+            technology_id=1,
             title="title",
             modification_type="RNA",
             date_added=stamp,
@@ -689,6 +706,8 @@ def test_query_comparison(Session, setup):
         dataset2 = Dataset(
             id="3HsmkimcHAFA",
             project_id=smid,
+            organism_id=1,
+            technology_id=1,
             title="title",
             modification_type="RNA",
             date_added=stamp,
@@ -697,8 +716,12 @@ def test_query_comparison(Session, setup):
         session.flush()
         eufid1 = dataset1.id
         eufid2 = dataset2.id
-        association1 = Association(dataset_id=eufid1, selection_id=selection_id)
-        association2 = Association(dataset_id=eufid2, selection_id=selection_id)
+        association1 = DatasetModificationAssociation(
+            dataset_id=eufid1, modification_id=1
+        )
+        association2 = DatasetModificationAssociation(
+            dataset_id=eufid2, modification_id=1
+        )
         session.add_all([association1, association2])
         session.flush()
         association_id1 = association1.id
@@ -707,7 +730,8 @@ def test_query_comparison(Session, setup):
         _, rows1, rows2 = _get_data()
         data = [
             Data(
-                association_id=association_id1,
+                dataset_id=eufid1,
+                modification_id=1,
                 chrom=chrom,
                 start=start,
                 end=end,
@@ -724,7 +748,8 @@ def test_query_comparison(Session, setup):
         ]
         data.extend(
             Data(
-                association_id=association_id2,
+                dataset_id=eufid2,
+                modification_id=1,
                 chrom=chrom,
                 start=start,
                 end=end,
@@ -815,6 +840,8 @@ def test_operation(operation, Session, setup):
         dataset1 = Dataset(
             id="KEyK5s3pcKjE",
             project_id=smid,
+            organism_id=1,
+            technology_id=1,
             title="title",
             modification_type="RNA",
             date_added=stamp,
@@ -822,6 +849,8 @@ def test_operation(operation, Session, setup):
         dataset2 = Dataset(
             id="FCfhtbEJpbvR",
             project_id=smid,
+            organism_id=1,
+            technology_id=1,
             title="title",
             modification_type="RNA",
             date_added=stamp,
@@ -829,6 +858,8 @@ def test_operation(operation, Session, setup):
         dataset3 = Dataset(
             id="3HsmkimcHAFA",
             project_id=smid,
+            organism_id=1,
+            technology_id=1,
             title="title",
             modification_type="RNA",
             date_added=stamp,
@@ -838,9 +869,15 @@ def test_operation(operation, Session, setup):
         eufid1 = dataset1.id
         eufid2 = dataset2.id
         eufid3 = dataset3.id
-        association1 = Association(dataset_id=eufid1, selection_id=selection_id)
-        association2 = Association(dataset_id=eufid2, selection_id=selection_id)
-        association3 = Association(dataset_id=eufid3, selection_id=selection_id)
+        association1 = DatasetModificationAssociation(
+            dataset_id=eufid1, modification_id=1
+        )
+        association2 = DatasetModificationAssociation(
+            dataset_id=eufid2, modification_id=1
+        )
+        association3 = DatasetModificationAssociation(
+            dataset_id=eufid3, modification_id=1
+        )
         session.add_all([association1, association2, association3])
         session.flush()
         association_id1 = association1.id
@@ -850,7 +887,8 @@ def test_operation(operation, Session, setup):
         rows1, rows2, rows3 = _get_data()
         data = [
             Data(
-                association_id=association_id1,
+                dataset_id=eufid1,
+                modification_id=1,
                 chrom=chrom,
                 start=start,
                 end=end,
@@ -867,7 +905,8 @@ def test_operation(operation, Session, setup):
         ]
         data.extend(
             Data(
-                association_id=association_id2,
+                dataset_id=eufid2,
+                modification_id=1,
                 chrom=chrom,
                 start=start,
                 end=end,
@@ -884,7 +923,8 @@ def test_operation(operation, Session, setup):
         )
         data.extend(
             Data(
-                association_id=association_id3,
+                dataset_id=eufid3,
+                modification_id=1,
                 chrom=chrom,
                 start=start,
                 end=end,
@@ -956,6 +996,8 @@ def test_operation_simple(operation, Session, setup):
         dataset1 = Dataset(
             id="KEyK5s3pcKjE",
             project_id=smid,
+            organism_id=1,
+            technology_id=1,
             title="title",
             modification_type="RNA",
             date_added=stamp,
@@ -963,6 +1005,8 @@ def test_operation_simple(operation, Session, setup):
         dataset2 = Dataset(
             id="FCfhtbEJpbvR",
             project_id=smid,
+            organism_id=1,
+            technology_id=1,
             title="title",
             modification_type="RNA",
             date_added=stamp,
@@ -971,8 +1015,12 @@ def test_operation_simple(operation, Session, setup):
         session.flush()
         eufid1 = dataset1.id
         eufid2 = dataset2.id
-        association1 = Association(dataset_id=eufid1, selection_id=selection_id)
-        association2 = Association(dataset_id=eufid2, selection_id=selection_id)
+        association1 = DatasetModificationAssociation(
+            dataset_id=eufid1, modification_id=1
+        )
+        association2 = DatasetModificationAssociation(
+            dataset_id=eufid2, modification_id=1
+        )
         session.add_all([association1, association2])
         session.flush()
         association_id1 = association1.id
@@ -981,7 +1029,8 @@ def test_operation_simple(operation, Session, setup):
         rows1, rows2, _ = _get_data()
         data = [
             Data(
-                association_id=association_id1,
+                dataset_id=eufid1,
+                modification_id=1,
                 chrom=chrom,
                 start=start,
                 end=end,
@@ -998,7 +1047,8 @@ def test_operation_simple(operation, Session, setup):
         ]
         data.extend(
             Data(
-                association_id=association_id2,
+                dataset_id=eufid2,
+                modification_id=1,
                 chrom=chrom,
                 start=start,
                 end=end,
