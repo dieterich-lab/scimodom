@@ -6,7 +6,6 @@ import pytest
 from scimodom.database.models import (
     Organism,
     Dataset,
-    Association,
     Selection,
     Data,
     Project,
@@ -50,6 +49,8 @@ def dataset(Session, setup):
     dataset = Dataset(
         id="d1",
         title="dataset title",
+        organism_id=organism.id,
+        technology_id=technology.id,
         modification_type="RNA",
         basecalling="bc1",
         bioinformatics_workflow="wf1",
@@ -59,10 +60,10 @@ def dataset(Session, setup):
         external_source="ext. source 1",
         date_added=stamp,
     )
-    association = Association(id=1, dataset_id=dataset.id, selection_id=selection.id)
     data1 = Data(
         id=1,
-        association_id=association.id,
+        dataset_id=dataset.id,
+        modification_id=modification.id,
         chrom="17",
         start=100001,
         end=120000,
@@ -77,7 +78,8 @@ def dataset(Session, setup):
     )
     data2 = Data(
         id=2,
-        association_id=association.id,
+        dataset_id=dataset.id,
+        modification_id=modification.id,
         chrom="Y",
         start=200001,
         end=220000,
@@ -103,7 +105,6 @@ def dataset(Session, setup):
             contact,
             project,
             dataset,
-            association,
             data1,
             data2,
         ]

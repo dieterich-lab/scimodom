@@ -26,7 +26,8 @@ def _get_record(fmt=None):
         "item_rgb": "0,0,0",
         "coverage": 10,
         "frequency": 1,
-        "association_id": 1,
+        "dataset_id": "123456789abc",
+        "modification_id": 1,
     }
     if fmt == "minimum":
         record["start"] = -1
@@ -36,8 +37,9 @@ def _get_record(fmt=None):
         record["strand"] = ""
     elif fmt == "maximum":
         record["frequency"] = 200
-    elif fmt == "association":
+    elif fmt == "modification":
         record["name"] = "m5C"
+        record["modification_id"] = 2
     else:
         pass
     return record
@@ -96,8 +98,8 @@ def _get_data_with_header(fmt):
             "Unrecognized chrom: A. Ignore this warning for scaffolds and contigs, otherwise this could be due to misformatting!",
         ),
         ("strand", "Unrecognized strand: ."),
-        ("maximum", "Value score: 200 out of range."),
-        ("association", "Unrecognized name: m5C."),
+        ("maximum", "Value frequency: 200 out of range."),
+        ("modification", "Unrecognized name: m5C."),
     ],
 )
 def test_importer_parse_record_fail(fmt, msg, Session, EUF_specs):
@@ -107,6 +109,7 @@ def test_importer_parse_record_fail(fmt, msg, Session, EUF_specs):
         session=Session(),
         filen="filen",
         handle=StringIO("filen"),
+        eufid="123456789abc",
         association={"m6A": 1},
         seqids=["1"],
         specs_ver=version,
@@ -123,6 +126,7 @@ def test_importer_parse_record(Session, EUF_specs):
     importer = EUFDataImporter(
         session=Session(),
         filen="filen",
+        eufid="123456789abc",
         handle=StringIO("filen"),
         association={"m6A": 1},
         seqids=["1"],
@@ -140,7 +144,8 @@ def test_importer_parse_record(Session, EUF_specs):
     assert record["item_rgb"] == expected_record["item_rgb"]
     assert record["coverage"] == expected_record["coverage"]
     assert record["frequency"] == expected_record["frequency"]
-    assert record["association_id"] == expected_record["association_id"]
+    assert record["dataset_id"] == "123456789abc"
+    assert record["modification_id"] == 1
     # types
     dtypes = {c.name: c.type.python_type for c in Data.__table__.columns}
     assert type(record["chrom"]) == dtypes["chrom"]
@@ -154,7 +159,8 @@ def test_importer_parse_record(Session, EUF_specs):
     assert type(record["item_rgb"]) == dtypes["item_rgb"]
     assert type(record["coverage"]) == dtypes["coverage"]
     assert type(record["frequency"]) == dtypes["frequency"]
-    assert type(record["association_id"]) == dtypes["association_id"]
+    assert type(record["dataset_id"]) == dtypes["dataset_id"]
+    assert type(record["modification_id"]) == dtypes["modification_id"]
 
 
 def test_importer_parse_records(Session, EUF_specs):
@@ -163,6 +169,7 @@ def test_importer_parse_records(Session, EUF_specs):
     importer = EUFDataImporter(
         session=Session(),
         filen="filen",
+        eufid="123456789abc",
         handle=handle,
         association={"m6A": 1},
         seqids=["1"],
@@ -177,7 +184,8 @@ def test_importer_parse_records(Session, EUF_specs):
         records = session.execute(select(Data)).scalars().all()[0]
         assert num_records == 1
         assert records.id == 1
-        assert records.association_id == 1
+        assert records.dataset_id == "123456789abc"
+        assert records.modification_id == 1
         assert records.chrom == "1"
         assert records.start == 0
         assert records.end == 10
@@ -290,6 +298,7 @@ def test_importer_missing_data(Session, EUF_specs):
     importer = EUFDataImporter(
         session=Session(),
         filen="filen",
+        eufid="123456789abc",
         handle=handle,
         association={"m6A": 1},
         seqids=["1"],

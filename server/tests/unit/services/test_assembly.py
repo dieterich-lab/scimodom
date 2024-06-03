@@ -1,4 +1,5 @@
 from pathlib import Path
+import shutil
 
 import pytest
 import requests  # type: ignore
@@ -9,6 +10,25 @@ from scimodom.services.assembly import (
     InstantiationError,
 )
 from scimodom.utils.specifications import ENSEMBL_FTP, ENSEMBL_ASM_MAPPING
+
+
+def test_create_new(Session, setup, data_path):
+    with Session() as session, session.begin():
+        session.add_all(setup)
+
+    service = AssemblyService.from_id(Session(), assembly_id=1)
+    # TODO: we've got some isolation problems here... e.g. this is created by test_annotation...
+    parent = service._chrom_file.parent
+    if parent.exists() and parent.is_dir():
+        shutil.rmtree(parent)
+    service.create_new()
+    organism = service._get_organism()
+    assembly = service._name
+    parent, _ = service.get_chrom_path(organism, assembly)
+    # check if files exist, not content
+    assert service._chrom_file.is_file()
+    assert Path(parent, "info.json").is_file()
+    assert Path(parent, "release.json").is_file()
 
 
 def test_init_from_id_wrong_id(Session, setup, data_path):
@@ -118,21 +138,6 @@ def test_init_from_new_wrong_name(Session, setup, data_path):
         str(exc.value)
         == f"404 Client Error: Not Found for url: {ENSEMBL_FTP}/{ENSEMBL_ASM_MAPPING}/mus_musculus/GRCH38_to_GRCm38.chain.gz"
     )
-
-
-def test_create_new(Session, setup, data_path):
-    with Session() as session, session.begin():
-        session.add_all(setup)
-
-    service = AssemblyService.from_id(Session(), assembly_id=1)
-    service.create_new()
-    organism = service._get_organism()
-    assembly = service._name
-    parent, _ = service.get_chrom_path(organism, assembly)
-    # check if files exist, not content
-    assert service._chrom_file.is_file()
-    assert Path(parent, "info.json").is_file()
-    assert Path(parent, "release.json").is_file()
 
 
 def test_create_new_fail(Session, setup, data_path):
