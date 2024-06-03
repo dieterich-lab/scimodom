@@ -345,9 +345,6 @@ class AnnotationService:
     def _create_annotation(self) -> None:
         """Reads annotation file to records and
         insert to GenomicAnnotation."""
-        query = select(GenomicAnnotation).where(
-            GenomicAnnotation.annotation_id == self._annotation_id
-        )
         records = get_annotation_records(
             self._annotation_file,
             self._annotation_id,
