@@ -40,15 +40,15 @@ class ModificationService:
             if row is None:
                 return
             yield ModificationRecord(
-                chrom=row[0],
-                start=row[1],
-                end=row[2],
-                name=row[3],
-                score=row[3],
-                strand=row[4],
-                dataset_id=row[5],
-                coverage=row[6],
-                frequency=row[7],
+                chrom=row.chrom,
+                start=row.start,
+                end=row.end,
+                name=row.name,
+                score=row.score,
+                strand=row.strand,
+                dataset_id=row.dataset_id,
+                coverage=row.coverage,
+                frequency=row.frequency,
             )
 
     @staticmethod
