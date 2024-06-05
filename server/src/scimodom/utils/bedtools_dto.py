@@ -9,6 +9,9 @@ PercentInt = Annotated[int, Field(ge=0, le=100)]
 DatasetId = Annotated[str, Field(min_length=12, max_length=12)]
 
 
+NO_SUCH_DATASET_ID = "NoSuchDataSet_"  # Used when we generate a ModificationRecord, not orignating form our database
+
+
 class Strand(Enum):
     FORWARD = "+"
     REVERSE = "-"
