@@ -72,6 +72,29 @@ def test_euf_error(caplog):
     ]
 
 
+def test_euf_error_without_error_rate(caplog):
+    stream = StringIO(BAD_EUF_FILE)
+    result = list(
+        BedImporter(
+            stream=stream, source="test", is_euf=True, max_error_rate=None
+        ).parse()
+    )
+
+    assert len(result) == 1
+    assert caplog.record_tuples == [
+        (
+            "scimodom.utils.bed_importer",
+            logging.WARNING,
+            "test, line 2: Expected 11 fields, but got 10",
+        ),
+        (
+            "scimodom.utils.bed_importer",
+            logging.WARNING,
+            "test, line 3: '*' is not a valid Strand",
+        ),
+    ]
+
+
 EMPTY_EUF_FILE = """#fileformat=bedRModv1.7
 #organism=10090
 #modification_type=RNA
@@ -95,3 +118,19 @@ def test_empty_euf_file():
     stream = StringIO(EMPTY_EUF_FILE)
     with pytest.raises(BedImportEmptyFile):
         _ = list(BedImporter(stream=stream, source="test", is_euf=True).parse())
+
+
+BED6_FILE = """1\t3528091\t3528092\tm6A\t1000\t+
+1\t3528096\t3528097\tm6A\t1000\t+
+1\t3528107\t3528108\tm6A\t1000\t+
+"""
+
+
+def test_bed_6_file():
+    stream = StringIO(BED6_FILE)
+    importer = BedImporter(stream=stream, source="test")
+
+    result = list(importer.parse())
+    assert len(result) == 3
+    assert result[1].end == 3528097
+    assert result[2].strand == Strand.FORWARD

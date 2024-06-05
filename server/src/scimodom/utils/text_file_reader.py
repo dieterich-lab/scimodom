@@ -16,7 +16,6 @@ class TextFileReader:
         self._stream = stream
         self._source = source
         self._line_number = 0
-        self._error_count = 0
 
     def read_lines(self) -> Generator[str, None, None]:
         for line in self._stream:
@@ -25,7 +24,6 @@ class TextFileReader:
             yield stripped_line
 
     def report_error(self, message: str):
-        self._error_count += 1
         raise TextFileReaderError(
             f"{self._source}, line {self._line_number}: {message}"
         )

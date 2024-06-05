@@ -4,7 +4,12 @@ import re
 
 from pydantic import ValidationError
 
-from scimodom.utils.bedtools_dto import ModificationRecord, Strand, NO_SUCH_DATASET_ID
+from scimodom.utils.bedtools_dto import (
+    ModificationRecord,
+    Strand,
+    UPLOAD_DATASET_ID,
+    DatasetId,
+)
 from scimodom.utils.text_file_reader import TextFileReader, TextFileReaderError
 
 logger = logging.getLogger(__name__)
@@ -20,10 +25,14 @@ class BedImportTooManyErrors(Exception):
 
 class BedImporter:
     BED_HEADER_REGEXP = re.compile(r"\A#([a-zA-Z_]+)=(.*)\Z")
-    MAX_ERROR_RATE = 0.05
 
     def __init__(
-        self, stream: TextIO, is_euf: bool = False, source: str = "input stream"
+        self,
+        stream: TextIO,
+        is_euf: bool = False,
+        source: str = "input stream",
+        dataset_id: Optional[DatasetId] = None,
+        max_error_rate: Optional[float] = 0.05,
     ):
         self._headers = {}
         self._error_count = 0
@@ -31,6 +40,8 @@ class BedImporter:
 
         self._is_euf = is_euf
         self._source = source
+        self._dataset_id = UPLOAD_DATASET_ID if dataset_id is None else dataset_id
+        self._max_error_rate = max_error_rate
 
         self._reader = TextFileReader(stream=stream, source=source)
         self._line_iterator = self._reader.read_lines()
@@ -89,7 +100,7 @@ class BedImporter:
             "strand": Strand(fields[5]),
             "coverage": fields[9],
             "frequency": fields[10],
-            "dataset_id": NO_SUCH_DATASET_ID,
+            "dataset_id": self._dataset_id,
         }
 
     def _get_raw_record_from_bed6_line(self, fields):
@@ -104,7 +115,7 @@ class BedImporter:
             "strand": Strand(fields[5]),
             "coverage": 0,
             "frequency": 0,
-            "dataset_id": NO_SUCH_DATASET_ID,
+            "dataset_id": self._dataset_id,
         }
 
     def get_header(self, name: str) -> Optional[str]:
@@ -123,7 +134,10 @@ class BedImporter:
             msg = f"Did not find any records in '{self._source}'"
             logger.error(msg)
             raise BedImportEmptyFile(msg)
-        if self._error_count > self._record_count * self.MAX_ERROR_RATE:
+        if (
+            self._max_error_rate is not None
+            and self._error_count > self._record_count * self._max_error_rate
+        ):
             msg = (
                 f"Found too many errors ins '{self._source}' "
                 f"(valid: {self._record_count}, errors: {self._error_count})"
