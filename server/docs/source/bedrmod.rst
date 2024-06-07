@@ -20,9 +20,18 @@ The bedRMod file is a tabulated count of base modifications from every sequencin
   Sci-ModoM requirements
 
   A given dataset or bedRMod file can contain more than one modification, as reported in column 4 (MODOMICS short name), but this should
-  be for the same RNA type. A dataset or bedRMod file can only contain ONE RNA type, ONE technology, ONE organism (incl. cell type, tissue,
-  or organ), and records from the same assembly. The best way to handle treatment and/or conditions is to have as many bedRMod
-  files as required to describe the experimental protocol, and provide a meaningful title and metadata for each file.
+  be for the same RNA type. Supported RNA types are *WTS* or *whole transcriptome sequencing* and *tRNA* or *transfer RNA*. A dataset or bedRMod
+  file can only contain ONE RNA type, ONE technology, ONE organism (incl. cell type, tissue, or organ), and records from the same assembly.
+  The best way to handle treatment and/or conditions is to have as many bedRMod files as required to describe the experimental protocol, and
+  provide a meaningful title and metadata for each file.
+
+
+.. attention::
+
+  Format specification for tRNA
+
+  Sci-ModoM currently does not handle tRNA annotation. We are actively working on this, and more information will be soon available...
+
 
 
 The header section

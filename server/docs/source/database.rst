@@ -9,7 +9,7 @@ Data model
 Description and workflow
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-To create a project request, go to User menu > Data > Project template. Upon successful project request submission, a draft template is
+To create a project request, go to *User menu* > *Data* > *Project template*. Upon successful submission, a draft template is
 created and an email is sent to the system administrator. In the background, the following standard template is created:
 
 .. code-block:: json
@@ -27,14 +27,14 @@ created and an email is sent to the system administrator. In the background, the
         },
         "metadata": [
             {
-                "rna": "mRNA",
+                "rna": "WTS",
                 "modomics_id": "2000000006A",
                 "tech": "m6A-SAC-seq",
                 "method_id": "e00d694d",
                 "organism": {"taxa_id": 9606, "cto": "HeLa", "assembly": "GRCh38"}
             },
             {
-                "rna": "mRNA",
+                "rna": "WTS",
                 "modomics_id": "2000000006A",
                 "tech": "m6A-SAC-seq",
                 "method_id": "e00d694d",
@@ -46,11 +46,10 @@ created and an email is sent to the system administrator. In the background, the
 ``"external_sources": null`` is allowed, ``"doi": null`` or ``"pmid": null`` are allowed, but not both simultaneously. ``"external_sources"`` can be a list of entries, or a single entry (as above). ``"date_published": null`` is allowed (no public sources). ``"metadata"`` can be a list of entries (as above), or a single entry (at least one entry is required, and all keys are required). Each ``"metadata"`` entry provides information for a given dataset (bedRMod file).
 A single dataset may also require two or more entries for ``metadata`` *e.g.* if two or more modifications are given in the same bedRMod file.
 
-A project is then created and you are associated with the newly created project. Each project is assigned a Sci-ModoM identifier or SMID.
-The actual project creation and user-project association is currently only handled by ``flask`` commands, see `data_setup`_. Once a project is created,
-you can see it under User menu > Settings. You are then allowed to upload dataset (bedRMod) and to attach BAM files to a dataset.
-This is done using the upload forms (Upload bedRMod, Attach BAM files) under User menu > Data > Dataset upload.
-Upon successful upload, a dataset is assigned a EUF identifier or EUFID. A given project (SMID) can thus have one or more dataset (EUFID) attached to it.
+Each project is assigned a **Sci-ModoM** identifier or **SMID**. The actual project creation and user-project association is currently only handled by ``flask`` commands, see `Flask CLI <https://dieterich-lab.github.io/scimodom/flask.html>`_. Once a project is created, you are associated with the newly created
+project, and you can see it under *User menu* > *Settings*. You are then allowed to upload dataset (bedRMod) and to attach BAM files to a dataset.
+This is done using the upload forms (*Upload bedRMod*, *Attach BAM files*) under *User menu* > *Data* > *Dataset upload*.
+Upon successful upload, a dataset is assigned a EUF identifier or **EUFID**. A given project (**SMID**) can thus have one or more dataset (**EUFID**) attached to it.
 
 Once created, projects are immediately made public. On upload, dataset are immediately made public. Projects and dataset cannot be changed or deleted.
 You can however decide to upload and/or remove dataset attachments (BAM files).
@@ -62,6 +61,13 @@ You can however decide to upload and/or remove dataset attachments (BAM files).
     be for the same RNA type. A dataset or bedRMod file can only contain ONE RNA type, ONE technology, ONE organism (incl. cell type, tissue,
     or organ), and records from the same assembly. The best way to handle treatment and/or conditions is to have as many bedRMod
     files as required to describe the experimental protocol, and provide a meaningful title for each file.
+
+.. attention::
+
+    The terminology for RNA types is built around the concept of sequencing method rather than the biological definition of RNA species. **Sci-ModoM**
+    currently supports the following types: *(i)* RNAs obtained from *WTS* or *whole transcriptome sequencing* and *(ii)* *tRNA* or *transfer RNA*.
+    If you use a general sequencing method and your data contains *mRNAs* and *non-coding RNAs* (mostly long, but also short such as *mt-RNAs*,
+    residual *rRNAs*, *etc.*), then choose *WTS*.
 
 .. attention::
 
@@ -493,95 +499,3 @@ Alembic version ``ac1b984c4751``.
     CONSTRAINT `fk_user_project_association_project_id_project` FOREIGN KEY (`project_id`) REFERENCES `project` (`id`),
     CONSTRAINT `fk_user_project_association_user_id_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`)
     ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
-
-.. _data_setup:
-
-Setup
------
-
-At lauchtime, the app uses tables defined in ``config.py`` to perform an ``INSERT... ON DUPLICATE KEY UPDATE``
-
-.. code-block:: python
-
-    setup_service = get_setup_service()
-    setup_service.upsert_all()
-
-These tables (``rna_type``, ``modomics``, ``method``, ``taxonomy``, ``ncbi_taxa``, ``assembly``, ``assembly_version``, ``annotation``, and ``annotation_version``) allow to define base options for project creation, and establish a standard terminology for the application. The import format is *CSV*, and the header must match the column names (including *id*) from the corresponding database table, *e.g. ncbi_taxa.csv*
-
-.. code-block:: bash
-
-    id,name,short_name,taxonomy_id
-    9606,Homo sapiens,H. sapiens,8128e900
-    10090,Mus musculus,M. musculus,8128e900
-
-The upsert can be done for one model/table at a time, or forced with
-
-.. code-block:: bash
-
-    flask setup [OPTIONS]
-
-Projects are added with
-
-.. code-block:: bash
-
-    flask project [OPTIONS] TEMPLATE
-
-A user is automatically associated with a project upon creation using the email address given in the ``TEMPLATE``.
-After project creation, dataset can be added with
-
-.. code-block:: bash
-
-    flask dataset [OPTIONS] SMID TITLE FILENAME
-
-Dataset upload is normally done via POST request upon login to the running application, accessible through User menu > Data > Dataset upload.
-These steps, except user-project association, can be done all at once with
-
-.. code-block:: bash
-
-    flask batch DIRECTORY [TEMPLATES]
-
-This requires a non-standard project template (json) with additional keys: ``file_name`` and ``data_title`` for each ``metadata`` value, *e.g.*
-
-.. code-block:: json
-
-    {
-        ...
-        "metadata": {
-            "rna": "mRNA",
-            "modomics_id": "2000000006A",
-            "tech": "m6A-SAC-seq",
-            "method_id": "e00d694d",
-            "organism": {"taxa_id": 9606, "cto": "HeLa", "assembly": "GRCh38"},
-            "file_name": "filename.bedrmod",
-            "data_title": "HeLa WT treatment A replicate 1",
-            "extra": [
-                "Homo sapiens",
-                "HeLa",
-                "wild type",
-                "treatment A",
-                "polyA RNA"
-            ]
-        }
-    }
-
-Additional keys are ignored and can be used for documentation. All templates and bedRMod files must be under the same directory.
-Values in the template are used *as is* to query and update the database.
-
-Permissions can be updated with
-
-.. code-block:: bash
-
-    flask permission USERNAME SMID
-
-To manage assemblies or annotations, use
-
-.. code-block:: bash
-
-    flask annotation [OPTIONS] ID
-
-.. code-block:: bash
-
-    flask assembly [OPTIONS]
-
-For OPTIONS, use the ``--help`` flag, *e.g.* ``flask assembly --help``.
