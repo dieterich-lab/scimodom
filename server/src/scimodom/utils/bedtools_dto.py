@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Annotated, Optional
+from typing import Annotated, Optional, Self
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -29,11 +29,12 @@ class ModificationRecord(BaseModel):
     dataset_id: str = DatasetId
 
     @model_validator(mode="after")
-    def check_start_end(self):
+    def check_start_end(self) -> Self:
         if self.end <= self.start:
             raise ValueError(
                 f"The value of 'end' ({self.end}) must be greater than the value of 'start' ({self.start})"
             )
+        return self
 
 
 class SubtractRecord(ModificationRecord):

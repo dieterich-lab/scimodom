@@ -98,9 +98,9 @@ class BedImporter:
             "name": fields[3],
             "score": fields[4],
             "strand": Strand(fields[5]),
+            "dataset_id": self._dataset_id,
             "coverage": fields[9],
             "frequency": fields[10],
-            "dataset_id": self._dataset_id,
         }
 
     def _get_raw_record_from_bed6_line(self, fields):
@@ -113,9 +113,9 @@ class BedImporter:
             "name": fields[3],
             "score": fields[4],
             "strand": Strand(fields[5]),
+            "dataset_id": self._dataset_id,
             "coverage": 0,
             "frequency": 0,
-            "dataset_id": self._dataset_id,
         }
 
     def get_header(self, name: str) -> Optional[str]:
