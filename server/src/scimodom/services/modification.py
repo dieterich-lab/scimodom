@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from scimodom.database.database import get_session
-from scimodom.database.models import Data, Association, Dataset
+from scimodom.database.models import Data, Dataset
 from scimodom.utils.bedtools_dto import ModificationRecord
 
 
@@ -26,13 +26,12 @@ class ModificationService:
                 Data.name,
                 Data.score,
                 Data.strand,
-                Association.dataset_id,
+                Data.dataset_id,
                 Data.coverage,
                 Data.frequency,
             )
             .execution_options(yield_per=1000)
-            .join_from(Data, Association, Data.inst_association)
-            .where(Association.dataset_id.in_(dataset_ids))
+            .where(Data.dataset_id.in_(dataset_ids))
         )
         stmt = self._db_session.execute(query)
         while True:
