@@ -30,16 +30,15 @@ class Importer:
         self._association: dict[str, int]
         self._seqids: list[str]
         self._version: str
+        self._eufid: str
 
     def init_data_importer(
         self, association: dict[str, int], seqids: list[str], **kwargs
     ) -> None:
-        """Instantiate EUFDataImporter.
+        """Instantiate EUFDataImporter unless it already exists.
 
-        :param association: A dictionary of association IDs of the form
-        {name: association_id}, where name is the modification short_name.
-        The association ID provides information about the dataset (EUFID),
-        the modification, the organism, and the technology used.
+        :param association: A dictionary of the form {short_name: modification_id},
+        where short_name is the modification short_name.
         :type association: dict of {str: int}
         :param seqids: List of chromosomes or scaffolds. The seqid must be
         one used with Ensembl, e.g. standard Ensembl chromosome name w/o
@@ -50,6 +49,7 @@ class Importer:
         self._association = association
         self._seqids = seqids
         self._version = self.header._specs_ver
+        self._eufid = self.header._eufid
 
         filen = self.header._filen
         session = get_session()
@@ -60,6 +60,7 @@ class Importer:
                 session=session(),
                 filen=filen,
                 handle=open(filen, "r"),
+                eufid=self._eufid,
                 association=self._association,
                 seqids=self._seqids,
                 specs_ver=self._version,
@@ -68,8 +69,7 @@ class Importer:
 
     def reset_data_importer(self, filen: str, **kwargs) -> None:
         """Reset EUFDataImporter. This method is intended to be used
-        after a liftOver. In this case, "name" is actually the
-        "association_id".
+        after a liftOver.
 
         :param filen: File path to liftedOver features
         :type association: str
@@ -79,15 +79,17 @@ class Importer:
             session=session(),
             filen=filen,
             handle=open(filen, "r"),
+            eufid=self._eufid,
             association=self._association,
             seqids=self._seqids,
             specs_ver=self._version,
-            is_lifted=True,
             **kwargs,
         )
 
 
-def get_importer(filen: str, smid: str, eufid: str, title: str):
+def get_importer(
+    filen: str, smid: str, eufid: str, title: str, organism_id: int, technology_id: int
+):
     """Instantiate Importer.
 
     :param filen: File path
@@ -98,6 +100,10 @@ def get_importer(filen: str, smid: str, eufid: str, title: str):
     :type eufid: str
     :param title: Title associated with EUF/bedRMod dataset
     :type title: str
+    :param organism_id: Organism ID
+    :type organism_id: int
+    :param technology_id: Technology ID
+    :type technology_id: int
     """
     session = get_session()
 
@@ -109,6 +115,8 @@ def get_importer(filen: str, smid: str, eufid: str, title: str):
             smid=smid,
             eufid=eufid,
             title=title,
+            organism_id=organism_id,
+            technology_id=technology_id,
         ),
         data=None,
     )

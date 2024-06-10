@@ -11,7 +11,7 @@ Welcome to Sci-ModoM's documentation!
 
    bedrmod
    database
-
+   flask
 
 .. Indices and tables
 .. ==================

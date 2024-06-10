@@ -118,6 +118,8 @@ def test_importer_read_version_fail(fmt, error, msg, Session, EUF_specs):
         Session(),
         filen="filen",
         handle=handle,
+        organism_id=1,
+        technology_id=1,
         smid="ABCDEFGH",
         eufid="123456789ABC",
         title="Title",
@@ -142,6 +144,8 @@ def test_importer_read_version(fmt, Session, EUF_specs):
         Session(),
         filen="filen",
         handle=handle,
+        organism_id=1,
+        technology_id=1,
         smid="ABCDEFGH",
         eufid="123456789ABC",
         title="Title",
@@ -166,6 +170,8 @@ def test_importer_parse_lines_fail(fmt, msg, Session, EUF_specs):
         Session(),
         filen="filen",
         handle=handle,
+        organism_id=1,
+        technology_id=1,
         smid="ABCDEFGH",
         eufid="123456789ABC",
         title="Title",
@@ -192,6 +198,8 @@ def test_importer_parse_lines(fmt, Session, EUF_specs):
         Session(),
         filen="filen",
         handle=handle,
+        organism_id=1,
+        technology_id=1,
         smid="ABCDEFGH",
         eufid="123456789ABC",
         title="Title",
@@ -203,6 +211,8 @@ def test_importer_parse_lines(fmt, Session, EUF_specs):
     assert importer.taxid == 9606
     assert importer.assembly == "GRCh38"
     assert importer._header["id"] == "123456789ABC"
+    assert importer._header["organism_id"] == 1
+    assert importer._header["technology_id"] == 1
     assert importer._header["project_id"] == "ABCDEFGH"
     assert importer._header["title"] == "Title"
     assert importer._header["modification_type"] == "RNA"
@@ -227,6 +237,8 @@ def test_importer_validate_columns(fmt, Session, EUF_specs):
         Session(),
         filen="filen",
         handle=handle,
+        organism_id=1,
+        technology_id=1,
         smid="ABCDEFGH",
         eufid="123456789ABC",
         title="Title",
@@ -251,6 +263,8 @@ def test_importer(Session, EUF_specs):
         Session(),
         filen="filen",
         handle=handle,
+        organism_id=1,
+        technology_id=1,
         smid="ABCDEFGH",
         eufid="123456789ABC",
         title="Title",
@@ -260,6 +274,8 @@ def test_importer(Session, EUF_specs):
     with Session() as session, session.begin():
         records = session.execute(select(Dataset)).scalar()
         assert records.id == "123456789ABC"
+        assert records.organism_id == 1
+        assert records.technology_id == 1
         assert records.project_id == "ABCDEFGH"
         assert records.title == "Title"
         assert records.modification_type == "RNA"

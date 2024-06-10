@@ -11,7 +11,6 @@ from scimodom.database.database import get_session
 from scimodom.database.models import (
     Annotation,
     Assembly,
-    Association,
     Data,
     DataAnnotation,
     Dataset,
@@ -220,7 +219,9 @@ class PublicService:
 
     def get_search(
         self,
-        selection_ids: list[int],
+        modification_id: int,
+        organism_id: int,
+        technology_ids: list[int],
         taxa_id: int,
         gene_filter: list[str],
         chrom: str | None,
@@ -232,6 +233,9 @@ class PublicService:
     ):
         """Get Data records for conditional selection, add
         filters and sort.
+
+        Note: For Search, modification ID is unique, but
+        more than one technology IDs are allowed.
 
         :param selection_ids: Selection IDs
         :type selection_ids: list of int
@@ -294,23 +298,26 @@ class PublicService:
                 Data.strand,
                 Data.coverage,
                 Data.frequency,
+                Data.dataset_id,
                 func.group_concat(DataAnnotation.feature.distinct()).label("feature"),
                 func.group_concat(GenomicAnnotation.biotype.distinct()).label(
                     "gene_biotype"
                 ),
                 func.group_concat(GenomicAnnotation.name.distinct()).label("gene_name"),
                 DetectionTechnology.tech,
-                Association.dataset_id,
                 Organism.taxa_id,
                 Organism.cto,
             )
             .join_from(DataAnnotation, Data, DataAnnotation.inst_data)
             .join_from(DataAnnotation, GenomicAnnotation, DataAnnotation.inst_genomic)
-            .join_from(Data, Association, Data.inst_association)
-            .join_from(Association, Selection, Association.inst_selection)
-            .join_from(Selection, DetectionTechnology, Selection.inst_technology)
-            .join_from(Selection, Organism, Selection.inst_organism)
-            .where(Association.selection_id.in_(selection_ids))
+            .join_from(Data, Dataset, Data.inst_dataset)
+            .join_from(Dataset, DetectionTechnology, Dataset.inst_technology)
+            .join_from(Dataset, Organism, Dataset.inst_organism)
+            .where(
+                Data.modification_id == modification_id,
+                Dataset.organism_id == organism_id,
+                Dataset.technology_id.in_(technology_ids),
+            )
         )
 
         # coordinate filters
@@ -337,14 +344,7 @@ class PublicService:
         # index speed up on annotation_id + biotypes + name
         biotype_flt = next((flt for flt in gene_filter if "gene_biotype" in flt), None)
         if biotype_flt:
-            version_query = queries.get_annotation_version()
-            version = self._session.execute(version_query).scalar_one()
-            annotation_query = queries.query_column_where(
-                Annotation,
-                "id",
-                filters={"taxa_id": taxa_id, "version": version},
-            )
-            annotation_id = self._session.execute(annotation_query).scalar_one()
+            annotation_id = self._get_annotation_id(taxa_id)
             _, mapped_biotypes, _ = _get_flt(biotype_flt)
             biotypes = [k for k, v in self.BIOTYPES.items() if v in mapped_biotypes]
             query = query.where(GenomicAnnotation.annotation_id == annotation_id).where(
@@ -377,6 +377,16 @@ class PublicService:
         response["records"] = self._dump(query)
 
         return response
+
+    def _get_annotation_id(self, taxid: int) -> int:
+        version_query = queries.get_annotation_version()
+        version = self._session.execute(version_query).scalar_one()
+        query = queries.query_column_where(
+            Annotation,
+            "id",
+            filters={"taxa_id": taxid, "version": version},
+        )
+        return self._session.execute(query).scalar_one()
 
     def _dump(self, query):
         """Serialize a query from a select statement using

@@ -6,8 +6,8 @@ from sqlalchemy.orm import Session
 
 from scimodom.database.database import get_session
 from scimodom.database.models import (
-    Association,
     Dataset,
+    DatasetModificationAssociation,
     DetectionTechnology,
     Modomics,
     Modification,
@@ -66,30 +66,23 @@ class DatasetService:
                 Taxa.id.label("taxa_id"),
                 Organism.cto,
             )
-            .join_from(
-                Dataset,
-                Project,
-                Dataset.project_id == Project.id,
-            )
+            .join_from(Dataset, Project, Dataset.inst_project)
             .join_from(
                 Project,
                 ProjectSource,
-                Project.id == ProjectSource.project_id,
+                Project.sources,
                 isouter=True,
             )
-            .join_from(Dataset, Association, Dataset.id == Association.dataset_id)
-            .join_from(Association, Selection, Association.selection_id == Selection.id)
+            .join_from(Dataset, DatasetModificationAssociation, Dataset.associations)
             .join_from(
-                Selection, Modification, Selection.modification_id == Modification.id
+                DatasetModificationAssociation,
+                Modification,
+                DatasetModificationAssociation.inst_modification,
             )
-            .join_from(
-                Selection,
-                DetectionTechnology,
-                Selection.technology_id == DetectionTechnology.id,
-            )
-            .join_from(Selection, Organism, Selection.organism_id == Organism.id)
-            .join_from(Modification, Modomics, Modification.modomics_id == Modomics.id)
-            .join_from(Organism, Taxa, Organism.taxa_id == Taxa.id)
+            .join_from(Modification, Modomics, Modification.inst_modomics)
+            .join_from(Dataset, DetectionTechnology, Dataset.inst_technology)
+            .join_from(Dataset, Organism, Dataset.inst_organism)
+            .join_from(Organism, Taxa, Organism.inst_taxa)
         )
         if user is not None:
             query = (

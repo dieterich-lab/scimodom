@@ -22,6 +22,8 @@ def test_importer(close_handle, Session, data_path):
     try:
         importer = get_importer(
             filen=Path(data_path.LOC, "test.bed").as_posix(),
+            organism_id=1,
+            technology_id=1,
             smid="12345678",
             eufid="123456789ABC",
             title="title",
@@ -43,6 +45,8 @@ def test_importer(close_handle, Session, data_path):
         records = session.execute(select(Dataset)).scalars().all()[0]
         assert num_records == 1
         assert records.id == "123456789ABC"
+        assert records.organism_id == 1
+        assert records.technology_id == 1
         assert records.project_id == "12345678"
         assert records.title == "title"
         assert records.modification_type == "RNA"
@@ -63,7 +67,8 @@ def test_importer(close_handle, Session, data_path):
         records = session.execute(select(Data)).scalars().all()[0]
         assert num_records == 1
         assert records.id == 1
-        assert records.association_id == 1
+        assert records.dataset_id == "123456789ABC"
+        assert records.modification_id == 1
         assert records.chrom == "1"
         assert records.start == 0
         assert records.end == 10
@@ -82,6 +87,8 @@ def test_importer_header_fail(Session, data_path):
     try:
         importer = get_importer(
             filen=Path(data_path.LOC, "test_header_fail.bed").as_posix(),
+            organism_id=1,
+            technology_id=1,
             smid="12345678",
             eufid="123456789ABC",
             title="title",
@@ -119,6 +126,8 @@ def test_importer_data_fail(Session, data_path):
     try:
         importer = get_importer(
             filen=Path(data_path.LOC, "test_data_fail.bed").as_posix(),
+            organism_id=1,
+            technology_id=1,
             smid="12345678",
             eufid="123456789ABC",
             title="title",
@@ -139,6 +148,8 @@ def test_importer_data_fail(Session, data_path):
         records = session.execute(select(Dataset)).scalars().all()[0]
         assert num_records == 1
         assert records.id == "123456789ABC"
+        assert records.organism_id == 1
+        assert records.technology_id == 1
         assert records.project_id == "12345678"
         assert records.title == "title"
         assert records.modification_type == "RNA"
@@ -154,7 +165,8 @@ def test_importer_data_fail(Session, data_path):
         assert num_records == 2
         for idx, record in enumerate(records):
             assert record.id == idx + 1
-            assert record.association_id == 1
+            assert record.dataset_id == "123456789ABC"
+            assert record.modification_id == 1
             assert record.chrom == "1"
             assert record.start == 0
             assert record.end == 10
@@ -283,7 +295,8 @@ def test_buffer(Session):
             "item_rgb": "0,0,0",
             "coverage": 10,
             "frequency": 1,
-            "association_id": 1,
+            "dataset_id": "123456789ABC",
+            "modification_id": 1,
         },
         {
             "chrom": "1",
@@ -297,7 +310,8 @@ def test_buffer(Session):
             "item_rgb": "10,10,10",
             "coverage": 20,
             "frequency": 2,
-            "association_id": 2,
+            "dataset_id": "123456789ABC",
+            "modification_id": 2,
         },
     ]
     buffer = get_buffer(Data)
@@ -314,7 +328,8 @@ def test_buffer(Session):
         records = session.execute(select(Data)).scalars().all()
         for idx, record in enumerate(records):
             assert record.id == idx + 1
-            assert record.association_id == expected_records[idx]["association_id"]
+            assert record.dataset_id == expected_records[idx]["dataset_id"]
+            assert record.modification_id == expected_records[idx]["modification_id"]
             assert record.chrom == expected_records[idx]["chrom"]
             assert record.start == expected_records[idx]["start"]
             assert record.end == expected_records[idx]["end"]
@@ -344,7 +359,8 @@ def test_buffer_no_flush(Session):
             "item_rgb": "0,0,0",
             "coverage": 10,
             "frequency": 1,
-            "association_id": 1,
+            "dataset_id": "123456789ABC",
+            "modification_id": 1,
         },
         {
             "chrom": "1",
@@ -358,7 +374,8 @@ def test_buffer_no_flush(Session):
             "item_rgb": "10,10,10",
             "coverage": 20,
             "frequency": 2,
-            "association_id": 2,
+            "dataset_id": "123456789ABC",
+            "modification_id": 2,
         },
     ]
     buffer = get_buffer(Data, no_flush=True)

@@ -11,10 +11,11 @@ SPECS_EUF = {
     "format": "bedRMod",
     "header": {"comment": "#", "delimiter": "="},
     "delimiter": "\t",
-    # to avoid violating CheckConstraint - check all int types > 0 (default)
+    # all int types are checked for non-negative values on import (default)
     "constraints": {
         "score": "score <= 1000",
         "frequency": "frequency <= 100",
+        "strict": ["coverage", "frequency"],
         "strand": ["+", "-", "."],
     },
     "versions": ["1.6", "1.7"],

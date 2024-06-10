@@ -1,4 +1,5 @@
 from pathlib import Path
+import shutil
 
 import pytest
 import requests  # type: ignore
@@ -9,6 +10,25 @@ from scimodom.services.assembly import (
     InstantiationError,
 )
 from scimodom.utils.specifications import ENSEMBL_FTP, ENSEMBL_ASM_MAPPING
+
+
+def test_create_new(Session, setup, data_path):
+    with Session() as session, session.begin():
+        session.add_all(setup)
+
+    service = AssemblyService.from_id(Session(), assembly_id=1)
+    # TODO: we've got some isolation problems here... e.g. this is created by test_annotation...
+    parent = service._chrom_file.parent
+    if parent.exists() and parent.is_dir():
+        shutil.rmtree(parent)
+    service.create_new()
+    organism = service._get_organism()
+    assembly = service._name
+    parent, _ = service.get_chrom_path(organism, assembly)
+    # check if files exist, not content
+    assert service._chrom_file.is_file()
+    assert Path(parent, "info.json").is_file()
+    assert Path(parent, "release.json").is_file()
 
 
 def test_init_from_id_wrong_id(Session, setup, data_path):
@@ -120,21 +140,6 @@ def test_init_from_new_wrong_name(Session, setup, data_path):
     )
 
 
-def test_create_new(Session, setup, data_path):
-    with Session() as session, session.begin():
-        session.add_all(setup)
-
-    service = AssemblyService.from_id(Session(), assembly_id=1)
-    service.create_new()
-    organism = service._get_organism()
-    assembly = service._name
-    parent, _ = service.get_chrom_path(organism, assembly)
-    # check if files exist, not content
-    assert service._chrom_file.is_file()
-    assert Path(parent, "info.json").is_file()
-    assert Path(parent, "release.json").is_file()
-
-
 def test_create_new_fail(Session, setup, data_path):
     with Session() as session, session.begin():
         session.add_all(setup)
@@ -164,3 +169,30 @@ def test_create_new_exists(Session, setup, data_path):
         str(exc.value)
         == f"Assembly directory at {parent} already exists... Aborting transaction!"
     )
+
+
+def test_get_organism(Session, setup):
+    with Session() as session, session.begin():
+        session.add_all(setup)
+    service = AssemblyService.from_id(Session(), assembly_id=1)
+    assert service._get_organism() == "Homo_sapiens"
+
+
+def test_get_current_name(Session, setup):
+    with Session() as session, session.begin():
+        session.add_all(setup)
+    service = AssemblyService.from_new(Session(), name="GRCh37", taxa_id=9606)
+    assert service._get_current_name() == "GRCh38"
+
+
+def test_get_seqids(Session, setup, data_path):
+    with Session() as session, session.begin():
+        session.add_all(setup)
+    service = AssemblyService.from_id(Session(), assembly_id=1)
+    parent = service._chrom_file.parent
+    parent.mkdir(parents=True, exist_ok=True)
+    string = "1\t12345\n2\t123456"
+    with open(service._chrom_file, "w") as chrom_file:
+        chrom_file.write(string)
+    seqids = service.get_seqids("Homo sapiens", "GRCh38")
+    assert set(seqids) == {"1", "2"}

@@ -25,9 +25,10 @@ const modification = ref()
 const selectedModification = ref()
 const technology = ref()
 const selectedTechnology = ref()
+const selectedTechnologyIds = ref([])
 const organism = ref()
 const selectedOrganism = ref()
-const selection = ref()
+const selectionIds = ref([])
 const taxid = ref()
 const genes = ref()
 const selectedGene = ref()
@@ -48,40 +49,15 @@ const lazyParams = ref({})
 const disabled = computed(() => isAllSelected())
 const confirmed = computed(() => isAnyExtraSelected())
 
-function isAllSelected() {
-  return (
-    selectedModification.value == null ||
-    selectedTechnology.value == null ||
-    selectedOrganism.value == null
-  )
-}
-
-function isAnyExtraSelected() {
-  // biotypes and/or features may not be restrictive enough...
-  // though chrom alone is quite broad...
-  return selectedGene.value != null || selectedChrom.value != null
-}
-
+// utilities to reset options/filters
 const clearCoords = () => {
   selectedChromStart.value = undefined
   selectedChromEnd.value = undefined
 }
-
 const clearChrom = () => {
   selectedChrom.value = undefined
   clearCoords()
 }
-
-const clearSelection = (value) => {
-  if (value < 1) {
-    technology.value = undefined
-  }
-  if (value < 2) {
-    selection.value = undefined
-  }
-  records.value = undefined
-}
-
 const clearSelected = (value) => {
   if (value < 1) {
     selectedOrganism.value = undefined
@@ -93,54 +69,51 @@ const clearSelected = (value) => {
   selectedBiotypes.value = undefined
   selectedFeatures.value = undefined
 }
-
-const searchGene = (event) => {
+const clearSelection = (value) => {
+  if (value < 1) {
+    technology.value = undefined
+  }
+  if (value < 2) {
+    selectionIds.value = []
+  }
+  records.value = undefined
+}
+const clearAll = (value) => {
+  clearSelected(value)
+  clearSelection(value)
   clearChrom()
-  setTimeout(() => {
-    if (!event.query.trim().length) {
-      filteredGenes.value = [...genes.value]
-    } else {
-      filteredGenes.value = genes.value.filter((g) => {
-        return g.toLowerCase().startsWith(event.query.toLowerCase())
-      })
-    }
-  }, 250)
 }
 
+// search callbacks
 const updateOrganism = () => {
-  clearSelection(0)
-  clearSelected(0)
-  clearChrom()
+  // on first filter (modification) change
+  clearAll(0)
   organism.value = updOrganismFromMod(options.value, selectedModification.value)
 }
-
 const updateTechnology = () => {
-  clearSelection(1)
-  clearSelected(1)
-  clearChrom()
+  // on second filter (organism) change
+  clearAll(1)
   technology.value = updTechnologyFromModAndOrg(
     options.value,
     selectedModification.value,
     selectedOrganism.value
   )
 }
-
 const updateSelection = () => {
-  clearSelection(2)
-  clearSelected(2)
-  clearChrom()
+  // on third filter (technology) change
+  clearAll(2)
   let result = updSelectionFromAll(
     options.value,
     selectedModification.value,
     selectedOrganism.value,
     selectedTechnology.value
   )
-  taxid.value = result.taxid[0]
-  selection.value = result.selection
-  if (selection.value.length == 0) {
+  selectedTechnologyIds.value = result.technology
+  selectionIds.value = result.selection
+  taxid.value = result.taxid
+  if (selectionIds.value.length == 0) {
     // handle the case where all checkboxes are unticked
     selectedTechnology.value = undefined
-    selection.value = undefined
     chroms.value = undefined
   } else {
     // get chrom.sizes
@@ -154,7 +127,7 @@ const updateSelection = () => {
     // get genes
     HTTP.get('/genes', {
       params: {
-        selection: selection.value
+        selection: selectionIds.value
       },
       paramsSerializer: {
         indexes: null
@@ -168,7 +141,18 @@ const updateSelection = () => {
       })
   }
 }
-
+const searchGene = (event) => {
+  clearChrom()
+  setTimeout(() => {
+    if (!event.query.trim().length) {
+      filteredGenes.value = [...genes.value]
+    } else {
+      filteredGenes.value = genes.value.filter((g) => {
+        return g.toLowerCase().startsWith(event.query.toLowerCase())
+      })
+    }
+  }, 250)
+}
 const confirmSearch = () => {
   if (confirmed.value) {
     lazyLoad()
@@ -185,13 +169,10 @@ const confirmSearch = () => {
   }
 }
 
+// table-related utilities
 const getFileName = () => {
   let stamp = new Date()
   return 'scimodom_search_' + stamp.toISOString().replaceAll(/:/g, '')
-}
-
-const navigateTo = (eufid) => {
-  router.push({ name: 'browse', params: { eufid: eufid } })
 }
 
 const onPage = (event) => {
@@ -200,16 +181,30 @@ const onPage = (event) => {
     lazyLoad(event)
   }
 }
-
 const onSort = (event) => {
   lazyParams.value = event
   if (!disabled.value) {
     lazyLoad(event)
   }
 }
-
 const onExport = () => {
   dt.value.exportCSV()
+}
+
+const navigateTo = (eufid) => {
+  router.push({ name: 'browse', params: { eufid: eufid } })
+}
+
+// functions
+function isAllSelected() {
+  return (
+    selectedModification.value == null ||
+    selectedTechnology.value == null ||
+    selectedOrganism.value == null
+  )
+}
+function isAnyExtraSelected() {
+  return selectedGene.value != null || selectedChrom.value != null
 }
 
 function lazyLoad(event) {
@@ -233,7 +228,9 @@ function lazyLoad(event) {
   }
   HTTP.get('/search', {
     params: {
-      selection: selection.value,
+      modification: selectedModification.value.key,
+      organism: selectedOrganism.value.key,
+      technology: selectedTechnologyIds.value,
       taxid: taxid.value,
       geneFilter: fmtFilter(filters),
       chrom: selectedChrom.value == null ? null : selectedChrom.value.chrom,
