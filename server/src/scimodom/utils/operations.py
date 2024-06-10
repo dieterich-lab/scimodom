@@ -4,11 +4,9 @@
 from collections.abc import Sequence
 from os import makedirs
 import logging
-from os.path import isdir
 from pathlib import Path
 import shlex
 import subprocess
-import tempfile
 from typing import Any
 
 import pybedtools  # type: ignore

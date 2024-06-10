@@ -1,10 +1,11 @@
 import logging
-from pathlib import Path
-from typing import get_args
+from dataclasses import dataclass
+from typing import List, Iterable
 
-from flask import Blueprint, request
+from flask import Blueprint, Response
 from flask_cors import cross_origin
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from pydantic import BaseModel
 
 from scimodom.api.helpers import (
     get_valid_dataset_id_list_from_request_parameter,
@@ -12,15 +13,18 @@ from scimodom.api.helpers import (
     get_valid_boolean_from_request_parameter,
     ClientResponseException,
 )
-from scimodom.config import Config
-from scimodom.services.comparison import (
-    get_comparison_service,
-    FailedUploadError,
-    NoRecordsFoundError,
-    ComparisonService,
-)
+from scimodom.services.bedtools import get_bedtools_service, BedToolsService
 from scimodom.services.dataset import get_dataset_service
+from scimodom.services.file import get_file_service
+from scimodom.services.modification import get_modification_service
 from scimodom.services.user import get_user_service
+from scimodom.utils.bed_importer import BedImporter
+from scimodom.utils.bedtools_dto import (
+    ModificationRecord,
+    IntersectRecord,
+    ClosestRecord,
+    SubtractRecord,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -43,56 +47,128 @@ def list_mine():
     return dataset_service.get_datasets(user)
 
 
-@dataset_api.route("/compare", methods=["GET"])
-@cross_origin(supports_credentials=True)
-def compare():
-    """Compare dataset (Compare View)."""
+class IntersectResponse(BaseModel):
+    records: List[IntersectRecord]
 
+
+@dataset_api.route("/intersect", methods=["GET"])
+@cross_origin(supports_credentials=True)
+def intersect():
     try:
-        reference_ids = get_valid_dataset_id_list_from_request_parameter("reference")
-        comparison_ids = get_valid_dataset_id_list_from_request_parameter("comparison")
-        upload_id = get_valid_tmp_file_id_from_request_parameter("upload")
-        operation = _get_operation()
-        is_strand = get_valid_boolean_from_request_parameter("strand", default=False)
-        is_euf = get_valid_boolean_from_request_parameter("is_euf", default=False)
+        with _CompareContext() as ctx:
+            records = ctx.bedtools_service.intersect(
+                ctx.a_records, ctx.b_records_list, is_strand=ctx.is_strand
+            )
+            return _get_response_from_pydantic_object(
+                IntersectResponse(records=records)
+            )
     except ClientResponseException as e:
         return e.response_tupel
 
-    comparison_service = get_comparison_service(operation, is_strand)
-    if upload_id:
-        try:
-            upload_path = Path(Config.UPLOAD_PATH, upload_id)
-            comparison_service.upload_records(upload_path, is_euf)
-        except FailedUploadError as exc:
-            logger.error(f"Failed upload (Comparison): {exc}")
-            return {
-                "message": "File upload failed. Contact the system administrator."
-            }, 500
-        except NoRecordsFoundError:
-            return {
-                "message": (
-                    "File upload failed. No records were found. Allowed formats are BED6 or bedRMod. "
-                    "For more information, consult the documentation."
-                )
-            }, 500
-    else:
-        comparison_service.query_comparison_records(comparison_ids)
 
-    comparison_service.query_reference_records(reference_ids)
-    try:
-        return comparison_service.compare_dataset()
-    except Exception as exc:
-        logger.error(f"Failed comparison: {exc}")
-        return {
-            "message": (
-                "Failed to compare dataset. The server encountered an unexpected error. "
-                "Contact the system administrator."
+class _CompareContext:
+    @dataclass
+    class Ctx:
+        bedtools_service: BedToolsService
+        a_records: Iterable[ModificationRecord]
+        b_records_list: List[Iterable[ModificationRecord]]
+        is_strand: bool
+
+    def __init__(self):
+        self._reference_ids = get_valid_dataset_id_list_from_request_parameter(
+            "reference"
+        )
+        self._comparison_ids = get_valid_dataset_id_list_from_request_parameter(
+            "comparison"
+        )
+        self._upload_id = get_valid_tmp_file_id_from_request_parameter(
+            "upload", is_optional=True
+        )
+        self._is_strand = get_valid_boolean_from_request_parameter(
+            "strand", default=False
+        )
+        self._is_euf = get_valid_boolean_from_request_parameter("is_euf", default=False)
+        self._tmp_file_handle = None
+
+        if self._upload_id is None and len(self._comparison_ids) == 0:
+            raise ClientResponseException(
+                400, "Need either a upload_id or a comparison_ids"
             )
-        }, 500
+        if self._upload_id is not None and len(self._comparison_ids) > 0:
+            raise ClientResponseException(
+                400, "Can only handle upload_id or comparison_ids, but not both"
+            )
+
+    def __enter__(self) -> Ctx:
+        modification_service = get_modification_service()
+        if self._upload_id is None:
+            # Unfortunately the MySQL driver does not allow use to have multiple queries run at once.
+            # To work around this issue we have to buffer the b_records in memory
+            b_records_list = [
+                list(modification_service.get_modifications_by_dataset(dataset_id))
+                for dataset_id in self._comparison_ids
+            ]
+        else:
+            file_service = get_file_service()
+            try:
+                self._tmp_file_handle = file_service.open_tmp_file_by_id(
+                    self._upload_id
+                )
+            except FileNotFoundError:
+                raise ClientResponseException(
+                    404, "Your uploaded file was not found - maybe it expired"
+                )
+            b_records_list = [
+                BedImporter(stream=self._tmp_file_handle, is_euf=self._is_euf).parse()
+            ]
+        a_records = modification_service.get_modifications_by_dataset(
+            self._reference_ids
+        )
+        return self.Ctx(
+            bedtools_service=get_bedtools_service(),
+            a_records=a_records,
+            b_records_list=b_records_list,
+            is_strand=self._is_strand,
+        )
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if self._tmp_file_handle is not None:
+            self._tmp_file_handle.close()
 
 
-def _get_operation():
-    operation = request.args.get("operation", type=str)
-    if operation not in get_args(ComparisonService.OPERATIONS):
-        raise ClientResponseException(400, "Unsupported operation")
-    return operation
+def _get_response_from_pydantic_object(obj: BaseModel):
+    return Response(response=obj.json(), status=200, mimetype="application/json")
+
+
+class ClosestResponse(BaseModel):
+    records: List[ClosestRecord]
+
+
+@dataset_api.route("/closest", methods=["GET"])
+@cross_origin(supports_credentials=True)
+def closest():
+    try:
+        with _CompareContext() as ctx:
+            records = ctx.bedtools_service.closest(
+                ctx.a_records, ctx.b_records_list, is_strand=ctx.is_strand
+            )
+            return _get_response_from_pydantic_object(ClosestResponse(records=records))
+    except ClientResponseException as e:
+        return e.response_tupel
+
+
+class SubtractResponse(BaseModel):
+    records: List[SubtractRecord]
+
+
+@dataset_api.route("/subtract", methods=["GET"])
+@cross_origin(supports_credentials=True)
+def subtract():
+    try:
+        with _CompareContext() as ctx:
+            records = ctx.bedtools_service.subtract(
+                ctx.a_records, ctx.b_records_list, is_strand=ctx.is_strand
+            )
+            return _get_response_from_pydantic_object(SubtractResponse(records=records))
+    except ClientResponseException as e:
+        return e.response_tupel

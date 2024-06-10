@@ -434,8 +434,8 @@ class BedToolsService:
         )
         for s in stream:
             yield ClosestRecord(
-                a=self.get_modifications_as_bedtool_records(s[:9]),
-                b=self.get_modifications_as_bedtool_records(s[9:18]),
+                a=self._get_modification_from_bedtools_data(s[:9]),
+                b=self._get_modification_from_bedtools_data(s[9:18]),
                 distance=s[18],
             )
 
@@ -460,16 +460,16 @@ class BedToolsService:
         :rtype: list of tuples
         """
 
+        def b_generator():
+            for records in b_records_list:
+                for r in records:
+                    yield r
+
         a_bedtool = self.get_modifications_as_bedtool_records(a_records)
-        b_bedtool = utils.flatten_list(
-            [
-                self.get_modifications_as_bedtool_records(b_records_list)
-                for x in b_records_list
-            ]
-        )
+        b_bedtool = self.get_modifications_as_bedtool_records(b_generator())
         bedtool = a_bedtool.subtract(b_bedtool, s=is_strand, sorted=is_sorted)
         for s in bedtool:
-            yield self.get_modifications_as_bedtool_records(s.fields)
+            yield SubtractRecord(**self._get_modification_from_bedtools_data(s).dict())
 
 
 @cache
