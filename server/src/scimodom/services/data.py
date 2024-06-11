@@ -25,6 +25,7 @@ from scimodom.services.annotation import AnnotationService
 from scimodom.services.assembly import AssemblyService, AssemblyVersionError
 from scimodom.services.bedtools import get_bedtools_service
 from scimodom.services.importer import get_importer
+from scimodom.services.modification import get_modification_service
 
 logger = logging.getLogger(__name__)
 
@@ -239,10 +240,10 @@ class DataService:
         logger.info("Annotating data now...")
 
         # annotate newly imported data...
-        bedtools_service = get_bedtools_service()
         annotation_service = AnnotationService(
             session=self._session,
-            bedtools_service=bedtools_service,
+            bedtools_service=get_bedtools_service(),
+            modification_service=get_modification_service(),
             taxa_id=self._taxa_id,
         )
         try:
