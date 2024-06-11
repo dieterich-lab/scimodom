@@ -102,6 +102,9 @@ ENSEMBL_ASM = "info/assembly"
 # ENSEMBL_ASM_MAPPING = "assembly_mapping"
 ENSEMBL_ASM_MAPPING = "current_assembly_chain"
 
+# GtRNAdb annotation
+GTRNADB_URL = "http://gtrnadb.ucsc.edu/genomes/"
+
 # Only GTF annotation: defined in AnnotationService
 
 BIOTYPES = {

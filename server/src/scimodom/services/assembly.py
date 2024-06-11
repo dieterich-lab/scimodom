@@ -214,20 +214,27 @@ class AssemblyService:
         return parent, AssemblyService.CHROM_FILE
 
     @staticmethod
-    def get_seqids(organism: str, assembly: str) -> list[str]:
+    def get_seqids(
+        organism: str | None = None,
+        assembly: str | None = None,
+        chrom_file: str | Path | None = None,
+    ) -> list[str]:
         """Returns the chromosomes for a given assembly
         as a list. Relies on get_chrom_path, as such
         assembly must also match the current assembly.
 
         :param organism: Organism name
-        :type organism: str
+        :type organism: str | None
         :param assembly: Assembly name
-        :type assembly: str
+        :type assembly: str | None
+        :param chrom_file: Path to chrom.sizes
+        :type chrom_file: str | Path | None
         :returns: Chromosomes
         :rtype: list of str
         """
-        parent, filen = AssemblyService.get_chrom_path(organism, assembly)
-        chrom_file = Path(parent, filen)
+        if chrom_file is None:
+            parent, filen = AssemblyService.get_chrom_path(organism, assembly)
+            chrom_file = Path(parent, filen)
         with open(chrom_file, "r") as f:
             lines = f.readlines()
         return [l.split()[0] for l in lines]

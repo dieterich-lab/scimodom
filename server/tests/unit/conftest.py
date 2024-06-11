@@ -125,9 +125,9 @@ def setup():
     ]
 
     assembly = [
-        Assembly(name="GRCh38", taxa_id=9606, version="GcatSmFcytpU"),
-        Assembly(name="GRCm38", taxa_id=10090, version="GcatSmFcytpU"),
-        Assembly(name="GRCh37", taxa_id=9606, version="J9dit7Tfc6Sb"),
+        Assembly(name="GRCh38", alt_name="hg38", taxa_id=9606, version="GcatSmFcytpU"),
+        Assembly(name="GRCm38", alt_name="mm10", taxa_id=10090, version="GcatSmFcytpU"),
+        Assembly(name="GRCh37", alt_name="hg19", taxa_id=9606, version="J9dit7Tfc6Sb"),
     ]
 
     assembly_version = [
@@ -135,9 +135,11 @@ def setup():
     ]
 
     annotation = [
-        Annotation(release=110, taxa_id=9606, version="EyRBnPeVwbzW"),
-        Annotation(release=110, taxa_id=10090, version="EyRBnPeVwbzW"),
-        Annotation(release=109, taxa_id=9606, version="A8syx5TzWlK0"),
+        Annotation(release=110, taxa_id=9606, source="ensembl", version="EyRBnPeVwbzW"),
+        Annotation(
+            release=110, taxa_id=10090, source="ensembl", version="EyRBnPeVwbzW"
+        ),
+        Annotation(release=109, taxa_id=9606, source="ensembl", version="A8syx5TzWlK0"),
     ]
 
     annotation_version = [

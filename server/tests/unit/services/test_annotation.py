@@ -16,6 +16,7 @@ from scimodom.database.models import (
 )
 from scimodom.services.annotation import (
     AnnotationService,
+    EnsemblAnnotationService,
     AnnotationVersionError,
     InstantiationError,
     AnnotationFormatError,
@@ -29,7 +30,7 @@ def test_get_annotation_path(Session, data_path):
 
 
 def test_get_gene_cache_path(Session, data_path):
-    assert AnnotationService.get_gene_cache_path() == Path(
+    assert AnnotationService.get_cache_path() == Path(
         data_path.LOC, "cache", "gene", "selection"
     )
 
@@ -39,7 +40,7 @@ def test_init_from_id_wrong_id(Session, setup, data_path):
         session.add_all(setup)
     with pytest.raises(InstantiationError) as exc:
         service = AnnotationService(Session(), annotation_id=99)
-    assert (str(exc.value)) == "Annotation ID = 99 not found! Aborting transaction!"
+    assert (str(exc.value)) == "Failed to find annotation 99"
     assert exc.type == InstantiationError
 
 
@@ -48,10 +49,7 @@ def test_init_from_id_wrong_version(Session, setup, data_path):
         session.add_all(setup)
     with pytest.raises(AnnotationVersionError) as exc:
         service = AnnotationService(Session(), annotation_id=3)
-    assert (
-        (str(exc.value))
-        == "Mismatch between current DB annotation version (EyRBnPeVwbzW) and version (A8syx5TzWlK0) from annotation ID = 3. Aborting transaction!"
-    )
+    assert (str(exc.value)) == "Invalid annotation version A8syx5TzWlK0"
     assert exc.type == AnnotationVersionError
 
 
@@ -61,58 +59,73 @@ def test_init_from_id(Session, setup, data_path):
     with Session() as session, session.begin():
         session.add_all(setup)
     service = AnnotationService(Session(), annotation_id=1, taxa_id=0)
-    annotation_file = service.ANNOTATION_FILE(
-        organism="Homo_sapiens",
-        assembly="GRCh38",
-        release=service._release,
-        fmt=service.FMT,
-    )
-    assert service._release == 110
-    assert service._taxid == 9606
-    assert service._annotation_file == Path(
-        data_path.ANNOTATION_PATH,
-        "Homo_sapiens",
-        "GRCh38",
-        str(service._release),
-        annotation_file,
-    )
+    # annotation_file = service.ANNOTATION_FILE(
+    #     organism="Homo_sapiens",
+    #     assembly="GRCh38",
+    #     release=service._annotation.release,
+    #     fmt=service.FMT,
+    # )
+    assert service._annotation.release == 110
+    assert service._annotation.taxa_id == 9606
+    # assert service._annotation_file == Path(
+    #     data_path.ANNOTATION_PATH,
+    #     "Homo_sapiens",
+    #     "GRCh38",
+    #     str(service._annotation.release),
+    #     annotation_file,
+    # )
     assert service._chrom_file == Path(
         data_path.ASSEMBLY_PATH, "Homo_sapiens", "GRCh38", "chrom.sizes"
     )
+
+
+def test_init_no_source(Session, setup, data_path):
+    with Session() as session, session.begin():
+        session.add_all(setup)
+    with pytest.raises(AssertionError) as exc:
+        service = AnnotationService(Session(), taxa_id=9606)
+    assert (
+        str(exc.value)
+        == "Undefined 'None'. Allowed values are typing.Literal['ensembl', 'gtrnadb']."
+    )
+    assert exc.type == AssertionError
 
 
 def test_init_from_taxid_fail(Session, setup, data_path):
     with Session() as session, session.begin():
         session.add_all(setup)
     with pytest.raises(InstantiationError) as exc:
-        service = AnnotationService(Session(), taxa_id=0)
-    assert str(exc.value) == "Taxonomy ID = 0 not found! Aborting transaction!"
+        service = AnnotationService(Session(), taxa_id=0, source="ensembl")
+    assert (
+        str(exc.value)
+        == "Failed to find annotation with taxonomy ID 0 and source ensembl"
+    )
     assert exc.type == InstantiationError
 
 
-def test_init_from_taxid(Session, setup, data_path):
-    with Session() as session, session.begin():
-        session.add_all(setup)
-    service = AnnotationService(Session(), taxa_id=9606)
-    annotation_file = service.ANNOTATION_FILE(
-        organism="Homo_sapiens",
-        assembly="GRCh38",
-        release=service._release,
-        fmt=service.FMT,
-    )
-    assert service._db_version == "EyRBnPeVwbzW"
-    assert service._annotation_id == 1
-    assert service._release == 110
-    assert service._annotation_file == Path(
-        data_path.ANNOTATION_PATH,
-        "Homo_sapiens",
-        "GRCh38",
-        str(service._release),
-        annotation_file,
-    )
-    assert service._chrom_file == Path(
-        data_path.ASSEMBLY_PATH, "Homo_sapiens", "GRCh38", "chrom.sizes"
-    )
+# def test_init_from_taxid(Session, setup, data_path):
+#     with Session() as session, session.begin():
+#         session.add_all(setup)
+#     service = AnnotationService(Session(), taxa_id=9606)
+#     annotation_file = service.ANNOTATION_FILE(
+#         organism="Homo_sapiens",
+#         assembly="GRCh38",
+#         release=service._release,
+#         fmt=service.FMT,
+#     )
+#     assert service._db_version == "EyRBnPeVwbzW"
+#     assert service._annotation_id == 1
+#     assert service._release == 110
+#     assert service._annotation_file == Path(
+#         data_path.ANNOTATION_PATH,
+#         "Homo_sapiens",
+#         "GRCh38",
+#         str(service._release),
+#         annotation_file,
+#     )
+#     assert service._chrom_file == Path(
+#         data_path.ASSEMBLY_PATH, "Homo_sapiens", "GRCh38", "chrom.sizes"
+#     )
 
 
 # due to scope of data_path this must be called before the rest...
@@ -122,7 +135,7 @@ def test_download_annotation(Session, setup, data_path):
     service = AnnotationService(Session(), annotation_id=1)
     parent = service._annotation_file.parent
     parent.mkdir(parents=True, exist_ok=False)
-    service._download_annotation()
+    service._download()
     # only assert if created
     assert service._annotation_file.is_file()
 

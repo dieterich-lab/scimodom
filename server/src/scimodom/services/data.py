@@ -167,7 +167,7 @@ class DataService:
             is_liftover = True
         finally:
             seqids = assembly_service.get_seqids(
-                self._organism_name, self._current_assembly_name
+                organism=self._organism_name, assembly=self._current_assembly_name
             )
 
         # create EUFID
