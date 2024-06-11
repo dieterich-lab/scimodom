@@ -20,6 +20,7 @@ from scimodom.database.models import (
 import scimodom.database.queries as queries
 from scimodom.services.annotation import AnnotationService
 from scimodom.services.assembly import AssemblyService
+from scimodom.services.bedtools import get_bedtools_service
 from scimodom.services.project import ProjectService
 from scimodom.services.data import DataService
 from scimodom.services.setup import get_setup_service
@@ -83,7 +84,10 @@ def add_annotation(annotation_id: int) -> None:
     :type annotation_id: int
     """
     session = get_session()
-    service = AnnotationService(session, annotation_id=annotation_id)
+    bedtools_service = get_bedtools_service()
+    service = AnnotationService(
+        session, badtools_service=bedtools_service, annotation_id=annotation_id
+    )
     click.secho(
         f"Preparing annotation for {service._taxid} ({service._release}) to {Config.DATABASE_URI}...",
         fg="green",

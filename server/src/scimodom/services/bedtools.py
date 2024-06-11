@@ -38,10 +38,10 @@ def _get_gtf_attrs(feature):
     format is BED6+2, where 2 additional
     fields are "gene_id", "gene_biotype".
 
-    Note: The value in Interval.start will
+    Note: The value in 'Interval.start' will
     always contain the 0-based start position,
     even if it came from a GFF or other 1-based
-    feature. The contents of Interval.fields
+    feature. The contents of 'Interval.fields'
     will always be strings, which in turn always
     represent the original line in the file.
 
@@ -94,28 +94,6 @@ class BedToolsService:
         makedirs(tempdir, exist_ok=True)
         pybedtools.helpers.set_tempdir(tempdir)
 
-    @staticmethod
-    def get_modifications_as_bedtool_records(
-        records: Iterable[ModificationRecord],
-    ) -> BedTool:
-        def generator():
-            for record in records:
-                yield create_interval_from_list(
-                    [
-                        record.chrom,
-                        record.start,
-                        record.end,
-                        record.name,
-                        record.score,
-                        record.strand.value,
-                        record.dataset_id,
-                        record.coverage,
-                        record.frequency,
-                    ]
-                )
-
-        return BedTool(generator()).sort()
-
     def annotate_data_to_records(
         self,
         annotation_path: Path,
@@ -139,7 +117,7 @@ class BedToolsService:
         :rtype: Iterable[ModificationRecord]
         """
 
-        bedtool_records = self.get_modifications_as_bedtool_records(records)
+        bedtool_records = self._get_modifications_as_bedtool_for_annotaion(records)
         if "intergenic" not in features:
             raise AnnotationError(
                 "Missing feature intergenic from specs. This is due to a change "
@@ -172,10 +150,30 @@ class BedToolsService:
             )
 
     @staticmethod
-    def _intersect_for_annotation(bedtool_records, annotation, feature):
+    def _get_modifications_as_bedtool_for_annotaion(
+        records: Iterable[ModificationRecord],
+    ) -> BedTool:
+        def generator():
+            for record in records:
+                yield create_interval_from_list(
+                    [
+                        record.chrom,
+                        record.start,
+                        record.end,
+                        record.name,
+                        record.score,
+                        record.strand.value,
+                        record.id,
+                    ]
+                )
+
+        return BedTool(generator()).sort()
+
+    @staticmethod
+    def _intersect_for_annotation(bedtool_records, feature_bedtool, feature):
         # delim (collapse) Default: ","
         stream = bedtool_records.intersect(
-            b=annotation, wa=True, wb=True, s=True, sorted=True
+            b=feature_bedtool, wa=True, wb=True, s=True, sorted=True
         )
         for s in stream:
             for gene_id in s[13].split(","):
@@ -310,7 +308,7 @@ class BedToolsService:
         :returns: Files with liftedOver and unmapped features
         :rtype: tuple of (str, str)
         """
-        bedtool_records = self.get_modifications_as_bedtool_records(records)
+        bedtool_records = self._get_modifications_as_bedtool(records)
         result = pybedtools.BedTool._tmp()  # noqa
         if unmapped is None:
             unmapped = pybedtools.BedTool._tmp()  # noqa
@@ -354,10 +352,8 @@ class BedToolsService:
         :rtype: list of tuples
         """
 
-        a_bedtool = self.get_modifications_as_bedtool_records(a_records)
-        b_bedtools = [
-            self.get_modifications_as_bedtool_records(x) for x in b_records_list
-        ]
+        a_bedtool = self._get_modifications_as_bedtool(a_records)
+        b_bedtools = [self._get_modifications_as_bedtool(x) for x in b_records_list]
         bedtool = a_bedtool.intersect(
             b=[b.fn for b in b_bedtools],
             wa=True,  # write the original entry in A for each overlap
@@ -371,6 +367,28 @@ class BedToolsService:
             b = self._get_modification_from_bedtools_data(s[9:])
             r = IntersectRecord(a=a, b=b)
             yield r
+
+    @staticmethod
+    def _get_modifications_as_bedtool(
+        records: Iterable[ModificationRecord],
+    ) -> BedTool:
+        def generator():
+            for record in records:
+                yield create_interval_from_list(
+                    [
+                        record.chrom,
+                        record.start,
+                        record.end,
+                        record.name,
+                        record.score,
+                        record.strand.value,
+                        record.dataset_id,
+                        record.coverage,
+                        record.frequency,
+                    ]
+                )
+
+        return BedTool(generator()).sort()
 
     @staticmethod
     def _get_modification_from_bedtools_data(s: Sequence[str]):
@@ -414,10 +432,8 @@ class BedToolsService:
         # BED6+3
         n_fields = 9
 
-        a_bedtool = self.get_modifications_as_bedtool_records(a_records)
-        b_bedtools = [
-            self.get_modifications_as_bedtool_records(x) for x in b_records_list
-        ]
+        a_bedtool = self._get_modifications_as_bedtool(a_records)
+        b_bedtools = [self._get_modifications_as_bedtool(x) for x in b_records_list]
         bedtool = a_bedtool.closest(
             b=[b.fn for b in b_bedtools],
             io=True,  # Ignore features in B that overlap A
@@ -465,8 +481,8 @@ class BedToolsService:
                 for r in records:
                     yield r
 
-        a_bedtool = self.get_modifications_as_bedtool_records(a_records)
-        b_bedtool = self.get_modifications_as_bedtool_records(b_generator())
+        a_bedtool = self._get_modifications_as_bedtool(a_records)
+        b_bedtool = self._get_modifications_as_bedtool(b_generator())
         bedtool = a_bedtool.subtract(b_bedtool, s=is_strand, sorted=is_sorted)
         for s in bedtool:
             yield SubtractRecord(**self._get_modification_from_bedtools_data(s).dict())

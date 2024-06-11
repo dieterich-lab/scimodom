@@ -18,6 +18,7 @@ class Strand(Enum):
 
 
 class ModificationRecord(BaseModel):
+    id: Optional[int] = None
     chrom: str = Annotated[str, Field(min_length=1, max_length=128)]
     start: int = NoneNegativInt
     end: int = NoneNegativInt
@@ -55,8 +56,8 @@ class ClosestRecord(BaseModel):
 class GenomicAnnotationRecord(BaseModel):
     id: str = Annotated[str, Field(min_length=1, max_length=128)]
     annotation_id: int = NoneNegativInt
-    name: str = Optional[Annotated[str, Field(min_length=1, max_length=128)]]
-    biotype: str = Optional[Annotated[str, Field(min_length=1, max_length=255)]]
+    name: Optional[Annotated[str, Field(min_length=1, max_length=128)]] = None
+    biotype: Optional[Annotated[str, Field(min_length=1, max_length=255)]] = None
 
 
 class DataAnnotationRecord(BaseModel):

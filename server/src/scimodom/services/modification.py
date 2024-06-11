@@ -20,6 +20,7 @@ class ModificationService:
 
         query = (
             select(
+                Data.id,
                 Data.chrom,
                 Data.start,
                 Data.end,
@@ -39,6 +40,7 @@ class ModificationService:
             if row is None:
                 return
             yield ModificationRecord(
+                id=row.id,
                 chrom=row.chrom,
                 start=row.start,
                 end=row.end,

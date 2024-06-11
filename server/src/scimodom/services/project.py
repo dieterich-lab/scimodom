@@ -24,6 +24,7 @@ from scimodom.database.models import (
 import scimodom.database.queries as queries
 from scimodom.services.annotation import AnnotationService
 from scimodom.services.assembly import AssemblyService
+from scimodom.services.bedtools import get_bedtools_service
 from scimodom.services.permission import get_permission_service
 import scimodom.utils.specifications as specs
 import scimodom.utils.utils as utils
@@ -162,8 +163,11 @@ class ProjectService:
                     self._session, name=name, taxa_id=taxid
                 )  # commit, unless ...
                 logger.info(f"Calling AnnotationService for {taxid}...")
+                bedtools_service = get_bedtools_service()
                 AnnotationService(
-                    session=self._session, taxa_id=taxid
+                    session=self._session,
+                    bedtools_service=bedtools_service,
+                    taxa_id=taxid,
                 ).create_annotation()  # commit, unless ...
         except:
             raise

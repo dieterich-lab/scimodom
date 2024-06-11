@@ -8,6 +8,7 @@ def test_modification_service_simple(dataset, Session):  # noqa
     records = list(service.get_modifications_by_dataset(["d1"]))
     assert records == [
         ModificationRecord(
+            id=1,
             chrom="17",
             start=100001,
             end=120000,
@@ -19,6 +20,7 @@ def test_modification_service_simple(dataset, Session):  # noqa
             dataset_id="d1",
         ),
         ModificationRecord(
+            id=2,
             chrom="Y",
             start=200001,
             end=220000,
