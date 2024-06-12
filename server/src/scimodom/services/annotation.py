@@ -4,7 +4,7 @@ from pathlib import Path
 from posixpath import join as urljoin
 import re
 import shutil
-from typing import ClassVar, Callable, Literal, get_args
+from typing import ClassVar, Callable, Literal, NamedTuple, get_args
 
 import requests  # type: ignore
 from sqlalchemy.orm import Session
@@ -43,12 +43,6 @@ class AnnotationVersionError(Exception):
     """Exception handling for Annotation version mismatch."""
 
     pass
-
-
-# class AnnotationFormatError(Exception):
-#     """Exception handling for Annotation format mismatch."""
-
-#     pass
 
 
 class AnnotationService:
@@ -388,97 +382,136 @@ class GtRNAdbAnnotationService(AnnotationService):
     and "source", cf. AnnotationService.
     :type **kwargs: cf. AnnotationService
 
-    :param FMT: Annotation file format
-    :type FMT: str
-    :param ANNOTATION_FILE: Annotation file name
+    :param FMT: Annotation format. BED is used for
+    annotations (GTF is no available for all organisms),
+    and FASTA for coordinates mapping.
+    :type FMT: list of str
+    :param ANNOTATION_FILE: Annotation file pattern
     :type ANNOTATION_FILE: Callable
     :param FEATURES: Genomic features
-    :type FEATURES: dict of {str: dict of {str: str}}
+    :type FEATURES: dict of {str: str}
     """
 
-    FMT: ClassVar[str] = "bed"
+    FMT: ClassVar[list[str]] = ["bed", "fa"]
     ANNOTATION_FILE: ClassVar[Callable] = "{species}-tRNAs.{fmt}".format
-    FEATURES: ClassVar[dict[str, dict[str, str]]] = {
-        "conventional": {"exon": "Exonic"},
-        "extended": {"intron": "Intronic"},
-    }
+    FEATURES: ClassVar[dict[str, str]] = {"exon": "Exonic", "intron": "Intronic"}
 
-    def __init__(self, session: Session, **kwargs) -> None:
-        """Initializer method."""
-        super().__init__(session, **kwargs)
-
-        assembly_alt_name = self._session.execute(
-            select(Assembly.alt_name).filter_by(name=self._release_path.parent.name)
-        ).scalar_one()
-        filen = self.ANNOTATION_FILE(
-            assembly=assembly_alt_name,
-            fmt=self.FMT,
-        )
-        self._annotation_file: Path = Path(self._release_path, filen)
-        filen = self.ANNOTATION_FILE(
-            assembly=assembly_alt_name,
-            fmt="fa",
-        )
-        self._sequence_file: Path = Path(self._release_path, filen)
+    AnnotationPath: NamedTuple = NamedTuple(
+        "AnnotationPath", [("annotation_file", Path), ("url", str)]
+    )
 
     def create_annotation(self, domain: str, name: str) -> None:
         """This method automates the creation of a database annotation:
         it creates the destination, downloads, wrangles, and writes files to disk,
-        and writes annotation to the database.
+        and writes annotation to the database. In addition, it writes a
+        coordinates mapping "genomic" <-> "Sprinzl".
 
         NOTE: GtRNAdb has a non-standard nomenclature, neither API nor FTP.
         Prior to calling this method, lookup the remote detination to find the
         correct domain and name, e.g. GTRNADB_URL/domain/name/assembly-tRNAs.fa.
-        Choose the assembly that matches the current database assembly. The
-        GtRNAdb assembly matches the database assembly "alt_name".
+        Choose the assembly that matches the current database assembly. In
+        principle, assembly could be aded as a parameter, but we want to make
+        sure that GtRNAdb assembly matches the database assembly "alt_name".
 
         :param domain: Taxonomic domain e.g. eukaryota
         :type domain: str
         :param name: GtRNAdb species name (abbreviated) e.g. Mmusc39
         :type name: str
         """
-        if self._destination_exists():
+        if self._release_exists():
             return
 
         try:
-            for filen in [self._annotation_file, self._sequence_file]:
-                url = urljoin(
-                    specs.GTRNADB_URL,
-                    domain,
-                    name,
-                    filen.name,
-                )
-                self.download(url, filen)
-            self._patch_annotation()
-        #     # TODO
-        #     actually write annotation to BED for exons/introns
-        #     and write/flush to database
-        #     finally create model mappings
-        #     self._session.commit()
-        except:
-            pass
-        #     self._session.rollback()
-        #     shutil.rmtree(self._release_path)
-        #     raise
+            # create destination and download files
+            self._release_path.mkdir(parents=True, exist_ok=False)
+            annotation_paths = self._get_annotation_paths(domain, name)
+            annotation_file = annotation_paths["bed"].annotation_file
+            for paths in annotation_paths.values():
+                self.download(paths.url, paths.annotation_file)
+            # format
+            self._patch_annotation(annotation_file)
 
-    def _patch_annotation(self):
+            # create mapping
+
+            # write BED files for genomic features
+            self._bedtools_service.gtrnadb_to_bed_features(
+                annotation_file, list(self.FEATURES.keys())
+            )
+            # add genomic annotation to database
+            self._update_database(annotation_file)
+            self._session.commit()
+        except:
+            self._session.rollback()
+            shutil.rmtree(self._release_path)
+            raise
+
+    def _get_annotation_paths(self, domain: str, name: str) -> dict[AnnotationPath]:
+        """Construct annotation file path and
+        target URL.
+
+        :param domain: Taxonomic domain e.g. eukaryota
+        :type domain: str
+        :param name: GtRNAdb species name (abbreviated) e.g. Mmusc39
+        :type name: str
+        :returns: Annotation file path and URL
+        :rtype: list of (Path, str)
+        """
+        assembly_alt_name = self._session.execute(
+            select(Assembly.alt_name).filter_by(name=self._release_path.parent.name)
+        ).scalar_one()
+        paths = {}
+        for fmt in self.FMT:
+            filen = self.ANNOTATION_FILE(
+                assembly=assembly_alt_name,
+                fmt=fmt,
+            )
+            url = urljoin(
+                specs.GTRNADB_URL,
+                domain,
+                name,
+                filen,
+            )
+            paths[fmt] = self.AnnotationPath(Path(self._release_path, filen), url)
+        return paths
+
+    def _patch_annotation(self, annotation_file: Path):
         """Re-write GtRNAdb annotation file according to
         Ensembl format, and filter out contigs/scaffolds.
+
+        :param annotation_file: Annotation file (assumed BED12)
+        :type annotation_file: Path
         """
         pattern = "^chr"
         repl = ""
 
         seqids = AssemblyService.get_seqids(chrom_file=self._chrom_file)
 
-        with open(self._annotation_file, "r") as fd:
+        with open(annotation_file, "r") as fd:
             text, counter = re.subn(pattern, repl, fd.read(), flags=re.MULTILINE)
 
         if counter != len(text.splitlines()):
-            msg = "Chromosome substitution failed: expected one match per line!"
-            logger.warning(msg)
+            logger.warning(
+                "Chromosome substitution may have failed: expected one match per line!"
+            )
 
-        with open(self._annotation_file, "w") as fd:
+        with open(annotation_file, "w") as fd:
             for line in text.splitlines():
                 if line.split("\t")[0] not in seqids:
                     continue
                 fd.write(f"{line}\n")
+
+    def _update_database(self, annotation_file: Path) -> None:
+        """Reads annotation file to records and
+        insert to GenomicAnnotation.
+
+        :param annotation_file: Annotation file path
+        :type annotation_file: Path
+        """
+        records = self._bedtools_service.get_gtrnadb_annotation_records(
+            annotation_file,
+            self._annotation.id,
+            self._release_path.parent.parent.name,
+        )
+        with InsertBuffer[GenomicAnnotation](self._session) as buffer:
+            for record in records:
+                buffer.queue(GenomicAnnotation(**record.model_dump()))
