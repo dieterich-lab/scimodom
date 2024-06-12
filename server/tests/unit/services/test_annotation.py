@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 import gzip
 from pathlib import Path
+from posixpath import join as urljoin
+import shutil
 from typing import Generator, Any, Callable
 
 import pytest
@@ -27,6 +29,7 @@ from scimodom.services.annotation import (
 from scimodom.services.bedtools import BedToolsService
 from scimodom.services.importer.base import MissingDataError
 from scimodom.services.modification import ModificationService
+import scimodom.utils.specifications as specs
 
 
 @dataclass
@@ -48,23 +51,48 @@ def _annotation_setup(tmpdir, Session) -> _AnnotationSetup:
     )
 
 
-def _get_annotation_service(_annotation_setup, **args):
+def _get_annotation_service(_annotation_setup, **kwargs):
     return AnnotationService(
         _annotation_setup.Session(),
         bedtools_service=_annotation_setup.bedtools_service,
         modification_service=_annotation_setup.modification_service,
-        **args,
+        **kwargs,
     )
 
 
-def test_get_annotation_path(Session, data_path):
+def _get_ensembl_annotation_service(_annotation_setup, **kwargs):
+    return EnsemblAnnotationService(
+        _annotation_setup.Session(),
+        bedtools_service=_annotation_setup.bedtools_service,
+        modification_service=_annotation_setup.modification_service,
+        **kwargs,
+    )
+
+
+def test_get_annotation_path(data_path):
     assert AnnotationService.get_annotation_path() == Path(data_path.ANNOTATION_PATH)
 
 
-def test_get_gene_cache_path(Session, data_path):
+def test_get_gene_cache_path(data_path):
     assert AnnotationService.get_cache_path() == Path(
         data_path.LOC, "cache", "gene", "selection"
     )
+
+
+def test_download(data_path):
+    test_release_path = Path(data_path.ANNOTATION_PATH, "Homo_sapiens", "GRCh38", "110")
+    test_release_path.mkdir(parents=True, exist_ok=False)
+    test_file_name = "README.md"
+    test_url = urljoin(
+        "https://github.com/dieterich-lab",
+        "scimodom",
+        "blob",
+        "0f977c262e173d4ce5668fda6b6b73308d275ae5",
+        test_file_name,
+    )
+    test_file = Path(test_release_path, test_file_name)
+    AnnotationService.download(test_url, test_file)
+    assert test_file.is_file()
 
 
 def test_init_from_id_wrong_id(setup, data_path, _annotation_setup):
@@ -86,36 +114,26 @@ def test_init_from_id_wrong_version(setup, data_path, _annotation_setup):
 
 
 def test_init_from_id(setup, data_path, _annotation_setup):
-    # taxid is wrong but does not matter as id has priority
-    # annotation file path is available, but file does not yet exists
     with _annotation_setup.Session() as session, session.begin():
         session.add_all(setup)
-    # service = AnnotationService(Session(), annotation_id=1, taxa_id=0)
-    # annotation_file = service.ANNOTATION_FILE(
-    #     organism="Homo_sapiens",
-    #     assembly="GRCh38",
-    #     release=service._annotation.release,
-    #     fmt=service.FMT,
-    # )
-    # assert service._annotation.release == 110
-    # assert service._annotation.taxa_id == 9606
-    # assert service._annotation_file == Path(
-    #     data_path.ANNOTATION_PATH,
-    #     "Homo_sapiens",
-    #     "GRCh38",
-    #     str(service._annotation.release),
-    #     annotation_file,
-    # )
-    # assert service._chrom_file == Path(
-    #    data_path.ASSEMBLY_PATH, "Homo_sapiens", "GRCh38", "chrom.sizes"
-    # )
+    service = _get_annotation_service(_annotation_setup, annotation_id=1)
+    assert service._annotation.release == 110
+    assert service._annotation.taxa_id == 9606
+    assert service._annotation.source == "ensembl"
+    assert service._annotation.version == "EyRBnPeVwbzW"
+    assert service._release_path == Path(
+        data_path.ANNOTATION_PATH, "Homo_sapiens", "GRCh38", "110"
+    )
+    assert service._chrom_file == Path(
+        data_path.ASSEMBLY_PATH, "Homo_sapiens", "GRCh38", "chrom.sizes"
+    )
 
 
-def test_init_no_source(Session, setup, data_path):
-    with Session() as session, session.begin():
+def test_init_no_source(setup, data_path, _annotation_setup):
+    with _annotation_setup.Session() as session, session.begin():
         session.add_all(setup)
     with pytest.raises(AssertionError) as exc:
-        service = AnnotationService(Session(), taxa_id=9606)
+        _get_annotation_service(_annotation_setup, taxa_id=9606)
     assert (
         str(exc.value)
         == "Undefined 'None'. Allowed values are typing.Literal['ensembl', 'gtrnadb']."
@@ -123,73 +141,64 @@ def test_init_no_source(Session, setup, data_path):
     assert exc.type == AssertionError
 
 
-def test_init_from_taxid_fail(Session, setup, data_path):
-    with Session() as session, session.begin():
+def test_init_from_taxid_fail(setup, data_path, _annotation_setup):
+    with _annotation_setup.Session() as session, session.begin():
         session.add_all(setup)
     with pytest.raises(InstantiationError) as exc:
-        service = AnnotationService(Session(), taxa_id=0, source="ensembl")
+        _get_annotation_service(_annotation_setup, taxa_id=0, source="ensembl")
     assert (
         str(exc.value)
-        == "Failed to find annotation with taxonomy ID 0 and source ensembl"
+        == "Failed to find annotation for taxonomy ID 0 and source ensembl"
     )
     assert exc.type == InstantiationError
 
 
-# def test_init_from_taxid(Session, setup, data_path):
-#     with Session() as session, session.begin():
-#         session.add_all(setup)
-#     service = AnnotationService(Session(), taxa_id=9606)
-#     annotation_file = service.ANNOTATION_FILE(
-#         organism="Homo_sapiens",
-#         assembly="GRCh38",
-#         release=service._release,
-#         fmt=service.FMT,
-#     )
-#     assert service._db_version == "EyRBnPeVwbzW"
-#     assert service._annotation_id == 1
-#     assert service._release == 110
-#     assert service._annotation_file == Path(
-#         data_path.ANNOTATION_PATH,
-#         "Homo_sapiens",
-#         "GRCh38",
-#         str(service._release),
-#         annotation_file,
-#     )
-#     assert service._chrom_file == Path(
-#         data_path.ASSEMBLY_PATH, "Homo_sapiens", "GRCh38", "chrom.sizes"
-#     )
-
-
-# due to scope of data_path this must be called before the rest...
-def test_download_annotation(setup, data_path, _annotation_setup):
+def test_init_from_taxid(setup, data_path, _annotation_setup):
     with _annotation_setup.Session() as session, session.begin():
         session.add_all(setup)
-    service = _get_annotation_service(_annotation_setup, annotation_id=1)
-    parent = service._annotation_file.parent
-    parent.mkdir(parents=True, exist_ok=False)
-    service._download()
-    # only assert if created
-    assert service._annotation_file.is_file()
+    service = _get_annotation_service(_annotation_setup, taxa_id=9606, source="ensembl")
+    assert service._annotation.release == 110
+    assert service._annotation.taxa_id == 9606
+    assert service._annotation.source == "ensembl"
+    assert service._annotation.version == "EyRBnPeVwbzW"
+    assert service._release_path == Path(
+        data_path.ANNOTATION_PATH, "Homo_sapiens", "GRCh38", "110"
+    )
+    assert service._chrom_file == Path(
+        data_path.ASSEMBLY_PATH, "Homo_sapiens", "GRCh38", "chrom.sizes"
+    )
 
 
-def test_create_annotation_exists_no_records(setup, data_path, _annotation_setup):
+def test_exists_false(setup, data_path, _annotation_setup):
+    # ** test isolation?
+    tmp = Path(data_path.ANNOTATION_PATH, "Homo_sapiens", "GRCh38", "110")
+    shutil.rmtree(tmp)
+    # **
     with _annotation_setup.Session() as session, session.begin():
         session.add_all(setup)
-    dest = Path(data_path.ANNOTATION_PATH, "Homo_sapiens", "GRCh38", "110")
-    dest.mkdir(parents=True, exist_ok=True)
+    service = _get_annotation_service(_annotation_setup, taxa_id=9606, source="ensembl")
+    assert service._release_exists() is False
+
+
+def test_exists_fail(setup, data_path, _annotation_setup):
+    with _annotation_setup.Session() as session, session.begin():
+        session.add_all(setup)
+    destination = Path(data_path.ANNOTATION_PATH, "Homo_sapiens", "GRCh38", "110")
+    destination.mkdir(parents=True, exist_ok=True)
     with pytest.raises(Exception) as exc:
-        service = _get_annotation_service(_annotation_setup, annotation_id=1)
-        service.create_annotation()
-        assert (
-            str(exc.value)
-            == f"Annotation directory {dest.as_posix()} already exists... but there is no record in GenomicAnnotation matching the current annotation 1 (9606, 110). Aborting transaction!"
+        service = _get_annotation_service(
+            _annotation_setup, taxa_id=9606, source="ensembl"
         )
+        service._release_exists()
+    assert (
+        str(exc.value)
+        == f"Annotation directory {destination.as_posix()} already exists... but failed to find records in GenomicAnnotation for annotation 1."
+    )
 
 
-def test_create_annotation_exists(setup, data_path, _annotation_setup):
+def test_exists(setup, data_path, _annotation_setup):
     with _annotation_setup.Session() as session, session.begin():
         session.add_all(setup)
-        # add random entry in GenomicAnnotation
         annotation = GenomicAnnotation(
             id="ENSG000000000000",
             annotation_id=1,
@@ -198,23 +207,51 @@ def test_create_annotation_exists(setup, data_path, _annotation_setup):
         )
         session.add(annotation)
         session.commit()
-    dest = Path(data_path.ANNOTATION_PATH, "Homo_sapiens", "GRCh38", "110")
-    dest.mkdir(parents=True, exist_ok=True)
-    service = _get_annotation_service(_annotation_setup, annotation_id=1)
-    service.create_annotation()
+    destination = Path(data_path.ANNOTATION_PATH, "Homo_sapiens", "GRCh38", "110")
+    destination.mkdir(parents=True, exist_ok=True)
+    service = _get_annotation_service(_annotation_setup, taxa_id=9606, source="ensembl")
+    assert service._release_exists() is True
 
 
-# this actually relies on "operations.py" and import buffer
-def test_create_annotation_records(setup, data_path, _annotation_setup):
+# Ensembl
+
+
+def test_ensembl_annotation_paths(setup, data_path, _annotation_setup):
     with _annotation_setup.Session() as session, session.begin():
         session.add_all(setup)
-    service = _get_annotation_service(_annotation_setup, annotation_id=1)
-    parent = service._annotation_file.parent
-    parent.mkdir(parents=True, exist_ok=True)
+    service = _get_ensembl_annotation_service(_annotation_setup, annotation_id=1)
+    annotation_path, url = service._get_annotation_paths()
+    expected_annotation_file = service.ANNOTATION_FILE(
+        organism="Homo_sapiens", assembly="GRCh38", release="110", fmt="gtf"
+    )
+    expected_annotation_path = Path(
+        data_path.ANNOTATION_PATH,
+        "Homo_sapiens",
+        "GRCh38",
+        "110",
+        expected_annotation_file,
+    )
+    expected_url = urljoin(
+        specs.ENSEMBL_FTP,
+        "release-110",
+        "gtf",
+        "homo_sapiens",
+        expected_annotation_file,
+    )
+    assert annotation_path == expected_annotation_path
+    assert url == expected_url
+
+
+def test_ensembl_update_database(setup, data_path, _annotation_setup):
+    with _annotation_setup.Session() as session, session.begin():
+        session.add_all(setup)
+    service = _get_ensembl_annotation_service(_annotation_setup, annotation_id=1)
+    annotation_path, _ = service._get_annotation_paths()
+    service._release_path.mkdir(parents=True, exist_ok=True)
     gtf = _mock_gtf()
-    with gzip.open(service._annotation_file, "wt") as gtf_file:
+    with gzip.open(annotation_path, "wt") as gtf_file:
         gtf_file.write(gtf)
-    service._create_annotation()
+    service._update_database(annotation_path)
 
     expected_records = [
         ("ENSG00000000001", 1, "A", "protein_coding"),
@@ -230,8 +267,7 @@ def test_create_annotation_records(setup, data_path, _annotation_setup):
             assert row.biotype == expected_row[3]
 
 
-# this actually relies on "operations.py", and calls _create_annotation
-def test_annotate_records(setup, data_path, _annotation_setup):
+def test_ensembl_annotate_data(setup, data_path, _annotation_setup):
     stamp = datetime.now(timezone.utc).replace(microsecond=0)
     with _annotation_setup.Session() as session, session.begin():
         session.add_all(setup)
@@ -296,11 +332,11 @@ def test_annotate_records(setup, data_path, _annotation_setup):
         session.add_all(data)
         session.commit()
 
-    service = _get_annotation_service(_annotation_setup, annotation_id=1)
-    parent = service._annotation_file.parent
-    parent.mkdir(parents=True, exist_ok=True)
+    service = _get_ensembl_annotation_service(_annotation_setup, annotation_id=1)
+    service._release_path.mkdir(parents=True, exist_ok=True)
+    annotation_path, _ = service._get_annotation_paths()
     gtf = _mock_gtf()
-    with gzip.open(service._annotation_file, "wt") as gtf_file:
+    with gzip.open(annotation_path, "wt") as gtf_file:
         gtf_file.write(gtf)
     parent = service._chrom_file.parent
     parent.mkdir(parents=True, exist_ok=True)
@@ -308,10 +344,10 @@ def test_annotate_records(setup, data_path, _annotation_setup):
     with open(service._chrom_file, "w") as chrom_file:
         chrom_file.write(string)
     features = {k: list(v.keys()) for k, v in service.FEATURES.items()}
-    _annotation_setup.bedtools_service.write_annotation_to_bed(
-        service._annotation_file, service._chrom_file, features
+    _annotation_setup.bedtools_service.ensembl_to_bed_features(
+        annotation_path, service._chrom_file, features
     )
-    service._create_annotation()
+    service._update_database(annotation_path)
     service.annotate_data(eufid)
 
     expected_records = [
@@ -336,17 +372,17 @@ def test_annotate_records(setup, data_path, _annotation_setup):
             assert row.feature == expected_row[3]
 
 
-# this actually relies on "operations.py", and calls _create_annotation
-def test_annotate_records_no_records(setup, data_path, _annotation_setup):
+def test_ensembl_annotate_no_data(setup, data_path, _annotation_setup):
     with _annotation_setup.Session() as session, session.begin():
         session.add_all(setup)
-    service = _get_annotation_service(_annotation_setup, annotation_id=1)
+    service = _get_ensembl_annotation_service(_annotation_setup, annotation_id=1)
     with pytest.raises(MissingDataError) as exc:
         service.annotate_data("123456789abc")
-    assert str(exc.value) == "[Annotation] No records found for 123456789abc... "
+    assert str(exc.value) == "No records found for 123456789abc"
     assert exc.type == MissingDataError
 
 
+# tested using ensembl
 def test_update_gene_cache(setup, data_path, _annotation_setup):
     stamp = datetime.now(timezone.utc).replace(microsecond=0)
     with _annotation_setup.Session() as session, session.begin():
@@ -412,25 +448,24 @@ def test_update_gene_cache(setup, data_path, _annotation_setup):
         session.add_all(data)
         session.commit()
 
-    service = _get_annotation_service(_annotation_setup, annotation_id=1)
-    parent = service._annotation_file.parent
-    parent.mkdir(parents=True, exist_ok=True)
+    service = _get_ensembl_annotation_service(_annotation_setup, annotation_id=1)
+    annotation_path, _ = service._get_annotation_paths()
+    service._release_path.mkdir(parents=True, exist_ok=True)
     gtf = _mock_gtf()
-    with gzip.open(service._annotation_file, "wt") as gtf_file:
+    with gzip.open(annotation_path, "wt") as gtf_file:
         gtf_file.write(gtf)
-    parent = service._chrom_file.parent
-    parent.mkdir(parents=True, exist_ok=True)
+    service._chrom_file.parent.mkdir(parents=True, exist_ok=True)
     string = "1\t248956422\n"
     with open(service._chrom_file, "w") as chrom_file:
         chrom_file.write(string)
     features = {k: list(v.keys()) for k, v in service.FEATURES.items()}
-    _annotation_setup.bedtools_service.write_annotation_to_bed(
-        service._annotation_file, service._chrom_file, features
+    _annotation_setup.bedtools_service.ensembl_to_bed_features(
+        annotation_path, service._chrom_file, features
     )
-    service._create_annotation()
+    service._update_database(annotation_path)
     service.annotate_data(eufid)
     service.update_gene_cache(eufid, {1: 1})
-    parent = service.get_gene_cache_path()
+    parent = service.get_cache_path()
     with open(Path(parent, "1"), "r") as f:
         genes = f.read().splitlines()
     assert set(genes) == {"A", "B"}

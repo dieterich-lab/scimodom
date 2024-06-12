@@ -1,6 +1,3 @@
-"""pybedtools
-"""
-
 from functools import cache
 from os import makedirs
 import logging
@@ -181,11 +178,11 @@ class BedToolsService:
                     gene_id=gene_id, data_id=s[6], feature=feature
                 )
 
-    def write_annotation_to_bed(
+    def ensembl_to_bed_features(
         self, annotation_file: Path, chrom_file: Path, features: dict[str, list[str]]
     ) -> None:
-        """Prepare annotation in BED format for genomic
-        features given in "features". The files are
+        """Wrangle Ensembl (GTF) annotation to BED format for
+        each genomic features in "features". The files are
         written to the parent directory of "annotation_file"
         using "features" as stem, and bed as extension.
 
@@ -248,7 +245,7 @@ class BedToolsService:
         return Path(parent, f"{feature}.bed").as_posix()
 
     @staticmethod
-    def get_annotation_records(
+    def get_ensembl_annotation_records(
         annotation_file: Path, annotation_id: int, intergenic_feature: str
     ) -> Iterable[GenomicAnnotationRecord]:
         """Create records for GenomicAnnotation from
