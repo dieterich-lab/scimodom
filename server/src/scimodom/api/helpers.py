@@ -104,7 +104,7 @@ def get_valid_tmp_file_id_from_request_parameter(
     if not VALID_FILENAME_REGEXP.match(raw_id):
         raise ClientResponseException(400, f"Bad file ID in parameter {parameter}")
     file_service = get_file_service()
-    if not file_service.check_tmp_file_id(raw_id):
+    if not file_service.check_tmp_upload_file_id(raw_id):
         raise ClientResponseException(
             404, "Temporary file not found - your upload may have expired"
         )

@@ -111,7 +111,7 @@ class _CompareContext:
         else:
             file_service = get_file_service()
             try:
-                self._tmp_file_handle = file_service.open_tmp_file_by_id(
+                self._tmp_file_handle = file_service.open_tmp_upload_file_by_id(
                     self._upload_id
                 )
             except FileNotFoundError:

@@ -229,7 +229,9 @@ class DataService:
                     for record in records
                 ]
                 try:
-                    lifted_file = assembly_service.liftover(records)
+                    bedtools_service = get_bedtools_service()
+                    raw_file = bedtools_service.create_temp_file_from_records(records)
+                    lifted_file = assembly_service.liftover(raw_file)
                     importer.reset_data_importer(lifted_file)
                     importer.data.parse_records()
                     importer.data.close()  # flush
