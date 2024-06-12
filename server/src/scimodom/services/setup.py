@@ -1,4 +1,5 @@
 import logging
+from functools import cache
 from pathlib import Path
 from typing import Optional
 
@@ -109,11 +110,6 @@ class SetupService:
             self.bulk_upsert(model, table)
 
 
-_cached_service: Optional[SetupService] = None
-
-
+@cache
 def get_setup_service() -> SetupService:
-    global _cached_service
-    if _cached_service is None:
-        _cached_service = SetupService(session=get_session())
-    return _cached_service
+    return SetupService(session=get_session())

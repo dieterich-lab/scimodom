@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 import json
 import logging
+from functools import cache
 from pathlib import Path
 from typing import ClassVar, Optional, List, Dict
 
@@ -23,6 +24,8 @@ from scimodom.database.models import (
 import scimodom.database.queries as queries
 from scimodom.services.annotation import AnnotationService
 from scimodom.services.assembly import AssemblyService
+from scimodom.services.bedtools import get_bedtools_service
+from scimodom.services.modification import get_modification_service
 from scimodom.services.permission import get_permission_service
 import scimodom.utils.specifications as specs
 import scimodom.utils.utils as utils
@@ -162,7 +165,10 @@ class ProjectService:
                 )  # commit, unless ...
                 logger.info(f"Calling AnnotationService for {taxid}...")
                 AnnotationService(
-                    session=self._session, taxa_id=taxid
+                    session=self._session,
+                    bedtools_service=get_bedtools_service(),
+                    modification_service=get_modification_service(),
+                    taxa_id=taxid,
                 ).create_annotation()  # commit, unless ...
         except:
             raise
@@ -456,16 +462,11 @@ class ProjectService:
             json.dump(self._project, f, indent="\t")
 
 
-_cached_project_service: Optional[ProjectService] = None
-
-
+@cache
 def get_project_service():
     """Helper function to set up a ProjectService object by injecting its dependencies.
 
     :returns: Project service instance
     :rtype: ProjectService
     """
-    global _cached_project_service
-    if _cached_project_service is None:
-        _cached_project_service = ProjectService(session=get_session())
-    return _cached_project_service
+    return ProjectService(session=get_session())

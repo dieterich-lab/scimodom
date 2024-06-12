@@ -6,7 +6,6 @@ from sqlalchemy import func, select
 from scimodom.database.models import Data
 from scimodom.services.importer.base import (
     BaseImporter,
-    MissingHeaderError,
     MissingDataError,
 )
 from scimodom.services.importer.data import EUFDataImporter

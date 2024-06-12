@@ -1,4 +1,6 @@
 import logging
+import re
+from functools import cache
 from os import unlink, rename, makedirs, stat, close
 from os.path import join, exists, dirname, basename, isfile
 from tempfile import mkstemp
@@ -23,6 +25,7 @@ class FileTooLarge(Exception):
 
 class FileService:
     BUFFER_SIZE = 1024 * 1024
+    VALID_FILE_ID_REGEXP = re.compile(r"\A[a-zA-Z0-9_-]{1,256}\Z")
 
     def __init__(self, session: Session):
         self._db_session = session
@@ -33,8 +36,18 @@ class FileService:
         fp, path = mkstemp(dir=Config.UPLOAD_PATH)
         close(fp)
         file_id = basename(path)
+        if not self.VALID_FILE_ID_REGEXP.match(file_id):
+            raise Exception(
+                f"Internal Error: Tmp file basename ({file_id}) is not valid!"
+            )
         self._stream_to_file(stream, path, max_file_size, overwrite_is_ok=True)
         return file_id
+
+    def open_tmp_file_by_id(self, file_id):
+        if not self.VALID_FILE_ID_REGEXP.match(file_id):
+            raise ValueError("open_tmp_file_by_id called with bad file_id")
+        path = join(Config.UPLOAD_PATH, file_id)
+        return open(path)
 
     @staticmethod
     def check_tmp_file_id(file_id: str) -> bool:
@@ -167,11 +180,6 @@ class FileService:
         self._db_session.commit()
 
 
-_cached_file_service: Optional[FileService] = None
-
-
+@cache
 def get_file_service() -> FileService:
-    global _cached_file_service
-    if _cached_file_service is None:
-        _cached_file_service = FileService(get_session())
-    return _cached_file_service
+    return FileService(get_session())

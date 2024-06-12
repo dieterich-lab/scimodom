@@ -13,6 +13,7 @@ from sqlalchemy import select, exists, insert
 
 from scimodom.config import Config
 import scimodom.database.queries as queries
+from scimodom.database.buffer import InsertBuffer
 from scimodom.database.models import (
     Annotation,
     AnnotationVersion,
@@ -24,15 +25,10 @@ from scimodom.database.models import (
     Taxa,
 )
 from scimodom.services.assembly import AssemblyService
-from scimodom.services.importer import get_buffer
 from scimodom.services.importer.base import MissingDataError
-from scimodom.utils.operations import (
-    write_annotation_to_bed,
-    get_annotation_records,
-    annotate_data_to_records,
-)
-from scimodom.utils.models import records_factory
+from scimodom.services.bedtools import BedToolsService
 import scimodom.utils.specifications as specs
+from scimodom.services.modification import ModificationService
 
 logger = logging.getLogger(__name__)
 
@@ -84,12 +80,16 @@ class AnnotationService:
     def __init__(
         self,
         session: Session,
+        bedtools_service: BedToolsService,
+        modification_service: ModificationService,
         annotation_id: int | None = None,
         taxa_id: int | None = None,
         source: str | None = None,
     ) -> None:
         """Initializer method."""
         self._session = session
+        self._bedtools_service = bedtools_service
+        self._modification_service = modification_service
 
         self._annotation: Annotation
         self._release_path: Path
@@ -322,9 +322,8 @@ class EnsemblAnnotationService(AnnotationService):
             )
             self.download(url, self._annotation_file)
             features = {k: list(v.keys()) for k, v in self.FEATURES.items()}
-            # TODO
-            write_annotation_to_bed(
-                self._annotation_file, self._chrom_file, features, AnnotationFormatError
+            self._bedtools_service.write_annotation_to_bed(
+                self._annotation_file, self._chrom_file, features
             )
             # TODO
             self._create_annotation()
@@ -342,53 +341,32 @@ class EnsemblAnnotationService(AnnotationService):
         :param eufid: EUF ID
         :type eufid: str
         """
-        query = select(
-            Data.chrom,
-            Data.start,
-            Data.end,
-            Data.name,
-            Data.score,
-            Data.strand,
-            Data.id,
-        ).where(Data.dataset_id == eufid)
-        records = self._session.execute(query).all()
-
+        logger.debug(f"Annotating records for EUFID {eufid}...")
+        records = list(self._modification_service.get_modifications_by_dataset(eufid))
         if len(records) == 0:
-            msg = f"[Annotation] No records found for {eufid}... "
-            raise MissingDataError(msg)
-
-        msg = f"Annotating records for EUFID {eufid}..."
-        logger.debug(msg)
+            raise MissingDataError(f"[Annotation] No records found for {eufid}... ")
 
         features = {**self.FEATURES["conventional"], **self.FEATURES["extended"]}
-        annotated_records = annotate_data_to_records(
-            self._annotation_file.parent, features, records, AnnotationFormatError
+        annotated_records = self._bedtools_service.annotate_data_to_records(
+            self._annotation_file.parent, features, records
         )
-        typed_annotated_records = [
-            records_factory("DataAnnotation", r)._asdict() for r in annotated_records
-        ]
-        buffer = get_buffer(DataAnnotation)
-        for record in typed_annotated_records:
-            buffer.buffer_data(record)
-        buffer.flush()
+        with InsertBuffer[DataAnnotation](self._session) as buffer:
+            for record in annotated_records:
+                buffer.queue(DataAnnotation(**record.model_dump()))
         self._session.flush()
 
     # TODO
     def _create_annotation(self) -> None:
         """Reads annotation file to records and
         insert to GenomicAnnotation."""
-        records = get_annotation_records(
+        records = self._bedtools_service.get_annotation_records(
             self._annotation_file,
             self._annotation.id,
             self.FEATURES["extended"]["intergenic"],
         )
-        typed_records = [
-            records_factory("GenomicAnnotation", r)._asdict() for r in records
-        ]
-        buffer = get_buffer(GenomicAnnotation)
-        for record in typed_records:
-            buffer.buffer_data(record)
-        buffer.flush()
+        with InsertBuffer[GenomicAnnotation](self._session) as buffer:
+            for record in records:
+                buffer.queue(GenomicAnnotation(**record.model_dump()))
 
 
 class GtRNAdbAnnotationService(AnnotationService):

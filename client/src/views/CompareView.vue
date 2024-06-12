@@ -8,7 +8,10 @@ import CompareStepB from '@/components/compare/CompareStepB.vue'
 import CompareStepC from '@/components/compare/CompareStepC.vue'
 import StyledHeadline from '@/components/ui/StyledHeadline.vue'
 import SubTitle from '@/components/ui/SubTitle.vue'
+import { handleRequestWithErrorReporting } from '@/utils/request'
+import { useDialogState } from '@/stores/DialogState'
 
+const dialogState = useDialogState()
 const uploadMessage = ref()
 const active = ref(0)
 const loading = ref(false)
@@ -22,24 +25,24 @@ const selectedDatasetB = ref([])
 const dt = ref()
 const records = ref()
 const columns = [
-  { field: 'chrom', header: 'Chrom', exportHeader: 'chrom', sortable: true },
-  { field: 'start', header: 'Start', exportHeader: 'chromStart', sortable: true },
-  { field: 'end', header: 'End', exportHeader: 'chromEnd', sortable: false },
-  { field: 'name', header: 'Name', exportHeader: 'name', sortable: false },
-  { field: 'score', header: 'Score', exportHeader: 'score', sortable: true },
-  { field: 'strand', header: 'Strand', exportHeader: 'strand', sortable: false },
-  { field: 'dataset_id', header: 'EUFID', exportHeader: 'eufid', sortable: false },
-  { field: 'coverage', header: 'Coverage', exportHeader: 'coverage', sortable: true },
-  { field: 'frequency', header: 'Frequency', exportHeader: 'frequency', sortable: true },
-  { field: 'chrom_b', header: 'Chrom', exportHeader: 'chromB', sortable: true },
-  { field: 'start_b', header: 'Start', exportHeader: 'chromStartB', sortable: true },
-  { field: 'end_b', header: 'End', exportHeader: 'chromEndB', sortable: false },
-  { field: 'name_b', header: 'Name', exportHeader: 'nameB', sortable: false },
-  { field: 'score_b', header: 'Score', exportHeader: 'scoreB', sortable: true },
-  { field: 'strand_b', header: 'Strand', exportHeader: 'strandB', sortable: false },
-  { field: 'dataset_id_b', header: 'EUFID', exportHeader: 'eufidB', sortable: false },
-  { field: 'coverage_b', header: 'Coverage', exportHeader: 'coverageB', sortable: true },
-  { field: 'frequency_b', header: 'Frequency', exportHeader: 'frequencyB', sortable: true },
+  { field: 'a.chrom', header: 'Chrom', exportHeader: 'chrom', sortable: true },
+  { field: 'a.start', header: 'Start', exportHeader: 'chromStart', sortable: true },
+  { field: 'a.end', header: 'End', exportHeader: 'chromEnd', sortable: false },
+  { field: 'a.name', header: 'Name', exportHeader: 'name', sortable: false },
+  { field: 'a.score', header: 'Score', exportHeader: 'score', sortable: true },
+  { field: 'a.strand', header: 'Strand', exportHeader: 'strand', sortable: false },
+  { field: 'a.dataset_id', header: 'EUFID', exportHeader: 'eufid', sortable: false },
+  { field: 'a.coverage', header: 'Coverage', exportHeader: 'coverage', sortable: true },
+  { field: 'a.frequency', header: 'Frequency', exportHeader: 'frequency', sortable: true },
+  { field: 'b.chrom', header: 'Chrom', exportHeader: 'chromB', sortable: true },
+  { field: 'b.start', header: 'Start', exportHeader: 'chromStartB', sortable: true },
+  { field: 'b.end', header: 'End', exportHeader: 'chromEndB', sortable: false },
+  { field: 'b.name', header: 'Name', exportHeader: 'nameB', sortable: false },
+  { field: 'b.score', header: 'Score', exportHeader: 'scoreB', sortable: true },
+  { field: 'b.strand', header: 'Strand', exportHeader: 'strandB', sortable: false },
+  { field: 'b.dataset_id', header: 'EUFID', exportHeader: 'eufidB', sortable: false },
+  { field: 'b.coverage', header: 'Coverage', exportHeader: 'coverageB', sortable: true },
+  { field: 'b.frequency', header: 'Frequency', exportHeader: 'frequencyB', sortable: true },
   { field: 'distance', header: 'Distance', exportHeader: 'distance', sortable: false }
 ]
 
@@ -47,43 +50,119 @@ const { handleSubmit, resetForm } = useForm()
 const { value: queryCriteria, errorMessage } = useField('value', validateField)
 const onSubmit = handleSubmit((submitted) => {
   if (submitted.value && submitted.value.length > 0) {
-    load(submitted.value)
+    switch (submitted.value) {
+      case 'intersect-true':
+        intersect(true)
+        break
+      case 'intersect-false':
+        intersect(false)
+        break
+      case 'closest-true':
+        closest(true)
+        break
+      case 'closest-false':
+        closest(false)
+        break
+      case 'subtract-true':
+        subtract(true)
+        break
+      case 'subtract-false':
+        subtract(false)
+        break
+      default:
+        load(submitted.value)
+      // console.log(`Error: Got bad value '${submitted.value}'`)
+    }
     resetForm()
   }
 })
 
-const onExport = () => {
-  dt.value.exportCSV()
+function intersect(is_strand) {
+  handleRequestWithErrorReporting(
+    HTTP.get('/dataset/intersect', {
+      params: getCompareParams(is_strand),
+      paramsSerializer: {
+        indexes: null
+      }
+    }),
+    'Failed to do intersect',
+    dialogState
+  ).then((data) => {
+    records.value = data.records.map((x) => {
+      return {
+        a: x.a,
+        b: x.b,
+        distance: ''
+      }
+    })
+    loading.value = false
+  })
 }
 
-function load(operation) {
-  records.value = undefined
-  loading.value = true
-  uploadMessage.value = undefined
-  var arrayOp = operation.split('-')
-  HTTP.get('/dataset/compare', {
-    params: {
-      reference: selectedDatasetA.value,
-      comparison: selectedDatasetB.value,
-      upload: datasetUploaded.value,
-      operation: arrayOp[0],
-      strand: arrayOp[1],
-      euf: isEUF.value
-    },
-    paramsSerializer: {
-      indexes: null
-    }
+function getCompareParams(is_strand) {
+  return {
+    reference: selectedDatasetA.value,
+    comparison: selectedDatasetB.value,
+    upload: datasetUploaded.value,
+    strand: is_strand,
+    euf: isEUF.value
+  }
+}
+
+function modificationRecordToList(r) {
+  return [r.chrom, r.start, r.end, r.name, r.score, r.strand, r.dataset_id, r.coverage, r.frequency]
+}
+
+function closest(is_strand) {
+  handleRequestWithErrorReporting(
+    HTTP.get('/dataset/closest', {
+      params: getCompareParams(is_strand),
+      paramsSerializer: {
+        indexes: null
+      }
+    }),
+    'Failed to do closest',
+    dialogState
+  ).then((data) => {
+    records.value = data.records
+    loading.value = false
   })
-    .then(function (response) {
-      records.value = response.data
-      loading.value = false
+}
+
+function subtract(is_strand) {
+  handleRequestWithErrorReporting(
+    HTTP.get('/dataset/subtract', {
+      params: getCompareParams(is_strand),
+      paramsSerializer: {
+        indexes: null
+      }
+    }),
+    'Failed to do intersect',
+    dialogState
+  ).then((data) => {
+    records.value = data.records.map((x) => {
+      return {
+        a: x,
+        b: {
+          chrom: '',
+          start: '',
+          end: '',
+          name: '',
+          score: '',
+          strand: '',
+          dataset_id: '',
+          coverage: '',
+          frequency: ''
+        },
+        distance: ''
+      }
     })
-    .catch((error) => {
-      uploadMessage.value = error.response.data.message
-      console.log(error)
-      records.value = undefined
-      loading.value = false
-    })
+    loading.value = false
+  })
+}
+
+const onExport = () => {
+  dt.value.exportCSV()
 }
 
 function validateField(value) {

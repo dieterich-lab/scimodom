@@ -1,3 +1,4 @@
+from functools import cache
 from typing import Optional
 
 from sqlalchemy import select, and_
@@ -43,11 +44,6 @@ class PermissionService:
         self._session.commit()
 
 
-_cached_permission_service: Optional[PermissionService] = None
-
-
+@cache
 def get_permission_service() -> PermissionService:
-    global _cached_permission_service
-    if _cached_permission_service is None:
-        _cached_permission_service = PermissionService(get_session())
-    return _cached_permission_service
+    return PermissionService(get_session())

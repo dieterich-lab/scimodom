@@ -1,3 +1,4 @@
+from functools import cache
 from typing import List, Dict, Optional
 
 from sqlalchemy import select, func
@@ -96,16 +97,11 @@ class DatasetService:
         return [row._asdict() for row in self._session.execute(query)]
 
 
-_cached_dataset_service: Optional[DatasetService] = None
-
-
+@cache
 def get_dataset_service():
     """Helper function to set up a DatasetService object by injecting its dependencies.
 
     :returns: Dataset service instance
     :rtype: DatasetService
     """
-    global _cached_dataset_service
-    if _cached_dataset_service is None:
-        _cached_dataset_service = DatasetService(session=get_session())
-    return _cached_dataset_service
+    return DatasetService(session=get_session())

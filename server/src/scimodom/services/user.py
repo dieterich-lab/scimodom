@@ -1,6 +1,7 @@
 import logging
 import random
 import string
+from functools import cache
 from typing import Optional
 
 from sqlalchemy import select
@@ -228,18 +229,11 @@ class UserService:
         return True
 
 
-_cached_user_service: Optional[UserService] = None
-
-
+@cache
 def get_user_service():
     """Helper function to set up a UserService object by injecting its dependencies.
 
     :returns: User service instance
     :rtype: UserService
     """
-    global _cached_user_service
-    if _cached_user_service is None:
-        _cached_user_service = UserService(
-            session=get_session(), mail_service=get_mail_service()
-        )
-    return _cached_user_service
+    return UserService(session=get_session(), mail_service=get_mail_service())

@@ -1,3 +1,4 @@
+from functools import cache
 from itertools import chain
 from pathlib import Path
 from typing import ClassVar, Optional
@@ -403,16 +404,11 @@ class PublicService:
         return [r._asdict() for r in self._session.execute(query)]
 
 
-_cached_public_service: Optional[PublicService] = None
-
-
+@cache
 def get_public_service() -> PublicService:
     """Instantiates a PublicService object.
 
     :returns: PublicService instance
     :rtype: PublicService
     """
-    global _cached_public_service
-    if _cached_public_service is None:
-        _cached_public_service = PublicService(session=get_session())
-    return _cached_public_service
+    return PublicService(session=get_session())

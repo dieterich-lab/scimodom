@@ -93,10 +93,14 @@ def get_valid_dataset_id_list_from_request_parameter(parameter: str) -> List[str
     return as_list
 
 
-def get_valid_tmp_file_id_from_request_parameter(parameter: str) -> Optional[str]:
+def get_valid_tmp_file_id_from_request_parameter(
+    parameter: str, is_optional=False
+) -> Optional[str]:
     raw_id = request.args.get(parameter, type=str)
-    if raw_id is None:
-        return None
+    if raw_id is None or raw_id == "":
+        if is_optional:
+            return None
+        raise ClientResponseException(400, f"Missing required parameter {parameter}")
     if not VALID_FILENAME_REGEXP.match(raw_id):
         raise ClientResponseException(400, f"Bad file ID in parameter {parameter}")
     file_service = get_file_service()
