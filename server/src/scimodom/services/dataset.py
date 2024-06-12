@@ -13,7 +13,6 @@ from scimodom.database.models import (
     Modification,
     Organism,
     Project,
-    Selection,
     Taxa,
     ProjectSource,
     User,
@@ -38,7 +37,7 @@ class DatasetService:
     def get_datasets(self, user: Optional[User] = None) -> List[Dict[str, str]]:
         """Retrieve all datasets. Add project-related information.
 
-        :param user: Restricts results based on projects assotiated with user.
+        :param user: Restricts results based on projects associated with user.
         :type user: User
         :returns: Query result
         :rtype: list of dict
@@ -98,7 +97,7 @@ class DatasetService:
 
 
 @cache
-def get_dataset_service():
+def get_dataset_service() -> DatasetService:
     """Helper function to set up a DatasetService object by injecting its dependencies.
 
     :returns: Dataset service instance
