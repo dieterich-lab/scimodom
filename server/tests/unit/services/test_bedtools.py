@@ -1,3 +1,5 @@
+import pytest
+
 from scimodom.services.bedtools import BedToolsService
 from scimodom.utils.bedtools_dto import (
     ModificationRecord,
@@ -7,7 +9,10 @@ from scimodom.utils.bedtools_dto import (
     SubtractRecord,
 )
 
-from fixtures.file_service_mock import file_service  # noqa
+
+@pytest.fixture
+def bedtools_service(tmpdir):
+    yield BedToolsService(tmp_path=tmpdir)
 
 
 def test_get_modification_from_bedtools_data():
@@ -300,9 +305,10 @@ EXPECTED_RESULT_INTERSECT_A_WITH_BC = [
 ]
 
 
-def test_intersect(file_service):  # noqa
-    service = BedToolsService(file_service=file_service)
-    result = list(service.intersect(DATASET_A, [DATASET_B, DATASET_C], is_strand=True))
+def test_intersect(bedtools_service):
+    result = list(
+        bedtools_service.intersect(DATASET_A, [DATASET_B, DATASET_C], is_strand=True)
+    )
     assert result == EXPECTED_RESULT_INTERSECT_A_WITH_BC
 
 
@@ -435,9 +441,10 @@ EXPECTED_RESULT_CLOSEST_A_WITH_BC = [
 ]
 
 
-def test_closest(file_service):  # noqa
-    service = BedToolsService(file_service=file_service)
-    result = list(service.closest(DATASET_A, [DATASET_B, DATASET_C], is_strand=True))
+def test_closest(bedtools_service):
+    result = list(
+        bedtools_service.closest(DATASET_A, [DATASET_B, DATASET_C], is_strand=True)
+    )
     assert result == EXPECTED_RESULT_CLOSEST_A_WITH_BC
 
 
@@ -456,9 +463,10 @@ EXPECTED_RESULT_SUBTRACT_A_WITH_BC = [
 ]
 
 
-def test_subtract(file_service):  # noqa
-    service = BedToolsService(file_service=file_service)
-    result = list(service.subtract(DATASET_A, [DATASET_B, DATASET_C], is_strand=True))
+def test_subtract(bedtools_service):
+    result = list(
+        bedtools_service.subtract(DATASET_A, [DATASET_B, DATASET_C], is_strand=True)
+    )
     assert result == EXPECTED_RESULT_SUBTRACT_A_WITH_BC
 
 
@@ -490,9 +498,8 @@ EXPECTED_RESULT_INTERSECT_A_WITH_B = [
 ]
 
 
-def test_intersect_simple(file_service):  # noqa
-    service = BedToolsService(file_service=file_service)
-    result = list(service.intersect(DATASET_A, [DATASET_B], is_strand=True))
+def test_intersect_simple(bedtools_service):
+    result = list(bedtools_service.intersect(DATASET_A, [DATASET_B], is_strand=True))
     assert result == EXPECTED_RESULT_INTERSECT_A_WITH_B
 
 
@@ -600,9 +607,8 @@ EXPECTED_RESULT_CLOSEST_A_WITH_B = [
 ]
 
 
-def test_closest_simple(file_service):  # noqa
-    service = BedToolsService(file_service=file_service)
-    result = list(service.closest(DATASET_A, [DATASET_B], is_strand=True))
+def test_closest_simple(bedtools_service):
+    result = list(bedtools_service.closest(DATASET_A, [DATASET_B], is_strand=True))
     assert result == EXPECTED_RESULT_CLOSEST_A_WITH_B
 
 
@@ -654,9 +660,8 @@ EXPECTED_RESULT_SUBTRACT_A_WITH_B = [
 ]
 
 
-def test_subtract_simple(file_service):  # noqa
-    service = BedToolsService(file_service=file_service)
-    result = list(service.subtract(DATASET_A, [DATASET_B], is_strand=True))
+def test_subtract_simple(bedtools_service):
+    result = list(bedtools_service.subtract(DATASET_A, [DATASET_B], is_strand=True))
     assert result == EXPECTED_RESULT_SUBTRACT_A_WITH_B
 
 
@@ -665,9 +670,8 @@ EXPECTED_BED_FILE = """1\t2\t3\t4\t5\t6
 """
 
 
-def test_create_temp_file_from_records(file_service):  # noqa
-    service = BedToolsService(file_service=file_service)
-    path = service.create_temp_file_from_records(
+def test_create_temp_file_from_records(bedtools_service):
+    path = bedtools_service.create_temp_file_from_records(
         [
             (7, 8, 9, 10, 11, 12),
             (1, 2, 3, 4, 5, 6),
