@@ -27,13 +27,17 @@ class FileService:
     BUFFER_SIZE = 1024 * 1024
     VALID_FILE_ID_REGEXP = re.compile(r"\A[a-zA-Z0-9_-]{1,256}\Z")
 
-    def __init__(self, session: Session):
+    def __init__(self, session: Session, temp_path: str, upload_path: str):
         self._db_session = session
+        makedirs(temp_path, exist_ok=True)
+        makedirs(upload_path, exist_ok=True)
+        self._temp_path = temp_path
+        self._upload_path = upload_path
 
-    # general
+    # uploaded files
 
     def upload_tmp_file(self, stream, max_file_size):
-        fp, path = mkstemp(dir=Config.UPLOAD_PATH)
+        fp, path = mkstemp(dir=self._upload_path)
         close(fp)
         file_id = basename(path)
         if not self.VALID_FILE_ID_REGEXP.match(file_id):
@@ -42,17 +46,6 @@ class FileService:
             )
         self._stream_to_file(stream, path, max_file_size, overwrite_is_ok=True)
         return file_id
-
-    def open_tmp_file_by_id(self, file_id):
-        if not self.VALID_FILE_ID_REGEXP.match(file_id):
-            raise ValueError("open_tmp_file_by_id called with bad file_id")
-        path = join(Config.UPLOAD_PATH, file_id)
-        return open(path)
-
-    @staticmethod
-    def check_tmp_file_id(file_id: str) -> bool:
-        path = join(Config.UPLOAD_PATH, file_id)
-        return isfile(path)
 
     def _stream_to_file(self, data_stream, path, max_size, overwrite_is_ok=False):
         if exists(path) and not overwrite_is_ok:
@@ -77,6 +70,27 @@ class FileService:
                         )
         except Exception as exc:
             self._handle_upload_error(exc, path)
+
+    def open_tmp_upload_file_by_id(self, file_id):
+        if not self.VALID_FILE_ID_REGEXP.match(file_id):
+            raise ValueError("open_tmp_file_by_id called with bad file_id")
+        path = join(Config.UPLOAD_PATH, file_id)
+        return open(path)
+
+    @staticmethod
+    def check_tmp_upload_file_id(file_id: str) -> bool:
+        path = join(Config.UPLOAD_PATH, file_id)
+        return isfile(path)
+
+    # intermediate files
+
+    def create_temp_file(self, suffix="") -> str:
+        fp, path = mkstemp(dir=self._temp_path, suffix=suffix)
+        close(fp)
+        return path
+
+    def get_temp_path(self) -> str:
+        return self._temp_path
 
     # BAM file
 
@@ -182,4 +196,8 @@ class FileService:
 
 @cache
 def get_file_service() -> FileService:
-    return FileService(get_session())
+    return FileService(
+        get_session(),
+        temp_path=Config.BEDTOOLS_TMP_PATH,
+        upload_path=Config.UPLOAD_PATH,
+    )

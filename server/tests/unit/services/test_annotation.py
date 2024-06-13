@@ -31,6 +31,8 @@ from scimodom.services.importer.base import MissingDataError
 from scimodom.services.modification import ModificationService
 import scimodom.utils.specifications as specs
 
+from fixtures.file_service_mock import file_service  # noqa
+
 
 @dataclass
 class _AnnotationSetup:
@@ -40,13 +42,13 @@ class _AnnotationSetup:
 
 
 @pytest.fixture
-def _annotation_setup(tmpdir, Session) -> _AnnotationSetup:
+def _annotation_setup(file_service, Session) -> _AnnotationSetup:  # noqa
     # We should:
     # - move whatever we can from this test to service/test_bedtools.py
     # - replace this by mocks
     yield _AnnotationSetup(
         Session=Session,
-        bedtools_service=BedToolsService(tempdir=tmpdir),
+        bedtools_service=BedToolsService(file_service=file_service),
         modification_service=ModificationService(Session()),
     )
 

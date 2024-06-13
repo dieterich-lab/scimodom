@@ -12,7 +12,7 @@ from sqlalchemy import select, exists, func
 from scimodom.config import Config
 from scimodom.database.models import Assembly, Taxa
 import scimodom.database.queries as queries
-from scimodom.utils.operations import liftover_to_file
+from scimodom.services.cross_map import get_cross_map_service
 import scimodom.utils.specifications as specs
 import scimodom.utils.utils as utils
 
@@ -328,41 +328,47 @@ class AssemblyService:
         with open(Path(parent, "release.json"), "w") as f:
             json.dump(release, f, indent="\t")
 
-    def liftover(self, records: list[tuple[Any, ...]], threshold: float = 0.3) -> str:
+    def liftover(self, raw_file: str, threshold: float = 0.3) -> str:
         """Liftover records to current assembly.
         Unmapped features are discarded.
 
-        :param records: Records to be lifted over
-        :type records: List of tuple of (str, ...) - Data records
+        :param raw_file: BED file to be lifted over
+        :type records: str
         :param threshold: Threshold for raising LiftOverError
         :type threshold: float
         :returns: Files pointing to the liftedOver features
         :rtype: str
         """
-        parent, filen = self.get_chain_path()
-        chain_file = Path(parent, filen).as_posix()
-        lifted_file, unmapped_file = liftover_to_file(records, chain_file)
 
-        def _count_lines(reader):
-            b = reader(1024 * 1024)
-            while b:
-                yield b
-                b = reader(1024 * 1024)
-
-        with open(unmapped_file, "rb") as fh:
-            unmapped_lines = sum(
-                line.count(b"\n") for line in _count_lines(fh.raw.read)
-            )
-        failed_liftover = unmapped_lines / len(records) > threshold
-        if failed_liftover:
-            raise LiftOverError
-        msg = (
-            f"{unmapped_lines} records could not be mapped and were discarded... "
-            "Contact the system administrator if you have questions."
+        raw_lines = self._count_lines(raw_file)
+        chain_file_dir, chain_file_name = self.get_chain_path()
+        chain_file = Path(chain_file_dir, chain_file_name).as_posix()
+        cross_map_service = get_cross_map_service()
+        lifted_file, unmapped_file = cross_map_service.liftover_file(
+            raw_file, chain_file
         )
-        logger.warning(msg)
 
+        unmapped_lines = self._count_lines(unmapped_file)
+        if unmapped_lines / raw_lines > threshold:
+            raise LiftOverError(
+                f"Lift-over failed: {unmapped_lines} records of {raw_lines} could not be mapped"
+            )
+        if unmapped_lines > 0:
+            logger.warning(
+                f"{unmapped_lines} records could not be mapped and were discarded... "
+                "Contact the system administrator if you have questions."
+            )
         return lifted_file
+
+    @staticmethod
+    def _count_lines(path):
+        count = 0
+        with open(path) as fp:
+            while True:
+                buffer = fp.read(1024 * 1024)
+                if len(buffer) == 0:
+                    return count
+                count += buffer.count("\n")
 
     def _get_current_name(self) -> str:
         """Get current assembly name. This methods

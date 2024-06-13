@@ -1,16 +1,13 @@
 from functools import cache
-from os import makedirs
 import logging
 from pathlib import Path
-import shlex
-import subprocess
-from typing import Iterable, Sequence, List
+from typing import Iterable, Sequence, List, Any
 
 import pybedtools  # type: ignore
 from pybedtools import BedTool, create_interval_from_list
 
 import scimodom.utils.utils as utils
-from scimodom.config import Config
+from scimodom.services.file import FileService, get_file_service
 from scimodom.utils.bedtools_dto import (
     ModificationRecord,
     DataAnnotationRecord,
@@ -91,9 +88,8 @@ def _remove_filno(feature, n_fields: int = 9, is_closest: bool = False):
 
 
 class BedToolsService:
-    def __init__(self, tempdir):
-        makedirs(tempdir, exist_ok=True)
-        pybedtools.helpers.set_tempdir(tempdir)
+    def __init__(self, file_service: FileService):
+        self._file_service = file_service
 
     def annotate_data_to_records(
         self,
@@ -380,47 +376,27 @@ class BedToolsService:
                 biotype="tRNA",
             )
 
-    def liftover_to_file(
-        self,
-        records: Iterable[ModificationRecord],
-        chain_file: str,
-        unmapped: str | None = None,
-        chrom_id: str = "s",
-    ) -> tuple[str, str]:
+    def create_temp_file_from_records(
+        self, records: Iterable[Sequence[Any]], sort: bool = True
+    ) -> str:
         """Liftover records. Handles conversion to BedTool, but not from,
         of the liftedOver features. A file is returned pointing
         to the liftedOver features. The unmapped ones are saved as
         "unmapped", or discarded.
 
-        :param records: Data records to liftover
-        :type records: List of tuple of (str, ...) - Data records
-        :param chain_file: Chain file
-        :type chain_file: str
-        :param unmapped: File to write unmapped features
-        :type unmapped: str or None
-        :param chrom_id: The style of chromosome IDs (default s).
-        :type chrom_id: str
-        :returns: Files with liftedOver and unmapped features
-        :rtype: tuple of (str, str)
+        :param records: A iterable over records which can be processed by bedtools
+        :type records: Iterable[Sequence[Any]]
+        :param sort: sort the result
+        :returns: Path to temporary file
+        :rtype: str
         """
-        bedtool_records = self._get_modifications_as_bedtool(records)
-        result = pybedtools.BedTool._tmp()  # noqa
-        if unmapped is None:
-            unmapped = pybedtools.BedTool._tmp()  # noqa
-        cmd = f"CrossMap bed --chromid {chrom_id} --unmap-file {unmapped} {chain_file} {bedtool_records.fn} {result}"
 
-        logger.debug(f"Calling: {cmd}")
-
-        # set a timeout?
-        try:
-            subprocess.run(shlex.split(cmd), check=True, capture_output=True, text=True)
-        except FileNotFoundError:
-            raise Exception("Process failed: CrossMap executable could not be found!")
-        except subprocess.CalledProcessError as exc:
-            msg = f"Process failed with {exc.stderr}"
-            raise Exception(msg) from exc
-        # except subprocess.TimeoutExpired as exc:
-        return result, unmapped
+        path = self._file_service.create_temp_file(suffix=".bed")
+        bedtool = pybedtools.BedTool(records)
+        if sort:
+            bedtool = bedtool.sort()
+        bedtool.saveas(path)
+        return path
 
     def intersect(
         self,
@@ -585,4 +561,4 @@ class BedToolsService:
 
 @cache
 def get_bedtools_service():
-    return BedToolsService(tempdir=Config.BEDTOOLS_TMP_PATH)
+    return BedToolsService(file_service=get_file_service())
