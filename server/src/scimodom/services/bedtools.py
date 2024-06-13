@@ -10,7 +10,7 @@ import pybedtools  # type: ignore
 from pybedtools import BedTool, create_interval_from_list
 
 import scimodom.utils.utils as utils
-from scimodom.services.file import FileService, get_file_service
+from scimodom.config import Config
 from scimodom.utils.bedtools_dto import (
     ModificationRecord,
     DataAnnotationRecord,
@@ -87,8 +87,8 @@ def _remove_filno(feature, n_fields: int = 9, is_closest: bool = False):
 
 
 class BedToolsService:
-    def __init__(self, file_service: FileService):
-        self._file_service = file_service
+    def __init__(self, tmp_path):
+        pybedtools.helpers.set_tempdir(tmp_path)
 
     def annotate_data_to_records(
         self,
@@ -281,8 +281,9 @@ class BedToolsService:
             id=f"{prefix}{intergenic_feature}", annotation_id=annotation_id
         )
 
+    @staticmethod
     def create_temp_file_from_records(
-        self, records: Iterable[Sequence[Any]], sort: bool = True
+        records: Iterable[Sequence[Any]], sort: bool = True
     ) -> str:
         """Liftover records. Handles conversion to BedTool, but not from,
         of the liftedOver features. A file is returned pointing
@@ -296,12 +297,10 @@ class BedToolsService:
         :rtype: str
         """
 
-        path = self._file_service.create_temp_file(suffix=".bed")
         bedtool = pybedtools.BedTool(records)
         if sort:
             bedtool = bedtool.sort()
-        bedtool.saveas(path)
-        return path
+        return bedtool.fn
 
     def intersect(
         self,
@@ -466,4 +465,4 @@ class BedToolsService:
 
 @cache
 def get_bedtools_service():
-    return BedToolsService(file_service=get_file_service())
+    return BedToolsService(tmp_path=Config.BEDTOOLS_TMP_PATH)
