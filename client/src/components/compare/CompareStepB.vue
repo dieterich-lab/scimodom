@@ -3,7 +3,7 @@ import { ref, watch } from 'vue'
 import { HTTPSecure } from '@/services/API.js'
 import DatasetSelectionMulti from '@/components/ui/DatasetSelectionMulti.vue'
 import { handleRequestWithErrorReporting } from '@/utils/request'
-import { useDialogState } from '@/stores/DialogState'
+import { DIALOG, useDialogState } from '@/stores/DialogState'
 
 const emit = defineEmits(['datasetUploaded'])
 const model = defineModel()
@@ -38,21 +38,32 @@ watch(
 
 function uploader(event) {
   const file = event.files[0]
+  const file_size = file.size
+  if (file_size > MAX_UPLOAD_SIZE) {
+    clear()
+    dialogState.message = `This file is to large (${file_size} bytes, max ${MAX_UPLOAD_SIZE})`
+    dialogState.state = DIALOG.ALERT
+    return
+  }
   handleRequestWithErrorReporting(
     HTTPSecure.post('transfer/tmp_upload', file),
     `Failed to upload '${file.name}'`,
     dialogState
-  ).then((data) => {
-    disabled.value = true
-    model.value = []
-    uploadedFile.value = file.name
-    let ext = file.name.split('.').pop()
-    isEUF.value = ext.toLowerCase() === 'bedrmod'
-    emit('datasetUploaded', data.file_id)
-  })
+  )
+    .then((data) => {
+      disabled.value = true
+      model.value = []
+      uploadedFile.value = file.name
+      let ext = file.name.split('.').pop()
+      isEUF.value = ext.toLowerCase() === 'bedrmod'
+      emit('datasetUploaded', data.file_id)
+    })
+    .catch((e) => {
+      clear()
+    })
 }
 
-const clear = () => {
+function clear() {
   disabled.value = false
   uploadedFile.value = undefined
   emit('datasetUploaded', undefined)
@@ -74,7 +85,6 @@ const clear = () => {
         customUpload
         @uploader="uploader"
         accept="text/plain,.bed,.bedrmod"
-        :maxFileSize="MAX_UPLOAD_SIZE"
         :auto="true"
         chooseLabel="Select a file"
         class="w-[8rem]"
