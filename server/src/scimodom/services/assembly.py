@@ -12,7 +12,7 @@ from sqlalchemy import select, exists, func
 from scimodom.config import Config
 from scimodom.database.models import Assembly, Taxa
 import scimodom.database.queries as queries
-from scimodom.services.cross_map import get_cross_map_service
+from scimodom.services.external import get_external_service
 import scimodom.utils.specifications as specs
 import scimodom.utils.utils as utils
 
@@ -343,8 +343,8 @@ class AssemblyService:
         raw_lines = self._count_lines(raw_file)
         chain_file_dir, chain_file_name = self.get_chain_path()
         chain_file = Path(chain_file_dir, chain_file_name).as_posix()
-        cross_map_service = get_cross_map_service()
-        lifted_file, unmapped_file = cross_map_service.liftover_file(
+        external_service = get_external_service()
+        lifted_file, unmapped_file = external_service.call_crossmap(
             raw_file, chain_file
         )
 
