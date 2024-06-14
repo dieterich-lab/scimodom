@@ -344,7 +344,7 @@ class AssemblyService:
         chain_file_dir, chain_file_name = self.get_chain_path()
         chain_file = Path(chain_file_dir, chain_file_name).as_posix()
         external_service = get_external_service()
-        lifted_file, unmapped_file = external_service.call_crossmap(
+        lifted_file, unmapped_file = external_service.get_crossmap_output(
             raw_file, chain_file
         )
 
