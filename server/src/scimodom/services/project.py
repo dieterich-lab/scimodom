@@ -25,7 +25,7 @@ import scimodom.database.queries as queries
 from scimodom.services.annotation import AnnotationService
 from scimodom.services.assembly import AssemblyService
 from scimodom.services.bedtools import get_bedtools_service
-from scimodom.services.modification import get_modification_service
+from scimodom.services.data import get_data_service
 from scimodom.services.permission import get_permission_service
 import scimodom.utils.specifications as specs
 import scimodom.utils.utils as utils
@@ -167,7 +167,7 @@ class ProjectService:
                 AnnotationService(
                     session=self._session,
                     bedtools_service=get_bedtools_service(),
-                    modification_service=get_modification_service(),
+                    modification_service=get_data_service(),
                     taxa_id=taxid,
                 ).create_annotation()  # commit, unless ...
         except:

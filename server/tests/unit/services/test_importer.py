@@ -67,7 +67,7 @@ def test_importer(close_handle, Session, data_path):
         records = session.execute(select(Data)).scalars().all()[0]
         assert num_records == 1
         assert records.id == 1
-        assert records.dataset_id == "123456789ABC"
+        assert records.eufid == "123456789ABC"
         assert records.modification_id == 1
         assert records.chrom == "1"
         assert records.start == 0
@@ -165,7 +165,7 @@ def test_importer_data_fail(Session, data_path):
         assert num_records == 2
         for idx, record in enumerate(records):
             assert record.id == idx + 1
-            assert record.dataset_id == "123456789ABC"
+            assert record.eufid == "123456789ABC"
             assert record.modification_id == 1
             assert record.chrom == "1"
             assert record.start == 0
@@ -328,7 +328,7 @@ def test_buffer(Session):
         records = session.execute(select(Data)).scalars().all()
         for idx, record in enumerate(records):
             assert record.id == idx + 1
-            assert record.dataset_id == expected_records[idx]["dataset_id"]
+            assert record.eufid == expected_records[idx]["dataset_id"]
             assert record.modification_id == expected_records[idx]["modification_id"]
             assert record.chrom == expected_records[idx]["chrom"]
             assert record.start == expected_records[idx]["start"]

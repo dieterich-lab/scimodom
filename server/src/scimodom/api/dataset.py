@@ -16,14 +16,15 @@ from scimodom.api.helpers import (
 from scimodom.services.bedtools import get_bedtools_service, BedToolsService
 from scimodom.services.dataset import get_dataset_service
 from scimodom.services.file import get_file_service
-from scimodom.services.modification import get_modification_service
+from scimodom.services.data import get_data_service, DataService
 from scimodom.services.user import get_user_service
-from scimodom.utils.bed_importer import BedImporter
+from scimodom.utils.bed_importer import Bed6Importer, EufImporter
 from scimodom.utils.bedtools_dto import (
-    ModificationRecord,
+    EufRecord,
     IntersectRecord,
     ClosestRecord,
     SubtractRecord,
+    ComparisonRecord,
 )
 
 logger = logging.getLogger(__name__)
@@ -70,8 +71,8 @@ class _CompareContext:
     @dataclass
     class Ctx:
         bedtools_service: BedToolsService
-        a_records: Iterable[ModificationRecord]
-        b_records_list: List[Iterable[ModificationRecord]]
+        a_records: Iterable[ComparisonRecord]
+        b_records_list: List[Iterable[ComparisonRecord]]
         is_strand: bool
 
     def __init__(self):
@@ -98,14 +99,14 @@ class _CompareContext:
             raise ClientResponseException(
                 400, "Can only handle upload_id or comparison_ids, but not both"
             )
+        self._modification_service = get_data_service()
 
     def __enter__(self) -> Ctx:
-        modification_service = get_modification_service()
         if self._upload_id is None:
             # Unfortunately the MySQL driver does not allow use to have multiple queries run at once.
             # To work around this issue we have to buffer the b_records in memory
             b_records_list = [
-                list(modification_service.get_modifications_by_dataset(dataset_id))
+                list(self._get_comparison_records_from_db([dataset_id]))
                 for dataset_id in self._comparison_ids
             ]
         else:
@@ -118,18 +119,32 @@ class _CompareContext:
                 raise ClientResponseException(
                     404, "Your uploaded file was not found - maybe it expired"
                 )
-            b_records_list = [
-                BedImporter(stream=self._tmp_file_handle, is_euf=self._is_euf).parse()
-            ]
-        a_records = modification_service.get_modifications_by_dataset(
-            self._reference_ids
-        )
+            b_records_list = list(self._get_comparison_records_from_file())
+
+        a_records = self._get_comparison_records_from_db(self._reference_ids)
         return self.Ctx(
             bedtools_service=get_bedtools_service(),
             a_records=a_records,
             b_records_list=b_records_list,
             is_strand=self._is_strand,
         )
+
+    def _get_comparison_records_from_db(self, dataset_ids):
+        for dataset_id in dataset_ids:
+            for x in self._modification_service.get_by_dataset(dataset_id):
+                yield ComparisonRecord(eufid=dataset_id, **x._asdict())
+
+    def _get_comparison_records_from_file(self):
+        if self._is_euf:
+            for x in EufImporter(stream=self._tmp_file_handle).parse():
+                raw_record = x.model_dump()
+                yield ComparisonRecord(eufid="upload        ", **raw_record)
+        else:
+            for x in Bed6Importer(stream=self._tmp_file_handle).parse():
+                raw_record = x.model_dump()
+                yield ComparisonRecord(
+                    eufid="upload        ", frequency=0, coverage=0, **raw_record
+                )
 
     def __exit__(self, exc_type, exc_value, traceback):
         if self._tmp_file_handle is not None:

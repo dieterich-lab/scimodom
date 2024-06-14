@@ -7,20 +7,20 @@ from flask_cors import cross_origin
 from flask_jwt_extended import jwt_required
 
 from scimodom.config import Config
-from scimodom.database.database import get_session
 from scimodom.services.assembly import LiftOverError
-from scimodom.services.data import (
-    DataService,
-    InstantiationError,
+
+from scimodom.services.dataset import (
+    get_dataset_service,
     SelectionExistsError,
-    DatasetExistsError,
+    DatasetImportError,
     DatasetHeaderError,
+    DatasetExistsError,
+    SpecsError,
 )
-from scimodom.services.importer.base import MissingDataError
-from scimodom.services.importer.header import SpecsError
 from scimodom.services.project import ProjectService
 from scimodom.services.mail import get_mail_service
 import scimodom.utils.utils as utils
+from scimodom.utils.bed_importer import BedImportTooManyErrors, BedImportEmptyFile
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +51,10 @@ def create_project_request():
     except SMTPException as exc:
         logger.error(f"Project {uuid} saved, but failed to send out email: {exc}")
         return {
-            "message": f"An error occurred during submission. Your submission ID is {uuid}. Contact the system administrator."
+            "message": (
+                f"An error occurred during submission. Your submission ID is {uuid}. "
+                "Contact the system administrator."
+            )
         }, 500
     return {"message": "OK"}, 200
 
@@ -70,56 +73,60 @@ def add_dataset():
     """
     dataset_form = request.json
     upload_path = Path(Config.UPLOAD_PATH, dataset_form["file_id"])
+    dataset_service = get_dataset_service()
     try:
-        data_service = DataService(
-            get_session(),
-            dataset_form["smid"],
-            dataset_form["title"],
-            upload_path,
-            dataset_form["assembly_id"],
-            modification_ids=dataset_form["modification_id"],
-            technology_id=dataset_form["technology_id"],
-            organism_id=dataset_form["organism_id"],
-        )
+        with open(upload_path) as fp:
+            dataset_service.import_dataset(
+                fp,
+                source=upload_path,
+                smid=dataset_form["smid"],
+                title=dataset_form["title"],
+                assembly_id=dataset_form["assembly_id"],
+                modification_ids=utils.to_list(dataset_form["modification_id"]),
+                technology_id=dataset_form["technology_id"],
+                organism_id=dataset_form["organism_id"],
+            )
     except SelectionExistsError:
         return {
-            "message": "Invalid combination of RNA type, modification, organism, and/or technology. Modify the form and try again."
+            "message": (
+                "Invalid combination of RNA type, modification, organism, and/or technology. "
+                "Modify the form and try again."
+            )
         }, 422
-    except InstantiationError as exc:
+    except DatasetImportError as exc:
         logger.error(f"{exc}. The request was: {dataset_form}.")
         return {
             "message": "Invalid selection. Try again or contact the system administrator."
         }, 422
-    except Exception as exc:
-        logger.error(f"{exc}. The request was: {dataset_form}.")
-        return {
-            "message": "Failed to create dataset. Contact the system administrator."
-        }, 500
-
-    try:
-        data_service.create_dataset()
     except DatasetHeaderError:
         return {
-            "message": 'File upload failed. Mismatch for organism and/or assembly between the file header and the selected values. Click "Cancel". Modify the form or the file and start again.'
+            "message": (
+                "File upload failed. Mismatch for organism and/or assembly between the file header and "
+                'the selected values. Click "Cancel". Modify the form or the file and start again.'
+            )
         }, 422
     except DatasetExistsError as exc:
         return {
-            "message": f"File upload failed. {str(exc).replace('Aborting transaction!', '')} If you are unsure about what happened, click \"Cancel\" and contact the system administrator."
+            "message": (
+                f"File upload failed. {str(exc)} If you are unsure about what happened, "
+                "click 'Cancel' and contact the system administrator."
+            )
         }, 422
-    except EOFError as exc:
+    except BedImportEmptyFile as exc:
         return {"message": f"File upload failed. File {str(exc)} is empty!"}, 500
     except SpecsError as exc:
         return {
             "message": f"File upload failed. The header is not conform to bedRMod specifications: {str(exc)}"
         }, 500
-    except MissingDataError:
+    except BedImportTooManyErrors:
         return {"message": "File upload failed. Too many skipped records."}, 500
     except LiftOverError:
         return {
             "message": "Liftover failed. Check your data, or contact the system administrator."
         }, 500
     except Exception as exc:
-        logger.error(exc)
-        return {"message": "File upload failed. Contact the system administrator."}, 500
-
+        logger.error(f"{exc}. The request was: {dataset_form}.")
+        return {
+            "message": "Failed to create dataset. Contact the system administrator."
+        }, 500
     return {"result": "Ok"}, 200

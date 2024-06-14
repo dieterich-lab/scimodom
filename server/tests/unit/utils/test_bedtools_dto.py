@@ -1,8 +1,8 @@
-from scimodom.utils.bedtools_dto import ModificationRecord, Strand, IntersectRecord
+from scimodom.utils.bedtools_dto import EufRecord, Strand, IntersectRecord
 
 
 def test_intersect_record():
-    a = ModificationRecord(
+    a = EufRecord(
         chrom="a1",
         start=10,
         end=20,
@@ -13,7 +13,7 @@ def test_intersect_record():
         coverage=17,
         frequency=17,
     )
-    b = ModificationRecord(
+    b = EufRecord(
         chrom="b1",
         start=100,
         end=120,

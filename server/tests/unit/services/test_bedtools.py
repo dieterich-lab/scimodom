@@ -2,7 +2,7 @@ import pytest
 
 from scimodom.services.bedtools import BedToolsService
 from scimodom.utils.bedtools_dto import (
-    ModificationRecord,
+    EufRecord,
     Strand,
     IntersectRecord,
     ClosestRecord,
@@ -29,20 +29,20 @@ def test_get_modification_from_bedtools_data():
             "19",
         ]
     )
-    assert isinstance(record, ModificationRecord)
+    assert isinstance(record, EufRecord)
     assert record.chrom == "1"
     assert record.start == 1043431
     assert record.end == 1043432
     assert record.name == "Y"
     assert record.score == 190
     assert record.strand == Strand.FORWARD
-    assert record.dataset_id == "iMuwPsi24Yka"
+    assert record.eufid == "iMuwPsi24Yka"
     assert record.coverage == 576
     assert record.frequency == 19
 
 
 DATASET_A = [
-    ModificationRecord(
+    EufRecord(
         chrom="1",
         start=101,
         end=102,
@@ -53,7 +53,7 @@ DATASET_A = [
         frequency=20,
         dataset_id="DATASET_A___",
     ),
-    ModificationRecord(
+    EufRecord(
         chrom="1",
         start=199,
         end=200,
@@ -64,7 +64,7 @@ DATASET_A = [
         frequency=40,
         dataset_id="DATASET_A___",
     ),
-    ModificationRecord(
+    EufRecord(
         chrom="1",
         start=200,
         end=201,
@@ -75,7 +75,7 @@ DATASET_A = [
         frequency=60,
         dataset_id="DATASET_A___",
     ),
-    ModificationRecord(
+    EufRecord(
         chrom="1",
         start=299,
         end=300,
@@ -86,7 +86,7 @@ DATASET_A = [
         frequency=80,
         dataset_id="DATASET_A___",
     ),
-    ModificationRecord(
+    EufRecord(
         chrom="1",
         start=599,
         end=600,
@@ -99,7 +99,7 @@ DATASET_A = [
     ),
 ]
 DATASET_B = [
-    ModificationRecord(
+    EufRecord(
         chrom="1",
         start=1,
         end=2,
@@ -110,7 +110,7 @@ DATASET_B = [
         frequency=20,
         dataset_id="DATASET_B___",
     ),
-    ModificationRecord(
+    EufRecord(
         chrom="1",
         start=199,
         end=200,
@@ -121,7 +121,7 @@ DATASET_B = [
         frequency=40,
         dataset_id="DATASET_B___",
     ),
-    ModificationRecord(
+    EufRecord(
         chrom="1",
         start=299,
         end=300,
@@ -134,7 +134,7 @@ DATASET_B = [
     ),
 ]
 DATASET_C = [
-    ModificationRecord(
+    EufRecord(
         chrom="1",
         start=97,
         end=102,
@@ -145,7 +145,7 @@ DATASET_C = [
         frequency=20,
         dataset_id="DATASET_C___",
     ),
-    ModificationRecord(
+    EufRecord(
         chrom="1",
         start=197,
         end=202,
@@ -156,7 +156,7 @@ DATASET_C = [
         frequency=40,
         dataset_id="DATASET_C___",
     ),
-    ModificationRecord(
+    EufRecord(
         chrom="1",
         start=295,
         end=300,
@@ -167,7 +167,7 @@ DATASET_C = [
         frequency=60,
         dataset_id="DATASET_C___",
     ),
-    ModificationRecord(
+    EufRecord(
         chrom="1",
         start=1,
         end=6,
@@ -183,7 +183,7 @@ DATASET_C = [
 
 EXPECTED_RESULT_INTERSECT_A_WITH_BC = [
     IntersectRecord(
-        a=ModificationRecord(
+        a=EufRecord(
             chrom="1",
             start=101,
             end=102,
@@ -194,7 +194,7 @@ EXPECTED_RESULT_INTERSECT_A_WITH_BC = [
             coverage=10,
             frequency=20,
         ),
-        b=ModificationRecord(
+        b=EufRecord(
             chrom="1",
             start=97,
             end=102,
@@ -207,7 +207,7 @@ EXPECTED_RESULT_INTERSECT_A_WITH_BC = [
         ),
     ),
     IntersectRecord(
-        a=ModificationRecord(
+        a=EufRecord(
             chrom="1",
             start=199,
             end=200,
@@ -218,7 +218,7 @@ EXPECTED_RESULT_INTERSECT_A_WITH_BC = [
             coverage=30,
             frequency=40,
         ),
-        b=ModificationRecord(
+        b=EufRecord(
             chrom="1",
             start=199,
             end=200,
@@ -231,7 +231,7 @@ EXPECTED_RESULT_INTERSECT_A_WITH_BC = [
         ),
     ),
     IntersectRecord(
-        a=ModificationRecord(
+        a=EufRecord(
             chrom="1",
             start=199,
             end=200,
@@ -242,7 +242,7 @@ EXPECTED_RESULT_INTERSECT_A_WITH_BC = [
             coverage=30,
             frequency=40,
         ),
-        b=ModificationRecord(
+        b=EufRecord(
             chrom="1",
             start=197,
             end=202,
@@ -255,7 +255,7 @@ EXPECTED_RESULT_INTERSECT_A_WITH_BC = [
         ),
     ),
     IntersectRecord(
-        a=ModificationRecord(
+        a=EufRecord(
             chrom="1",
             start=200,
             end=201,
@@ -266,7 +266,7 @@ EXPECTED_RESULT_INTERSECT_A_WITH_BC = [
             coverage=50,
             frequency=60,
         ),
-        b=ModificationRecord(
+        b=EufRecord(
             chrom="1",
             start=197,
             end=202,
@@ -279,7 +279,7 @@ EXPECTED_RESULT_INTERSECT_A_WITH_BC = [
         ),
     ),
     IntersectRecord(
-        a=ModificationRecord(
+        a=EufRecord(
             chrom="1",
             start=299,
             end=300,
@@ -290,7 +290,7 @@ EXPECTED_RESULT_INTERSECT_A_WITH_BC = [
             coverage=70,
             frequency=80,
         ),
-        b=ModificationRecord(
+        b=EufRecord(
             chrom="1",
             start=295,
             end=300,
@@ -314,7 +314,7 @@ def test_intersect(bedtools_service):
 
 EXPECTED_RESULT_CLOSEST_A_WITH_BC = [
     ClosestRecord(
-        a=ModificationRecord(
+        a=EufRecord(
             chrom="1",
             start=101,
             end=102,
@@ -325,7 +325,7 @@ EXPECTED_RESULT_CLOSEST_A_WITH_BC = [
             coverage=10,
             frequency=20,
         ),
-        b=ModificationRecord(
+        b=EufRecord(
             chrom="1",
             start=1,
             end=6,
@@ -339,7 +339,7 @@ EXPECTED_RESULT_CLOSEST_A_WITH_BC = [
         distance=-96,
     ),
     ClosestRecord(
-        a=ModificationRecord(
+        a=EufRecord(
             chrom="1",
             start=101,
             end=102,
@@ -350,7 +350,7 @@ EXPECTED_RESULT_CLOSEST_A_WITH_BC = [
             coverage=10,
             frequency=20,
         ),
-        b=ModificationRecord(
+        b=EufRecord(
             chrom="1",
             start=197,
             end=202,
@@ -364,7 +364,7 @@ EXPECTED_RESULT_CLOSEST_A_WITH_BC = [
         distance=96,
     ),
     ClosestRecord(
-        a=ModificationRecord(
+        a=EufRecord(
             chrom="1",
             start=199,
             end=200,
@@ -375,7 +375,7 @@ EXPECTED_RESULT_CLOSEST_A_WITH_BC = [
             coverage=30,
             frequency=40,
         ),
-        b=ModificationRecord(
+        b=EufRecord(
             chrom="1",
             start=97,
             end=102,
@@ -389,7 +389,7 @@ EXPECTED_RESULT_CLOSEST_A_WITH_BC = [
         distance=-98,
     ),
     ClosestRecord(
-        a=ModificationRecord(
+        a=EufRecord(
             chrom="1",
             start=200,
             end=201,
@@ -400,7 +400,7 @@ EXPECTED_RESULT_CLOSEST_A_WITH_BC = [
             coverage=50,
             frequency=60,
         ),
-        b=ModificationRecord(
+        b=EufRecord(
             chrom="1",
             start=199,
             end=200,
@@ -414,7 +414,7 @@ EXPECTED_RESULT_CLOSEST_A_WITH_BC = [
         distance=-1,
     ),
     ClosestRecord(
-        a=ModificationRecord(
+        a=EufRecord(
             chrom="1",
             start=599,
             end=600,
@@ -425,7 +425,7 @@ EXPECTED_RESULT_CLOSEST_A_WITH_BC = [
             coverage=90,
             frequency=100,
         ),
-        b=ModificationRecord(
+        b=EufRecord(
             chrom="1",
             start=299,
             end=300,
@@ -472,7 +472,7 @@ def test_subtract(bedtools_service):
 
 EXPECTED_RESULT_INTERSECT_A_WITH_B = [
     IntersectRecord(
-        a=ModificationRecord(
+        a=EufRecord(
             chrom="1",
             start=199,
             end=200,
@@ -483,7 +483,7 @@ EXPECTED_RESULT_INTERSECT_A_WITH_B = [
             coverage=30,
             frequency=40,
         ),
-        b=ModificationRecord(
+        b=EufRecord(
             chrom="1",
             start=199,
             end=200,
@@ -505,7 +505,7 @@ def test_intersect_simple(bedtools_service):
 
 EXPECTED_RESULT_CLOSEST_A_WITH_B = [
     ClosestRecord(
-        a=ModificationRecord(
+        a=EufRecord(
             chrom="1",
             start=101,
             end=102,
@@ -516,7 +516,7 @@ EXPECTED_RESULT_CLOSEST_A_WITH_B = [
             coverage=10,
             frequency=20,
         ),
-        b=ModificationRecord(
+        b=EufRecord(
             chrom="1",
             start=199,
             end=200,
@@ -530,7 +530,7 @@ EXPECTED_RESULT_CLOSEST_A_WITH_B = [
         distance=98,
     ),
     ClosestRecord(
-        a=ModificationRecord(
+        a=EufRecord(
             chrom="1",
             start=199,
             end=200,
@@ -541,7 +541,7 @@ EXPECTED_RESULT_CLOSEST_A_WITH_B = [
             coverage=30,
             frequency=40,
         ),
-        b=ModificationRecord(
+        b=EufRecord(
             chrom="1",
             start=299,
             end=300,
@@ -555,7 +555,7 @@ EXPECTED_RESULT_CLOSEST_A_WITH_B = [
         distance=100,
     ),
     ClosestRecord(
-        a=ModificationRecord(
+        a=EufRecord(
             chrom="1",
             start=200,
             end=201,
@@ -566,7 +566,7 @@ EXPECTED_RESULT_CLOSEST_A_WITH_B = [
             coverage=50,
             frequency=60,
         ),
-        b=ModificationRecord(
+        b=EufRecord(
             chrom="1",
             start=199,
             end=200,
@@ -580,7 +580,7 @@ EXPECTED_RESULT_CLOSEST_A_WITH_B = [
         distance=-1,
     ),
     ClosestRecord(
-        a=ModificationRecord(
+        a=EufRecord(
             chrom="1",
             start=599,
             end=600,
@@ -591,7 +591,7 @@ EXPECTED_RESULT_CLOSEST_A_WITH_B = [
             coverage=90,
             frequency=100,
         ),
-        b=ModificationRecord(
+        b=EufRecord(
             chrom="1",
             start=299,
             end=300,

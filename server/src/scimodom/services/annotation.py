@@ -21,10 +21,9 @@ from scimodom.database.models import (
     Taxa,
 )
 from scimodom.services.assembly import AssemblyService
-from scimodom.services.importer.base import MissingDataError
 from scimodom.services.bedtools import BedToolsService
 import scimodom.utils.specifications as specs
-from scimodom.services.modification import ModificationService
+from scimodom.services.data import DataService
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +84,7 @@ class AnnotationService:
         self,
         session: Session,
         bedtools_service: BedToolsService,
-        modification_service: ModificationService,
+        modification_service: DataService,
         **kwargs,
     ) -> None:
         """Initializer method."""
@@ -237,9 +236,7 @@ class AnnotationService:
         :type eufid: str
         """
         logger.debug(f"Annotating records for EUFID {eufid}...")
-        records = list(self._modification_service.get_modifications_by_dataset(eufid))
-        if len(records) == 0:
-            raise MissingDataError(f"[Annotation] No records found for {eufid}... ")
+        records = list(self._modification_service.get_by_dataset(eufid))
 
         features = {**self.FEATURES["conventional"], **self.FEATURES["extended"]}
         annotated_records = self._bedtools_service.annotate_data_to_records(

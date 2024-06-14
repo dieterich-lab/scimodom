@@ -11,14 +11,16 @@ from pybedtools import BedTool, create_interval_from_list
 
 import scimodom.utils.utils as utils
 from scimodom.config import Config
+from scimodom.database.models import Data
 from scimodom.utils.bedtools_dto import (
-    ModificationRecord,
+    EufRecord,
     DataAnnotationRecord,
     GenomicAnnotationRecord,
     IntersectRecord,
     Strand,
     ClosestRecord,
     SubtractRecord,
+    ComparisonRecord,
 )
 
 logger = logging.getLogger(__name__)
@@ -94,7 +96,7 @@ class BedToolsService:
         self,
         annotation_path: Path,
         features: dict[str, str],
-        records: Iterable[ModificationRecord],
+        records: Iterable[Data],
     ) -> Iterable[DataAnnotationRecord]:
         """Annotate data records, i.e. create
         records for DataAnnotation. Columns
@@ -105,7 +107,7 @@ class BedToolsService:
         :type annotation_path: Path
         :param records: Data records as BED6+1-like,
         where the additional field is the "data_id".
-        :type records: Iterable[ModificationRecord]
+        :type records: Iterable[Data]
         :param features: Genomic features for which
         annotation must be created.
         :type features: dict of {str: str}
@@ -113,7 +115,7 @@ class BedToolsService:
         :rtype: Iterable[ModificationRecord]
         """
 
-        bedtool_records = self._get_modifications_as_bedtool_for_annotaion(records)
+        bedtool_records = self._get_data_as_bedtool_for_annotation(records)
         if "intergenic" not in features:
             raise AnnotationError(
                 "Missing feature intergenic from specs. This is due to a change "
@@ -146,8 +148,8 @@ class BedToolsService:
             )
 
     @staticmethod
-    def _get_modifications_as_bedtool_for_annotaion(
-        records: Iterable[ModificationRecord],
+    def _get_data_as_bedtool_for_annotation(
+        records: Iterable[Data],
     ) -> BedTool:
         def generator():
             for record in records:
@@ -302,10 +304,29 @@ class BedToolsService:
             bedtool = bedtool.sort()
         return bedtool.fn
 
+    def create_temp_euf_file(self, records: Iterable[EufRecord]) -> str:
+        def generator():
+            for record in records:
+                yield (
+                    record.chrom,
+                    record.start,
+                    record.end,
+                    record.name,
+                    record.score,
+                    record.strand.value,
+                    record.thick_start,
+                    record.thick_end,
+                    record.item_rgb,
+                    record.coverage,
+                    record.frequency,
+                )
+
+        return self.create_temp_file_from_records(generator())
+
     def intersect(
         self,
-        a_records: Iterable[ModificationRecord],
-        b_records_list: List[Iterable[ModificationRecord]],
+        a_records: Iterable[ComparisonRecord],
+        b_records_list: List[Iterable[ComparisonRecord]],
         is_strand: bool,
         is_sorted: bool = True,
     ) -> Iterable[IntersectRecord]:
@@ -316,7 +337,7 @@ class BedToolsService:
         from which the overlap came.
 
         :param a_records: Left operand of insect operation
-        :type a_records: Iterable[ModificationRecord]
+        :type a_records: Iterable[ComparisonRecord]
         :param b_records_list: Right operand of insect operation
         :type b_records_list: List[Iterable[ModificationRecord]]
         :parm is_strand: Perform strand-aware query
@@ -345,7 +366,7 @@ class BedToolsService:
 
     @staticmethod
     def _get_modifications_as_bedtool(
-        records: Iterable[ModificationRecord],
+        records: Iterable[ComparisonRecord],
     ) -> BedTool:
         def generator():
             for record in records:
@@ -357,7 +378,7 @@ class BedToolsService:
                         record.name,
                         record.score,
                         record.strand.value,
-                        record.dataset_id,
+                        record.eufid,
                         record.coverage,
                         record.frequency,
                     ]
@@ -367,7 +388,7 @@ class BedToolsService:
 
     @staticmethod
     def _get_modification_from_bedtools_data(s: Sequence[str]):
-        return ModificationRecord(
+        return ComparisonRecord(
             chrom=s[0],
             start=s[1],
             end=s[2],
@@ -381,8 +402,8 @@ class BedToolsService:
 
     def closest(
         self,
-        a_records: Iterable[ModificationRecord],
-        b_records_list: List[Iterable[ModificationRecord]],
+        a_records: Iterable[ComparisonRecord],
+        b_records_list: List[Iterable[ComparisonRecord]],
         is_strand: bool,
         is_sorted: bool = True,
     ) -> Iterable[ClosestRecord]:
@@ -393,7 +414,7 @@ class BedToolsService:
         from which the closest interval came.
 
         :param a_records: Left operand of operation
-        :type a_records: Iterable[ModificationRecord]
+        :type a_records: Iterable[ComparisonRecord]
         :param b_records_list: Right operand of operation
         :type b_records_list: List[Iterable[ModificationRecord]]
         :parm is_strand: Perform strand-aware query
@@ -432,15 +453,15 @@ class BedToolsService:
 
     def subtract(
         self,
-        a_records: Iterable[ModificationRecord],
-        b_records_list: List[Iterable[ModificationRecord]],
+        a_records: Iterable[ComparisonRecord],
+        b_records_list: List[Iterable[ComparisonRecord]],
         is_strand: bool,
         is_sorted: bool = True,
     ) -> Iterable[SubtractRecord]:
         """Wrapper for pybedtools.bedtool.BedTool.subtract
 
         :param a_records: Left operand of operation
-        :type a_records: Iterable[ModificationRecord]
+        :type a_records: Iterable[ComparisonRecord]
         :param b_records_list: Right operand of operation
         :type b_records_list: Iterable[ModificationRecord]
         :parm is_strand: Perform strand-aware query

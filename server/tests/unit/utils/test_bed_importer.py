@@ -4,7 +4,7 @@ from io import StringIO
 import pytest
 
 from scimodom.utils.bed_importer import (
-    BedImporter,
+    Bed6Importer,
     BedImportTooManyErrors,
     BedImportEmptyFile,
 )
@@ -32,7 +32,7 @@ EUF_FILE = """#fileformat=bedRModv1.7
 def test_euf_import():
     stream = StringIO(EUF_FILE)
 
-    importer = BedImporter(stream=stream, source="test", is_euf=True)
+    importer = Bed6Importer(stream=stream, source="test", is_euf=True)
     assert importer.get_header("annotation_source") == "Ensembl"
 
     result = list(importer.parse())
@@ -52,7 +52,7 @@ BAD_EUF_FILE = """#chrom\tchromStart\tchromEnd\tname\tscore\tstrand\tthickStart\
 def test_euf_error(caplog):
     stream = StringIO(BAD_EUF_FILE)
     with pytest.raises(BedImportTooManyErrors):
-        _ = list(BedImporter(stream=stream, source="test", is_euf=True).parse())
+        _ = list(Bed6Importer(stream=stream, source="test", is_euf=True).parse())
     assert caplog.record_tuples == [
         (
             "scimodom.utils.bed_importer",
@@ -75,7 +75,7 @@ def test_euf_error(caplog):
 def test_euf_error_without_error_rate(caplog):
     stream = StringIO(BAD_EUF_FILE)
     result = list(
-        BedImporter(
+        Bed6Importer(
             stream=stream, source="test", is_euf=True, max_error_rate=None
         ).parse()
     )
@@ -117,7 +117,7 @@ EMPTY_EUF_FILE = """#fileformat=bedRModv1.7
 def test_empty_euf_file():
     stream = StringIO(EMPTY_EUF_FILE)
     with pytest.raises(BedImportEmptyFile):
-        _ = list(BedImporter(stream=stream, source="test", is_euf=True).parse())
+        _ = list(Bed6Importer(stream=stream, source="test", is_euf=True).parse())
 
 
 BED6_FILE = """1\t3528091\t3528092\tm6A\t1000\t+
@@ -128,7 +128,7 @@ BED6_FILE = """1\t3528091\t3528092\tm6A\t1000\t+
 
 def test_bed_6_file():
     stream = StringIO(BED6_FILE)
-    importer = BedImporter(stream=stream, source="test")
+    importer = Bed6Importer(stream=stream, source="test")
 
     result = list(importer.parse())
     assert len(result) == 3

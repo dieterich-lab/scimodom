@@ -183,7 +183,7 @@ def test_importer_parse_records(Session, EUF_specs):
         records = session.execute(select(Data)).scalars().all()[0]
         assert num_records == 1
         assert records.id == 1
-        assert records.dataset_id == "123456789abc"
+        assert records.eufid == "123456789abc"
         assert records.modification_id == 1
         assert records.chrom == "1"
         assert records.start == 0

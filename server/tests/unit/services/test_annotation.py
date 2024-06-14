@@ -24,14 +24,14 @@ from scimodom.services.annotation import (
 )
 from scimodom.services.bedtools import BedToolsService
 from scimodom.services.importer.base import MissingDataError
-from scimodom.services.modification import ModificationService
+from scimodom.services.data import DataService
 
 
 @dataclass
 class _AnnotationSetup:
     Session: Callable[[], Generator[sessionmaker, Any, None]]
     bedtools_service: BedToolsService
-    modification_service: ModificationService
+    modification_service: DataService
 
 
 @pytest.fixture
@@ -42,7 +42,7 @@ def _annotation_setup(tmpdir, Session) -> _AnnotationSetup:  # noqa
     yield _AnnotationSetup(
         Session=Session,
         bedtools_service=BedToolsService(tmp_path=tmpdir),
-        modification_service=ModificationService(Session()),
+        modification_service=DataService(Session()),
     )
 
 
