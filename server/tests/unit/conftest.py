@@ -257,6 +257,9 @@ def project_template():
     return project
 
 
+# TODO this should be simplified to have only temp dirs fixture for session-wise
+# usage, i.e. top of function, the rest should be handlded in separate tests
+# does it actually have to be session-wise???
 @pytest.fixture(scope="session")
 def data_path(tmp_path_factory):
     format = SPECS_EUF["format"]

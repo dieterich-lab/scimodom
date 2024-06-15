@@ -1,3 +1,4 @@
+from functools import cache
 import json
 import logging
 from pathlib import Path
@@ -5,14 +6,14 @@ from posixpath import join as urljoin
 import shutil
 from typing import ClassVar, Callable, Any
 
-import requests  # type: ignore
 from sqlalchemy.orm import Session
 from sqlalchemy import select, exists, func
 from sqlalchemy.exc import NoResultFound
 
 from scimodom.config import Config
+from scimodom.database.database import get_session
 from scimodom.database.models import Assembly, AssemblyVersion, Taxa
-from scimodom.services.external import get_external_service
+from scimodom.services.external import get_external_service, ExternalService
 from scimodom.utils.specifications import (
     ASSEMBLY_NUM_LENGTH,
     ENSEMBL_FTP,
@@ -66,14 +67,15 @@ class AssemblyService:
     CHROM_FILE: ClassVar[str] = "chrom.sizes"
     CHAIN_FILE: ClassVar[Callable] = "{source}_to_{target}.chain.gz".format
 
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: Session, external_service: ExternalService) -> None:
         self._session = session
+        self._external_service = external_service
 
         self._version = self._session.execute(
             select(AssemblyVersion.version_num)
         ).scalar_one()
 
-    def __new__(cls, session: Session):
+    def __new__(cls, session: Session, **kwargs):
         if cls.DATA_PATH is None:
             msg = "Missing environment variable: DATA_PATH."
             raise ValueError(msg)
@@ -161,7 +163,11 @@ class AssemblyService:
         return [l.split()[0] for l in lines]
 
     def liftover(
-        self, assembly: Assembly, raw_file: str, threshold: float = 0.3
+        self,
+        assembly: Assembly,
+        raw_file: str,
+        unmapped_file: str | None = None,
+        threshold: float = 0.3,
     ) -> str:
         """Liftover records to current assembly.
         Unmapped features are discarded.
@@ -169,7 +175,9 @@ class AssemblyService:
         :param assembly: Assembly instance
         :type assembly: Assembly
         :param raw_file: BED file to be lifted over
-        :type records: str
+        :type raw_file: str
+        :param unmapped_file: Unmapped features
+        :type unmapped_file: str
         :param threshold: Threshold for raising LiftOverError
         :type threshold: float
         :returns: Files pointing to the liftedOver features
@@ -182,9 +190,8 @@ class AssemblyService:
             raise FileNotFoundError(f"No such file or directory {chain_file}.")
 
         raw_lines = self._count_lines(raw_file)
-        external_service = get_external_service()
-        lifted_file, unmapped_file = external_service.get_crossmap_output(
-            raw_file, chain_file.as_posix()
+        lifted_file, unmapped_file = self._external_service.get_crossmap_output(
+            raw_file, chain_file.as_posix(), unmapped_file
         )
 
         unmapped_lines = self._count_lines(unmapped_file)
@@ -201,12 +208,12 @@ class AssemblyService:
 
     def add_assembly(self, taxa_id: int, name: int) -> None:
         """Add a new assembly to the database if it does
-        not exist.
-
-        :param taxa_id: Taxonomy ID
-        :type taxa_id: int
-        :param name: Assembly name
-        :type name: str
+                not exist. If it exists, then no further checks are done.
+        /
+                :param taxa_id: Taxonomy ID
+                :type taxa_id: int
+                :param name: Assembly name
+                :type name: str
         """
         try:
             self._session.execute(
@@ -217,41 +224,40 @@ class AssemblyService:
             pass
 
         chain_file = self.get_chain_file(taxa_id, name)
+        parent = chain_file.parent
         organism = self._get_organism(taxa_id)
-        try:
-            chain_file.parent.mkdir(parents=True, exist_ok=False)
-        except FileExistsError as exc:
-            raise Exception(
-                f"Assembly does not exist, but file exists: {chain_file.parent}."
-            ) from exc
-
-        logger.info(f"Setting up a new assembly for {name}...")
-
         url = urljoin(
             ENSEMBL_FTP, ENSEMBL_ASM_MAPPING, organism.lower(), chain_file.name
         )
-        with requests.get(url, stream=True) as request:
-            if not request.ok:
-                shutil.rmtree(chain_file.parent)
-                request.raise_for_status()
-            with open(chain_file, "wb") as f:
-                for chunk in request.iter_content(chunk_size=10 * 1024):
-                    f.write(chunk)
 
-        version_nums = (
-            self._session.execute(select(func.distinct(Assembly.version)))
-            .scalars()
-            .all()
-        )
-        version_num = utils.gen_short_uuid(ASSEMBLY_NUM_LENGTH, version_nums)
-        assembly = Assembly(name=name, taxa_id=taxa_id, version=version_num)
-        self._session.add(assembly)
-        self._session.commit()
+        logger.info(f"Setting up a new assembly for {name}...")
+
+        try:
+            parent.mkdir(parents=True, exist_ok=False)
+        except FileExistsError as exc:
+            exc.add_note(f"... but assembly {name} does not exist!")
+            raise
+
+        try:
+            utils.stream_request_to_file(url, chain_file)
+            version_nums = (
+                self._session.execute(select(func.distinct(Assembly.version)))
+                .scalars()
+                .all()
+            )
+            version_num = utils.gen_short_uuid(ASSEMBLY_NUM_LENGTH, version_nums)
+            assembly = Assembly(name=name, taxa_id=taxa_id, version=version_num)
+            self._session.add(assembly)
+            self._session.commit()
+        except:
+            self._session.rollback()
+            shutil.rmtree(parent)
+            raise
 
     def prepare_assembly_for_version(self, assembly_id: int) -> None:
-        """Setup directories and files for the current database assembly version.
-        The assembly must exists in the database. This is mostly for initial setup.
-        This method does not upgrade the database version.
+        """Setup directories and files for the current database assembly version,
+        e.g. initial setup. This method does not upate the database, i.e.
+        the assembly must exists.
 
         :param assembly_id: Assembly ID
         :type assembly_id: int
@@ -279,64 +285,6 @@ class AssemblyService:
             shutil.rmtree(parent)
             raise
 
-        # assembly_id = kwargs.get("assembly_id", None)
-        # if assembly_id is not None:
-        #     is_found = self._session.query(
-        #         exists().where(Assembly.id == assembly_id)
-        #     ).scalar()
-        #     if not is_found:
-        #         msg = f"Assembly ID = {assembly_id} not found! Aborting transaction!"
-        #         raise InstantiationError(msg)
-        #     self._assembly_id = assembly_id
-        #     query = queries.query_column_where(
-        #         Assembly,
-        #         ["version", "name", "taxa_id"],
-        #         filters={"id": self._assembly_id},
-        #     )
-        #     records = self._session.execute(query).one()
-        #     version = records[0]
-        #     # forbid instantiation for "other" assembly versions
-        #     if not version == self._db_version:
-        #         msg = (
-        #             f"Mismatch between current DB assembly version ({self._db_version}) and "
-        #             f"version ({version}) from assembly ID = {self._assembly_id}. Aborting transaction!"
-        #         )
-        #         raise AssemblyVersionError(msg)
-        #     self._name = records[1]
-        #     self._taxid = records[2]
-        # else:
-        #     self._name = kwargs.get("name", None)
-        #     self._taxid = kwargs.get("taxa_id", None)
-        #     if not isinstance(self._name, str):
-        #         raise TypeError(f"Expected str; got {type(self._name).__name__}")
-        #     # difficult to validate "name", or combination of (name, taxa_id)
-        #     # because "name" can be a "new" assembly...
-        #     is_found = self._session.query(
-        #         exists().where(Taxa.id == self._taxid)
-        #     ).scalar()
-        #     if not is_found:
-        #         msg = f"Taxonomy ID = {self._taxid} not found! Aborting transaction!"
-        #         raise InstantiationError(msg)
-        #     query = queries.query_column_where(
-        #         Assembly, "id", filters={"name": self._name, "taxa_id": self._taxid}
-        #     )
-        #     assembly_id = self._session.execute(query).scalar_one_or_none()
-        #     if assembly_id:
-        #         # can be any version, if not current database version
-        #         # there may be limitations to what can be done
-        #         self._assembly_id = assembly_id
-        #     else:
-        #         # download chain files for "new" assembly
-        #         try:
-        #             self._new()
-        #             self._session.commit()  # add "new" assembly ID
-        #         except:
-        #             self._session.rollback()
-        #             raise
-
-        # # chrom file for the current DB assembly version
-        # self._set_chrom_path()
-
     @staticmethod
     def _count_lines(path):
         count = 0
@@ -348,19 +296,12 @@ class AssemblyService:
                 count += buffer.count("\n")
 
     @staticmethod
-    def _request_as_json(url):
-        request = requests.get(url, headers={"Content-Type": "application/json"})
-        if not request.ok:
-            request.raise_for_status()
-        return request.json()
-
-    @staticmethod
     def _handle_release(path):
         url = urljoin(
             ENSEMBL_SERVER,
             ENSEMBL_DATA,
         )
-        release = AssemblyService._request_as_json(url)
+        release = utils.request_as_json(url)
         with open(Path(path, "release.json"), "w") as f:
             json.dump(release, f, indent="\t")
 
@@ -370,7 +311,7 @@ class AssemblyService:
             ENSEMBL_ASM,
             self._get_organism(assembly.taxa_id).lower(),
         )
-        gene_build = self._request_as_json(url)
+        gene_build = utils.request_as_json(url)
         coord_sysver = gene_build["default_coord_system_version"]
         if coord_sysver != assembly.name:
             raise AssemblyVersionError(
@@ -407,6 +348,18 @@ class AssemblyService:
 
     def _path_constructor(self, taxa_id: int) -> tuple[Path, str, str]:
         path = self.get_assembly_path()
-        organism = self._get_organims(taxa_id)
+        organism = self._get_organism(taxa_id)
         name_for_version = self._get_name_for_version(taxa_id)
         return path, organism, name_for_version
+
+
+@cache
+def get_assembly_service() -> AssemblyService:
+    """Helper function to set up an AssemblyService object by injecting its dependencies.
+
+    :returns: Assembly service instance
+    :rtype: AssemblyService
+    """
+    return AssemblyService(
+        session=get_session(), external_service=get_external_service()
+    )

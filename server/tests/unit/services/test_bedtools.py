@@ -11,8 +11,8 @@ from scimodom.utils.bedtools_dto import (
 
 
 @pytest.fixture
-def bedtools_service(tmpdir):
-    yield BedToolsService(tmp_path=tmpdir)
+def bedtools_service(tmp_path):
+    yield BedToolsService(tmp_path=tmp_path)
 
 
 def test_get_modification_from_bedtools_data():
