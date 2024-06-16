@@ -1,10 +1,10 @@
 from fixtures.dataset import dataset  # noqa
-from scimodom.services.modification import ModificationService
+from scimodom.services.modification import DataService
 from scimodom.utils.bedtools_dto import ModificationRecord, Strand
 
 
 def test_modification_service_simple(dataset, Session):  # noqa
-    service = ModificationService(session=Session())
+    service = DataService(session=Session())
     records = list(service.get_modifications_by_dataset(["d1"]))
     assert records == [
         ModificationRecord(

@@ -91,7 +91,7 @@ class BedToolsService:
     def __init__(self, tmp_path):
         pybedtools.helpers.set_tempdir(tmp_path)
 
-    def annotate_data_to_records(
+    def annotate_data_using_ensembl(
         self,
         annotation_path: Path,
         features: dict[str, str],

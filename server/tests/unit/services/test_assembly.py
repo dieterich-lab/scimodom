@@ -15,10 +15,6 @@ from scimodom.services.assembly import (
 from scimodom.utils.specifications import ENSEMBL_FTP, ENSEMBL_ASM_MAPPING
 
 
-class InstantiationError:
-    pass
-
-
 class MockExternalService:
     def __init__(self):  # noqa
         pass

@@ -9,7 +9,7 @@ from scimodom.database.models import Data, Dataset
 from scimodom.utils.bedtools_dto import ModificationRecord
 
 
-class ModificationService:
+class DataService:
     def __init__(self, session: Session):
         self._db_session = session
 
@@ -61,4 +61,4 @@ class ModificationService:
 
 @cache
 def get_modification_service():
-    return ModificationService(session=get_session())
+    return DataService(session=get_session())

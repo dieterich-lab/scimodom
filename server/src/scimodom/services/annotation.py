@@ -1,40 +1,41 @@
+from functools import cache
 import fcntl
 import logging
 from pathlib import Path
 from posixpath import join as urljoin
 import re
 import shutil
-from typing import ClassVar, Callable, Literal, NamedTuple, get_args
+from typing import ClassVar, Callable, NamedTuple
 
-import requests  # type: ignore
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy import select, exists, insert
+from sqlalchemy import select, func
 
 from scimodom.config import Config
-import scimodom.database.queries as queries
 from scimodom.database.buffer import InsertBuffer
+from scimodom.database.database import get_session
 from scimodom.database.models import (
     Annotation,
     AnnotationVersion,
     Assembly,
-    AssemblyVersion,
     Data,
     DataAnnotation,
     GenomicAnnotation,
     Taxa,
 )
-from scimodom.services.assembly import AssemblyService
+from scimodom.services.assembly import get_assembly_service, AssemblyService
+from scimodom.services.data import get_data_service, DataService
+from scimodom.services.external import get_external_service, ExternalService
 from scimodom.services.importer.base import MissingDataError
-from scimodom.services.bedtools import BedToolsService
+from scimodom.services.bedtools import get_bedtools_service, BedToolsService
 import scimodom.utils.specifications as specs
-from scimodom.services.modification import ModificationService
+from scimodom.utils.utils import stream_request_to_file
 
 logger = logging.getLogger(__name__)
 
 
-class InstantiationError(Exception):
-    """Exception handling for AnnotationService instantiation."""
+class AnnotationNotFoundError(Exception):
+    """Exception handling for a non-existing Annotation."""
 
     pass
 
@@ -46,19 +47,18 @@ class AnnotationVersionError(Exception):
 
 
 class AnnotationService:
-    """Utility class to handle annotations. Class
-    instantiation is only possible for existing
-    rows in "annotation" for the current database
-    version.
+    """Utility class to handle annotations.
 
     :param session: SQLAlchemy ORM session
     :type session: Session
-    :param annotation_id: Annotation ID
-    :type annotation_id: str | None
-    :param taxid: Taxa ID
-    :type taxid: int | None
-    :param source: Annotation source
-    :type source: str | None
+    :param assembly_service: Assembly service instance
+    :type assembly service: AssemblyService
+    :param data_service: Data service instance
+    :type data service: DataService
+    :param bedtools_service: Bedtools service instance
+    :type bedtools_service: BedToolsService
+    :param external_service: External service instance
+    :type external_service: ExternalService
     :param DATA_PATH: Path to data
     :type DATA_PATH: str | Path
     :param ANNOTATION_PATH: Subpath to annotation
@@ -70,71 +70,37 @@ class AnnotationService:
     DATA_PATH: ClassVar[str | Path] = Config.DATA_PATH
     ANNOTATION_PATH: ClassVar[str] = "annotation"
     CACHE_PATH: ClassVar[Path] = Path("cache", "gene", "selection")
-    SOURCE = Literal["ensembl", "gtrnadb"]
 
     def __init__(
         self,
         session: Session,
+        assembly_service: AssemblyService,
+        data_service: DataService,
         bedtools_service: BedToolsService,
-        modification_service: ModificationService,
-        annotation_id: int | None = None,
-        taxa_id: int | None = None,
-        source: str | None = None,
+        external_service: ExternalService,
     ) -> None:
         """Initializer method."""
         self._session = session
+        self._assembly_service = assembly_service
+        self._data_service = data_service
         self._bedtools_service = bedtools_service
-        self._modification_service = modification_service
+        self._external_service = external_service
 
-        self._annotation: Annotation
-        self._release_path: Path
-        self._chrom_file: Path
-
-        # service can only be instantiated for current database annotation version
-        version = self._session.execute(
+        self._version = self._session.execute(
             select(AnnotationVersion.version_num)
         ).scalar_one()
 
-        if annotation_id is not None:
-            try:
-                annotation = self._session.get_one(Annotation, annotation_id)
-                if annotation.version != version:
-                    raise AnnotationVersionError(
-                        f"Invalid annotation version {annotation.version}"
-                    )
-            except NoResultFound:
-                raise InstantiationError(f"Failed to find annotation {annotation_id}")
-        else:
-            assert source in get_args(
-                self.SOURCE
-            ), f"Undefined '{source}'. Allowed values are {self.SOURCE}."
-            try:
-                annotation = self._session.execute(
-                    select(Annotation).filter_by(
-                        taxa_id=taxa_id, source=source, version=version
-                    )
-                ).scalar_one()
-            except NoResultFound:
-                raise InstantiationError(
-                    f"Failed to find annotation for taxonomy ID {taxa_id} and source {source}"
-                )
-
-        self._annotation = annotation
-        self._set_files_path()
-
     def __new__(cls, session: Session, **kwargs):
-        """Constructor method."""
         if cls.DATA_PATH is None:
-            msg = "Missing environment variable: DATA_PATH. Terminating!"
-            raise ValueError(msg)
+            raise ValueError("Missing environment variable: DATA_PATH.")
         elif not Path(cls.DATA_PATH, cls.ANNOTATION_PATH).is_dir():
-            msg = f"DATA PATH {Path(cls.DATA_PATH, cls.ANNOTATION_PATH)} not found! Terminating!"
-            raise FileNotFoundError(msg)
+            raise FileNotFoundError(
+                f"No such directory '{Path(cls.DATA_PATH, cls.ANNOTATION_PATH)}'."
+            )
         if not Path(cls.DATA_PATH, cls.CACHE_PATH).is_dir():
-            msg = (
+            logger.warning(
                 f"DATA PATH {Path(cls.DATA_PATH, cls.CACHE_PATH)} not found! Creating!"
             )
-            logger.warning(msg)
             Path(cls.DATA_PATH, cls.CACHE_PATH).mkdir(parents=True, mode=0o755)
         return super().__new__(cls)
 
@@ -156,24 +122,43 @@ class AnnotationService:
         """
         return Path(AnnotationService.DATA_PATH, AnnotationService.CACHE_PATH)
 
-    @staticmethod
-    def download(url: str, annotation_file: Path) -> None:
-        """Download annotation.
+    def get_annotation_from_taxid_and_source(
+        self, taxa_id: int, source: str
+    ) -> Annotation:
+        """Retrieve annotation from taxonomy ID and source
+        for the latest database version.
 
-        :param url: Annotation file remote URL
-        :type url: str
-        :param annotation_file: Path where to write file
-        :type annotation_file: Path
+        :param taxa_id: Taxonomy ID
+        :type taxa_id: int
+        :param source: Annotation source
+        :type source: str
+        :returns: Annotation instance
+        :rtype: Annotation
+
+        :raises: AnnotationNotFoundError
         """
+        try:
+            return self._session.execute(
+                select(Annotation).filter_by(
+                    taxa_id=taxa_id, source=source, version=self._version
+                )
+            ).scalar_one()
+        except NoResultFound:
+            raise AnnotationNotFoundError(
+                f"No such {source} annotation for taxonomy ID: {taxa_id}."
+            )
 
-        logger.info(f"Downloading annotation to {annotation_file.name} ...")
+    def is_latest_annotation(self, annotation: Annotation) -> bool:
+        """Check if annotation version matches the
+        database latest version.
 
-        with requests.get(url, stream=True) as request:
-            if not request.ok:
-                request.raise_for_status()
-            with open(annotation_file, "wb") as fh:
-                for chunk in request.iter_content(chunk_size=10 * 1024):
-                    fh.write(chunk)
+        :param annotation: Annotation instance
+        :type annotation: Annotation
+        :returns: True if annotatoin version is
+        the same as database version, else False
+        :rtype: bool
+        """
+        return annotation.version == self._version
 
     def update_gene_cache(self, eufid: str, selections: dict[int, int]) -> None:
         """Update gene cache.
@@ -208,62 +193,39 @@ class AnnotationService:
                 fc.write("\n".join(genes))
                 fcntl.flock(fc.fileno(), fcntl.LOCK_UN)
 
-    def _set_files_path(self) -> None:
-        """Construct file path (annotation and chrom files) for
-        the current annotation."""
+    def get_release_path(self, annotation: Annotation) -> Path:
+        """Construct annotation release path.
+
+        :param annotation: Annotation instance
+        :type annotation: Annotation
+        :returns: Annotation release path
+        :rtype: Path
+        """
         organism_name = self._session.execute(
-            select(Taxa.name).filter_by(id=self._annotation.taxa_id)
+            select(Taxa.name).filter_by(id=annotation.taxa_id)
         ).scalar_one()
         organism_name = "_".join(organism_name.lower().split()).capitalize()
-        assembly_version = self._session.execute(
-            select(AssemblyVersion.version_num)
-        ).scalar_one()
-        assembly_name = self._session.execute(
-            select(Assembly.name).filter_by(
-                taxa_id=self._annotation.taxa_id, version=assembly_version
-            )
-        ).scalar_one()
+        assembly_name = self._assembly_service.get_name_for_version(annotation.taxa_id)
         path = self.get_annotation_path()
-        self._release_path = Path(
-            path, organism_name, assembly_name, str(self._annotation.release)
+        return Path(path, organism_name, assembly_name, str(annotation.release))
+
+    def _release_exists(self, annotation_id) -> bool:
+        """Check if release exists by checking if the database
+        contains records for this release."""
+        length = self._session.scalar(
+            select(func.count())
+            .select_from(GenomicAnnotation)
+            .filter_by(annotation_id=annotation_id)
         )
-        parent, filen = AssemblyService.get_chrom_path(organism_name, assembly_name)
-        self._chrom_file = Path(parent, filen)
-
-    def _release_exists(self) -> bool:
-        """If release exists, the first record for the current
-        annotation is queried. An Exception is raised if no
-        records are found (i.e. the release destination already exists,
-        but the database does not contain the expected annotation records),
-        else nothing is done (it is assumed that the database has
-        been updated).
-
-        :returns: True if destination already exists, else False
-        :rtype: bool
-        :raises: Exception
-        """
-        if self._release_path.exists():
-            msg = f"Annotation directory {self._release_path} already exists..."
-            logger.info(msg)
-            first = self._session.execute(
-                select(GenomicAnnotation).filter_by(annotation_id=self._annotation.id)
-            ).first()
-            if first:
-                return True
-            msg = f"{msg} but failed to find records in GenomicAnnotation for annotation {self._annotation.id}."
-            raise Exception(msg)
+        logger.debug(f"Found {length} rows for annotation {annotation_id}.")
+        if length > 0:
+            return True
         return False
 
 
 class EnsemblAnnotationService(AnnotationService):
     """Utility class to handle Ensembl annotation.
 
-    :param session: SQLAlchemy ORM session
-    :type session: Session
-    :param **kwargs: Keyword arguments to instantiate
-    base class with either "annotation_id", or "taxa_id"
-    and "source", cf. AnnotationService.
-    :type **kwargs: cf. AnnotationService
     :param FMT: Annotation file format
     :type FMT: str
     :param ANNOTATION_FILE: Annotation file name
@@ -286,33 +248,63 @@ class EnsemblAnnotationService(AnnotationService):
         "extended": {"intron": "Intronic", "intergenic": "Intergenic"},
     }
 
-    def create_annotation(self) -> None:
-        """This method automates the creation of a database annotation:
-        it creates the destination, downloads/writes files to disk,
-        wrangles and writes annotation to the database.
+    def get_annotation(self, taxa_id: int) -> Annotation:
+        """Retrieve annotation from taxonomy ID.
+
+        :param taxa_id: Taxonomy ID
+        :type taxa_id: int
+        :returns: Annotation instance
+        :rtype: Annotation
+
+        :raises: AnnotationNotFoundError
         """
-        if self._release_exists():
+        return self.get_annotation_from_taxid_and_source(taxa_id, "ensembl")
+
+    def create_annotation(self, taxa_id: int) -> None:
+        """This method automates the creation of Ensembl
+        annotations for a given organism for the current
+        release. The annotation must exists in the database.
+
+        :param taxa_id: Taxonomy ID
+        :type taxa_id: int
+        """
+        annotation = self.get_annotation(taxa_id)
+        if not self.is_latest_annotation(annotation):
+            raise AnnotationVersionError(
+                f"Mismatch between annotation version {annotation.version} and database version {self._version}."
+            )
+        if self._release_exists(annotation.id):
             return
 
+        release_path = self.get_release_path(annotation)
+        annotation_file, url = self._get_annotation_paths(annotation, release_path)
+        chrom_file = self._assembly_service.get_chrom_file(annotation.taxa_id)
+
+        logger.info(
+            f"Setting up Ensembl {annotation.release} for {annotation.taxa_id}..."
+        )
+
         try:
-            # create destination and download files
-            self._release_path.mkdir(parents=True, exist_ok=False)
-            annotation_file, url = self._get_annotation_paths()
-            self.download(url, annotation_file)
-            # write BED files for genomic features
+            release_path.mkdir(parents=True, exist_ok=False)
+        except FileExistsError as exc:
+            exc.add_note(f"... but no records found for annotation {annotation.id}.")
+            raise
+
+        try:
+            stream_request_to_file(url, annotation_file)
             self._bedtools_service.ensembl_to_bed_features(
                 annotation_file,
-                self._chrom_file,
+                chrom_file,
                 {k: list(v.keys()) for k, v in self.FEATURES.items()},
             )
-            # add genomic annotation to database
-            self._update_database(annotation_file)
+            self._update_database(annotation.id, annotation_file)
             self._session.commit()
         except:
             self._session.rollback()
-            shutil.rmtree(self._release_path)
+            shutil.rmtree(release_path)
             raise
 
+    # TODO check latest changes
     def annotate_data(self, eufid: str) -> None:
         """Annotate Data: add entries to DataAnnotation
         for a given dataset.
@@ -321,66 +313,49 @@ class EnsemblAnnotationService(AnnotationService):
         :type eufid: str
         """
         logger.debug(f"Annotating records for EUFID {eufid}...")
-        records = list(self._modification_service.get_modifications_by_dataset(eufid))
+        records = list(self._data_service.get_modifications_by_dataset(eufid))
         if len(records) == 0:
             raise MissingDataError(f"No records found for {eufid}")
 
         features = {**self.FEATURES["conventional"], **self.FEATURES["extended"]}
-        annotated_records = self._bedtools_service.annotate_data_to_records(
+        annotated_records = self._bedtools_service.annotate_data_using_ensembl(
             self._release_path, features, records
         )
         with InsertBuffer[DataAnnotation](self._session) as buffer:
             for record in annotated_records:
                 buffer.queue(DataAnnotation(**record.model_dump()))
 
-    def _update_database(self, annotation_file: Path) -> None:
-        """Reads annotation file to records and
-        insert to GenomicAnnotation.
-
-        :param annotation_file: Annotation file path
-        :type annotation_file: Path
-        """
+    def _update_database(self, annotation_id: int, annotation_file: Path) -> None:
         records = self._bedtools_service.get_ensembl_annotation_records(
             annotation_file,
-            self._annotation.id,
+            annotation_id,
             self.FEATURES["extended"]["intergenic"],
         )
         with InsertBuffer[GenomicAnnotation](self._session) as buffer:
             for record in records:
                 buffer.queue(GenomicAnnotation(**record.model_dump()))
 
-    def _get_annotation_paths(self) -> tuple[Path, str]:
-        """Construct annotation file path and
-        target URL.
-
-        :returns: Annotation file path and URL
-        :rtype: (Path, str)
-        """
+    def _get_annotation_paths(
+        self, annotation: Annotation, release_path: Path
+    ) -> tuple[Path, str]:
         filen = self.ANNOTATION_FILE(
-            organism=self._release_path.parent.parent.name,
-            assembly=self._release_path.parent.name,
-            release=self._annotation.release,
+            organism=release_path.parent.parent.name,
+            assembly=release_path.parent.name,
+            release=annotation.release,
             fmt=self.FMT,
         )
         url = urljoin(
             specs.ENSEMBL_FTP,
-            f"release-{self._annotation.release}",
+            f"release-{annotation.release}",
             self.FMT,
-            self._release_path.parent.parent.name.lower(),
+            release_path.parent.parent.name.lower(),
             filen,
         )
-        return Path(self._release_path, filen), url
+        return Path(release_path, filen), url
 
 
 class GtRNAdbAnnotationService(AnnotationService):
     """Utility class to handle GtRNAdb annotation.
-
-    :param session: SQLAlchemy ORM session
-    :type session: Session
-    :param **kwargs: Keyword arguments to instantiate
-    base class with either "annotation_id", or "taxa_id"
-    and "source", cf. AnnotationService.
-    :type **kwargs: cf. AnnotationService
 
     :param FMT: Annotation format. BED is used for
     annotations (GTF is no available for all organisms),
@@ -400,64 +375,81 @@ class GtRNAdbAnnotationService(AnnotationService):
         "AnnotationPath", [("annotation_file", Path), ("url", str)]
     )
 
-    def create_annotation(self, domain: str, name: str) -> None:
-        """This method automates the creation of a database annotation:
-        it creates the destination, downloads, wrangles, and writes files to disk,
-        and writes annotation to the database. In addition, it writes a
-        coordinates mapping "genomic" <-> "Sprinzl".
+    def get_annotation(self, taxa_id: int) -> Annotation:
+        """Retrieve annotation from taxonomy ID.
 
-        NOTE: GtRNAdb has a non-standard nomenclature, neither API nor FTP.
-        Prior to calling this method, lookup the remote detination to find the
-        correct domain and name, e.g. GTRNADB_URL/domain/name/assembly-tRNAs.fa.
-        Choose the assembly that matches the current database assembly. In
-        principle, assembly could be aded as a parameter, but we want to make
-        sure that GtRNAdb assembly matches the database assembly "alt_name".
+        :param taxa_id: Taxonomy ID
+        :type taxa_id: int
+        :returns: Annotation instance
+        :rtype: Annotation
 
+        :raises: AnnotationNotFoundError
+        """
+        return self.get_annotation_from_taxid_and_source(taxa_id, "gtrnadb")
+
+    def create_annotation(self, taxa_id: int, domain: str, name: str) -> None:
+        """This method automates the creation of GtRNAdb
+        annotations for a given organism. The annotation
+        must exists in the database.
+
+        NOTE: Prior to calling this method, lookup the remote
+        detination to find the correct domain and name, e.g.
+        GTRNADB_URL/domain/name/assembly-tRNAs.fa. Choose the
+        assembly that matches the current database assembly.
+
+        :param taxa_id: Taxonomy ID
+        :type taxa_id: int
         :param domain: Taxonomic domain e.g. eukaryota
         :type domain: str
         :param name: GtRNAdb species name (abbreviated) e.g. Mmusc39
         :type name: str
         """
-        if self._release_exists():
+        annotation = self.get_annotation(taxa_id)
+        if not self.is_latest_annotation(annotation):
+            raise AnnotationVersionError(
+                f"Mismatch between annotation version {annotation.version} and database version {self._version}."
+            )
+        if self._release_exists(annotation.id):
             return
 
+        release_path = self.get_release_path(annotation)
+        annotation_paths = self._get_annotation_paths(release_path, domain, name)
+        annotation_file = annotation_paths["bed"].annotation_file
+        fasta_file = annotation_paths["fa"].annotation_file
+        seqids = self._assembly_service.get_seqids(annotation.taxa_id)
+
+        logger.info(
+            f"Setting up GtRNAdb {annotation.release} for {annotation.taxa_id}..."
+        )
+
         try:
-            # create destination and download files
-            self._release_path.mkdir(parents=True, exist_ok=False)
-            annotation_paths = self._get_annotation_paths(domain, name)
-            annotation_file = annotation_paths["bed"].annotation_file
+            release_path.mkdir(parents=True, exist_ok=False)
+        except FileExistsError as exc:
+            exc.add_note(f"... but no records found for annotation {annotation.id}.")
+            raise
+
+        try:
             for paths in annotation_paths.values():
-                self.download(paths.url, paths.annotation_file)
-            # format
-            self._patch_annotation(annotation_file)
-
-            # create mapping
-
-            # write BED files for genomic features
+                stream_request_to_file(paths.url, paths.annotation_file)
             self._bedtools_service.gtrnadb_to_bed_features(
                 annotation_file, list(self.FEATURES.keys())
             )
-            # add genomic annotation to database
-            self._update_database(annotation_file)
+            # TODO
+            # self._update_annotation()
+            self._update_database(
+                annotation_file, annotation.id, release_path.parent.parent.name
+            )
             self._session.commit()
         except:
             self._session.rollback()
-            shutil.rmtree(self._release_path)
+            shutil.rmtree(release_path)
             raise
 
-    def _get_annotation_paths(self, domain: str, name: str) -> dict[AnnotationPath]:
-        """Construct annotation file path and
-        target URL.
-
-        :param domain: Taxonomic domain e.g. eukaryota
-        :type domain: str
-        :param name: GtRNAdb species name (abbreviated) e.g. Mmusc39
-        :type name: str
-        :returns: Annotation file path and URL
-        :rtype: list of (Path, str)
-        """
+    def _get_annotation_paths(
+        self, release_path: Path, domain: str, name: str
+    ) -> dict[AnnotationPath]:
         assembly_alt_name = self._session.execute(
-            select(Assembly.alt_name).filter_by(name=self._release_path.parent.name)
+            select(Assembly.alt_name).filter_by(name=release_path.parent.name)
         ).scalar_one()
         paths = {}
         for fmt in self.FMT:
@@ -471,21 +463,15 @@ class GtRNAdbAnnotationService(AnnotationService):
                 name,
                 filen,
             )
-            paths[fmt] = self.AnnotationPath(Path(self._release_path, filen), url)
+            paths[fmt] = self.AnnotationPath(Path(release_path, filen), url)
         return paths
 
-    def _patch_annotation(self, annotation_file: Path):
-        """Re-write GtRNAdb annotation file according to
-        Ensembl format, and filter out contigs/scaffolds.
+    def _patch_annotation(self, annotation_file: Path, seqids: list[str]):
+        # TODO Is it general enough to handle all organisms?
+        # TODO restrict to highly confident set...
 
-        :param annotation_file: Annotation file (assumed BED12)
-        :type annotation_file: Path
-        """
         pattern = "^chr"
         repl = ""
-
-        seqids = AssemblyService.get_seqids(chrom_file=self._chrom_file)
-
         with open(annotation_file, "r") as fd:
             text, counter = re.subn(pattern, repl, fd.read(), flags=re.MULTILINE)
 
@@ -500,18 +486,57 @@ class GtRNAdbAnnotationService(AnnotationService):
                     continue
                 fd.write(f"{line}\n")
 
-    def _update_database(self, annotation_file: Path) -> None:
-        """Reads annotation file to records and
-        insert to GenomicAnnotation.
+    # TODO
+    def _update_annotation(self, domain, fasta_file):
+        annotation_path = self.get_annotation_path()
+        model_file = Path(annotation_path, domain).with_suffix(".cm").as_posix()
+        sprinzl_file = Path(annotation_path, domain).with_suffix(".txt").as_posix()
+        self._external_service.get_sprinzl_mapping(model_file, fasta_file, sprinzl_file)
 
-        :param annotation_file: Annotation file path
-        :type annotation_file: Path
-        """
+        # self._patch_annotation(annotation_file, seqids)
+
+        # maybe we need to patch the annotation here
+        # restrict to highly confident set
+        # patch
+        # and at the same time update mapping file with chrom start
+
+    def _update_database(
+        self, annotation_file: Path, annotation_id: int, organism: str
+    ) -> None:
         records = self._bedtools_service.get_gtrnadb_annotation_records(
             annotation_file,
-            self._annotation.id,
-            self._release_path.parent.parent.name,
+            annotation_id,
+            organism,
         )
         with InsertBuffer[GenomicAnnotation](self._session) as buffer:
             for record in records:
                 buffer.queue(GenomicAnnotation(**record.model_dump()))
+
+
+@cache
+def get_annotation_service(source: str) -> AnnotationService:
+    """Helper function to set up an AnnotationService object by injecting its dependencies.
+
+    :param source: Ensembl or GtRNAdb annotation
+    :type source: str
+    :returns: Annotation service instance
+    :rtype: AnnotationService
+    """
+    if source == "ensembl":
+        return EnsemblAnnotationService(
+            session=get_session(),
+            assembly_service=get_assembly_service(),
+            data_service=get_data_service(),
+            bedtools_service=get_bedtools_service(),
+            external_service=get_external_service(),
+        )
+    elif source == "gtrnadb":
+        return GtRNAdbAnnotationService(
+            session=get_session(),
+            assembly_service=get_assembly_service(),
+            data_service=get_data_service(),
+            bedtools_service=get_bedtools_service(),
+            external_service=get_external_service(),
+        )
+    else:
+        raise ValueError(f"No such annotation: '{source}'.")

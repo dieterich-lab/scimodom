@@ -51,6 +51,8 @@ class AssemblyService:
 
     :param session: SQLAlchemy ORM session
     :type session: Session
+    :param external_service: External service instance
+    :type external service: ExternalService
     :param DATA_PATH: Data path
     :type DATA_PATH: str | Path | None
     :param ASSEMBLY_PATH: Path to assembly
@@ -77,11 +79,11 @@ class AssemblyService:
 
     def __new__(cls, session: Session, **kwargs):
         if cls.DATA_PATH is None:
-            msg = "Missing environment variable: DATA_PATH."
-            raise ValueError(msg)
+            raise ValueError("Missing environment variable: DATA_PATH.")
         elif not Path(cls.DATA_PATH, cls.ASSEMBLY_PATH).is_dir():
-            msg = f"DATA PATH {Path(cls.DATA_PATH, cls.ASSEMBLY_PATH)} not found!"
-            raise FileNotFoundError(msg)
+            raise FileNotFoundError(
+                f"No such directory '{Path(cls.DATA_PATH, cls.ASSEMBLY_PATH)}'."
+            )
         else:
             return super().__new__(cls)
 
@@ -143,7 +145,7 @@ class AssemblyService:
         :param assembly: Assembly instance
         :type assembly: Assembly
         :returns: True if assembly version is
-        the same as databas version, else False
+        the same as database version, else False
         :rtype: bool
         """
         return assembly.version == self._version
@@ -208,12 +210,12 @@ class AssemblyService:
 
     def add_assembly(self, taxa_id: int, name: int) -> None:
         """Add a new assembly to the database if it does
-                not exist. If it exists, then no further checks are done.
-        /
-                :param taxa_id: Taxonomy ID
-                :type taxa_id: int
-                :param name: Assembly name
-                :type name: str
+        not exist. If it exists, then no further checks are done.
+
+        :param taxa_id: Taxonomy ID
+        :type taxa_id: int
+        :param name: Assembly name
+        :type name: str
         """
         try:
             self._session.execute(
@@ -256,7 +258,7 @@ class AssemblyService:
 
     def prepare_assembly_for_version(self, assembly_id: int) -> None:
         """Setup directories and files for the current database assembly version,
-        e.g. initial setup. This method does not upate the database, i.e.
+        e.g. initial setup. This method does not update the database, i.e.
         the assembly must exists.
 
         :param assembly_id: Assembly ID
@@ -284,6 +286,19 @@ class AssemblyService:
         except:
             shutil.rmtree(parent)
             raise
+
+    def get_name_for_version(self, taxa_id: int) -> str:
+        """Get assembly name for latest version.
+
+        :param taxa_id: Taxonomy ID
+        :type taxa_id: int
+        :returms: Assembly name
+        :rtype: str
+        """
+        name = self._session.execute(
+            select(Assembly.name).filter_by(taxa_id=taxa_id, version=self._version)
+        ).scalar_one()
+        return name
 
     @staticmethod
     def _count_lines(path):
@@ -340,16 +355,10 @@ class AssemblyService:
         organism = "_".join(organism.split())
         return organism
 
-    def _get_name_for_version(self, taxa_id: int) -> str:
-        name = self._session.execute(
-            select(Assembly.name).filter_by(taxa_id=taxa_id, version=self._version)
-        ).scalar_one()
-        return name
-
     def _path_constructor(self, taxa_id: int) -> tuple[Path, str, str]:
         path = self.get_assembly_path()
         organism = self._get_organism(taxa_id)
-        name_for_version = self._get_name_for_version(taxa_id)
+        name_for_version = self.get_name_for_version(taxa_id)
         return path, organism, name_for_version
 
 

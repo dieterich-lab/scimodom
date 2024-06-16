@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
 from scimodom.database.models import (
+    AnnotationVersion,
     Selection,
     Dataset,
     Data,
@@ -28,45 +29,103 @@ from scimodom.services.annotation import (
 )
 from scimodom.services.bedtools import BedToolsService
 from scimodom.services.importer.base import MissingDataError
-from scimodom.services.modification import ModificationService
+from scimodom.services.modification import DataService
 import scimodom.utils.specifications as specs
 
 
+class MockAssemblyService:
+    def __init__(self):
+        pass
+
+    def get_name_for_version(self, taxa_id):
+        pass
+
+    def get_chrom_file(self, taxa_id):
+        pass
+
+    def get_seqids(self, taxa_id):
+        pass
+
+
+class MockDataService:
+    def __init__(self):
+        pass
+
+    def get_modification_by_dataset(self, datasets):
+        pass
+
+
+class MockBedToolsService:
+    def __init__(self):  # noqa
+        pass
+
+    def ensembl_to_bed_features(self, annotation_path, chrom_file, features):
+        pass
+
+    def annotate_data_using_ensembl(self, annotation_path, features, records):
+        pass
+
+    def get_ensembl_annotation_records(
+        self, annotation_path, annotation_id, intergenic_feature
+    ):
+        pass
+
+    def gtrnadb_to_bed_features(self, annotation_path, features):
+        pass
+
+    def get_gtrnadb_annotation_records(self, annotation_path, annotation_id, organism):
+        pass
+
+
+class MockExternalService:
+    def __init__(self):  # noqa
+        pass
+
+    def get_sprinzl_mapping(self, model_file, fasta_file, sprinzl_file):
+        return Path(Path(fasta_file).parent, "seq_to_sprinzl.tab").as_posix()
+
+
 @dataclass
-class _AnnotationSetup:
+class MockDependencies:
     Session: Callable[[], Generator[sessionmaker, Any, None]]
-    bedtools_service: BedToolsService
-    modification_service: ModificationService
+    assembly_service: MockAssemblyService
+    data_service: MockDataService
+    bedtools_service: MockBedToolsService
+    external_service: MockExternalService
 
 
 @pytest.fixture
-def _annotation_setup(tmpdir, Session) -> _AnnotationSetup:  # noqa
-    # We should:
-    # - move whatever we can from this test to service/test_bedtools.py
-    # - replace this by mocks
-    yield _AnnotationSetup(
+def dependencies(Session) -> MockDependencies:  # noqa
+    yield MockDependencies(
         Session=Session,
-        bedtools_service=BedToolsService(tmp_path=tmpdir),
-        modification_service=ModificationService(Session()),
+        assembly_service=MockAssemblyService,
+        data_service=MockDataService,
+        bedtools_service=MockBedToolsService,
+        external_service=MockDataService,
     )
 
 
-def _get_annotation_service(_annotation_setup, **kwargs):
+def _get_annotation_service(dependencies):
     return AnnotationService(
-        _annotation_setup.Session(),
-        bedtools_service=_annotation_setup.bedtools_service,
-        modification_service=_annotation_setup.modification_service,
-        **kwargs,
+        dependencies.Session(),
+        assembly_service=dependencies.assembly_ervice,
+        data_service=dependencies.data_service,
+        bedtools_service=dependencies.bedtools_service,
+        external_service=dependencies.external_service,
     )
 
 
-def _get_ensembl_annotation_service(_annotation_setup, **kwargs):
+def _get_ensembl_annotation_service(dependencies):
     return EnsemblAnnotationService(
-        _annotation_setup.Session(),
-        bedtools_service=_annotation_setup.bedtools_service,
-        modification_service=_annotation_setup.modification_service,
-        **kwargs,
+        dependencies.Session(),
+        assembly_service=dependencies.assembly_ervice,
+        data_service=dependencies.data_service,
+        bedtools_service=dependencies.bedtools_service,
+        external_service=dependencies.external_service,
     )
+
+
+# tests
 
 
 def test_get_annotation_path(data_path):
@@ -77,6 +136,13 @@ def test_get_gene_cache_path(data_path):
     assert AnnotationService.get_cache_path() == Path(
         data_path.LOC, "cache", "gene", "selection"
     )
+
+
+def test_init(data_path, dependencies):
+    with dependencies.Session() as session, session.begin():
+        session.add(AnnotationVersion(version_num="EyRBnPeVwbzW"))
+    service = _get_annotation_service(dependencies)
+    assert service._version == "EyRBnPeVwbzW"
 
 
 def test_download(data_path):
