@@ -11,7 +11,7 @@ from scimodom.services.assembly import LiftOverError
 
 from scimodom.services.dataset import (
     get_dataset_service,
-    SelectionExistsError,
+    SelectionNotFoundError,
     DatasetImportError,
     DatasetHeaderError,
     DatasetExistsError,
@@ -86,7 +86,7 @@ def add_dataset():
                 technology_id=dataset_form["technology_id"],
                 organism_id=dataset_form["organism_id"],
             )
-    except SelectionExistsError:
+    except SelectionNotFoundError:
         return {
             "message": (
                 "Invalid combination of RNA type, modification, organism, and/or technology. "

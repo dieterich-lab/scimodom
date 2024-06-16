@@ -1,9 +1,12 @@
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from io import StringIO
 from os import makedirs
+from typing import Generator, Any, Callable
 
 import pytest
 from sqlalchemy import select, func
+from sqlalchemy.orm import sessionmaker
 
 from scimodom.database.models import (
     DatasetModificationAssociation,
@@ -20,7 +23,7 @@ import scimodom.database.queries as queries
 from scimodom.services.dataset import (
     DatasetService,
     DatasetImportError,
-    SelectionExistsError,
+    SelectionNotFoundError,
     DatasetExistsError,
     DatasetHeaderError,
     _ImportContext,
@@ -32,15 +35,13 @@ import scimodom.utils.utils as utils
 # NOTE: force add project directly to avoid using ProjectService
 
 
-class BedtoolsServiceMock:
+class MockBedToolsService:
     def create_temp_euf_file(self, records):
         pass
 
 
-class AnnotationServiceMock:
-    def __init__(
-        self, session, bedtools_service, modification_service, taxa_id
-    ):  # noqa
+class MockAssemblyService:
+    def __init__(self):  # noqa
         pass
 
     def annotate_data(self, dataset_id):  # noqa
@@ -48,6 +49,38 @@ class AnnotationServiceMock:
 
     def update_gene_cache(self, dataset_id, selections):  # noqa
         pass
+
+
+class MockAnnotationService:
+    def __init__(self):  # noqa
+        pass
+
+
+@dataclass
+class MockDependencies:
+    Session: Callable[[], Generator[sessionmaker, Any, None]]
+    bedtools_service: MockBedToolsService
+    assembly_service: MockAssemblyService
+    annotation_service: MockAnnotationService
+
+
+@pytest.fixture
+def dependencies(Session, data_path) -> MockDependencies:  # noqa
+    yield MockDependencies(
+        Session=Session,
+        bedtools_service=MockBedToolsService(),
+        assembly_service=MockAssemblyService(),
+        annotation_service=MockAnnotationService(),
+    )
+
+
+def _get_dataset_service(dependencies):
+    return DatasetService(
+        dependencies.Session(),
+        bedtools_service=dependencies.bedtools_service,
+        assembly_service=dependencies.assembly_service,
+        annotation_service=dependencies.annotation_service,
+    )
 
 
 def _add_selection(session, metadata):
@@ -171,10 +204,11 @@ GOOD_EUF_FILE = """
 """
 
 
+# THIS NOW FAILS, BUT SUCH A TEST SHOULD GO TO INTEGRATION ->
 def test_import_simple(Session, project, freezer, chrome_file, mocker):
-    mocker.patch("scimodom.services.dataset.AnnotationService", AnnotationServiceMock)
+    # mocker.patch("scimodom.services.dataset.AnnotationService", MockAnnotationService)
     service = DatasetService(
-        session=Session(), data_service=None, bedtools_service=BedtoolsServiceMock()
+        session=Session(), data_service=None, bedtools_service=MockBedToolsService()
     )  # noqa
     file = StringIO(GOOD_EUF_FILE)
     freezer.move_to("2017-05-20 11:00:23")
@@ -295,7 +329,7 @@ def test_import_simple(Session, project, freezer, chrome_file, mocker):
 #         session.add_all(setup)
 #         smid = _mock_project_service(session, project_template)
 #         session.commit()
-#     with pytest.raises(SelectionExistsError) as exc:
+#     with pytest.raises(SelectionNotFoundError) as exc:
 #         DataService(
 #             session=Session(),
 #             smid=smid,
@@ -310,7 +344,7 @@ def test_import_simple(Session, project, freezer, chrome_file, mocker):
 #         str(exc.value)
 #         == "Selection (mod=m5C, tech=Technology 2, organism=(Homo sapiens, Cell Type 1)) does not exists. Aborting transaction!"
 #     )
-#     assert exc.type == SelectionExistsError
+#     assert exc.type == SelectionNotFoundError
 #
 #
 # def test_instantiation(Session, setup, project_template):

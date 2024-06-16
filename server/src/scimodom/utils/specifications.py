@@ -24,7 +24,7 @@ SPECS_EUF = {
             "fileformat": "file_format",
             "organism": "taxa_id",
             "modification_type": "modification_type",
-            "assembly": "assembly_id",
+            "assembly": "assembly_name",
             "annotation_source": "annotation_source",
             "annotation_version": "annotation_version",
             "sequencing_platform": "sequencing_platform",

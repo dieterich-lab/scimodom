@@ -282,22 +282,25 @@ class EnsemblAnnotationService(AnnotationService):
             shutil.rmtree(release_path)
             raise
 
-    # TODO check latest changes
-    # check annotation is latest/current, here or via calling bedtools
-    # by adding taxa_id, we can get annotation cnad check auto, the get release
-    def annotate_data(self, eufid: str) -> None:
+    def annotate_data(self, taxa_id: int, eufid: str) -> None:
         """Annotate Data: add entries to DataAnnotation
         for a given dataset.
 
+        :param taxa_id: Taxonomy ID
+        :type taxa_id: int
         :param eufid: EUF ID
         :type eufid: str
         """
+        annotation = self.get_annotation(taxa_id)
+        release_path = self.get_release_path(annotation)
+
         logger.debug(f"Annotating records for EUFID {eufid}...")
+
         records = list(self._data_service.get_by_dataset(eufid))
 
         features = {**self.FEATURES["conventional"], **self.FEATURES["extended"]}
         annotated_records = self._bedtools_service.annotate_data_using_ensembl(
-            self._release_path, features, records
+            release_path, features, records
         )
         with InsertBuffer[DataAnnotation](self._session) as buffer:
             for record in annotated_records:
