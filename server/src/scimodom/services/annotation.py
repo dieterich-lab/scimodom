@@ -26,7 +26,6 @@ from scimodom.database.models import (
 from scimodom.services.assembly import get_assembly_service, AssemblyService
 from scimodom.services.data import get_data_service, DataService
 from scimodom.services.external import get_external_service, ExternalService
-from scimodom.services.importer.base import MissingDataError
 from scimodom.services.bedtools import get_bedtools_service, BedToolsService
 import scimodom.utils.specifications as specs
 from scimodom.utils.utils import stream_request_to_file
@@ -35,19 +34,8 @@ logger = logging.getLogger(__name__)
 
 
 class AnnotationNotFoundError(Exception):
-    """Exception handling for a non-existing Annotation."""
-
-    pass
-
-
-class AnnotationVersionError(Exception):
-    """Exception handling for Annotation version mismatch."""
-
-    pass
-
-
-class AnnotationFormatError(Exception):
-    """Exception handling for Annotation format mismatch."""
+    """Exception handling for a non-existing Annotation
+    or Annotation that is not the latest version."""
 
     pass
 
@@ -153,18 +141,6 @@ class AnnotationService:
             raise AnnotationNotFoundError(
                 f"No such {source} annotation for taxonomy ID: {taxa_id}."
             )
-
-    def is_latest_annotation(self, annotation: Annotation) -> bool:
-        """Check if annotation version matches the
-        database latest version.
-
-        :param annotation: Annotation instance
-        :type annotation: Annotation
-        :returns: True if annotatoin version is
-        the same as database version, else False
-        :rtype: bool
-        """
-        return annotation.version == self._version
 
     def update_gene_cache(self, eufid: str, selections: dict[int, int]) -> None:
         """Update gene cache.
@@ -275,10 +251,6 @@ class EnsemblAnnotationService(AnnotationService):
         :type taxa_id: int
         """
         annotation = self.get_annotation(taxa_id)
-        if not self.is_latest_annotation(annotation):
-            raise AnnotationVersionError(
-                f"Mismatch between annotation version {annotation.version} and database version {self._version}."
-            )
         if self._release_exists(annotation.id):
             return
 
@@ -311,6 +283,8 @@ class EnsemblAnnotationService(AnnotationService):
             raise
 
     # TODO check latest changes
+    # check annotation is latest/current, here or via calling bedtools
+    # by adding taxa_id, we can get annotation cnad check auto, the get release
     def annotate_data(self, eufid: str) -> None:
         """Annotate Data: add entries to DataAnnotation
         for a given dataset.
@@ -319,9 +293,7 @@ class EnsemblAnnotationService(AnnotationService):
         :type eufid: str
         """
         logger.debug(f"Annotating records for EUFID {eufid}...")
-        records = list(self._data_service.get_modifications_by_dataset(eufid))
-        if len(records) == 0:
-            raise MissingDataError(f"No records found for {eufid}")
+        records = list(self._data_service.get_by_dataset(eufid))
 
         features = {**self.FEATURES["conventional"], **self.FEATURES["extended"]}
         annotated_records = self._bedtools_service.annotate_data_using_ensembl(
@@ -411,10 +383,6 @@ class GtRNAdbAnnotationService(AnnotationService):
         :type name: str
         """
         annotation = self.get_annotation(taxa_id)
-        if not self.is_latest_annotation(annotation):
-            raise AnnotationVersionError(
-                f"Mismatch between annotation version {annotation.version} and database version {self._version}."
-            )
         if self._release_exists(annotation.id):
             return
 
