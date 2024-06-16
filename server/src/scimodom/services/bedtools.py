@@ -1,6 +1,3 @@
-"""pybedtools
-"""
-
 from functools import cache
 import logging
 from pathlib import Path
@@ -26,7 +23,11 @@ from scimodom.utils.bedtools_dto import (
 logger = logging.getLogger(__name__)
 
 
-class AnnotationError(Exception):
+class AnnotationFormatError(Exception):
+    """Exception handling for change in specifications
+    arising from Annotation when performing bedtools
+    operations."""
+
     pass
 
 
@@ -92,7 +93,7 @@ class BedToolsService:
     def __init__(self, tmp_path):
         pybedtools.helpers.set_tempdir(tmp_path)
 
-    def annotate_data_to_records(
+    def annotate_data_using_ensembl(
         self,
         annotation_path: Path,
         features: dict[str, str],
@@ -117,7 +118,7 @@ class BedToolsService:
 
         bedtool_records = self._get_data_as_bedtool_for_annotation(records)
         if "intergenic" not in features:
-            raise AnnotationError(
+            raise AnnotationFormatError(
                 "Missing feature intergenic from specs. This is due to a change "
                 "in definition. Aborting transaction!"
             )
@@ -179,13 +180,78 @@ class BedToolsService:
                     gene_id=gene_id, data_id=s[6], feature=feature
                 )
 
-    def write_annotation_to_bed(
-        self, annotation_file: Path, chrom_file: Path, features: dict[str, list[str]]
+    @staticmethod
+    def gtrnadb_to_bed_features(
+        self, annotation_file: Path, features: list[str]
     ) -> None:
-        """Prepare annotation in BED format for genomic
-        features given in "features". The files are
+        """Wrangle GtRNAdb (BED12) annotation to BED format for
+        each genomic features in "features". The files are
         written to the parent directory of "annotation_file"
         using "features" as stem, and bed as extension.
+
+        NOTE: "features" are only used to validate consistency
+        with the caller: only exon and intron are defined
+        in this method.
+
+        :param annotation_file: Path to annotation file.
+        The format is implicitely assumed to be BED12.
+        :type annotation_file: Path
+        :param features: Genomic features for which
+        annotation must be created.
+        :type features: list of str
+        """
+        parent = annotation_file.parent
+        annotation_bedtool = pybedtools.BedTool(annotation_file.as_posix()).sort()
+        annotation_bed6 = annotation_bedtool.bed6()
+
+        logger.info(f"Preparing annotation and writing to {parent}...")
+
+        try:
+            features.remove("exon")
+            logger.debug("Writing exon...")
+            file_name = Path(parent, "exon.bed").as_posix()
+            _ = annotation_bed6.merge(s=True, c=[4, 5, 6], o="distinct").moveto(
+                file_name
+            )
+        except ValueError:
+            raise AnnotationFormatError(
+                "Missing feature exon from specs. This is due to a change in definition."
+            )
+
+        try:
+            features.remove("intron")
+            logger.debug("Writing intron...")
+            file_name = Path(parent, "intron.bed").as_posix()
+            # assumes a simple file with non-overlapping exons which should be the case for tRNAs...
+            _ = (
+                annotation_bedtool.introns()
+                .merge(s=True, c=[4, 5, 6], o="distinct")
+                .moveto(file_name)
+            )
+        except ValueError:
+            raise AnnotationFormatError(
+                "Missing feature intron from specs. This is due to a change in definition."
+            )
+
+        try:
+            features.pop()
+            raise AnnotationFormatError(
+                "Handling feature is not implemented. This is due to a change in definition."
+            )
+        except IndexError:
+            pass
+
+    def ensembl_to_bed_features(
+        self, annotation_file: Path, chrom_file: Path, features: dict[str, list[str]]
+    ) -> None:
+        """Wrangle Ensembl (GTF) annotation to BED format for
+        each genomic features in "features". The files are
+        written to the parent directory of "annotation_file"
+        using "features" as stem, and bed as extension.
+
+        NOTE: "extended features" are used to validate consistency
+        with the caller: "conventional features" are extracted
+        on the fly, but intron and intergenic require special treatment.
 
         :param annotation_file: Path to annotation file.
         The format is implicitely assumed to be GTF.
@@ -202,7 +268,7 @@ class BedToolsService:
         logger.info(f"Preparing annotation and writing to {parent}...")
 
         for feature in features["conventional"]:
-            logger.info(f"Writing {feature}...")
+            logger.debug(f"Writing {feature}...")
 
             file_name = Path(parent, f"{feature}.bed").as_posix()
             _ = (
@@ -238,21 +304,19 @@ class BedToolsService:
     @staticmethod
     def _check_feature(feature, features, parent):
         if feature not in features["extended"]:
-            raise AnnotationError(
-                f"Missing feature {feature} from specs. This is due to a change "
-                "in definition. Aborting transaction!"
+            raise AnnotationFormatError(
+                f"Missing feature {feature} from specs. This is due to a change in definition."
             )
-        logger.info(f"Writing {feature}...")
+        logger.debug(f"Writing {feature}...")
         return Path(parent, f"{feature}.bed").as_posix()
 
     @staticmethod
-    def get_annotation_records(
+    def get_ensembl_annotation_records(
         annotation_file: Path, annotation_id: int, intergenic_feature: str
     ) -> Iterable[GenomicAnnotationRecord]:
         """Create records for GenomicAnnotation from
         annotation file. Columns order is
         (gene_id, annotation_id, gene_name, gene_biotype).
-        There is no type coercion.
 
         :param annotation_file: Path to annotation file.
         The format is implicitely assumed to be GTF.
@@ -282,6 +346,37 @@ class BedToolsService:
         yield GenomicAnnotationRecord(
             id=f"{prefix}{intergenic_feature}", annotation_id=annotation_id
         )
+
+    @staticmethod
+    def get_gtrnadb_annotation_records(
+        annotation_file: Path,
+        annotation_id: int,
+        organism: str,
+    ) -> Iterable[GenomicAnnotationRecord]:
+        """Create records for GenomicAnnotation from
+        annotation file. Columns order is
+        (gene_id, annotation_id, gene_name, gene_biotype).
+
+        :param annotation_file: Path to annotation file.
+        The format is implicitely assumed to be BED12.
+        :type annotation_file: Path
+        :param annotation_id: Annotation ID
+        :type annotation_id: int
+        :param organism: Organism name
+        :type organism: str
+        :returns: Annotation records as tuple of columns
+        :rtype: Iterable[GenomicAnnotationRecord]
+        """
+        logger.info(f"Creating annotation for {annotation_file}...")
+
+        bedtool = pybedtools.BedTool(annotation_file.as_posix()).sort()
+        for interval in bedtool:
+            yield GenomicAnnotationRecord(
+                id=f"{organism}_{interval.name}",
+                annotation_id=annotation_id,
+                name=interval.name,
+                biotype="tRNA",
+            )
 
     @staticmethod
     def create_temp_file_from_records(

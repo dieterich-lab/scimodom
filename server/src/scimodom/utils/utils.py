@@ -1,23 +1,53 @@
-"""utils
-"""
-
 from argparse import ArgumentParser, Namespace
 from collections.abc import Sequence, Iterable
 import inspect
 from itertools import chain
 import logging
+from pathlib import Path
 import re
 import sys
 from typing import Any
 import uuid
 
 import shortuuid
+import requests  # type: ignore
 
 import scimodom.database.models as models
 
 
 # various helper functions
 # NOTE: location of these may change
+
+
+def request_as_json(url: str) -> dict:
+    """Send request, and return response to dictionary.
+
+    :param url: URL
+    :type url: str
+    :returns: Response as json
+    :rtype: dict
+    """
+    request = requests.get(url, headers={"Content-Type": "application/json"})
+    if not request.ok:
+        request.raise_for_status()
+    return request.json()
+
+
+def stream_request_to_file(url: str, filen: str | Path, mode: str = "wb"):
+    """Stream request to file.
+
+    :param url: URL
+    :type url: str
+    :param filen: File path
+    :type filen: str or Path
+
+    """
+    with requests.get(url, stream=True) as request:
+        if not request.ok:
+            request.raise_for_status()
+        with open(filen, mode) as f:
+            for chunk in request.iter_content(chunk_size=10 * 1024):
+                f.write(chunk)
 
 
 def check_keys_exist(d: Iterable[Any], keys: Iterable[Any]) -> list[Any]:

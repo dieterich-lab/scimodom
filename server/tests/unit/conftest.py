@@ -125,9 +125,9 @@ def setup():
     ]
 
     assembly = [
-        Assembly(name="GRCh38", taxa_id=9606, version="GcatSmFcytpU"),
-        Assembly(name="GRCm38", taxa_id=10090, version="GcatSmFcytpU"),
-        Assembly(name="GRCh37", taxa_id=9606, version="J9dit7Tfc6Sb"),
+        Assembly(name="GRCh38", alt_name="hg38", taxa_id=9606, version="GcatSmFcytpU"),
+        Assembly(name="GRCm38", alt_name="mm10", taxa_id=10090, version="GcatSmFcytpU"),
+        Assembly(name="GRCh37", alt_name="hg19", taxa_id=9606, version="J9dit7Tfc6Sb"),
     ]
 
     assembly_version = [
@@ -135,9 +135,11 @@ def setup():
     ]
 
     annotation = [
-        Annotation(release=110, taxa_id=9606, version="EyRBnPeVwbzW"),
-        Annotation(release=110, taxa_id=10090, version="EyRBnPeVwbzW"),
-        Annotation(release=109, taxa_id=9606, version="A8syx5TzWlK0"),
+        Annotation(release=110, taxa_id=9606, source="ensembl", version="EyRBnPeVwbzW"),
+        Annotation(
+            release=110, taxa_id=10090, source="ensembl", version="EyRBnPeVwbzW"
+        ),
+        Annotation(release=109, taxa_id=9606, source="ensembl", version="A8syx5TzWlK0"),
     ]
 
     annotation_version = [
@@ -255,6 +257,9 @@ def project_template():
     return project
 
 
+# TODO this should be simplified to have only temp dirs fixture for session-wise
+# usage, i.e. top of function, the rest should be handlded in separate tests
+# does it actually have to be session-wise???
 @pytest.fixture(scope="session")
 def data_path(tmp_path_factory):
     format = SPECS_EUF["format"]

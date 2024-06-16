@@ -49,5 +49,5 @@ class InsertBuffer(Generic[T]):
         if len(self.buffer) == 0:
             return
         self._session.add_all(self.buffer)
-        self._session.commit()
+        self._session.flush()
         self.buffer = []

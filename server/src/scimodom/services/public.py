@@ -47,14 +47,15 @@ class PublicService:
     :type MAPPED_BIOTYPES: list of str
     """
 
-    FEATURES: ClassVar[list[str]] = sorted(
-        list(
-            {
-                **AnnotationService.FEATURES["conventional"],
-                **AnnotationService.FEATURES["extended"],
-            }.values()
-        )
-    )
+    # this now depends on RNA type WTS or tRNA..
+    # FEATURES: ClassVar[list[str]] = sorted(
+    #     list(
+    #         {
+    #             **AnnotationService.FEATURES["conventional"],
+    #             **AnnotationService.FEATURES["extended"],
+    #         }.values()
+    #     )
+    # )
     BIOTYPES: ClassVar[dict[str, str]] = specs.BIOTYPES
     MAPPED_BIOTYPES: ClassVar[list[str]] = sorted(list(set(BIOTYPES.values())))
 
@@ -69,14 +70,15 @@ class PublicService:
         :returns: Query result
         :rtype: list
         """
-        cache_path = AnnotationService.get_gene_cache_path()
+        cache_path = AnnotationService.get_cache_path()
         files = [Path(cache_path, str(selection_id)) for selection_id in selection_ids]
         genes = [fc.read_text().split() for fc in files]
         return list(set(chain(*genes)))
 
+    # this now depends on RNA type WTS or tRNA...
     def get_features_and_biotypes(self):
         response = dict()
-        response["features"] = self.FEATURES
+        response["features"] = ["Exonic", "Intronic"]  # self.FEATURES
         response["biotypes"] = self.MAPPED_BIOTYPES
         return response
 

@@ -190,6 +190,7 @@ class Assembly(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(128), nullable=False, unique=True)
+    alt_name: Mapped[str] = mapped_column(String(128), nullable=True)
     taxa_id: Mapped[int] = mapped_column(ForeignKey("ncbi_taxa.id"), index=True)
     version: Mapped[str] = mapped_column(
         String(12), nullable=False
@@ -216,12 +217,13 @@ class Annotation(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     release: Mapped[int] = mapped_column(nullable=False)
     taxa_id: Mapped[int] = mapped_column(ForeignKey("ncbi_taxa.id"), index=True)
+    source: Mapped[str] = mapped_column(String(128), nullable=False)
     version: Mapped[str] = mapped_column(
         String(12), nullable=False
     )  # current is annotation_version.version_num
 
     __table_args__ = (
-        UniqueConstraint(release, taxa_id, version, name="uq_annotation_rtv"),
+        UniqueConstraint(release, taxa_id, source, version, name="uq_annotation_rtv"),
     )
 
     inst_taxa: Mapped["Taxa"] = relationship(back_populates="annotations")
@@ -245,12 +247,14 @@ class GenomicAnnotation(Base):
 
     id: Mapped[str] = mapped_column(
         String(128), primary_key=True, autoincrement=False
-    )  # Ensembl ID
+    )  # Ensembl ID or GtRNAdb_id incl. organism
     annotation_id: Mapped[int] = mapped_column(ForeignKey("annotation.id"), index=True)
-    name: Mapped[str] = mapped_column(String(128), nullable=True)  # Ensembl gene name
+    name: Mapped[str] = mapped_column(
+        String(128), nullable=True
+    )  # Ensembl gene name or GtRNAdb_id
     biotype: Mapped[str] = mapped_column(
         String(255), nullable=True
-    )  # Ensembl gene biotype
+    )  # Ensembl gene biotype or tRNA
 
     __table_args__ = (Index("idx_genomic", "annotation_id", "biotype", "name"),)
 
@@ -435,6 +439,18 @@ class DataAnnotation(Base):
         back_populates="annotations"
     )
     inst_data: Mapped["Data"] = relationship(back_populates="annotations")
+
+
+class Sprinzl(Base):
+    """Sprinzl tRNA position numbering"""
+
+    __tablename__ = "sprinzl"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    data_id: Mapped[int] = mapped_column(ForeignKey("data.id"), index=True)
+    position: Mapped[str] = mapped_column(String(32), nullable=False)
+
+    __table_args__ = (UniqueConstraint(data_id, position),)
 
 
 class UserState(enum.Enum):

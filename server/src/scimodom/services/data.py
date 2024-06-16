@@ -1,3 +1,4 @@
+import logging
 from functools import cache
 from typing import Union, List, Iterable
 
@@ -6,6 +7,8 @@ from sqlalchemy.orm import Session
 
 from scimodom.database.database import get_session
 from scimodom.database.models import Data, Dataset
+
+logger = logging.getLogger(__name__)
 
 
 class NoDataRecords(Exception):
