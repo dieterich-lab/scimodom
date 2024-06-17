@@ -161,7 +161,7 @@ class BedToolsService:
                         record.end,
                         record.name,
                         record.score,
-                        record.strand.value,
+                        record.strand,
                         record.id,
                     ]
                 )

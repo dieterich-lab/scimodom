@@ -71,9 +71,9 @@ class AnnotationService:
     ) -> bool:
         rna_types = (
             self._session.execute(
-                select(RNAType.name)
+                select(RNAType.id)
                 .distinct()
-                .join(Modification, Modification.inst_rna)
+                .join(Modification, RNAType.modifications)
                 .where(Modification.id.in_(modification_ids))
             )
             .scalars()
@@ -81,20 +81,22 @@ class AnnotationService:
         )
         if len(rna_types) > 1:
             return False
-        if RNA_TYPE_TO_ANNOTATION_SOURCE_MAP[rna_types[0]] != annotation_source:
+        if RNA_TYPE_TO_ANNOTATION_SOURCE_MAP[rna_types[0]] != AnnotationSource(
+            annotation_source
+        ):
             return False
         return True
 
     def annotate_data(
         self,
         taxa_id: int,
-        annotation_source: AnnotationSource,
+        annotation_source: AnnotationSource,  # that is actualy a str...
         eufid: str,
         selection_ids: list[int],
     ):
-        self._services_by_annotation_source[annotation_source].annotate_data(
-            taxa_id, eufid, selection_ids
-        )
+        self._services_by_annotation_source[
+            AnnotationSource(annotation_source)
+        ].annotate_data(taxa_id, eufid, selection_ids)
 
 
 @cache
