@@ -1,9 +1,8 @@
 from pathlib import Path
-import shutil
 
 import pytest
 import requests  # type: ignore
-from sqlalchemy import select, exists
+from sqlalchemy import exists
 
 from scimodom.database.models import Assembly, AssemblyVersion, Taxonomy, Taxa
 from scimodom.services.assembly import (

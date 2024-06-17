@@ -2,11 +2,11 @@ import pytest
 
 from scimodom.services.bedtools import BedToolsService
 from scimodom.utils.bedtools_dto import (
-    EufRecord,
     Strand,
     IntersectRecord,
     ClosestRecord,
     SubtractRecord,
+    ComparisonRecord,
 )
 
 
@@ -29,7 +29,7 @@ def test_get_modification_from_bedtools_data():
             "19",
         ]
     )
-    assert isinstance(record, EufRecord)
+    assert isinstance(record, ComparisonRecord)
     assert record.chrom == "1"
     assert record.start == 1043431
     assert record.end == 1043432
@@ -42,7 +42,7 @@ def test_get_modification_from_bedtools_data():
 
 
 DATASET_A = [
-    EufRecord(
+    ComparisonRecord(
         chrom="1",
         start=101,
         end=102,
@@ -51,9 +51,9 @@ DATASET_A = [
         strand=Strand.FORWARD,
         coverage=10,
         frequency=20,
-        dataset_id="DATASET_A___",
+        eufid="DATASET_A___",
     ),
-    EufRecord(
+    ComparisonRecord(
         chrom="1",
         start=199,
         end=200,
@@ -62,9 +62,9 @@ DATASET_A = [
         strand=Strand.FORWARD,
         coverage=30,
         frequency=40,
-        dataset_id="DATASET_A___",
+        eufid="DATASET_A___",
     ),
-    EufRecord(
+    ComparisonRecord(
         chrom="1",
         start=200,
         end=201,
@@ -73,9 +73,9 @@ DATASET_A = [
         strand=Strand.FORWARD,
         coverage=50,
         frequency=60,
-        dataset_id="DATASET_A___",
+        eufid="DATASET_A___",
     ),
-    EufRecord(
+    ComparisonRecord(
         chrom="1",
         start=299,
         end=300,
@@ -84,9 +84,9 @@ DATASET_A = [
         strand=Strand.REVERSE,
         coverage=70,
         frequency=80,
-        dataset_id="DATASET_A___",
+        eufid="DATASET_A___",
     ),
-    EufRecord(
+    ComparisonRecord(
         chrom="1",
         start=599,
         end=600,
@@ -95,11 +95,11 @@ DATASET_A = [
         strand=Strand.FORWARD,
         coverage=90,
         frequency=100,
-        dataset_id="DATASET_A___",
+        eufid="DATASET_A___",
     ),
 ]
 DATASET_B = [
-    EufRecord(
+    ComparisonRecord(
         chrom="1",
         start=1,
         end=2,
@@ -108,9 +108,9 @@ DATASET_B = [
         strand=Strand.FORWARD,
         coverage=10,
         frequency=20,
-        dataset_id="DATASET_B___",
+        eufid="DATASET_B___",
     ),
-    EufRecord(
+    ComparisonRecord(
         chrom="1",
         start=199,
         end=200,
@@ -119,9 +119,9 @@ DATASET_B = [
         strand=Strand.FORWARD,
         coverage=30,
         frequency=40,
-        dataset_id="DATASET_B___",
+        eufid="DATASET_B___",
     ),
-    EufRecord(
+    ComparisonRecord(
         chrom="1",
         start=299,
         end=300,
@@ -130,11 +130,11 @@ DATASET_B = [
         strand=Strand.FORWARD,
         coverage=50,
         frequency=60,
-        dataset_id="DATASET_B___",
+        eufid="DATASET_B___",
     ),
 ]
 DATASET_C = [
-    EufRecord(
+    ComparisonRecord(
         chrom="1",
         start=97,
         end=102,
@@ -143,9 +143,9 @@ DATASET_C = [
         strand=Strand.FORWARD,
         coverage=10,
         frequency=20,
-        dataset_id="DATASET_C___",
+        eufid="DATASET_C___",
     ),
-    EufRecord(
+    ComparisonRecord(
         chrom="1",
         start=197,
         end=202,
@@ -154,9 +154,9 @@ DATASET_C = [
         strand=Strand.FORWARD,
         coverage=30,
         frequency=40,
-        dataset_id="DATASET_C___",
+        eufid="DATASET_C___",
     ),
-    EufRecord(
+    ComparisonRecord(
         chrom="1",
         start=295,
         end=300,
@@ -165,9 +165,9 @@ DATASET_C = [
         strand=Strand.REVERSE,
         coverage=50,
         frequency=60,
-        dataset_id="DATASET_C___",
+        eufid="DATASET_C___",
     ),
-    EufRecord(
+    ComparisonRecord(
         chrom="1",
         start=1,
         end=6,
@@ -176,128 +176,128 @@ DATASET_C = [
         strand=Strand.FORWARD,
         coverage=70,
         frequency=80,
-        dataset_id="DATASET_C___",
+        eufid="DATASET_C___",
     ),
 ]
 
 
 EXPECTED_RESULT_INTERSECT_A_WITH_BC = [
     IntersectRecord(
-        a=EufRecord(
+        a=ComparisonRecord(
             chrom="1",
             start=101,
             end=102,
             name="m6A",
             score=1,
             strand=Strand.FORWARD,
-            dataset_id="DATASET_A___",
+            eufid="DATASET_A___",
             coverage=10,
             frequency=20,
         ),
-        b=EufRecord(
+        b=ComparisonRecord(
             chrom="1",
             start=97,
             end=102,
             name="m6A",
             score=9,
             strand=Strand.FORWARD,
-            dataset_id="DATASET_C___",
+            eufid="DATASET_C___",
             coverage=10,
             frequency=20,
         ),
     ),
     IntersectRecord(
-        a=EufRecord(
+        a=ComparisonRecord(
             chrom="1",
             start=199,
             end=200,
             name="m6A",
             score=2,
             strand=Strand.FORWARD,
-            dataset_id="DATASET_A___",
+            eufid="DATASET_A___",
             coverage=30,
             frequency=40,
         ),
-        b=EufRecord(
+        b=ComparisonRecord(
             chrom="1",
             start=199,
             end=200,
             name="m6A",
             score=7,
             strand=Strand.FORWARD,
-            dataset_id="DATASET_B___",
+            eufid="DATASET_B___",
             coverage=30,
             frequency=40,
         ),
     ),
     IntersectRecord(
-        a=EufRecord(
+        a=ComparisonRecord(
             chrom="1",
             start=199,
             end=200,
             name="m6A",
             score=2,
             strand=Strand.FORWARD,
-            dataset_id="DATASET_A___",
+            eufid="DATASET_A___",
             coverage=30,
             frequency=40,
         ),
-        b=EufRecord(
+        b=ComparisonRecord(
             chrom="1",
             start=197,
             end=202,
             name="m6A",
             score=10,
             strand=Strand.FORWARD,
-            dataset_id="DATASET_C___",
+            eufid="DATASET_C___",
             coverage=30,
             frequency=40,
         ),
     ),
     IntersectRecord(
-        a=EufRecord(
+        a=ComparisonRecord(
             chrom="1",
             start=200,
             end=201,
             name="m6A",
             score=3,
             strand=Strand.FORWARD,
-            dataset_id="DATASET_A___",
+            eufid="DATASET_A___",
             coverage=50,
             frequency=60,
         ),
-        b=EufRecord(
+        b=ComparisonRecord(
             chrom="1",
             start=197,
             end=202,
             name="m6A",
             score=10,
             strand=Strand.FORWARD,
-            dataset_id="DATASET_C___",
+            eufid="DATASET_C___",
             coverage=30,
             frequency=40,
         ),
     ),
     IntersectRecord(
-        a=EufRecord(
+        a=ComparisonRecord(
             chrom="1",
             start=299,
             end=300,
             name="m6A",
             score=4,
             strand=Strand.REVERSE,
-            dataset_id="DATASET_A___",
+            eufid="DATASET_A___",
             coverage=70,
             frequency=80,
         ),
-        b=EufRecord(
+        b=ComparisonRecord(
             chrom="1",
             start=295,
             end=300,
             name="m6A",
             score=11,
             strand=Strand.REVERSE,
-            dataset_id="DATASET_C___",
+            eufid="DATASET_C___",
             coverage=50,
             frequency=60,
         ),
@@ -314,125 +314,125 @@ def test_intersect(bedtools_service):
 
 EXPECTED_RESULT_CLOSEST_A_WITH_BC = [
     ClosestRecord(
-        a=EufRecord(
+        a=ComparisonRecord(
             chrom="1",
             start=101,
             end=102,
             name="m6A",
             score=1,
             strand=Strand.FORWARD,
-            dataset_id="DATASET_A___",
+            eufid="DATASET_A___",
             coverage=10,
             frequency=20,
         ),
-        b=EufRecord(
+        b=ComparisonRecord(
             chrom="1",
             start=1,
             end=6,
             name="m6A",
             score=12,
             strand=Strand.FORWARD,
-            dataset_id="DATASET_C___",
+            eufid="DATASET_C___",
             coverage=70,
             frequency=80,
         ),
         distance=-96,
     ),
     ClosestRecord(
-        a=EufRecord(
+        a=ComparisonRecord(
             chrom="1",
             start=101,
             end=102,
             name="m6A",
             score=1,
             strand=Strand.FORWARD,
-            dataset_id="DATASET_A___",
+            eufid="DATASET_A___",
             coverage=10,
             frequency=20,
         ),
-        b=EufRecord(
+        b=ComparisonRecord(
             chrom="1",
             start=197,
             end=202,
             name="m6A",
             score=10,
             strand=Strand.FORWARD,
-            dataset_id="DATASET_C___",
+            eufid="DATASET_C___",
             coverage=30,
             frequency=40,
         ),
         distance=96,
     ),
     ClosestRecord(
-        a=EufRecord(
+        a=ComparisonRecord(
             chrom="1",
             start=199,
             end=200,
             name="m6A",
             score=2,
             strand=Strand.FORWARD,
-            dataset_id="DATASET_A___",
+            eufid="DATASET_A___",
             coverage=30,
             frequency=40,
         ),
-        b=EufRecord(
+        b=ComparisonRecord(
             chrom="1",
             start=97,
             end=102,
             name="m6A",
             score=9,
             strand=Strand.FORWARD,
-            dataset_id="DATASET_C___",
+            eufid="DATASET_C___",
             coverage=10,
             frequency=20,
         ),
         distance=-98,
     ),
     ClosestRecord(
-        a=EufRecord(
+        a=ComparisonRecord(
             chrom="1",
             start=200,
             end=201,
             name="m6A",
             score=3,
             strand=Strand.FORWARD,
-            dataset_id="DATASET_A___",
+            eufid="DATASET_A___",
             coverage=50,
             frequency=60,
         ),
-        b=EufRecord(
+        b=ComparisonRecord(
             chrom="1",
             start=199,
             end=200,
             name="m6A",
             score=7,
             strand=Strand.FORWARD,
-            dataset_id="DATASET_B___",
+            eufid="DATASET_B___",
             coverage=30,
             frequency=40,
         ),
         distance=-1,
     ),
     ClosestRecord(
-        a=EufRecord(
+        a=ComparisonRecord(
             chrom="1",
             start=599,
             end=600,
             name="m6A",
             score=5,
             strand=Strand.FORWARD,
-            dataset_id="DATASET_A___",
+            eufid="DATASET_A___",
             coverage=90,
             frequency=100,
         ),
-        b=EufRecord(
+        b=ComparisonRecord(
             chrom="1",
             start=299,
             end=300,
             name="m6A",
             score=8,
             strand=Strand.FORWARD,
-            dataset_id="DATASET_B___",
+            eufid="DATASET_B___",
             coverage=50,
             frequency=60,
         ),
@@ -456,7 +456,7 @@ EXPECTED_RESULT_SUBTRACT_A_WITH_BC = [
         name="m6A",
         score=5,
         strand=Strand.FORWARD,
-        dataset_id="DATASET_A___",
+        eufid="DATASET_A___",
         coverage=90,
         frequency=100,
     ),
@@ -472,25 +472,25 @@ def test_subtract(bedtools_service):
 
 EXPECTED_RESULT_INTERSECT_A_WITH_B = [
     IntersectRecord(
-        a=EufRecord(
+        a=ComparisonRecord(
             chrom="1",
             start=199,
             end=200,
             name="m6A",
             score=2,
             strand=Strand.FORWARD,
-            dataset_id="DATASET_A___",
+            eufid="DATASET_A___",
             coverage=30,
             frequency=40,
         ),
-        b=EufRecord(
+        b=ComparisonRecord(
             chrom="1",
             start=199,
             end=200,
             name="m6A",
             score=7,
             strand=Strand.FORWARD,
-            dataset_id="DATASET_B___",
+            eufid="DATASET_B___",
             coverage=30,
             frequency=40,
         ),
@@ -505,100 +505,100 @@ def test_intersect_simple(bedtools_service):
 
 EXPECTED_RESULT_CLOSEST_A_WITH_B = [
     ClosestRecord(
-        a=EufRecord(
+        a=ComparisonRecord(
             chrom="1",
             start=101,
             end=102,
             name="m6A",
             score=1,
             strand=Strand.FORWARD,
-            dataset_id="DATASET_A___",
+            eufid="DATASET_A___",
             coverage=10,
             frequency=20,
         ),
-        b=EufRecord(
+        b=ComparisonRecord(
             chrom="1",
             start=199,
             end=200,
             name="m6A",
             score=7,
             strand=Strand.FORWARD,
-            dataset_id="DATASET_B___",
+            eufid="DATASET_B___",
             coverage=30,
             frequency=40,
         ),
         distance=98,
     ),
     ClosestRecord(
-        a=EufRecord(
+        a=ComparisonRecord(
             chrom="1",
             start=199,
             end=200,
             name="m6A",
             score=2,
             strand=Strand.FORWARD,
-            dataset_id="DATASET_A___",
+            eufid="DATASET_A___",
             coverage=30,
             frequency=40,
         ),
-        b=EufRecord(
+        b=ComparisonRecord(
             chrom="1",
             start=299,
             end=300,
             name="m6A",
             score=8,
             strand=Strand.FORWARD,
-            dataset_id="DATASET_B___",
+            eufid="DATASET_B___",
             coverage=50,
             frequency=60,
         ),
         distance=100,
     ),
     ClosestRecord(
-        a=EufRecord(
+        a=ComparisonRecord(
             chrom="1",
             start=200,
             end=201,
             name="m6A",
             score=3,
             strand=Strand.FORWARD,
-            dataset_id="DATASET_A___",
+            eufid="DATASET_A___",
             coverage=50,
             frequency=60,
         ),
-        b=EufRecord(
+        b=ComparisonRecord(
             chrom="1",
             start=199,
             end=200,
             name="m6A",
             score=7,
             strand=Strand.FORWARD,
-            dataset_id="DATASET_B___",
+            eufid="DATASET_B___",
             coverage=30,
             frequency=40,
         ),
         distance=-1,
     ),
     ClosestRecord(
-        a=EufRecord(
+        a=ComparisonRecord(
             chrom="1",
             start=599,
             end=600,
             name="m6A",
             score=5,
             strand=Strand.FORWARD,
-            dataset_id="DATASET_A___",
+            eufid="DATASET_A___",
             coverage=90,
             frequency=100,
         ),
-        b=EufRecord(
+        b=ComparisonRecord(
             chrom="1",
             start=299,
             end=300,
             name="m6A",
             score=8,
             strand=Strand.FORWARD,
-            dataset_id="DATASET_B___",
+            eufid="DATASET_B___",
             coverage=50,
             frequency=60,
         ),
@@ -622,7 +622,7 @@ EXPECTED_RESULT_SUBTRACT_A_WITH_B = [
         strand=Strand.FORWARD,
         coverage=10,
         frequency=20,
-        dataset_id="DATASET_A___",
+        eufid="DATASET_A___",
     ),
     SubtractRecord(
         chrom="1",
@@ -633,7 +633,7 @@ EXPECTED_RESULT_SUBTRACT_A_WITH_B = [
         strand=Strand.FORWARD,
         coverage=50,
         frequency=60,
-        dataset_id="DATASET_A___",
+        eufid="DATASET_A___",
     ),
     SubtractRecord(
         chrom="1",
@@ -644,7 +644,7 @@ EXPECTED_RESULT_SUBTRACT_A_WITH_B = [
         strand=Strand.REVERSE,
         coverage=70,
         frequency=80,
-        dataset_id="DATASET_A___",
+        eufid="DATASET_A___",
     ),
     SubtractRecord(
         chrom="1",
@@ -653,7 +653,7 @@ EXPECTED_RESULT_SUBTRACT_A_WITH_B = [
         name="m6A",
         score=5,
         strand=Strand.FORWARD,
-        dataset_id="DATASET_A___",
+        eufid="DATASET_A___",
         coverage=90,
         frequency=100,
     ),

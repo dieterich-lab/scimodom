@@ -1,36 +1,23 @@
 from dataclasses import dataclass
-from datetime import datetime, timezone
-import gzip
 from pathlib import Path
 from posixpath import join as urljoin
-import shutil
 from typing import Generator, Any, Callable
 
 import pytest
-from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
+import scimodom.utils.specifications as specs
 from scimodom.database.models import (
     Annotation,
     AnnotationVersion,
-    Selection,
-    Dataset,
-    Data,
-    Project,
-    ProjectContact,
     GenomicAnnotation,
-    DataAnnotation,
     Taxa,
     Taxonomy,
 )
 from scimodom.services.annotation import (
-    AnnotationService,
     EnsemblAnnotationService,
     AnnotationNotFoundError,
 )
-from scimodom.services.bedtools import BedToolsService
-from scimodom.services.data import DataService
-import scimodom.utils.specifications as specs
 
 
 class MockAssemblyService:
@@ -104,17 +91,7 @@ def dependencies(Session, data_path) -> MockDependencies:  # noqa
         assembly_service=MockAssemblyService(),
         data_service=MockDataService(),
         bedtools_service=MockBedToolsService(),
-        external_service=MockDataService(),
-    )
-
-
-def _get_annotation_service(dependencies):
-    return AnnotationService(
-        dependencies.Session(),
-        assembly_service=dependencies.assembly_service,
-        data_service=dependencies.data_service,
-        bedtools_service=dependencies.bedtools_service,
-        external_service=dependencies.external_service,
+        external_service=MockExternalService(),
     )
 
 
@@ -132,11 +109,13 @@ def _get_ensembl_annotation_service(dependencies):
 
 
 def test_get_annotation_path(data_path):
-    assert AnnotationService.get_annotation_path() == Path(data_path.ANNOTATION_PATH)
+    assert EnsemblAnnotationService.get_annotation_path() == Path(
+        data_path.ANNOTATION_PATH
+    )
 
 
 def test_get_gene_cache_path(data_path):
-    assert AnnotationService.get_cache_path() == Path(
+    assert EnsemblAnnotationService.get_cache_path() == Path(
         data_path.LOC, "cache", "gene", "selection"
     )
 
@@ -144,7 +123,7 @@ def test_get_gene_cache_path(data_path):
 def test_init(dependencies):
     with dependencies.Session() as session, session.begin():
         session.add(AnnotationVersion(version_num="EyRBnPeVwbzW"))
-    service = _get_annotation_service(dependencies)
+    service = _get_ensembl_annotation_service(dependencies)
     assert service._version == "EyRBnPeVwbzW"
 
 
@@ -164,8 +143,8 @@ def test_get_annotation(dependencies):
             release=110, taxa_id=9606, source="ensembl", version="EyRBnPeVwbzW"
         )
         session.add_all([version, taxonomy, taxa, annotation])
-    service = _get_annotation_service(dependencies)
-    annotation = service.get_annotation_from_taxid_and_source(9606, "ensembl")
+    service = _get_ensembl_annotation_service(dependencies)
+    annotation = service.get_annotation(9606)
     assert annotation.release == 110
     assert annotation.taxa_id == 9606
     assert annotation.source == "ensembl"
@@ -175,9 +154,9 @@ def test_get_annotation(dependencies):
 def test_get_annotation_fail(dependencies):
     with dependencies.Session() as session, session.begin():
         session.add(AnnotationVersion(version_num="EyRBnPeVwbzW"))
-    service = _get_annotation_service(dependencies)
+    service = _get_ensembl_annotation_service(dependencies)
     with pytest.raises(AnnotationNotFoundError) as exc:
-        service.get_annotation_from_taxid_and_source(9606, "ensembl")
+        service.get_annotation(9606)
     assert (str(exc.value)) == "No such ensembl annotation for taxonomy ID: 9606."
     assert exc.type == AnnotationNotFoundError
 
@@ -198,8 +177,8 @@ def test_get_release_path(dependencies, data_path):
             release=110, taxa_id=9606, source="ensembl", version="EyRBnPeVwbzW"
         )
         session.add_all([version, taxonomy, taxa, annotation])
-    service = _get_annotation_service(dependencies)
-    annotation = service.get_annotation_from_taxid_and_source(9606, "ensembl")
+    service = _get_ensembl_annotation_service(dependencies)
+    annotation = service.get_annotation(9606)
     release_path = service.get_release_path(annotation)
     expected_release_path = Path(
         data_path.ANNOTATION_PATH, "Homo_sapiens", "GRCh38", "110"
@@ -226,8 +205,8 @@ def test_release_exists(dependencies):
             id="ENSG00000000001", annotation_id=1, name="A", biotype="protein_coding"
         )
         session.add_all([version, taxonomy, taxa, annotation, genomic_annotation])
-    service = _get_annotation_service(dependencies)
-    annotation = service.get_annotation_from_taxid_and_source(9606, "ensembl")
+    service = _get_ensembl_annotation_service(dependencies)
+    annotation = service.get_annotation(9606)
     assert service._release_exists(annotation.id)
 
 

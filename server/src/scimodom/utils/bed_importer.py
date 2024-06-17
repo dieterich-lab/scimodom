@@ -24,7 +24,7 @@ class BedImportTooManyErrors(Exception):
 
 
 class AbstractBedImporter(ABC):
-    BED_HEADER_REGEXP = re.compile(r"\A#([a-zA-Z_]+)=(.*)\Z")
+    BED_HEADER_REGEXP = re.compile(r"\A#\s*([a-zA-Z_]+)\s*=\s*(.*?)\s*\Z")
 
     def __init__(
         self,
@@ -86,6 +86,7 @@ class AbstractBedImporter(ABC):
             self._reader.report_error(message)
         except TextFileReaderError as err:
             self._error_count += 1
+            self._record_count -= 1
             logger.warning(str(err))
 
     @abstractmethod
@@ -104,10 +105,6 @@ class AbstractBedImporter(ABC):
             yield record
             record = self._get_next_raw_record()
 
-        if self._record_count == 0:
-            msg = f"Did not find any records in '{self._source}'"
-            logger.error(msg)
-            raise BedImportEmptyFile(msg)
         if (
             self._max_error_rate is not None
             and self._error_count > self._record_count * self._max_error_rate
@@ -118,6 +115,10 @@ class AbstractBedImporter(ABC):
             )
             logger.error(msg)
             raise BedImportTooManyErrors(msg)
+        if self._record_count == 0:
+            msg = f"Did not find any records in '{self._source}'"
+            logger.error(msg)
+            raise BedImportEmptyFile(msg)
 
     @abstractmethod
     def parse(self):

@@ -29,18 +29,14 @@ class DataService:
             .execution_options(yield_per=1000)
             .where(Data.dataset_id.in_(dataset_ids))
         )
-        stmt = self._db_session.execute(query)
         count = 0
-        while True:
-            row = stmt.fetchone()
-            if row is None:
-                if count == 0:
-                    raise NoDataRecords(
-                        f"No records found for dataset id(s) {', '.join(dataset_ids)}!"
-                    )
-                return
+        for record in self._db_session.execute(query).all():
             count += 1
-            yield row
+            yield record[0]
+        if count == 0:
+            raise NoDataRecords(
+                f"No records found for dataset id(s) {', '.join(dataset_ids)}!"
+            )
 
     @staticmethod
     def _get_datasets_as_id_list(datasets):

@@ -28,7 +28,11 @@ from scimodom.database.models import (
     AssemblyVersion,
     Data,
 )
-from scimodom.services.annotation import get_annotation_service, AnnotationService
+from scimodom.services.annotation import (
+    get_annotation_service,
+    AnnotationService,
+    AnnotationSource,
+)
 from scimodom.services.assembly import (
     get_assembly_service,
     AssemblyService,
@@ -52,6 +56,7 @@ class _ImportContext:
     organism_id: int
     technology_id: int
     eufid: str
+    annotation_source: AnnotationSource
 
     modification_names: dict[str, int] | None = None
     selection_ids: list[int] | None = None
@@ -195,6 +200,7 @@ class DatasetService:
         modification_ids: list[int],
         organism_id: int,
         technology_id: int,
+        annotation_source: AnnotationSource,
     ) -> str:
         """Import dataset and records from bedRMod formatted file.
 
@@ -214,6 +220,8 @@ class DatasetService:
         :type organism_id: int
         :param technology_id: Technology ID
         :type technology_id: int
+        :param annotation_source: Source of annotation
+        :type annotation_source: AnnotationSource
         :returns: EUFID
         :rtype: str
         """
@@ -224,6 +232,7 @@ class DatasetService:
             modification_ids=modification_ids,
             organism_id=organism_id,
             technology_id=technology_id,
+            annotation_source=annotation_source,
             eufid=self._generate_eufid(),
         )
         self._sanitize_import_context(context)
@@ -238,7 +247,13 @@ class DatasetService:
             else:
                 self._do_direct_import(importer, context)
             self._add_association(context)
-            self._annotate_data(context)
+            organism = self._get_organism(context.organism_id)
+            self._annotation_service.annotate_data(
+                taxa_id=organism.taxa_id,
+                annotation_source=context.annotation_source,
+                eufid=context.eufid,
+                selection_ids=context.selection_ids,
+            )
         except Exception:
             checkpoint.rollback()
             raise
@@ -278,6 +293,10 @@ class DatasetService:
                 context.modification_names[mname] = mid
             except NoResultFound:
                 raise DatasetImportError(f"No such modification ID: {mid}.")
+        if not self._annotation_service.check_annotation_source(
+            context.annotation_source, context.modification_ids
+        ):
+            raise DatasetImportError("Inconsistent source!")
 
     def _generate_eufid(self) -> str:
         eufids = self._session.execute(select(Dataset.id)).scalars().all()
@@ -354,9 +373,11 @@ class DatasetService:
 
     def _sanitize_header(self, importer, context):
         file_format = importer.get_header("fileformat")
+        if file_format is None:
+            raise SpecsError("Failed to parse version from header (1).")
         match = self.FILE_FORMAT_VERSION_REGEXP.match(file_format)
         if match is None:
-            raise SpecsError("Failed to parse version from header.")
+            raise SpecsError("Failed to parse version from header (2).")
         version = match.group(1)
         if version not in SPECS_EUF["versions"]:
             raise SpecsError(f"Unknown or outdated version {version}.")
@@ -366,13 +387,14 @@ class DatasetService:
         for header, internal_name in spec["headers"].items():
             value = importer.get_header(header)
             if value is None:
-                raise SpecsError(f"Required header '{header} is missing.")
+                raise SpecsError(f"Required header '{header}' is missing.")
             result[internal_name] = value
 
         assembly = self._assembly_service.get_assembly_by_id(context.assembly_id)
         for header in spec["required"]:
-            if importer.get_header(header) == "":
-                raise SpecsError(f"Required header '{header} is empty.")
+            value = importer.get_header(header)
+            if value is None or value == "":
+                raise SpecsError(f"Required header '{header}' is empty.")
         for name, form_value, header_value in [
             ("organism", assembly.taxa_id, result["taxa_id"]),
             ("assembly", assembly.name, result["assembly_name"]),
@@ -466,34 +488,18 @@ class DatasetService:
             self._session.add(association)
         self._session.flush()
 
-    def _get_modification_from_selection(self, idx: int) -> int:
-        return self._session.execute(
-            select(Selection.modification_id).where(Selection.id == idx)
-        ).scalar_one()
-
-    def _annotate_data(self, context):
-        organism = self._get_organism(context.organism_id)
-        self._annotation_service.annotate_data(organism.taxa_id, context.eufid)
-        selections = {
-            idx: self._get_modification_from_selection(idx)
-            for idx in context.selection_ids
-        }
-        self._annotation_service.update_gene_cache(context.eufid, selections)
-
 
 @cache
-def get_dataset_service(annotation_source: str | None = None) -> DatasetService:
+def get_dataset_service() -> DatasetService:
     """Helper function to set up a DatasetService object by injecting its dependencies.
 
     :returns: Dataset service instance
     :rtype: DatasetService
     """
-    annotation_service = None
-    if annotation_source:
-        annotation_service = get_annotation_service(annotation_source)
+
     return DatasetService(
         session=get_session(),
         bedtools_service=get_bedtools_service(),
         assembly_service=get_assembly_service(),
-        annotation_service=annotation_service,
+        annotation_service=get_annotation_service(),
     )

@@ -1,15 +1,16 @@
-from functools import cache
 import json
 import logging
+import shutil
+from functools import cache
 from pathlib import Path
 from posixpath import join as urljoin
-import shutil
-from typing import ClassVar, Callable, Any
+from typing import ClassVar, Callable
 
-from sqlalchemy.orm import Session
-from sqlalchemy import select, exists, func
+from sqlalchemy import select, func
 from sqlalchemy.exc import NoResultFound
+from sqlalchemy.orm import Session
 
+import scimodom.utils.utils as utils
 from scimodom.config import Config
 from scimodom.database.database import get_session
 from scimodom.database.models import Assembly, AssemblyVersion, Taxa
@@ -22,7 +23,6 @@ from scimodom.utils.specifications import (
     ENSEMBL_ASM,
     ENSEMBL_ASM_MAPPING,
 )
-import scimodom.utils.utils as utils
 
 logger = logging.getLogger(__name__)
 
@@ -162,13 +162,13 @@ class AssemblyService:
         chrom_file = self.get_chrom_file(taxa_id)
         with open(chrom_file, "r") as f:
             lines = f.readlines()
-        return [l.split()[0] for l in lines]
+        return [line.split()[0] for line in lines]
 
     def liftover(
         self,
         assembly: Assembly,
-        raw_file: str,
-        unmapped_file: str | None = None,
+        raw_file: str | Path,
+        unmapped_file: str | Path | None = None,
         threshold: float = 0.3,
     ) -> str:
         """Liftover records to current assembly.
@@ -208,7 +208,7 @@ class AssemblyService:
             )
         return lifted_file
 
-    def add_assembly(self, taxa_id: int, name: int) -> None:
+    def add_assembly(self, taxa_id: int, name: str) -> None:
         """Add a new assembly to the database if it does
         not exist. If it exists, then no further checks are done.
 
@@ -251,7 +251,7 @@ class AssemblyService:
             assembly = Assembly(name=name, taxa_id=taxa_id, version=version_num)
             self._session.add(assembly)
             self._session.commit()
-        except:
+        except Exception:
             self._session.rollback()
             shutil.rmtree(parent)
             raise
@@ -283,7 +283,7 @@ class AssemblyService:
         try:
             self._handle_gene_build(assembly, chrom_file)
             self._handle_release(parent)
-        except:
+        except Exception:
             shutil.rmtree(parent)
             raise
 

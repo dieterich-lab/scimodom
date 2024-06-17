@@ -181,9 +181,7 @@ class BedToolsService:
                 )
 
     @staticmethod
-    def gtrnadb_to_bed_features(
-        self, annotation_file: Path, features: list[str]
-    ) -> None:
+    def gtrnadb_to_bed_features(annotation_file: Path, features: list[str]) -> None:
         """Wrangle GtRNAdb (BED12) annotation to BED format for
         each genomic features in "features". The files are
         written to the parent directory of "annotation_file"
@@ -490,7 +488,7 @@ class BedToolsService:
             name=s[3],
             score=s[4],
             strand=Strand(s[5]),
-            dataset_id=s[6],
+            eufid=s[6],
             coverage=s[7],
             frequency=s[8],
         )

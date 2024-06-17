@@ -1,26 +1,26 @@
-from scimodom.utils.bedtools_dto import EufRecord, Strand, IntersectRecord
+from scimodom.utils.bedtools_dto import Strand, IntersectRecord, ComparisonRecord
 
 
 def test_intersect_record():
-    a = EufRecord(
+    a = ComparisonRecord(
         chrom="a1",
         start=10,
         end=20,
         name="A1 the Great",
         score=105,
         strand=Strand.FORWARD,
-        dataset_id="afsdfasd",
+        eufid="afsdfasd1234",
         coverage=17,
         frequency=17,
     )
-    b = EufRecord(
+    b = ComparisonRecord(
         chrom="b1",
         start=100,
         end=120,
         name="B1 the Tiny",
         score=500,
         strand=Strand.REVERSE,
-        dataset_id="afsdfasd",
+        eufid="afsdfasd1234",
         coverage=100,
         frequency=27,
     )

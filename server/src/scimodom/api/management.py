@@ -7,6 +7,7 @@ from flask_cors import cross_origin
 from flask_jwt_extended import jwt_required
 
 from scimodom.config import Config
+from scimodom.services.annotation import AnnotationSource
 from scimodom.services.assembly import LiftOverError
 
 from scimodom.services.dataset import (
@@ -85,6 +86,7 @@ def add_dataset():
                 modification_ids=utils.to_list(dataset_form["modification_id"]),
                 technology_id=dataset_form["technology_id"],
                 organism_id=dataset_form["organism_id"],
+                annotation_source=AnnotationSource.ENSEMBL,
             )
     except SelectionNotFoundError:
         return {
