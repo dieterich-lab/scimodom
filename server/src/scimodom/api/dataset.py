@@ -99,7 +99,7 @@ class _CompareContext:
             raise ClientResponseException(
                 400, "Can only handle upload_id or comparison_ids, but not both"
             )
-        self._modification_service = get_data_service()
+        self._data_service = get_data_service()
 
     def __enter__(self) -> Ctx:
         if self._upload_id is None:
@@ -131,19 +131,29 @@ class _CompareContext:
 
     def _get_comparison_records_from_db(self, dataset_ids):
         for dataset_id in dataset_ids:
-            for x in self._modification_service.get_by_dataset(dataset_id):
-                yield ComparisonRecord(eufid=dataset_id, **x._asdict())
+            for data in self._data_service.get_by_dataset(dataset_id):
+                yield ComparisonRecord(
+                    chrom=data.chrom,
+                    start=data.start,
+                    end=data.end,
+                    name=data.name,
+                    score=data.score,
+                    strand=data.strand,
+                    coverage=data.coverage,
+                    frequency=data.frequency,
+                    eufid=data.dataset_id,
+                )
 
     def _get_comparison_records_from_file(self):
         if self._is_euf:
             for x in EufImporter(stream=self._tmp_file_handle).parse():
                 raw_record = x.model_dump()
-                yield ComparisonRecord(eufid="upload        ", **raw_record)
+                yield ComparisonRecord(eufid="upload      ", **raw_record)
         else:
             for x in Bed6Importer(stream=self._tmp_file_handle).parse():
                 raw_record = x.model_dump()
                 yield ComparisonRecord(
-                    eufid="upload        ", frequency=0, coverage=0, **raw_record
+                    eufid="upload      ", frequency=0, coverage=0, **raw_record
                 )
 
     def __exit__(self, exc_type, exc_value, traceback):
