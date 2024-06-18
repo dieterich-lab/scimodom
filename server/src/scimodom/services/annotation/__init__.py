@@ -21,6 +21,7 @@ from scimodom.services.assembly import get_assembly_service, AssemblyService
 from scimodom.services.bedtools import get_bedtools_service, BedToolsService
 from scimodom.services.data import get_data_service, DataService
 from scimodom.services.external import get_external_service, ExternalService
+from scimodom.services.web import get_web_service
 
 logger = logging.getLogger(__name__)
 
@@ -107,6 +108,7 @@ def get_annotation_service() -> AnnotationService:
     data_service = get_data_service()
     bedtools_service = get_bedtools_service()
     external_service = get_external_service()
+    web_service = get_web_service()
     return AnnotationService(
         session=session,
         services_by_annotation_source={
@@ -116,6 +118,7 @@ def get_annotation_service() -> AnnotationService:
                 data_service=data_service,
                 bedtools_service=bedtools_service,
                 external_service=external_service,
+                web_service=web_service,
             ),
             AnnotationSource.GTRNADB: GtRNAdbAnnotationService(
                 session=session,
@@ -123,6 +126,7 @@ def get_annotation_service() -> AnnotationService:
                 data_service=data_service,
                 bedtools_service=bedtools_service,
                 external_service=external_service,
+                web_service=web_service,
             ),
         },
     )

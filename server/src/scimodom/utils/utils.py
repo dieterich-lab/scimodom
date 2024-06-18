@@ -1,53 +1,18 @@
-from argparse import ArgumentParser, Namespace
-from collections.abc import Sequence, Iterable
 import inspect
-from itertools import chain
-import logging
-from pathlib import Path
 import re
-import sys
-from typing import Any
 import uuid
+from collections.abc import Sequence, Iterable
+from itertools import chain
+from typing import Any
 
-import shortuuid
 import requests  # type: ignore
+import shortuuid
 
 import scimodom.database.models as models
 
 
 # various helper functions
 # NOTE: location of these may change
-
-
-def request_as_json(url: str) -> dict:
-    """Send request, and return response to dictionary.
-
-    :param url: URL
-    :type url: str
-    :returns: Response as json
-    :rtype: dict
-    """
-    request = requests.get(url, headers={"Content-Type": "application/json"})
-    if not request.ok:
-        request.raise_for_status()
-    return request.json()
-
-
-def stream_request_to_file(url: str, filen: str | Path, mode: str = "wb"):
-    """Stream request to file.
-
-    :param url: URL
-    :type url: str
-    :param filen: File path
-    :type filen: str or Path
-
-    """
-    with requests.get(url, stream=True) as request:
-        if not request.ok:
-            request.raise_for_status()
-        with open(filen, mode) as f:
-            for chunk in request.iter_content(chunk_size=10 * 1024):
-                f.write(chunk)
 
 
 def check_keys_exist(d: Iterable[Any], keys: Iterable[Any]) -> list[Any]:
@@ -89,12 +54,12 @@ def get_model(model: str):
             for name, cls in inspect.getmembers(models, inspect.isclass)
             if cls.__module__ == models.__name__
         }[model]
-    except:
+    except Exception:
         msg = f"Model undefined: {model}."
         raise KeyError(msg)
 
 
-def get_table_columns(model, remove: list[str] = []) -> list[str]:
+def get_table_columns(model, remove: list[str] | None = None) -> list[str]:
     """Get columns from model table, optionally
     removing a subset of them.
 
@@ -105,15 +70,16 @@ def get_table_columns(model, remove: list[str] = []) -> list[str]:
     :returns: List of columns
     :rtype: list
     """
-
+    if remove is None:
+        remove = []
     try:
         cols = model.__table__.columns
-    except:
+    except Exception:
         cols = get_model(model).__table__.columns
     return [c.key for c in cols if c.key not in remove]
 
 
-def get_table_column_python_types(model, remove: list[str] = []) -> list[Any]:
+def get_table_column_python_types(model, remove: list[str] | None = None) -> list[Any]:
     """Get column python types from model table, optionally
     removing a subset of them.
 
@@ -127,9 +93,11 @@ def get_table_column_python_types(model, remove: list[str] = []) -> list[Any]:
     :rtype: list
     """
 
+    if remove is None:
+        remove = []
     try:
         cols = model.__table__.columns
-    except:
+    except Exception:
         cols = get_model(model).__table__.columns
     return [c.type.python_type for c in cols if c.key not in remove]
 
@@ -154,16 +122,16 @@ def to_list(i: int | float | str | list | set | None):
     )
 
 
-def flatten_list(l: list | Sequence | Iterable) -> list:
+def flatten_list(items: list | Sequence | Iterable) -> list:
     """Flatten list.
 
-    :param l: list
-    :type l: list
+    :param items: list
+    :type items: list
     :returns: flattened list
     :rtype: list
     """
 
-    return list(chain.from_iterable(l))
+    return list(chain.from_iterable(items))
 
 
 def gen_short_uuid(length: int, suuids: Sequence[Any]) -> str:

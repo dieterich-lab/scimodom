@@ -10,11 +10,11 @@ from sqlalchemy import select, func
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session
 
-import scimodom.utils.utils as utils
 from scimodom.config import Config
 from scimodom.database.database import get_session
 from scimodom.database.models import Assembly, AssemblyVersion, Taxa
 from scimodom.services.external import get_external_service, ExternalService
+from scimodom.services.web import WebService, get_web_service
 from scimodom.utils.specifications import (
     ASSEMBLY_NUM_LENGTH,
     ENSEMBL_FTP,
@@ -23,6 +23,7 @@ from scimodom.utils.specifications import (
     ENSEMBL_ASM,
     ENSEMBL_ASM_MAPPING,
 )
+from scimodom.utils.utils import gen_short_uuid
 
 logger = logging.getLogger(__name__)
 
@@ -69,9 +70,15 @@ class AssemblyService:
     CHROM_FILE: ClassVar[str] = "chrom.sizes"
     CHAIN_FILE: ClassVar[Callable] = "{source}_to_{target}.chain.gz".format
 
-    def __init__(self, session: Session, external_service: ExternalService) -> None:
+    def __init__(
+        self,
+        session: Session,
+        external_service: ExternalService,
+        web_service: WebService,
+    ) -> None:
         self._session = session
         self._external_service = external_service
+        self._web_service = web_service
 
         self._version = self._session.execute(
             select(AssemblyVersion.version_num)
@@ -241,13 +248,13 @@ class AssemblyService:
             raise
 
         try:
-            utils.stream_request_to_file(url, chain_file)
+            self._web_service.stream_request_to_file(url, chain_file)
             version_nums = (
                 self._session.execute(select(func.distinct(Assembly.version)))
                 .scalars()
                 .all()
             )
-            version_num = utils.gen_short_uuid(ASSEMBLY_NUM_LENGTH, version_nums)
+            version_num = gen_short_uuid(ASSEMBLY_NUM_LENGTH, version_nums)
             assembly = Assembly(name=name, taxa_id=taxa_id, version=version_num)
             self._session.add(assembly)
             self._session.commit()
@@ -310,13 +317,12 @@ class AssemblyService:
                     return count
                 count += buffer.count("\n")
 
-    @staticmethod
-    def _handle_release(path):
+    def _handle_release(self, path):
         url = urljoin(
             ENSEMBL_SERVER,
             ENSEMBL_DATA,
         )
-        release = utils.request_as_json(url)
+        release = self._web_service.request_as_json(url)
         with open(Path(path, "release.json"), "w") as f:
             json.dump(release, f, indent="\t")
 
@@ -326,7 +332,7 @@ class AssemblyService:
             ENSEMBL_ASM,
             self._get_organism(assembly.taxa_id).lower(),
         )
-        gene_build = utils.request_as_json(url)
+        gene_build = self._web_service.request_as_json(url)
         coord_sysver = gene_build["default_coord_system_version"]
         if coord_sysver != assembly.name:
             raise AssemblyVersionError(
@@ -370,5 +376,7 @@ def get_assembly_service() -> AssemblyService:
     :rtype: AssemblyService
     """
     return AssemblyService(
-        session=get_session(), external_service=get_external_service()
+        session=get_session(),
+        external_service=get_external_service(),
+        web_service=get_web_service(),
     )

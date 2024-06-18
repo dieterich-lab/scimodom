@@ -1,12 +1,10 @@
-from dataclasses import dataclass
 from pathlib import Path
 from posixpath import join as urljoin
-from typing import Generator, Any, Callable
 
 import pytest
-from sqlalchemy.orm import sessionmaker
 
 import scimodom.utils.specifications as specs
+from mocks.web_service import MockWebService
 from scimodom.database.models import (
     Annotation,
     AnnotationVersion,
@@ -24,7 +22,8 @@ class MockAssemblyService:
     def __init__(self):
         pass
 
-    def get_name_for_version(self, taxa_id: int) -> str:
+    @staticmethod
+    def get_name_for_version(taxa_id: int) -> str:
         if taxa_id == 9606:
             return "GRCh38"
         else:
@@ -68,40 +67,21 @@ class MockBedToolsService:
 
 
 class MockExternalService:
-    def __init__(self):  # noqa
-        pass
-
-    def get_sprinzl_mapping(self, model_file, fasta_file, sprinzl_file):
+    @staticmethod
+    def get_sprinzl_mapping(model_file, fasta_file, sprinzl_file):  # noqa
         return Path(Path(fasta_file).parent, "seq_to_sprinzl.tab").as_posix()
 
 
-@dataclass
-class MockDependencies:
-    Session: Callable[[], Generator[sessionmaker, Any, None]]
-    assembly_service: MockAssemblyService
-    data_service: MockDataService
-    bedtools_service: MockBedToolsService
-    external_service: MockExternalService
-
-
-@pytest.fixture
-def dependencies(Session, data_path) -> MockDependencies:  # noqa
-    yield MockDependencies(
-        Session=Session,
-        assembly_service=MockAssemblyService(),
-        data_service=MockDataService(),
-        bedtools_service=MockBedToolsService(),
-        external_service=MockExternalService(),
-    )
-
-
-def _get_ensembl_annotation_service(dependencies):
+def _get_ensembl_annotation_service(
+    Session, url_to_result: dict[str, dict] | None = None
+):
     return EnsemblAnnotationService(
-        dependencies.Session(),
-        assembly_service=dependencies.assembly_service,
-        data_service=dependencies.data_service,
-        bedtools_service=dependencies.bedtools_service,
-        external_service=dependencies.external_service,
+        session=Session(),
+        assembly_service=MockAssemblyService(),  # noqa
+        data_service=MockDataService(),  # noqa
+        bedtools_service=MockBedToolsService(),  # noqa
+        external_service=MockExternalService(),  # noqa
+        web_service=MockWebService(url_to_result),  # noqa
     )
 
 
@@ -120,15 +100,15 @@ def test_get_gene_cache_path(data_path):
     )
 
 
-def test_init(dependencies):
-    with dependencies.Session() as session, session.begin():
+def test_init(Session):
+    with Session() as session, session.begin():
         session.add(AnnotationVersion(version_num="EyRBnPeVwbzW"))
-    service = _get_ensembl_annotation_service(dependencies)
+    service = _get_ensembl_annotation_service(Session)
     assert service._version == "EyRBnPeVwbzW"
 
 
-def test_get_annotation(dependencies):
-    with dependencies.Session() as session, session.begin():
+def test_get_annotation(Session):
+    with Session() as session, session.begin():
         version = AnnotationVersion(version_num="EyRBnPeVwbzW")
         taxonomy = Taxonomy(
             id="a1b240af", domain="Eukarya", kingdom="Animalia", phylum="Chordata"
@@ -143,7 +123,7 @@ def test_get_annotation(dependencies):
             release=110, taxa_id=9606, source="ensembl", version="EyRBnPeVwbzW"
         )
         session.add_all([version, taxonomy, taxa, annotation])
-    service = _get_ensembl_annotation_service(dependencies)
+    service = _get_ensembl_annotation_service(Session)
     annotation = service.get_annotation(9606)
     assert annotation.release == 110
     assert annotation.taxa_id == 9606
@@ -151,18 +131,18 @@ def test_get_annotation(dependencies):
     assert annotation.version == "EyRBnPeVwbzW"
 
 
-def test_get_annotation_fail(dependencies):
-    with dependencies.Session() as session, session.begin():
+def test_get_annotation_fail(Session):
+    with Session() as session, session.begin():
         session.add(AnnotationVersion(version_num="EyRBnPeVwbzW"))
-    service = _get_ensembl_annotation_service(dependencies)
+    service = _get_ensembl_annotation_service(Session)
     with pytest.raises(AnnotationNotFoundError) as exc:
         service.get_annotation(9606)
     assert (str(exc.value)) == "No such ensembl annotation for taxonomy ID: 9606."
     assert exc.type == AnnotationNotFoundError
 
 
-def test_get_release_path(dependencies, data_path):
-    with dependencies.Session() as session, session.begin():
+def test_get_release_path(Session, data_path):
+    with Session() as session, session.begin():
         version = AnnotationVersion(version_num="EyRBnPeVwbzW")
         taxonomy = Taxonomy(
             id="a1b240af", domain="Eukarya", kingdom="Animalia", phylum="Chordata"
@@ -177,7 +157,7 @@ def test_get_release_path(dependencies, data_path):
             release=110, taxa_id=9606, source="ensembl", version="EyRBnPeVwbzW"
         )
         session.add_all([version, taxonomy, taxa, annotation])
-    service = _get_ensembl_annotation_service(dependencies)
+    service = _get_ensembl_annotation_service(Session)
     annotation = service.get_annotation(9606)
     release_path = service.get_release_path(annotation)
     expected_release_path = Path(
@@ -186,8 +166,8 @@ def test_get_release_path(dependencies, data_path):
     assert release_path == expected_release_path
 
 
-def test_release_exists(dependencies):
-    with dependencies.Session() as session, session.begin():
+def test_release_exists(Session):
+    with Session() as session, session.begin():
         version = AnnotationVersion(version_num="EyRBnPeVwbzW")
         taxonomy = Taxonomy(
             id="a1b240af", domain="Eukarya", kingdom="Animalia", phylum="Chordata"
@@ -205,7 +185,7 @@ def test_release_exists(dependencies):
             id="ENSG00000000001", annotation_id=1, name="A", biotype="protein_coding"
         )
         session.add_all([version, taxonomy, taxa, annotation, genomic_annotation])
-    service = _get_ensembl_annotation_service(dependencies)
+    service = _get_ensembl_annotation_service(Session)
     annotation = service.get_annotation(9606)
     assert service._release_exists(annotation.id)
 
@@ -229,8 +209,8 @@ def test_release_exists(dependencies):
 # Ensembl
 
 
-def test_ensembl_annotation_paths(data_path, dependencies):
-    with dependencies.Session() as session, session.begin():
+def test_ensembl_annotation_paths(data_path, Session):
+    with Session() as session, session.begin():
         version = AnnotationVersion(version_num="EyRBnPeVwbzW")
         taxonomy = Taxonomy(
             id="a1b240af", domain="Eukarya", kingdom="Animalia", phylum="Chordata"
@@ -245,7 +225,7 @@ def test_ensembl_annotation_paths(data_path, dependencies):
             release=110, taxa_id=9606, source="ensembl", version="EyRBnPeVwbzW"
         )
         session.add_all([version, taxonomy, taxa, annotation])
-    service = _get_ensembl_annotation_service(dependencies)
+    service = _get_ensembl_annotation_service(Session)
     annotation = service.get_annotation(9606)
     release_path = service.get_release_path(annotation)
     annotation_file, url = service._get_annotation_paths(annotation, release_path)
