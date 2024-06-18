@@ -6,7 +6,7 @@ from scimodom.services.modification import get_modification_service
 modification_api = Blueprint("modification_api", __name__)
 
 
-@modification_api.route("/search", methods=["GET"])
+@modification_api.route("/", methods=["GET"])
 @cross_origin(supports_credentials=True)
 def get_search():
     """Search view API."""
@@ -21,6 +21,8 @@ def get_search():
     first_record = request.args.get("firstRecord", type=int)
     max_records = request.args.get("maxRecords", type=int)
     multi_sort = request.args.getlist("multiSort", type=str)
+
+    print(f"************* {request.args}")
 
     modification_service = get_modification_service()
     response = modification_service.get_search(

@@ -17,7 +17,7 @@ from scimodom.database.models import (
 
 class ModificationService:
     def __init__(self, session: Session):
-        self._db_session = session
+        self._session = session
 
     def get_search(
         self,
@@ -146,6 +146,7 @@ class ModificationService:
         # index speed up on annotation_id + biotypes + name
         biotype_flt = next((flt for flt in gene_filter if "gene_biotype" in flt), None)
         if biotype_flt:
+            # TODO annotation this is the ID for the taxa for the current/latest version
             annotation_id = self._get_annotation_id(taxa_id)
             _, mapped_biotypes, _ = _get_flt(biotype_flt)
             biotypes = [k for k, v in self.BIOTYPES.items() if v in mapped_biotypes]
@@ -179,6 +180,19 @@ class ModificationService:
         response["records"] = self._dump(query)
 
         return response
+
+    def _dump(self, query):
+        """Serialize a query from a select statement using
+        individual columns of an ORM entity, i.e. using execute(),
+        the statement must return rows that have individual elements
+        per value, each corresponding to a separate column.
+
+        :param query: SQLAlchemy statement
+        :type query: SQLAlchemy Select object
+        :returns: Query result
+        :rtype: list of dict
+        """
+        return [r._asdict() for r in self._session.execute(query)]
 
 
 @cache

@@ -16,7 +16,7 @@ const model = defineModel()
 const rna = ref([])
 const modification = ref([])
 const method = ref([])
-const taxid = ref([])
+const taxa = ref([])
 const assembly = ref([])
 
 const pushValues = {
@@ -101,14 +101,14 @@ onMounted(() => {
     .catch((error) => {
       console.log(error)
     })
-  HTTP.get('/modification')
+  HTTP.get('/modomics')
     .then(function (response) {
       modification.value = response.data
     })
     .catch((error) => {
       console.log(error)
     })
-  HTTP.get('/method')
+  HTTP.get('/methods')
     .then(function (response) {
       method.value = toCascade(toTree(response.data, ['cls', 'meth'], 'id'))
       nestedSort(method.value, ['child1'])
@@ -116,15 +116,15 @@ onMounted(() => {
     .catch((error) => {
       console.log(error)
     })
-  HTTP.get('/taxid')
+  HTTP.get('/taxa')
     .then(function (response) {
       let opts = response.data
       opts = opts.map((item) => {
         const kingdom = Object.is(item.kingdom, null) ? item.domain : item.kingdom
         return { ...item, kingdom }
       })
-      taxid.value = toCascade(toTree(opts, ['kingdom', 'taxa_sname'], 'id'))
-      nestedSort(taxid.value, ['child1'])
+      taxa.value = toCascade(toTree(opts, ['kingdom', 'taxa_sname'], 'id'))
+      nestedSort(taxa.value, ['child1'])
     })
     .catch((error) => {
       console.log(error)
@@ -197,7 +197,7 @@ onMounted(() => {
           </FormTextInput>
           <FormCascade
             v-model="field.value.taxa_id"
-            :options="taxid"
+            :options="taxa"
             optionValue="key"
             @change="getAssemblies($event)"
             :error="errors[`metadata[${idx}].taxa_id`]"

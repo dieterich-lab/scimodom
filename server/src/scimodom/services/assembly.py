@@ -138,6 +138,20 @@ class AssemblyService:
         except NoResultFound:
             raise AssemblyNotFoundError(f"No such assembly with ID: {assembly_id}.")
 
+    def get_assemblies_by_taxa(self, taxa_id: int) -> list[Assembly]:
+        """Retrieve all assemblies for a given organism.
+
+        :param taxa_id: Taxonomy ID
+        :type taxa_id: int
+        :returns: lsit of Assembly instances
+        :rtype: list of Assembly
+        """
+        return (
+            self._session.execute(select(Assembly).filter_by(taxa_id=taxa_id))
+            .scalars()
+            .all()
+        )
+
     def is_latest_assembly(self, assembly: Assembly) -> bool:
         """Check if assembly version matches the
         database latest version.

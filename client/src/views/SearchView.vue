@@ -21,6 +21,7 @@ const biotypes = ref()
 const selectedBiotypes = ref()
 const features = ref()
 const selectedFeatures = ref()
+const rnaType = ref()
 const modification = ref()
 const selectedModification = ref()
 const technology = ref()
@@ -77,6 +78,7 @@ const clearSelection = (value) => {
     selectionIds.value = []
   }
   records.value = undefined
+  rnaType.value = undefined
 }
 const clearAll = (value) => {
   clearSelected(value)
@@ -111,20 +113,20 @@ const updateSelection = () => {
   selectedTechnologyIds.value = result.technology
   selectionIds.value = result.selection
   taxid.value = result.taxid
+  rnaType.value = result.rna
   if (selectionIds.value.length == 0) {
     // handle the case where all checkboxes are unticked
     selectedTechnology.value = undefined
     chroms.value = undefined
   } else {
     // get chrom.sizes
-    HTTP.get(`/chrom/${taxid.value}`)
+    HTTP.get(`/chroms/${taxid.value}`)
       .then(function (response) {
         chroms.value = response.data
       })
       .catch((error) => {
         console.log(error)
       })
-    // get genes
     HTTP.get('/genes', {
       params: {
         selection: selectionIds.value
@@ -135,6 +137,14 @@ const updateSelection = () => {
     })
       .then(function (response) {
         genes.value = response.data.sort()
+      })
+      .catch((error) => {
+        console.log(error)
+      })
+    HTTP.get(`/annotation/${rnaType.value}`)
+      .then(function (response) {
+        biotypes.value = response.data.biotypes
+        features.value = response.data.features
       })
       .catch((error) => {
         console.log(error)
@@ -226,11 +236,12 @@ function lazyLoad(event) {
       matchMode: 'in'
     }
   }
-  HTTP.get('/search', {
+  HTTP.get('/modification', {
     params: {
       modification: selectedModification.value.key,
       organism: selectedOrganism.value.key,
       technology: selectedTechnologyIds.value,
+      rnaType: rnaType.value,
       taxid: taxid.value,
       geneFilter: fmtFilter(filters),
       chrom: selectedChrom.value == null ? null : selectedChrom.value.chrom,
@@ -264,18 +275,10 @@ onMounted(() => {
     first: first.value,
     rows: rows.value
   }
-  HTTP.get('/selection')
+  HTTP.get('/selections')
     .then(function (response) {
       options.value = response.data
       modification.value = updModification(options.value)
-    })
-    .catch((error) => {
-      console.log(error)
-    })
-  HTTP.get('/features_biotypes')
-    .then(function (response) {
-      biotypes.value = response.data.biotypes
-      features.value = response.data.features
     })
     .catch((error) => {
       console.log(error)

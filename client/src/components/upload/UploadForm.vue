@@ -202,7 +202,7 @@ onMounted(() => {
     .catch((error) => {
       console.log(error)
     })
-  HTTP.get('/selection')
+  HTTP.get('/selections')
     .then(function (response) {
       options.value = response.data
     })

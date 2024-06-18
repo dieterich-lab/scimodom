@@ -21,7 +21,7 @@ const updateFilteredDatasets = (value) => {
 onMounted(() => {
   loadDatasets(datasets, null, false)
 
-  HTTP.get('/selection')
+  HTTP.get('/selections')
     .then(function (response) {
       let opts = response.data
       opts = opts.map((item) => {
