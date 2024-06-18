@@ -111,13 +111,12 @@ class DatasetService:
         session: Session,
         bedtools_service: BedToolsService,
         assembly_service: AssemblyService,
-        annotation_service: AnnotationService | None,
+        annotation_service: AnnotationService,
     ):
         self._session = session
         self._bedtools_service = bedtools_service
         self._assembly_service = assembly_service
-        if annotation_service:
-            self._annotation_service = annotation_service
+        self._annotation_service = annotation_service
 
     def get_by_id(self, eufid: str) -> Dataset:
         """Retrieve dataset by EUFID.

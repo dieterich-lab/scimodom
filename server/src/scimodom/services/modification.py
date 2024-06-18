@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from scimodom.database.database import get_session
 from scimodom.database.models import (
     Data,
+    Annotation,
     DataAnnotation,
     Dataset,
     DetectionMethod,
@@ -13,14 +14,22 @@ from scimodom.database.models import (
     GenomicAnnotation,
     Organism,
 )
+from scimodom.services.annotation import (
+    get_annotation_service,
+    AnnotationService,
+    AnnotationSource,
+)
+from scimodom.utils.specifications import BIOTYPES
 
 
 class ModificationService:
-    def __init__(self, session: Session):
+    def __init__(self, session: Session, annotation_service: AnnotationService) -> None:
         self._session = session
+        self._annotation_service = annotation_service
 
-    def get_search(
+    def get_modifications_by_source(
         self,
+        annotation_source: AnnotationSource,
         modification_id: int,
         organism_id: int,
         technology_ids: list[int],
@@ -61,34 +70,52 @@ class ModificationService:
         :rtype: list of dict
         """
 
-        def _get_arg_sort(string: str, url_split: str = "%2B") -> str:
-            """Format Data table sort.
+        # TODO: so far annotation_service is only needed to get the id from taxa_id
+        # so maybe we can just query it using taxa_id and annotation_source...
+        # and if we switch by source before anyway, we can simplify this
+        # TODO : biotypes?
+        annotation = self._annotation_service.get_annotation(annotation_source, taxa_id)
 
-            :param string: Formatted sort string
-            :type string: str
-            :param url_split: Separator
-            :type url_split: str
-            :returns: Query string
-            :rtype: str
-            """
-            col, order = string.split(url_split)
-            return f"Data.{col}.{order}()"
+        if annotation_source == AnnotationSource.ENSEMBL:
+            query, length = self._return_ensembl_query(
+                annotation,
+                modification_id,
+                organism_id,
+                technology_ids,
+                taxa_id,
+                gene_filter,
+                chrom,
+                chrom_start,
+                chrom_end,
+                first_record,
+                max_records,
+                multi_sort,
+            )
+        elif annotation_source == AnnotationSource.GTRNADB:
+            pass  # raise not implemented
+        else:
+            pass  # raise not implemented
 
-        def _get_flt(string, url_split="%2B") -> tuple[str, list[str], str]:
-            """Retrieve generic filters. The operator
-            can be used as a key, and may not
-            necessarily match an SQLAlchemy operator.
+        return {
+            "totalRecords": length,
+            "records": [row._asdict() for row in self._session.execute(query)],
+        }
 
-            :param string: Formatted filter string
-            :type string: str
-            :param url_split: Separator
-            :type url_split: str
-            :returns: Tuple of (column, list of values, operator)
-            :rtype: tuple
-            """
-            col, val, operator = string.split(url_split)
-            return col, val.split(","), operator
-
+    def _return_ensembl_query(
+        self,
+        annotation: Annotation,
+        modification_id: int,
+        organism_id: int,
+        technology_ids: list[int],
+        taxa_id: int,
+        gene_filter: list[str],
+        chrom: str | None,
+        chrom_start: int,
+        chrom_end: int,
+        first_record: int,
+        max_records: int,
+        multi_sort: list[str],
+    ):
         query = (
             select(
                 Data.id,
@@ -135,22 +162,20 @@ class ModificationService:
         # gene name
         name_flt = next((flt for flt in gene_filter if "gene_name" in flt), None)
         if name_flt:
-            _, name, _ = _get_flt(name_flt)
+            _, name, _ = self._get_flt(name_flt)
             query = query.where(GenomicAnnotation.name == name[0])
         # annotation filter
         feature_flt = next((flt for flt in gene_filter if "feature" in flt), None)
         if feature_flt:
-            _, features, _ = _get_flt(feature_flt)
+            _, features, _ = self._get_flt(feature_flt)
             query = query.where(DataAnnotation.feature.in_(features))
         # biotypes
         # index speed up on annotation_id + biotypes + name
         biotype_flt = next((flt for flt in gene_filter if "gene_biotype" in flt), None)
         if biotype_flt:
-            # TODO annotation this is the ID for the taxa for the current/latest version
-            annotation_id = self._get_annotation_id(taxa_id)
-            _, mapped_biotypes, _ = _get_flt(biotype_flt)
-            biotypes = [k for k, v in self.BIOTYPES.items() if v in mapped_biotypes]
-            query = query.where(GenomicAnnotation.annotation_id == annotation_id).where(
+            _, mapped_biotypes, _ = self._get_flt(biotype_flt)
+            biotypes = [k for k, v in BIOTYPES.items() if v in mapped_biotypes]
+            query = query.where(GenomicAnnotation.annotation_id == annotation.id).where(
                 GenomicAnnotation.biotype.in_(biotypes)
             )
 
@@ -164,35 +189,28 @@ class ModificationService:
         # sort filters
         # index speed up for chrom + start
         if not multi_sort:
-            chrom_expr = _get_arg_sort("chrom%2Basc")
-            start_expr = _get_arg_sort("start%2Basc")
+            chrom_expr = self._get_arg_sort("chrom%2Basc")
+            start_expr = self._get_arg_sort("start%2Basc")
             query = query.order_by(eval(chrom_expr), eval(start_expr))
         else:
             for flt in multi_sort:
-                expr = _get_arg_sort(flt)
+                expr = self._get_arg_sort(flt)
                 query = query.order_by(eval(expr))
 
         # paginate
         query = query.offset(first_record).limit(max_records)
 
-        response = dict()
-        response["totalRecords"] = length
-        response["records"] = self._dump(query)
+        return query, length
 
-        return response
+    @staticmethod
+    def _get_arg_sort(string: str, url_split: str = "%2B") -> str:
+        col, order = string.split(url_split)
+        return f"Data.{col}.{order}()"
 
-    def _dump(self, query):
-        """Serialize a query from a select statement using
-        individual columns of an ORM entity, i.e. using execute(),
-        the statement must return rows that have individual elements
-        per value, each corresponding to a separate column.
-
-        :param query: SQLAlchemy statement
-        :type query: SQLAlchemy Select object
-        :returns: Query result
-        :rtype: list of dict
-        """
-        return [r._asdict() for r in self._session.execute(query)]
+    @staticmethod
+    def _get_flt(string, url_split="%2B") -> tuple[str, list[str], str]:
+        col, val, operator = string.split(url_split)
+        return col, val.split(","), operator
 
 
 @cache
@@ -202,4 +220,6 @@ def get_modification_service() -> ModificationService:
     :returns: ModificationService instance
     :rtype: ModificationService
     """
-    return ModificationService(session=get_session())
+    return ModificationService(
+        session=get_session(), annotation_service=get_annotation_service()
+    )

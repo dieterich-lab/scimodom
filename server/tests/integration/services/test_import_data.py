@@ -33,6 +33,7 @@ from scimodom.services.annotation.gtrnadb import GtRNAdbAnnotationService
 from scimodom.services.bedtools import BedToolsService
 from scimodom.services.data import DataService
 from scimodom.services.external import ExternalService
+from scimodom.services.web import WebService
 from scimodom.services.file import FileService
 from scimodom.services.project import ProjectService
 import scimodom.utils.utils as utils
@@ -201,12 +202,19 @@ def get_bedtools_service(tmp_path):
     return BedToolsService(tmp_path=tmp_path)
 
 
-def get_assembly_service(session, external_service):
-    return AssemblyService(session=session, external_service=external_service)
+def get_assembly_service(session, external_service, web_service):
+    return AssemblyService(
+        session=session, external_service=external_service, web_service=web_service
+    )
 
 
 def get_annotation_service(
-    session, assembly_service, data_service, bedtools_service, external_service
+    session,
+    assembly_service,
+    data_service,
+    bedtools_service,
+    external_service,
+    web_service,
 ):
     return AnnotationService(
         session=session,
@@ -217,6 +225,7 @@ def get_annotation_service(
                 data_service=data_service,
                 bedtools_service=bedtools_service,
                 external_service=external_service,
+                web_service=web_service,
             ),
             AnnotationSource.GTRNADB: GtRNAdbAnnotationService(
                 session=session,
@@ -224,6 +233,7 @@ def get_annotation_service(
                 data_service=data_service,
                 bedtools_service=bedtools_service,
                 external_service=external_service,
+                web_service=web_service,
             ),
         },
     )
@@ -241,14 +251,24 @@ def get_external_service(file_service):
     return ExternalService(file_service=file_service)
 
 
+def get_web_service():
+    return WebService()
+
+
 def get_dataset_service(session, tmp_path):
     bedtools_service = get_bedtools_service(tmp_path)
     file_service = get_file_service(session, tmp_path)
     data_service = get_data_service(session)
     external_service = get_external_service(file_service)
-    assembly_service = get_assembly_service(session, external_service)
+    web_service = get_web_service()
+    assembly_service = get_assembly_service(session, external_service, web_service)
     annotation_service = get_annotation_service(
-        session, assembly_service, data_service, bedtools_service, external_service
+        session,
+        assembly_service,
+        data_service,
+        bedtools_service,
+        external_service,
+        web_service,
     )
     return DatasetService(
         session=session,

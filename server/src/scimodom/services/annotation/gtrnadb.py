@@ -30,7 +30,10 @@ class GtRNAdbAnnotationService(GenericAnnotationService):
 
     FMT: ClassVar[list[str]] = ["bed", "fa"]
     ANNOTATION_FILE: ClassVar[Callable] = "{species}-tRNAs.{fmt}".format
-    FEATURES: ClassVar[dict[str, str]] = {"exon": "Exonic", "intron": "Intronic"}
+    FEATURES: ClassVar[dict[str, dict[str, str]]] = {
+        "conventional": {"exon": "Exonic"},
+        "extended": {"intron": "Intronic"},
+    }
 
     AnnotationPath: NamedTuple = NamedTuple(
         "AnnotationPath", [("annotation_file", Path), ("url", str)]
@@ -87,11 +90,11 @@ class GtRNAdbAnnotationService(GenericAnnotationService):
 
         try:
             for paths in annotation_paths.values():
-                self._web_servce.stream_request_to_file(
+                self._web_service.stream_request_to_file(
                     paths.url, paths.annotation_file
                 )
             self._bedtools_service.gtrnadb_to_bed_features(
-                annotation_file, list(self.FEATURES.keys())
+                annotation_file, [list(d.keys())[0] for d in self.FEATURES.values()]
             )
             # TODO
             # self._update_annotation()

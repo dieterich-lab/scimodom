@@ -1,7 +1,7 @@
 from functools import cache
 from itertools import chain
 from pathlib import Path
-from typing import Any
+from typing import ClassVar, Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -18,18 +18,31 @@ from scimodom.database.models import (
     Taxa,
     Selection,
 )
+from scimodom.services.annotation import (
+    get_annotation_service,
+    AnnotationService,
+    AnnotationSource,
+)
 from scimodom.services.annotation.generic import GenericAnnotationService
 from scimodom.services.assembly import get_assembly_service, AssemblyService
-import scimodom.utils.specifications as specs
+from scimodom.utils.specifications import BIOTYPES
 
 
 class UtilitiesService:
     """Collection of common requests that are
     used to run the application."""
 
-    def __init__(self, session: Session, assembly_service: AssemblyService):
+    MAPPED_BIOTYPES: ClassVar[list[str]] = sorted(list(set(BIOTYPES.values())))
+
+    def __init__(
+        self,
+        session: Session,
+        assembly_service: AssemblyService,
+        annotation_service: AnnotationService,
+    ) -> None:
         self._session = session
         self._assembly_service = assembly_service
+        self._annotation_service = annotation_service
 
     def get_rna_types(self) -> list[dict[str, Any]]:
         """Get all RA types.
@@ -140,24 +153,22 @@ class UtilitiesService:
         genes = [fc.read_text().split() for fc in files]
         return list(set(chain(*genes)))
 
-    # this now depends on RNA type WTS or tRNA...
-    def get_annotation(self, rna_type: str):
+    def get_annotation(
+        self, annotation_source: AnnotationSource
+    ) -> dict[str, list[str]]:
         response = dict()
-        response["features"] = ["Exonic", "Intronic"]  # self.FEATURES
-        response["biotypes"] = ["tmp"]  # self.MAPPED_BIOTYPES
+        features = self._annotation_service.get_features(annotation_source)
+        response["features"] = sorted(
+            list(
+                {
+                    **features["conventional"],
+                    **features["extended"],
+                }.values()
+            )
+        )
+        # TODO: do biotypes also depend on RNA type/annotation?
+        response["biotypes"] = self.MAPPED_BIOTYPES
         return response
-
-    # this now depends on RNA type WTS or tRNA..
-    # FEATURES: ClassVar[list[str]] = sorted(
-    #     list(
-    #         {
-    #             **AnnotationService.FEATURES["conventional"],
-    #             **AnnotationService.FEATURES["extended"],
-    #         }.values()
-    #     )
-    # )
-    # BIOTYPES: ClassVar[dict[str, str]] = specs.BIOTYPES
-    # MAPPED_BIOTYPES: ClassVar[list[str]] = sorted(list(set(BIOTYPES.values())))
 
     def get_chroms(self, taxa_id) -> list[dict[str, Any]]:
         """Provides access to chrom.sizes for a given
@@ -209,5 +220,7 @@ def get_utilities_service() -> UtilitiesService:
     :rtype: UtilitiesService
     """
     return UtilitiesService(
-        session=get_session(), assembly_service=get_assembly_service()
+        session=get_session(),
+        assembly_service=get_assembly_service(),
+        annotation_service=get_annotation_service(),
     )

@@ -4,6 +4,7 @@ from pathlib import Path
 from flask import Blueprint, request
 from flask_cors import cross_origin
 
+from scimodom.services.annotation import RNA_TYPE_TO_ANNOTATION_SOURCE_MAP
 from scimodom.services.utilities import get_utilities_service
 
 api = Blueprint("api", __name__)
@@ -57,8 +58,8 @@ def get_genes():
 @cross_origin(supports_credentials=True)
 def get_annotation(rna_type):
     utilities_service = get_utilities_service()
-    # TODO process rna type into annotation  source
-    annotation_source = "XXX"
+    # TODO validate if exists
+    annotation_source = RNA_TYPE_TO_ANNOTATION_SOURCE_MAP[rna_type]
     return utilities_service.get_annotation(annotation_source)
 
 

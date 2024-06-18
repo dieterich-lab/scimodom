@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from scimodom.database.database import get_session
 from scimodom.database.models import (
+    Annotation,
     RNAType,
     Modification,
 )
@@ -82,11 +83,21 @@ class AnnotationService:
         )
         if len(rna_types) > 1:
             return False
-        if RNA_TYPE_TO_ANNOTATION_SOURCE_MAP[rna_types[0]] != AnnotationSource(
-            annotation_source
-        ):
+        if RNA_TYPE_TO_ANNOTATION_SOURCE_MAP[rna_types[0]] != annotation_source:
             return False
         return True
+
+    def get_features(
+        self, annotation_source: AnnotationSource
+    ) -> dict[str, dict[str, str]]:
+        return self._services_by_annotation_source[annotation_source].FEATURES
+
+    def get_annotation(
+        self, annotation_source: AnnotationSource, taxa_id: int
+    ) -> Annotation:
+        return self._services_by_annotation_source[annotation_source].get_annotation(
+            taxa_id
+        )
 
     def annotate_data(
         self,

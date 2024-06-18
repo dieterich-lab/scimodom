@@ -76,7 +76,7 @@ class EnsemblAnnotationService(GenericAnnotationService):
             raise
 
         try:
-            self._web_servce.stream_request_to_file(url, annotation_file)
+            self._web_service.stream_request_to_file(url, annotation_file)
             self._bedtools_service.ensembl_to_bed_features(
                 annotation_file,
                 chrom_file,

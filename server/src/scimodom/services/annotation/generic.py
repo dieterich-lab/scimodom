@@ -28,17 +28,6 @@ from scimodom.services.web import WebService
 logger = logging.getLogger(__name__)
 
 
-class AnnotationSource(Enum):
-    ENSEMBL = "ensembl"
-    GTRNADB = "gtrnadb"
-
-
-RNA_TYPE_TO_ANNOTATION_SOURCE_MAP = {
-    "WTS": AnnotationSource.ENSEMBL,
-    "tRNA": AnnotationSource.GTRNADB,
-}
-
-
 class AnnotationNotFoundError(Exception):
     """Exception handling for a non-existing Annotation
     or Annotation that is not the latest version."""
@@ -81,7 +70,7 @@ class GenericAnnotationService(ABC):
         self._data_service = data_service
         self._bedtools_service = bedtools_service
         self._external_service = external_service
-        self._web_servce = web_service
+        self._web_service = web_service
 
         self._version = self._session.execute(
             select(AnnotationVersion.version_num)
