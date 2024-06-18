@@ -5,13 +5,14 @@ from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from sqlalchemy.orm import scoped_session
 
-from scimodom.api.public import api
+from scimodom.api.utilities import api
 from scimodom.api.user import user_api
 from scimodom.api.project import project_api
 from scimodom.api.dataset import dataset_api
 from scimodom.api.management import management_api
 from scimodom.api.transfer import transfer_api
 from scimodom.api.bam_file import bam_file_api
+from scimodom.api.modification import modification_api
 from scimodom.app_singleton import create_app_singleton
 from scimodom.database.database import make_session, init
 from scimodom.services.setup import get_setup_service
@@ -34,6 +35,7 @@ from scimodom.utils.url_routes import (
     TRANSFER_API_ROUTE,
     DATA_MANAGEMENT_API_ROUTE,
     BAM_FILE_API_ROUTE,
+    MODIFICATION_API_ROUTE,
 )
 
 
@@ -54,12 +56,13 @@ def create_app():
     setup_service.upsert_all()
 
     app.register_blueprint(api, url_prefix=f"/{API_PREFIX}")
-    app.register_blueprint(user_api, url_prefix=USER_API_ROUTE)
-    app.register_blueprint(project_api, url_prefix=PROJECT_API_ROUTE)
-    app.register_blueprint(dataset_api, url_prefix=DATASET_API_ROUTE)
-    app.register_blueprint(transfer_api, url_prefix=TRANSFER_API_ROUTE)
-    app.register_blueprint(management_api, url_prefix=DATA_MANAGEMENT_API_ROUTE)
     app.register_blueprint(bam_file_api, url_prefix=BAM_FILE_API_ROUTE)
+    app.register_blueprint(management_api, url_prefix=DATA_MANAGEMENT_API_ROUTE)
+    app.register_blueprint(dataset_api, url_prefix=DATASET_API_ROUTE)
+    app.register_blueprint(modification_api, url_prefix=MODIFICATION_API_ROUTE)
+    app.register_blueprint(project_api, url_prefix=PROJECT_API_ROUTE)
+    app.register_blueprint(transfer_api, url_prefix=TRANSFER_API_ROUTE)
+    app.register_blueprint(user_api, url_prefix=USER_API_ROUTE)
 
     app.register_blueprint(frontend, url_prefix="/")
 

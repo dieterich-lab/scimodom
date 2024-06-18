@@ -3,12 +3,13 @@ from urllib.parse import quote
 from scimodom.config import Config
 
 API_PREFIX = "api/v0"  # must fit with client/public/config.js
-USER_API_ROUTE = f"/{API_PREFIX}/user"
-PROJECT_API_ROUTE = f"/{API_PREFIX}/project"
-DATASET_API_ROUTE = f"/{API_PREFIX}/dataset"
 BAM_FILE_API_ROUTE = f"/{API_PREFIX}/bam_file"
-TRANSFER_API_ROUTE = f"/{API_PREFIX}/transfer"
 DATA_MANAGEMENT_API_ROUTE = f"/{API_PREFIX}/management"
+DATASET_API_ROUTE = f"/{API_PREFIX}/dataset"
+MODIFICATION_API_ROUTE = f"/{API_PREFIX}/modification"
+PROJECT_API_ROUTE = f"/{API_PREFIX}/project"
+TRANSFER_API_ROUTE = f"/{API_PREFIX}/transfer"
+USER_API_ROUTE = f"/{API_PREFIX}/user"
 
 CONFIRM_USER_REGISTRATION_URI = "confirm_user_registration"
 REQUEST_PASSWORD_RESET_URI = "request_password_reset"
