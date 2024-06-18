@@ -13,6 +13,7 @@ class MockWebService:
     ):
         self._url_to_result = {} if url_to_result is None else url_to_result
         self._download_urls = [] if download_urls is None else download_urls
+        self.files_created = []
 
     def request_as_json(self, url: str) -> dict:
         if url not in self._url_to_result:
@@ -22,3 +23,4 @@ class MockWebService:
     def stream_request_to_file(self, url: str, path: str | Path, mode: str = "wb"):
         if url not in self._download_urls:
             raise MockHTTPError("Mock: No such download!")
+        self.files_created.append(str(path))

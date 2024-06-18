@@ -204,6 +204,7 @@ def test_add_assembly(Session, data_path, setup):
         assert session.query(
             exists().where(Assembly.taxa_id == 9606, Assembly.name == "NCBI36")
         ).scalar()
+    assert service._web_service.files_created == [str(chain_file)]  # noqa
 
 
 def test_add_assembly_exists(Session, data_path, setup):
