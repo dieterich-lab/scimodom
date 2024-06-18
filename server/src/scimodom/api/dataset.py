@@ -119,7 +119,7 @@ class _CompareContext:
                 raise ClientResponseException(
                     404, "Your uploaded file was not found - maybe it expired"
                 )
-            b_records_list = list(self._get_comparison_records_from_file())
+            b_records_list = [list(self._get_comparison_records_from_file())]
 
         a_records = self._get_comparison_records_from_db(self._reference_ids)
         return self.Ctx(
@@ -139,9 +139,9 @@ class _CompareContext:
                     name=data.name,
                     score=data.score,
                     strand=data.strand,
+                    eufid=data.dataset_id,
                     coverage=data.coverage,
                     frequency=data.frequency,
-                    eufid=data.dataset_id,
                 )
 
     def _get_comparison_records_from_file(self):

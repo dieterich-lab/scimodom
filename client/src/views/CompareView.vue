@@ -31,7 +31,7 @@ const columns = [
   { field: 'a.name', header: 'Name', exportHeader: 'name', sortable: false },
   { field: 'a.score', header: 'Score', exportHeader: 'score', sortable: true },
   { field: 'a.strand', header: 'Strand', exportHeader: 'strand', sortable: false },
-  { field: 'a.dataset_id', header: 'EUFID', exportHeader: 'eufid', sortable: false },
+  { field: 'a.eufid', header: 'EUFID', exportHeader: 'eufid', sortable: false },
   { field: 'a.coverage', header: 'Coverage', exportHeader: 'coverage', sortable: true },
   { field: 'a.frequency', header: 'Frequency', exportHeader: 'frequency', sortable: true },
   { field: 'b.chrom', header: 'Chrom', exportHeader: 'chromB', sortable: true },
@@ -40,7 +40,7 @@ const columns = [
   { field: 'b.name', header: 'Name', exportHeader: 'nameB', sortable: false },
   { field: 'b.score', header: 'Score', exportHeader: 'scoreB', sortable: true },
   { field: 'b.strand', header: 'Strand', exportHeader: 'strandB', sortable: false },
-  { field: 'b.dataset_id', header: 'EUFID', exportHeader: 'eufidB', sortable: false },
+  { field: 'b.eufid', header: 'EUFID', exportHeader: 'eufidB', sortable: false },
   { field: 'b.coverage', header: 'Coverage', exportHeader: 'coverageB', sortable: true },
   { field: 'b.frequency', header: 'Frequency', exportHeader: 'frequencyB', sortable: true },
   { field: 'distance', header: 'Distance', exportHeader: 'distance', sortable: false }
@@ -110,7 +110,7 @@ function getCompareParams(is_strand) {
 }
 
 function modificationRecordToList(r) {
-  return [r.chrom, r.start, r.end, r.name, r.score, r.strand, r.dataset_id, r.coverage, r.frequency]
+  return [r.chrom, r.start, r.end, r.name, r.score, r.strand, r.eufid, r.coverage, r.frequency]
 }
 
 function closest(is_strand) {
@@ -150,7 +150,7 @@ function subtract(is_strand) {
           name: '',
           score: '',
           strand: '',
-          dataset_id: '',
+          eufid: '',
           coverage: '',
           frequency: ''
         },
