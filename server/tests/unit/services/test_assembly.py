@@ -4,6 +4,7 @@ import pytest
 import requests  # type: ignore
 from sqlalchemy import exists
 
+from mocks.web_service import MockWebService, MockHTTPError
 from scimodom.database.models import Assembly, AssemblyVersion, Taxonomy, Taxa
 from scimodom.services.assembly import (
     AssemblyService,
@@ -23,11 +24,6 @@ class MockExternalService:
 
 
 @pytest.fixture
-def external_service():
-    yield MockExternalService()
-
-
-@pytest.fixture
 def chrom_file(data_path):
     d = data_path.ASSEMBLY_PATH / "Homo_sapiens" / "GRCh38"
     d.mkdir(parents=True, exist_ok=True)
@@ -43,8 +39,14 @@ def chain_file(data_path):
     p.touch()
 
 
-def _get_assembly_service(session, external_service):
-    return AssemblyService(session=session, external_service=external_service)
+def _get_assembly_service(Session, url_to_result=None, download_urls=None):
+    return AssemblyService(
+        session=Session(),
+        external_service=MockExternalService(),  # noqa
+        web_service=MockWebService(
+            url_to_result=url_to_result, download_urls=download_urls
+        ),  # noqa
+    )
 
 
 # tests
@@ -54,34 +56,34 @@ def test_assembly_path(data_path):
     assert AssemblyService.get_assembly_path() == data_path.ASSEMBLY_PATH
 
 
-def test_init(Session, data_path, external_service):
+def test_init(Session, data_path):
     with Session() as session, session.begin():
         session.add(AssemblyVersion(version_num="GcatSmFcytpU"))
-    service = _get_assembly_service(Session(), external_service)
+    service = _get_assembly_service(Session)
     assert service._version == "GcatSmFcytpU"
 
 
-def test_get_organism(Session, data_path, setup, external_service):
+def test_get_organism(Session, data_path, setup):
     with Session() as session, session.begin():
         session.add_all(setup)
-    service = _get_assembly_service(Session(), external_service)
+    service = _get_assembly_service(Session)
     assert service._get_organism(10090) == "Mus_musculus"
 
 
-def test_get_chrom_file(Session, data_path, setup, external_service):
+def test_get_chrom_file(Session, data_path, setup):
     with Session() as session, session.begin():
         session.add_all(setup)
-    service = _get_assembly_service(Session(), external_service)
+    service = _get_assembly_service(Session)
     expected_chrom_file = Path(
         data_path.ASSEMBLY_PATH, "Homo_sapiens", "GRCh38", service.CHROM_FILE
     )
     assert service.get_chrom_file(9606) == expected_chrom_file
 
 
-def test_get_chain_file(Session, data_path, setup, external_service):
+def test_get_chain_file(Session, data_path, setup):
     with Session() as session, session.begin():
         session.add_all(setup)
-    service = _get_assembly_service(Session(), external_service)
+    service = _get_assembly_service(Session)
     pattern = service.CHAIN_FILE(source="GRCh37", target="GRCh38")
     expected_chain_file = Path(
         data_path.ASSEMBLY_PATH, "Homo_sapiens", "GRCh37", pattern
@@ -89,10 +91,10 @@ def test_get_chain_file(Session, data_path, setup, external_service):
     assert service.get_chain_file(9606, "GRCh37") == expected_chain_file
 
 
-def test_get_assembly(Session, data_path, setup, external_service):
+def test_get_assembly(Session, data_path, setup):
     with Session() as session, session.begin():
         session.add_all(setup)
-    service = _get_assembly_service(Session(), external_service)
+    service = _get_assembly_service(Session)
     assembly = service.get_assembly_by_id(3)
     assert assembly.name == "GRCh37"
     assert assembly.alt_name == "hg19"
@@ -101,10 +103,10 @@ def test_get_assembly(Session, data_path, setup, external_service):
     assert service._version == "GcatSmFcytpU"
 
 
-def test_get_assembly_fail(Session, data_path, external_service):
+def test_get_assembly_fail(Session, data_path):
     with Session() as session, session.begin():
         session.add(AssemblyVersion(version_num="GcatSmFcytpU"))
-    service = _get_assembly_service(Session(), external_service)
+    service = _get_assembly_service(Session)
     with pytest.raises(AssemblyNotFoundError) as exc:
         service.get_assembly_by_id(99)
     assert (str(exc.value)) == "No such assembly with ID: 99."
@@ -112,12 +114,10 @@ def test_get_assembly_fail(Session, data_path, external_service):
 
 
 @pytest.mark.parametrize("assembly_id,is_latest", [(1, True), (3, False)])
-def test_is_latest_assembly(
-    assembly_id, is_latest, Session, data_path, setup, external_service
-):
+def test_is_latest_assembly(assembly_id, is_latest, Session, data_path, setup):
     with Session() as session, session.begin():
         session.add_all(setup)
-    service = _get_assembly_service(Session(), external_service)
+    service = _get_assembly_service(Session)
     assembly = service.get_assembly_by_id(assembly_id)
     assert service.is_latest_assembly(assembly) == is_latest
 
@@ -125,15 +125,15 @@ def test_is_latest_assembly(
 def test_get_seqids(Session, setup, chrom_file):
     with Session() as session, session.begin():
         session.add_all(setup)
-    service = _get_assembly_service(Session(), external_service)
+    service = _get_assembly_service(Session)
     seqids = service.get_seqids(9606)
     assert set(seqids) == {"1", "2"}
 
 
-def test_liftover(Session, data_path, tmp_path, setup, chain_file, external_service):
+def test_liftover(Session, data_path, tmp_path, setup, chain_file):
     with Session() as session, session.begin():
         session.add_all(setup)
-    service = _get_assembly_service(Session(), external_service)
+    service = _get_assembly_service(Session)
     assembly = service.get_assembly_by_id(3)
 
     d = tmp_path / "liftover"
@@ -151,12 +151,10 @@ def test_liftover(Session, data_path, tmp_path, setup, chain_file, external_serv
 
 # with 3 raw_file records, liftover succeeds with the following warning:
 # 1 records could not be mapped and were discarded... Contact the system administrator if you have questions.
-def test_liftover_fail_count(
-    Session, data_path, tmp_path, setup, chain_file, external_service
-):
+def test_liftover_fail_count(Session, data_path, tmp_path, setup, chain_file):
     with Session() as session, session.begin():
         session.add_all(setup)
-    service = _get_assembly_service(Session(), external_service)
+    service = _get_assembly_service(Session)
     assembly = service.get_assembly_by_id(3)
 
     d = tmp_path / "liftover"
@@ -179,10 +177,10 @@ def test_liftover_fail_count(
     assert exc.type == LiftOverError
 
 
-def test_liftover_fail_version(Session, data_path, setup, external_service):
+def test_liftover_fail_version(Session, data_path, setup):
     with Session() as session, session.begin():
         session.add_all(setup)
-    service = _get_assembly_service(Session(), external_service)
+    service = _get_assembly_service(Session)
     assembly = service.get_assembly_by_id(1)
     with pytest.raises(AssemblyVersionError) as exc:
         service.liftover(assembly, "raw_file")
@@ -191,24 +189,28 @@ def test_liftover_fail_version(Session, data_path, setup, external_service):
 
 
 # downloads chain file...
-def test_add_assembly(Session, data_path, setup, external_service):
+def test_add_assembly(Session, data_path, setup):
     with Session() as session, session.begin():
         session.add_all(setup)
-    service = _get_assembly_service(Session(), external_service)
-    assembly = service.add_assembly(9606, "NCBI36")
+    service = _get_assembly_service(
+        Session,
+        download_urls=[
+            "https://ftp.ensembl.org/pub/current_assembly_chain/homo_sapiens/NCBI36_to_GRCh38.chain.gz"
+        ],
+    )
+    service.add_assembly(9606, "NCBI36")
     chain_file = service.get_chain_file(9606, "NCBI36")
     with Session() as session:
         assert session.query(
             exists().where(Assembly.taxa_id == 9606, Assembly.name == "NCBI36")
         ).scalar()
-    # check if file exists, not content
-    assert chain_file.is_file()
+    assert service._web_service.files_created == [str(chain_file)]  # noqa
 
 
-def test_add_assembly_exists(Session, data_path, setup, external_service):
+def test_add_assembly_exists(Session, data_path, setup):
     with Session() as session, session.begin():
         session.add_all(setup)
-    service = _get_assembly_service(Session(), external_service)
+    service = _get_assembly_service(Session)
     assert service.add_assembly(9606, "GRCh37") is None
     # normally directory exists for an existing assembly, but
     # this function does not check that, it simple returns if
@@ -218,7 +220,7 @@ def test_add_assembly_exists(Session, data_path, setup, external_service):
     # assert chain_file.parent.exists() is False
 
 
-def test_add_assembly_file_exists(Session, chain_file, external_service):
+def test_add_assembly_file_exists(Session, chain_file):
     with Session() as session, session.begin():
         version = AssemblyVersion(version_num="GcatSmFcytpU")
         taxonomy = Taxonomy(
@@ -234,7 +236,7 @@ def test_add_assembly_file_exists(Session, chain_file, external_service):
             name="GRCh38", alt_name="hg38", taxa_id=9606, version="GcatSmFcytpU"
         )
         session.add_all([version, taxonomy, taxa, assembly])
-    service = _get_assembly_service(Session(), external_service)
+    service = _get_assembly_service(Session)
     with pytest.raises(FileExistsError) as exc:
         assembly = service.add_assembly(9606, "GRCh37")
     assert (
@@ -243,23 +245,19 @@ def test_add_assembly_file_exists(Session, chain_file, external_service):
     )
 
 
-def test_add_assembly_wrong_name(Session, setup, data_path, external_service):
+def test_add_assembly_wrong_url(Session, setup, data_path):
     with Session() as session, session.begin():
         session.add_all(setup)
-    service = _get_assembly_service(Session(), external_service)
-    with pytest.raises(requests.exceptions.HTTPError) as exc:
-        assembly = service.add_assembly(9606, "GRCH37")
-    assert (
-        str(exc.value)
-        == f"404 Client Error: Not Found for url: {ENSEMBL_FTP}/{ENSEMBL_ASM_MAPPING}/homo_sapiens/GRCH37_to_GRCh38.chain.gz"
-    )
+    service = _get_assembly_service(Session)
+    with pytest.raises(MockHTTPError):
+        service.add_assembly(9606, "GRCH37")
 
 
 # this now fails because Assembly directory exists: /tmp/pytest-of-scimodom/data0/assembly/Homo_sapiens/GRCh38.
-def test_prepare_assembly_for_version(Session, setup, data_path, external_service):
+def test_prepare_assembly_for_version(Session, setup, data_path):
     with Session() as session, session.begin():
         session.add_all(setup)
-    service = _get_assembly_service(Session(), external_service)
+    service = _get_assembly_service(Session)
     service.prepare_assembly_for_version(1)
     chrom_file = service.get_chrom_file(9606)
     assert chrom_file.is_file()

@@ -7,7 +7,6 @@ from posixpath import join as urljoin
 from scimodom.database.buffer import InsertBuffer
 from scimodom.database.models import Annotation, DataAnnotation, GenomicAnnotation
 from scimodom.services.annotation.generic import GenericAnnotationService
-from scimodom.utils.utils import stream_request_to_file
 import scimodom.utils.specifications as specs
 
 logger = logging.getLogger(__name__)
@@ -53,7 +52,7 @@ class EnsemblAnnotationService(GenericAnnotationService):
     def create_annotation(self, taxa_id: int) -> None:
         """This method automates the creation of Ensembl
         annotations for a given organism for the current
-        release. The annotation must exists in the database.
+        release. The annotation must exist in the database.
 
         :param taxa_id: Taxonomy ID
         :type taxa_id: int
@@ -77,7 +76,7 @@ class EnsemblAnnotationService(GenericAnnotationService):
             raise
 
         try:
-            stream_request_to_file(url, annotation_file)
+            self._web_servce.stream_request_to_file(url, annotation_file)
             self._bedtools_service.ensembl_to_bed_features(
                 annotation_file,
                 chrom_file,

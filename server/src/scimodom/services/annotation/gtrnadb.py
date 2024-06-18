@@ -9,7 +9,6 @@ from sqlalchemy import select
 from scimodom.database.buffer import InsertBuffer
 from scimodom.database.models import Annotation, Assembly, GenomicAnnotation
 from scimodom.services.annotation.generic import GenericAnnotationService
-from scimodom.utils.utils import stream_request_to_file
 import scimodom.utils.specifications as specs
 from posixpath import join as urljoin
 
@@ -88,7 +87,9 @@ class GtRNAdbAnnotationService(GenericAnnotationService):
 
         try:
             for paths in annotation_paths.values():
-                stream_request_to_file(paths.url, paths.annotation_file)
+                self._web_servce.stream_request_to_file(
+                    paths.url, paths.annotation_file
+                )
             self._bedtools_service.gtrnadb_to_bed_features(
                 annotation_file, list(self.FEATURES.keys())
             )

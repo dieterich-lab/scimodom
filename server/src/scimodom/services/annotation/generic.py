@@ -23,6 +23,7 @@ from scimodom.services.assembly import AssemblyService
 from scimodom.services.bedtools import BedToolsService
 from scimodom.services.data import DataService
 from scimodom.services.external import ExternalService
+from scimodom.services.web import WebService
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +58,7 @@ class GenericAnnotationService(ABC):
         data_service: DataService,
         bedtools_service: BedToolsService,
         external_service: ExternalService,
+        web_service: WebService,
     ) -> None:
         """Utility class to handle annotations.
 
@@ -70,6 +72,8 @@ class GenericAnnotationService(ABC):
         :type bedtools_service: BedToolsService
         :param external_service: External service instance
         :type external_service: ExternalService
+        :param web_service: Web Service instance
+        :type web_service: WebService
         """
 
         self._session = session
@@ -77,6 +81,7 @@ class GenericAnnotationService(ABC):
         self._data_service = data_service
         self._bedtools_service = bedtools_service
         self._external_service = external_service
+        self._web_servce = web_service
 
         self._version = self._session.execute(
             select(AnnotationVersion.version_num)
