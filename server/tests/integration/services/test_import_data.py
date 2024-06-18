@@ -291,7 +291,7 @@ def test_import_simple(Session, project, annotation, tmp_path):
         modification_ids=[1],
         technology_id=1,
         organism_id=1,
-        annotation_source="ensembl",
+        annotation_source=AnnotationSource.ENSEMBL,
     )
 
     with Session() as session:

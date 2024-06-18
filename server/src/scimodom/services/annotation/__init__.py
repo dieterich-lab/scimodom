@@ -90,13 +90,13 @@ class AnnotationService:
     def annotate_data(
         self,
         taxa_id: int,
-        annotation_source: AnnotationSource,  # that is actualy a str...
+        annotation_source: AnnotationSource,
         eufid: str,
         selection_ids: list[int],
     ):
-        self._services_by_annotation_source[
-            AnnotationSource(annotation_source)
-        ].annotate_data(taxa_id, eufid, selection_ids)
+        self._services_by_annotation_source[annotation_source].annotate_data(
+            taxa_id, eufid, selection_ids
+        )
 
 
 @cache
