@@ -7,6 +7,7 @@ from sqlalchemy.orm import sessionmaker
 
 from scimodom.database.database import init, Base
 from scimodom.database.models import (
+    RNAType,
     Modomics,
     Taxonomy,
     Taxa,
@@ -45,6 +46,9 @@ def Session():
 
 @pytest.fixture()
 def setup():
+    add = []
+    rna_types = [RNAType(id="WTS", name="whole transcriptome")]
+    add.extend(rna_types)
     modomics = [
         Modomics(
             id="2000000006A",
@@ -62,7 +66,7 @@ def setup():
             id="2000000009U", name="pseudouridine", short_name="Y", moiety="nucleoside"
         ),
     ]
-
+    add.extend(modomics)
     taxonomy = [
         Taxonomy(
             id="a1b240af", domain="Eukarya", kingdom="Animalia", phylum="Chordata"
@@ -70,15 +74,8 @@ def setup():
         Taxonomy(
             id="455a3823", domain="Eukarya", kingdom="Animalia", phylum="Arthropoda"
         ),
-        Taxonomy(
-            id="427991ab", domain="Eukarya", kingdom="Animalia", phylum="Nematoda"
-        ),
-        Taxonomy(id="857daa07", domain="Eukarya", kingdom="Fungi"),
-        Taxonomy(id="3f094e88", domain="Eukarya", kingdom="Plantae"),
-        Taxonomy(id="100da424", domain="Bacteria"),
-        Taxonomy(id="c92e5c49", domain="Vira"),
     ]
-
+    add.extend(taxonomy)
     taxa = [
         Taxa(
             id=9606,
@@ -98,42 +95,22 @@ def setup():
             short_name="D. melanogaster",
             taxonomy_id="455a3823",
         ),
-        Taxa(
-            id=6239,
-            name="Caenorhabditis elegans",
-            short_name="C. elegans",
-            taxonomy_id="427991ab",
-        ),
-        Taxa(
-            id=4932,
-            name="Saccharomyces cerevisiae",
-            short_name="S. cerevisiae",
-            taxonomy_id="857daa07",
-        ),
-        Taxa(
-            id=3702,
-            name="Arabidopsis thaliana",
-            short_name="A. thaliana",
-            taxonomy_id="3f094e88",
-        ),
-        Taxa(
-            id=562,
-            name="Escherichia coli",
-            short_name="E. coli",
-            taxonomy_id="100da424",
-        ),
     ]
-
+    add.extend(taxa)
+    assembly_version = [
+        AssemblyVersion(version_num="GcatSmFcytpU"),
+    ]
+    add.extend(assembly_version)
     assembly = [
         Assembly(name="GRCh38", alt_name="hg38", taxa_id=9606, version="GcatSmFcytpU"),
         Assembly(name="GRCm38", alt_name="mm10", taxa_id=10090, version="GcatSmFcytpU"),
         Assembly(name="GRCh37", alt_name="hg19", taxa_id=9606, version="J9dit7Tfc6Sb"),
     ]
-
-    assembly_version = [
-        AssemblyVersion(version_num="GcatSmFcytpU"),
+    add.extend(assembly)
+    annotation_version = [
+        AnnotationVersion(version_num="EyRBnPeVwbzW"),
     ]
-
+    add.extend(annotation_version)
     annotation = [
         Annotation(release=110, taxa_id=9606, source="ensembl", version="EyRBnPeVwbzW"),
         Annotation(
@@ -141,21 +118,8 @@ def setup():
         ),
         Annotation(release=109, taxa_id=9606, source="ensembl", version="A8syx5TzWlK0"),
     ]
-
-    annotation_version = [
-        AnnotationVersion(version_num="EyRBnPeVwbzW"),
-    ]
-
+    add.extend(annotation)
     method = [
-        DetectionMethod(id="a9a2c002", cls="Quantification", meth="2D-TLC"),
-        DetectionMethod(id="94dc433b", cls="Quantification", meth="LC–MS"),
-        DetectionMethod(id="2daf07c3", cls="Locus-specific", meth="Primer extension"),
-        DetectionMethod(id="1f8bd266", cls="Locus-specific", meth="RNase H-based"),
-        DetectionMethod(id="a0329e7e", cls="Locus-specific", meth="ESI-MS"),
-        DetectionMethod(id="c63f05d3", cls="Locus-specific", meth="qPCR-based"),
-        DetectionMethod(
-            id="bc7f263a", cls="NGS 2nd generation", meth="Direct sequencing"
-        ),
         DetectionMethod(
             id="0ee048bc", cls="NGS 2nd generation", meth="Chemical-assisted sequencing"
         ),
@@ -167,24 +131,8 @@ def setup():
             cls="NGS 2nd generation",
             meth="Enzyme/protein-assisted sequencing",
         ),
-        DetectionMethod(
-            id="7e30836a", cls="NGS 3rd generation", meth="Native RNA sequencing"
-        ),
-        DetectionMethod(
-            id="1112a99a", cls="NGS 3rd generation", meth="cDNA sequencing"
-        ),
     ]
-
-    add = []
-    add.extend(modomics)
-    add.extend(taxonomy)
-    add.extend(taxa)
-    add.extend(assembly)
-    add.extend(assembly_version)
-    add.extend(annotation)
-    add.extend(annotation_version)
     add.extend(method)
-
     return add
 
 

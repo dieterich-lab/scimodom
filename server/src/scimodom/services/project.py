@@ -147,12 +147,12 @@ class ProjectService:
         return smid
 
     @staticmethod
-    def _get_prj_src(project: ProjectTemplate):
+    def _get_prj_src(project_template: ProjectTemplate):
         ors = or_(False)
         ands = and_(True)
 
-        if project.external_sources:
-            for source in project.external_sources:
+        if project_template.external_sources:
+            for source in project_template.external_sources:
                 doi = source.doi
                 pmid = source.pmid
                 if doi is None:
@@ -175,22 +175,22 @@ class ProjectService:
             ors = ands  # if no sources
         return ors
 
-    def _validate_entry(self, project: ProjectTemplate) -> None:
+    def _validate_entry(self, project_template: ProjectTemplate) -> None:
         query = (
             select(func.distinct(Project.id))
             .join_from(Project, ProjectSource, Project.sources, isouter=True)
-            .where(Project.title == project.title)
+            .where(Project.title == project_template.title)
         )
-        query = query.where(self._get_prj_src(project))
+        query = query.where(self._get_prj_src(project_template))
         smid = self._session.execute(query).scalar_one_or_none()
         if smid:
             raise DuplicateProjectError(
-                f"Suspected duplicate project with SMID '{smid}' and title '{project.title}'."
+                f"Suspected duplicate project with SMID '{smid}' and title '{project_template.title}'."
             )
 
-    def _add_selection_if_none(self, project: ProjectTemplate) -> None:
+    def _add_selection_if_none(self, project_template: ProjectTemplate) -> None:
         # no upsert, add only if on_conflict_do_nothing?
-        for metadata in project.metadata:
+        for metadata in project_template.metadata:
             modification_id = self._add_modification_if_none(metadata)
             organism_id = self._add_organism_if_none(metadata)
             technology_id = self._add_technology_if_none(metadata)
@@ -258,47 +258,44 @@ class ProjectService:
             technology_id = technology.id
         return technology_id
 
-    def _add_contact_if_none(self, project: ProjectTemplate) -> int:
+    def _add_contact_if_none(self, project_template: ProjectTemplate) -> int:
         contact_id = self._session.execute(
             select(ProjectContact.id).filter_by(
-                contact_name=project.contact_name,
-                contact_institution=project.contact_institution,
-                contact_email=project.contact_email,
+                contact_name=project_template.contact_name,
+                contact_institution=project_template.contact_institution,
+                contact_email=project_template.contact_email,
             )
         ).scalar_one_or_none()
         if not contact_id:
             contact = ProjectContact(
-                contact_name=project.contact_name,
-                contact_institution=project.contact_institution,
-                contact_email=project.contact_email,
+                contact_name=project_template.contact_name,
+                contact_institution=project_template.contact_institution,
+                contact_email=project_template.contact_email,
             )
             self._session.add(contact)
             self._session.flush()
             contact_id = contact.id
         return contact_id
 
-    def _add_project(self, project: ProjectTemplate) -> str:
+    def _add_project(self, project_template: ProjectTemplate) -> str:
         smids = self._session.execute(select(Project.id)).scalars().all()
         smid = gen_short_uuid(SMID_LENGTH, smids)
-        contact_id = self._add_contact_if_none(project)
+        contact_id = self._add_contact_if_none(project_template)
         stamp = datetime.now(timezone.utc)  # .isoformat()
-        date_published = None
-        if project.date_published:
-            date_published = datetime.fromisoformat(project.date_published)
         project = Project(
             id=smid,
-            title=project.title,
-            summary=project.summary,
+            title=project_template.title,
+            summary=project_template.summary,
             contact_id=contact_id,
-            date_published=date_published,
+            date_published=project_template.date_published,
             date_added=stamp,
         )
         sources = []
-        for source in project.external_sources:
+        for source in project_template.external_sources:
             source = ProjectSource(project_id=smid, doi=source.doi, pmid=source.pmid)
             sources.append(source)
 
-        logger.info(f"Adding project {smid}...")
+        logger.info(f"Adding project_template {smid}...")
 
         self._session.add(project)
         self._session.add_all(sources)
@@ -306,11 +303,11 @@ class ProjectService:
         return smid
 
     def _write_project_template(
-        self, project: ProjectTemplate, smid: str, request_uuid: str
+        self, project_template: ProjectTemplate, smid: str, request_uuid: str
     ) -> None:
         metadata_file = Path(self.DATA_PATH, self.METADATA_PATH, f"{smid}.json")
         with open(metadata_file, "w") as fh:
-            fh.write(project.model_dump_json(indent=4))
+            fh.write(project_template.model_dump_json(indent=4))
         request_file = Path(self.DATA_PATH, self.REQUEST_PATH, f"{request_uuid}.json")
         request_file.unlink()
 

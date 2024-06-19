@@ -40,7 +40,7 @@ dependencies = [
   "requests",
   "shortuuid",
   "SQLAlchemy",
-  "pydantic"
+  "pydantic[email]"
 ]
 
 # [project.scripts]
