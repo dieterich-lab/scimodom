@@ -121,6 +121,16 @@ def add_project(project_template: str | Path, add_user: bool = True) -> None:
     if c not in ["y", "Y"]:
         return
     project_service = ProjectService(session)
+
+    # TODO
+    # validation here
+    # project_template = ProjectTemplate.model_validate_json(project_template_raw)
+    # then pass model (WE NEED TO UPDATE THE MODEL VEFORE WITH ASSEMBLY ID IF NOT THERE)
+    # IE. WE NEED TO CALL ASSEMBLY SERVICE HERE TO CREATE IF NOT THEN ASSIGN
+    # WHAT OTHER CASES?
+    # CHANGE SO THAT THE PORJECT TEMPLATE INPUT IS ONLY THE UUID OF IT, THE ACTUAL
+    # PATH IS PREDEFINED IN PROJECT SERVICE request path wich we can get anyway
+    # pass the uuid here as well
     project_service.create_project(project)  # commit, unless...
     click.secho(
         f"Successfully created. The SMID for this project is {project_service.get_smid()}.",
@@ -144,6 +154,8 @@ def add_project(project_template: str | Path, add_user: bool = True) -> None:
                 fg="red",
             )
         else:
+            # TODO here and below, call permission service directly, not project service
+            # now crete project return newly created smid
             project_service.associate_project_to_user(user)  # commit
             click.secho(
                 "Successfully added user to project.",
@@ -270,6 +282,9 @@ def add_all(directory: Path, templates: list[str]) -> None:
         project_title = project["title"]
         click.secho(f"Adding {project_title}...", fg="green")
         try:
+            # TODO
+            # validation here
+            # project_template = ProjectTemplate.model_validate_json(project_template_raw)
             project_service = ProjectService(session)
             project_service.create_project(project)  # commit, unless...
             project_service.update_assembly_and_annotation()  # commit, unless
