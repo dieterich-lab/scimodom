@@ -22,12 +22,8 @@ from scimodom.database.models import (
     UserProjectAssociation,
 )
 import scimodom.database.queries as queries
-from scimodom.services.annotation import AnnotationService
-from scimodom.services.assembly import AssemblyService
-from scimodom.services.bedtools import get_bedtools_service
-from scimodom.services.data import get_data_service
-from scimodom.services.permission import get_permission_service
-import scimodom.utils.specifications as specs
+from scimodom.services.permission import PermissionService, get_permission_service
+from scimodom.utils.specifications import SMID_LENGTH
 import scimodom.utils.utils as utils
 
 logger = logging.getLogger(__name__)
@@ -40,63 +36,46 @@ class DuplicateProjectError(Exception):
 
 
 class ProjectService:
-    """Utility class to create, manage, and
-    query a project.
-
-    NOTE: Some class attributes are only defined
-    for project creation.
-
-    :param session: SQLAlchemy ORM session
-    :type session: Session
-    :param SMID_LENGTH: Length of Sci-ModoM ID (SMID)
-    :type SMID_LENGTH: int
-    :param DATA_PATH: Data path
-    :type DATA_PATH: str | Path | None
-    :param DATA_SUB_PATH: Data sub path
-    :type DATA_SUB_PATH: str
-    """
-
-    SMID_LENGTH: ClassVar[int] = specs.SMID_LENGTH
     DATA_PATH: ClassVar[str | Path] = Config.DATA_PATH
-    DATA_SUB_PATH: ClassVar[str] = "metadata"
-    DATA_SUB_PATH_SUB: ClassVar[str] = "project_requests"
+    METADATA_PATH: ClassVar[str] = "metadata"
+    REQUEST_PATH: ClassVar[str] = "project_requests"
 
-    def __init__(self, session: Session) -> None:
-        """Initializer method."""
+    def __init__(self, session: Session, permission_service: PermissionService) -> None:
         self._session = session
+        self._permission_service = permission_service
 
-        self._project: dict
         self._smid: str
         self._assemblies: set[tuple[int, str]] = set()
 
-    def __new__(cls, session: Session):
-        """Constructor method."""
+    def __new__(cls, session: Session, **kwargs):
         if cls.DATA_PATH is None:
-            msg = "Missing environment variable: DATA_PATH. Terminating!"
+            msg = "Missing environment variable: DATA_PATH."
             raise ValueError(msg)
-        elif not Path(cls.DATA_PATH, cls.DATA_SUB_PATH).is_dir():
-            msg = f"DATA PATH {Path(cls.DATA_PATH, cls.DATA_SUB_PATH)} not found! Terminating!"
+        elif not Path(cls.DATA_PATH, cls.METADATA_PATH).is_dir():
+            msg = f"No such directory '{Path(cls.DATA_PATH, cls.METADATA_PATH)}'."
             raise FileNotFoundError(msg)
-        elif not Path(cls.DATA_PATH, cls.DATA_SUB_PATH, cls.DATA_SUB_PATH_SUB).is_dir():
-            msg = f"DATA PATH {Path(cls.DATA_PATH, cls.DATA_SUB_PATH, cls.DATA_SUB_PATH_SUB)} not found! Terminating!"
+        elif not Path(cls.DATA_PATH, cls.METADATA_PATH, cls.REQUEST_PATH).is_dir():
+            msg = f"No such directory '{Path(cls.DATA_PATH, cls.METADATA_PATH, cls.REQUEST_PATH)}'."
             raise FileNotFoundError(msg)
         else:
-            return super(ProjectService, cls).__new__(cls)
+            return super().__new__(cls)
 
     @staticmethod
-    def create_project_request(project: dict):
+    def create_project_request(project: dict) -> str:
         """Project request constructor.
 
         :param project: Project description (json template)
         :type project: dict
+        :returns: UUID of request
+        :rtype: str
         """
         project_request_path = Path(
             ProjectService.DATA_PATH,
-            ProjectService.DATA_SUB_PATH,
-            ProjectService.DATA_SUB_PATH_SUB,
+            ProjectService.METADATA_PATH,
+            ProjectService.REQUEST_PATH,
         )
 
-        uuid = utils.gen_short_uuid(12, [])
+        uuid = utils.gen_short_uuid(24, [])
         filen = Path(project_request_path, f"{uuid}.json")
 
         logger.info(f"Writing project request to {filen}...")
@@ -128,7 +107,6 @@ class ProjectService:
         del project["forename"]
         del project["surname"]
 
-        # hard coded length = 12
         with open(filen, "w") as f:
             json.dump(project, f, indent="\t")
         return uuid
@@ -139,38 +117,15 @@ class ProjectService:
         :param project: Project description (json template)
         :type project: dict
         """
-        self._project = project
-
         try:
-            self._validate_keys()
-            self._validate_entry()
-            self._add_selection()
-            self._create_smid()
-            self._write_metadata()
+            self._validate_keys(project)
+            self._validate_entry(project)
+            self._add_selection(project)
+            self._create_smid(project)
+            self._write_metadata(project)
             self._session.commit()
         except:
             self._session.rollback()
-            raise
-
-    def update_assembly_and_annotation(self) -> None:
-        """Eventually download assembly chain files,
-        genome annotation, and write annotations to
-        disk and to the database."""
-        try:
-            for assembly in self._assemblies:
-                taxid, name = assembly
-                logger.info(f"Calling AssemblyService for {name} ({taxid})...")
-                AssemblyService.from_new(
-                    self._session, name=name, taxa_id=taxid
-                )  # commit, unless ...
-                logger.info(f"Calling AnnotationService for {taxid}...")
-                AnnotationService(
-                    session=self._session,
-                    bedtools_service=get_bedtools_service(),
-                    modification_service=get_data_service(),
-                    taxa_id=taxid,
-                ).create_annotation()  # commit, unless ...
-        except:
             raise
 
     def associate_project_to_user(self, user: User, smid: str | None = None):
@@ -190,8 +145,7 @@ class ProjectService:
             except AttributeError:
                 logger.debug("Undefined SMID. Nothing will be done.")
                 return
-        permission_service = get_permission_service()
-        permission_service.insert_into_user_project_association(user, smid)
+        self._permission_service.insert_into_user_project_association(user, smid)
 
     def get_smid(self) -> str:
         """Return newly created SMID, else
@@ -251,19 +205,18 @@ class ProjectService:
         query = query.group_by(Project.id)
         return [row._asdict() for row in self._session.execute(query)]
 
-    def _validate_keys(self) -> None:
-        """Validate keys from project description (dictionary)."""
-
+    @staticmethod
+    def _validate_keys(project) -> None:
         cols = utils.get_table_columns(
             "Project", remove=["id", "date_added", "contact_id"]
         )
         cols.extend(utils.get_table_columns("ProjectContact", remove=["id"]))
         cols.extend(["external_sources", "metadata"])
-        utils.check_keys_exist(self._project.keys(), cols)
+        utils.check_keys_exist(project.keys(), cols)
 
-        if self._project["external_sources"] is not None:
+        if project["external_sources"] is not None:
             cols = utils.get_table_columns("ProjectSource", ["id", "project_id"])
-            for d in utils.to_list(self._project["external_sources"]):
+            for d in utils.to_list(project["external_sources"]):
                 utils.check_keys_exist(d.keys(), cols)
 
         m_cols = utils.get_table_columns("Modification", remove=["id"])
@@ -271,19 +224,19 @@ class ProjectService:
         m_cols.append("organism")
         o_cols = utils.get_table_columns("Organism", remove=["id"])
         o_cols.append("assembly")
-        for d in utils.to_list(self._project["metadata"]):
+        for d in utils.to_list(project["metadata"]):
             utils.check_keys_exist(d.keys(), m_cols)
             utils.check_keys_exist(d["organism"].keys(), o_cols)
 
-    def _get_prj_src(self):
+    def _get_prj_src(self, project):
         """Construct query from project "external_sources" """
         from sqlalchemy import tuple_, and_, or_
 
         ors = or_(False)
         ands = and_(True)
 
-        if self._project["external_sources"] is not None:
-            for s in utils.to_list(self._project["external_sources"]):
+        if project["external_sources"] is not None:
+            for s in utils.to_list(project["external_sources"]):
                 doi = s["doi"]
                 pmid = s["pmid"]
                 if doi is None:
@@ -306,27 +259,27 @@ class ProjectService:
             ors = ands  # if no sources
         return ors
 
-    def _validate_entry(self) -> None:
+    def _validate_entry(self, project) -> None:
         """Validate project using title and sources."""
         query = (
             select(func.distinct(Project.id))
             .join_from(Project, ProjectSource, Project.sources, isouter=True)
-            .where(Project.title == self._project["title"])
+            .where(Project.title == project["title"])
         )
         query = query.where(self._get_prj_src())
         smid = self._session.execute(query).scalar()
         if smid:
             msg = (
                 f"At least one similar record exists with SMID = {smid} and "
-                f"title = {self._project['title']}. Aborting transaction!"
+                f"title = {project['title']}. Aborting transaction!"
             )
             raise DuplicateProjectError(msg)
 
-    def _add_selection(self) -> None:
+    def _add_selection(self, project) -> None:
         """Add new selection."""
 
         # no upsert, add only if on_conflict_do_nothing?
-        for d in utils.to_list(self._project["metadata"]):
+        for d in utils.to_list(project["metadata"]):
             # modification
             rna = d["rna"]
             modomics_id = d["modomics_id"]
@@ -393,11 +346,11 @@ class ProjectService:
                 self._session.add(selection)
                 self._session.flush()
 
-    def _add_contact(self):
+    def _add_contact(self, project):
         """Add new contact."""
-        contact_name = self._project["contact_name"]
-        contact_institution = self._project["contact_institution"]
-        contact_email = self._project["contact_email"]
+        contact_name = project["contact_name"]
+        contact_institution = project["contact_institution"]
+        contact_email = project["contact_email"]
         query = queries.query_column_where(
             ProjectContact,
             "id",
@@ -419,32 +372,32 @@ class ProjectService:
             contact_id = contact.id
         return contact_id
 
-    def _create_smid(self) -> None:
+    def _create_smid(self, project) -> None:
         """Add project."""
 
         query = select(Project.id)
         smids = self._session.execute(query).scalars().all()
-        self._smid = utils.gen_short_uuid(self.SMID_LENGTH, smids)
+        self._smid = utils.gen_short_uuid(SMID_LENGTH, smids)
 
         contact_id = self._add_contact()
 
         stamp = datetime.now(timezone.utc).replace(microsecond=0)  # .isoformat()
         try:
-            date_published = datetime.fromisoformat(self._project["date_published"])
+            date_published = datetime.fromisoformat(project["date_published"])
         except TypeError:
             date_published = None
 
         project = Project(
             id=self._smid,
-            title=self._project["title"],
-            summary=self._project["summary"],
+            title=project["title"],
+            summary=project["summary"],
             contact_id=contact_id,
             date_published=date_published,
             date_added=stamp,
         )
 
         sources = []
-        for s in utils.to_list(self._project["external_sources"]):
+        for s in utils.to_list(project["external_sources"]):
             source = ProjectSource(project_id=self._smid, doi=s["doi"], pmid=s["pmid"])
             sources.append(source)
 
@@ -455,11 +408,11 @@ class ProjectService:
         self._session.add_all(sources)
         self._session.flush()
 
-    def _write_metadata(self) -> None:
+    def _write_metadata(self, project) -> None:
         """Writes a copy of project metadata."""
-        parent = Path(self.DATA_PATH, self.DATA_SUB_PATH)
+        parent = Path(self.DATA_PATH, self.METADATA_PATH)
         with open(Path(parent, f"{self._smid}.json"), "w") as f:
-            json.dump(self._project, f, indent="\t")
+            json.dump(project, f, indent="\t")
 
 
 @cache
@@ -469,4 +422,6 @@ def get_project_service():
     :returns: Project service instance
     :rtype: ProjectService
     """
-    return ProjectService(session=get_session())
+    return ProjectService(
+        session=get_session(), permission_service=get_permission_service()
+    )
