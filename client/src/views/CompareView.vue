@@ -49,6 +49,7 @@ const columns = [
 const { handleSubmit, resetForm } = useForm()
 const { value: queryCriteria, errorMessage } = useField('value', validateField)
 const onSubmit = handleSubmit((submitted) => {
+  loading.value = true
   if (submitted.value && submitted.value.length > 0) {
     switch (submitted.value) {
       case 'intersect-true':
@@ -70,8 +71,7 @@ const onSubmit = handleSubmit((submitted) => {
         subtract(false)
         break
       default:
-        load(submitted.value)
-      // console.log(`Error: Got bad value '${submitted.value}'`)
+        console.log(`Error: Got bad value '${submitted.value}'`)
     }
     resetForm()
   }
@@ -107,10 +107,6 @@ function getCompareParams(is_strand) {
     strand: is_strand,
     euf: isEUF.value
   }
-}
-
-function modificationRecordToList(r) {
-  return [r.chrom, r.start, r.end, r.name, r.score, r.strand, r.eufid, r.coverage, r.frequency]
 }
 
 function closest(is_strand) {
