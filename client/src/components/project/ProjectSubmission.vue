@@ -7,10 +7,13 @@ const router = useRouter()
 const props = defineProps(['projectForm'])
 const message = ref()
 
+import { convertToProjectTemplate } from '@/components/project/helper.js'
+
 const submitForm = () => {
-  HTTPSecure.post('/management/project', props.projectForm)
+  const data = convertToProjectTemplate(props.projectForm)
+  HTTPSecure.post('/management/project', data)
     .then((response) => {
-      if (response.status == 200) {
+      if (response.status === 200) {
         router.push({ name: 'home' })
       }
     })

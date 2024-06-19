@@ -20,14 +20,14 @@ EXAMPLE_TEMPLATE = """
             "modomics_id": "2000000006A",
             "tech": "m6A-SAC-seq",
             "method_id": "e00d694d",
-            "organism": {"taxa_id": 9606, "cto": "HeLa", "assembly": "GRCh38"}
+            "organism": {"taxa_id": 9606, "cto": "HeLa", "assembly_name": "GRCh38"}
         },
         {
             "rna": "WTS",
             "modomics_id": "2000000006A",
             "tech": "m6A-SAC-seq",
             "method_id": "e00d694d",
-            "organism": {"taxa_id": 9606, "cto": "HEK293", "assembly": "GRCh38"}
+            "organism": {"taxa_id": 9606, "cto": "HEK293", "assembly_name": "GRCh38"}
         }
     ]
 }
@@ -56,14 +56,14 @@ EXAMPLE_TEMPLATE_NO_EXTERNAL_SOURCES = """
             "modomics_id": "2000000006A",
             "tech": "m6A-SAC-seq",
             "method_id": "e00d694d",
-            "organism": {"taxa_id": 9606, "cto": "HeLa", "assembly": "GRCh38"}
+            "organism": {"taxa_id": 9606, "cto": "HeLa", "assembly_name": "GRCh38"}
         },
         {
             "rna": "WTS",
             "modomics_id": "2000000006A",
             "tech": "m6A-SAC-seq",
             "method_id": "e00d694d",
-            "organism": {"taxa_id": 9606, "cto": "HEK293", "assembly": "GRCh38"}
+            "organism": {"taxa_id": 9606, "cto": "HEK293", "assembly_name": "GRCh38"}
         }
     ]
 }
