@@ -14,11 +14,11 @@ from scimodom.utils.bedtools_dto import (
     DataAnnotationRecord,
     GenomicAnnotationRecord,
     IntersectRecord,
-    Strand,
     ClosestRecord,
     SubtractRecord,
     ComparisonRecord,
 )
+from scimodom.utils.common_dto import Strand
 
 logger = logging.getLogger(__name__)
 
@@ -161,7 +161,7 @@ class BedToolsService:
                         record.end,
                         record.name,
                         record.score,
-                        record.strand,
+                        record.strand.value,
                         record.id,
                     ]
                 )

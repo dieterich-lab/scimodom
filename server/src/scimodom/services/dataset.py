@@ -452,7 +452,7 @@ class DatasetService:
             end=record.end,
             name=record.name,
             score=record.score,
-            strand=record.strand.value,
+            strand=record.strand,
             thick_start=record.thick_start,
             thick_end=record.thick_end,
             item_rgb=record.item_rgb,

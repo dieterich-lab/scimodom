@@ -124,7 +124,7 @@ class Exporter:
                 str(data.end),
                 data.name,
                 str(data.score),
-                data.strand,
+                data.strand.value,
                 str(data.thick_start),
                 str(data.thick_end),
                 data.item_rgb,

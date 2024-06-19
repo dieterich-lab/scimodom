@@ -2,12 +2,12 @@ import pytest
 
 from scimodom.services.bedtools import BedToolsService
 from scimodom.utils.bedtools_dto import (
-    Strand,
     IntersectRecord,
     ClosestRecord,
     SubtractRecord,
     ComparisonRecord,
 )
+from scimodom.utils.common_dto import Strand
 
 
 @pytest.fixture

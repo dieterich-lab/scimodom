@@ -9,8 +9,7 @@ from scimodom.utils.bed_importer import (
     BedImportEmptyFile,
     EufImporter,
 )
-from scimodom.utils.bedtools_dto import Strand
-
+from scimodom.utils.common_dto import Strand
 
 EUF_FILE = """#fileformat=bedRModv1.7
 #organism=10090

@@ -27,6 +27,7 @@ from scimodom.services.dataset import (
 )
 from scimodom.services.project import ProjectService
 from scimodom.utils.bed_importer import BedImportEmptyFile, BedImportTooManyErrors
+from scimodom.utils.common_dto import Strand
 
 
 # NOTE: force add project directly to avoid using ProjectService
@@ -290,7 +291,7 @@ def test_import_simple(
         assert data[0].chrom == "1"
         assert data[0].start == 0
         assert data[0].name == "m6A"
-        assert data[0].strand == "+"
+        assert data[0].strand == Strand.FORWARD
 
 
 @pytest.mark.parametrize(

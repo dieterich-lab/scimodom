@@ -41,4 +41,7 @@ def get_modifications():
         max_records,
         multi_sort,
     )
+    response["records"] = [
+        {**r, "strand": r["strand"].value} for r in response["records"]
+    ]
     return response

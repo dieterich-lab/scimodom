@@ -1,6 +1,7 @@
 import enum
 from datetime import datetime
 from typing import List, Optional
+from scimodom.utils.common_dto import Strand
 
 from sqlalchemy import (
     String,
@@ -372,7 +373,7 @@ class Data(Base):
     end: Mapped[int] = mapped_column(nullable=False)
     name: Mapped[str] = mapped_column(ForeignKey("modomics.short_name"))
     score: Mapped[int] = mapped_column(nullable=False, index=True)
-    strand: Mapped[str] = mapped_column(String(1), nullable=False)
+    strand: Mapped[Strand] = mapped_column(Enum(Strand), nullable=False)
     thick_start: Mapped[int] = mapped_column(nullable=False)
     thick_end: Mapped[int] = mapped_column(nullable=False)
     item_rgb: Mapped[str] = mapped_column(String(128), nullable=False)

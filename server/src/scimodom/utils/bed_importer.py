@@ -7,9 +7,9 @@ from pydantic import ValidationError
 
 from scimodom.utils.bedtools_dto import (
     EufRecord,
-    Strand,
     Bed6Record,
 )
+from scimodom.utils.common_dto import Strand
 from scimodom.utils.text_file_reader import TextFileReader, TextFileReaderError
 
 logger = logging.getLogger(__name__)

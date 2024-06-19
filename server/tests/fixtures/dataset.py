@@ -14,6 +14,7 @@ from scimodom.database.models import (
     Dataset,
     Data,
 )
+from scimodom.utils.common_dto import Strand
 
 
 @pytest.fixture
@@ -67,7 +68,7 @@ def dataset(Session, setup):  # noqa
         end=120000,
         name="Y",
         score=1000,
-        strand="+",
+        strand=Strand.FORWARD,
         thick_start=100101,
         thick_end=100201,
         item_rgb="128,128,0",
@@ -83,7 +84,7 @@ def dataset(Session, setup):  # noqa
         end=220000,
         name="X",
         score=900,
-        strand="-",
+        strand=Strand.REVERSE,
         thick_start=200101,
         thick_end=200201,
         item_rgb="0,0,128",

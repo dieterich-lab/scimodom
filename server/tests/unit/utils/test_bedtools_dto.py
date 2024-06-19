@@ -1,4 +1,5 @@
-from scimodom.utils.bedtools_dto import Strand, IntersectRecord, ComparisonRecord
+from scimodom.utils.bedtools_dto import IntersectRecord, ComparisonRecord
+from scimodom.utils.common_dto import Strand
 
 
 def test_intersect_record():

@@ -1,18 +1,13 @@
-from enum import Enum
 from typing import Annotated, Optional, Self
 
 from pydantic import BaseModel, Field, model_validator
+
+from scimodom.utils.common_dto import Strand
 
 NonNegativInt = Annotated[int, Field(ge=0)]
 Score = Annotated[int, Field(ge=0, le=1000)]
 PercentInt = Annotated[int, Field(ge=0, le=100)]
 DatasetId = Annotated[str, Field(min_length=12, max_length=12)]
-
-
-class Strand(Enum):
-    FORWARD = "+"
-    REVERSE = "-"
-    UNDEFINED = "."
 
 
 class Bed6Record(BaseModel):
