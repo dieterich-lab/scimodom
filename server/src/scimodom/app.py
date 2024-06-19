@@ -75,30 +75,30 @@ def create_app():
         "--id",
         default=None,
         type=click.INT,
-        help="Assembly ID. Download files for the current assembly (initial setup). This parameter, if given, overrides all other options.",
+        help="Assembly ID. Prepare a new assembly for the latest version. Assembly must exists. This parameter overrides all other options.",
     )
     @click.option(
         "--name",
         default=None,
         type=click.STRING,
-        help="Assembly name. Download files for any assembly. This option must be used with [--taxid].",
+        help="Assembly name. Add an alternative assembly to the database. This option must be used with [--taxid].",
     )
     @click.option(
         "--taxid",
         default=None,
         type=click.INT,
-        help="Taxonomy ID. Download files for any assembly. This option must be used with [--name].",
+        help="Taxonomy ID. Add an alternative assembly to the database. This option must be used with [--name].",
     )
     def assembly(id, name, taxid):
-        """Prepare assembly."""
+        """Prepare new assembly or add alternative assembly."""
         if id:
             kwargs = {"assembly_id": id}
         else:
             if not name:
                 raise NameError(
-                    "Name [--name] is not defined. One of [--id] or [--name] and [--taxid] is required."
+                    "Name [--name] is not defined. It is required with [--taxid]."
                 )
-            if taxid is None:
+            if not taxid:
                 raise NameError(
                     "Name [--taxid] is not defined. It is required with [--name]."
                 )

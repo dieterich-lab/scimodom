@@ -229,14 +229,16 @@ class AssemblyService:
             )
         return lifted_file
 
-    def add_assembly(self, taxa_id: int, name: str) -> None:
-        """Add a new assembly to the database if it does
+    def add_assembly(self, taxa_id: int, name: str) -> int | None:
+        """Add an alternative assembly to the database if it does
         not exist. If it exists, then no further checks are done.
 
         :param taxa_id: Taxonomy ID
         :type taxa_id: int
         :param name: Assembly name
         :type name: str
+        :returns: Newly created assembly ID or None
+        :rtype: int
         """
         try:
             self._session.execute(
@@ -272,6 +274,7 @@ class AssemblyService:
             assembly = Assembly(name=name, taxa_id=taxa_id, version=version_num)
             self._session.add(assembly)
             self._session.commit()
+            return assembly.id
         except Exception:
             self._session.rollback()
             shutil.rmtree(parent)

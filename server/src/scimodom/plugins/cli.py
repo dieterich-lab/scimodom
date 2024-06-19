@@ -18,7 +18,7 @@ from scimodom.database.models import (
     Assembly,
 )
 from scimodom.services.annotation import AnnotationService
-from scimodom.services.assembly import AssemblyService
+from scimodom.services.assembly import get_assembly_service
 from scimodom.services.bedtools import get_bedtools_service
 from scimodom.services.project import ProjectService
 from scimodom.services.data import DataService
@@ -35,43 +35,45 @@ def validate_dataset_title(ctx, param, value):
 
 
 def add_assembly(**kwargs) -> None:
-    """Provides a CLI function to set up a new assembly.
-    This function does not add a new assembly to the database,
-    but merely creates the data structure.
-
-    :param assembly_id: Assembly ID, must exists.
-    :type assembly_id: int
-    :param assembly_name: Assembly name, must exists.
-    :type assembly_name: str
-    :param taxa_id: Taxonomy ID, must exists.
-    :type taxa_id: int
+    """Provides a CLI function to manage assemblies.
+    If "assembly_id" is given, prepares an assembly
+    for the latest version, else adds an alternative
+    assembly using "taxa_id" and "name".
     """
-    session = get_session()
+    assembly_service = get_assembly_service()
 
     assembly_id = kwargs.get("assembly_id", None)
-    if assembly_id is not None:
-        service = AssemblyService.from_id(session, assembly_id=assembly_id)
+    if assembly_id:
+        assembly = assembly_service.get_assembly_by_id(assembly_id)
+        click.secho(
+            f"Preparing assembly for {assembly.name}...",
+            fg="green",
+        )
+        click.secho("Continue [y/n]?", fg="green")
+        c = click.getchar()
+        if c not in ["y", "Y"]:
+            return
+        assembly_service.prepare_assembly_for_version(assembly_id)
+        click.secho("... done!", fg="green")
     else:
-        click.secho("Checking if assembly exists...", fg="green")
         assembly_name = kwargs["assembly_name"]
         taxa_id = kwargs["taxa_id"]
-        service = AssemblyService.from_new(
-            session, name=assembly_name, taxa_id=taxa_id
-        )  # commit, unless...
-        click.secho("... done!", fg="green")
-        return
-
-    click.secho(
-        f"Preparing assembly for {service._name} ({service._taxid}) to {Config.DATABASE_URI}...",
-        fg="green",
-    )
-    click.secho("Continue [y/n]?", fg="green")
-    c = click.getchar()
-    if c not in ["y", "Y"]:
-        return
-    service.create_new()  # set-up, no commit, ID must already exists
-    click.secho("Successfully created.", fg="green")
-    session.close()
+        click.secho(
+            f"Adding alternative assembly for {assembly_name}...",
+            fg="green",
+        )
+        click.secho("Continue [y/n]?", fg="green")
+        c = click.getchar()
+        if c not in ["y", "Y"]:
+            return
+        assembly_id = assembly_service.add_assembly(taxa_id, assembly_name)
+        if assembly_id is None:
+            click.secho(
+                f"Assembly {assembly_name} already exists... nothing will be done!",
+                fg="yellow",
+            )
+            return
+        click.secho(f"... done! New assembly ID is {assembly_id}.", fg="green")
 
 
 def add_annotation(annotation_id: int) -> None:
