@@ -5,7 +5,6 @@ from os import makedirs
 import pytest
 from sqlalchemy import select
 
-import scimodom.database.queries as queries
 import scimodom.utils.utils as utils
 from scimodom.database.models import (
     Selection,
@@ -123,10 +122,9 @@ def _add_selection(session, metadata):
     for d in utils.to_list(metadata):
         rna = d["rna"]
         modomics_id = d["modomics_id"]
-        query = queries.query_column_where(
-            Modification, "id", filters={"rna": rna, "modomics_id": modomics_id}
-        )
-        modification_id = session.execute(query).scalar()
+        modification_id = session.execute(
+            select(Modification.id).filter_by(modomics_id=modomics_id, rna=rna)
+        ).scalar()  # scalar_one() ??
         if not modification_id:
             modification = Modification(rna=rna, modomics_id=modomics_id)
             session.add(modification)
@@ -135,12 +133,9 @@ def _add_selection(session, metadata):
 
         tech = d["tech"]
         method_id = d["method_id"]
-        query = queries.query_column_where(
-            DetectionTechnology,
-            "id",
-            filters={"tech": tech, "method_id": method_id},
-        )
-        technology_id = session.execute(query).scalar()
+        technology_id = session.execute(
+            select(DetectionTechnology.id).filter_by(method_id=method_id, tech=tech)
+        ).scalar()  # .scalar_one()
         if not technology_id:
             technology = DetectionTechnology(tech=tech, method_id=method_id)
             session.add(technology)
@@ -150,10 +145,9 @@ def _add_selection(session, metadata):
         d_organism = d["organism"]
         cto = d_organism["cto"]
         taxa_id = d_organism["taxa_id"]
-        query = queries.query_column_where(
-            Organism, "id", filters={"cto": cto, "taxa_id": taxa_id}
-        )
-        organism_id = session.execute(query).scalar()
+        organism_id = session.execute(
+            select(Organism.id).filter_by(taxa_id=taxa_id, cto=cto)
+        ).scalar()  # .scalar_one()
         if not organism_id:
             organism = Organism(cto=cto, taxa_id=taxa_id)
             session.add(organism)

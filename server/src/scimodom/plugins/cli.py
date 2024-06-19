@@ -17,7 +17,6 @@ from scimodom.database.models import (
     Organism,
     Assembly,
 )
-import scimodom.database.queries as queries
 from scimodom.services.annotation import AnnotationService
 from scimodom.services.assembly import AssemblyService
 from scimodom.services.bedtools import get_bedtools_service
@@ -317,31 +316,24 @@ def add_all(directory: Path, templates: list[str]) -> None:
                 # catch all SQLAlchemy exceptions/database integrity errors...
                 modification_ids = []
                 for mid in modomics_id:
-                    query = queries.query_column_where(
-                        Modification,
-                        "id",
-                        filters={"modomics_id": mid, "rna": rna_type},
+                    modification_id = session.execute(
+                        select(Modification.id).filter_by(modomics_id=mid, rna=rna_type)
+                    ).scalar_one()
+                    modification_ids.append(modification_id)
+                technology_id = session.execute(
+                    select(DetectionTechnology.id).filter_by(
+                        method_id=method_id, tech=technology
                     )
-                    modification_ids.append(session.execute(query).scalar_one())
-                query = queries.query_column_where(
-                    DetectionTechnology,
-                    "id",
-                    filters={"method_id": method_id, "tech": technology},
-                )
-                technology_id = session.execute(query).scalar_one()
-                query = queries.query_column_where(
-                    Organism,
-                    "id",
-                    filters={"taxa_id": taxa_id, "cto": cto},
-                )
-                organism_id = session.execute(query).scalar_one()
+                ).scalar_one()
+                organism_id = session.execute(
+                    select(Organism.id).filter_by(taxa_id=taxa_id, cto=cto)
+                ).scalar_one()
+                # TODO: ??????????
                 # any "new" assembly is created above on create_project()
-                query = queries.query_column_where(
-                    Assembly,
-                    "id",
-                    filters={"name": assembly, "taxa_id": taxa_id},
-                )
-                assembly_id = session.execute(query).scalar_one()
+                # also field assembly should be assembly_name
+                assembly_id = session.execute(
+                    select(Assembly.id).filter_by(name=assembly, taxa_id=taxa_id)
+                ).scalar_one()
                 # add dataset to project
                 data_service = DataService(
                     session,
