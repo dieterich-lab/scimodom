@@ -26,7 +26,7 @@ const pushValues = {
   tech: '',
   taxa_id: null,
   cto: '',
-  assembly: null,
+  assembly_id: null,
   assembly_name: '',
   note: ''
 }
@@ -46,7 +46,7 @@ const validationSchema = object({
       cto: string()
         .max(255, 'At most 255 characters allowed!')
         .required('Cell, tissue, or organ is required!'),
-      assembly: number()
+      assembly_id: number()
         .integer()
         .typeError('Assembly ID must be a number!')
         .transform((_, val) => (val !== '' ? Number(val) : null)),
@@ -211,11 +211,11 @@ onMounted(() => {
             >Cell, tissue, organ</FormTextInput
           >
           <FormDropdown
-            v-model="field.value.assembly"
+            v-model="field.value.assembly_id"
             :options="assembly"
             optionLabel="name"
             optionValue="id"
-            :error="errors[`metadata[${idx}].assembly`]"
+            :error="errors[`metadata[${idx}].assembly_id`]"
             placeholder="Select assembly"
             >Assembly (select from existing assemblies)
           </FormDropdown>

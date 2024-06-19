@@ -23,6 +23,7 @@ from scimodom.database.models import (
 )
 import scimodom.database.queries as queries
 from scimodom.services.permission import PermissionService, get_permission_service
+from scimodom.utils.project_dto import ProjectTemplate
 from scimodom.utils.specifications import SMID_LENGTH
 import scimodom.utils.utils as utils
 
@@ -61,7 +62,7 @@ class ProjectService:
             return super().__new__(cls)
 
     @staticmethod
-    def create_project_request(project: dict) -> str:
+    def create_project_request(project_template: ProjectTemplate) -> str:
         """Project request constructor.
 
         :param project: Project description (json template)
@@ -80,35 +81,8 @@ class ProjectService:
 
         logger.info(f"Writing project request to {filen}...")
 
-        # reformat project template
-        forename = project["forename"]
-        surname = project["surname"]
-        project["contact_name"] = f"{surname}, {forename}"
-        project["date_published"] = project.get("date_published", None)
-        project["external_sources"] = project.get("external_sources", None)
-        for d in utils.to_list(project["external_sources"]):
-            d["doi"] = d["doi"] if d["doi"] != "" else None
-            d["pmid"] = d["pmid"] if d["pmid"] != "" else None
-        for d in utils.to_list(project["metadata"]):
-            d["organism"] = {
-                "taxa_id": d["taxa_id"],
-                "cto": d["cto"],
-                "assembly": d["assembly_name"],
-            }
-            d["extra"] = {
-                "assembly_id": d.get("assembly", None),
-                "note": d["note"] if d["note"] != "" else None,
-            }
-            del d["taxa_id"]
-            del d["cto"]
-            del d["assembly_name"]
-            del d["assembly"]
-            del d["note"]
-        del project["forename"]
-        del project["surname"]
-
         with open(filen, "w") as f:
-            json.dump(project, f, indent="\t")
+            f.write(project_template.model_dump_json(indent=4))
         return uuid
 
     def create_project(self, project: dict) -> None:

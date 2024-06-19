@@ -22,6 +22,7 @@ from scimodom.services.project import ProjectService
 from scimodom.services.mail import get_mail_service
 import scimodom.utils.utils as utils
 from scimodom.utils.bed_importer import BedImportTooManyErrors, BedImportEmptyFile
+from scimodom.utils.project_dto import ProjectTemplate
 
 logger = logging.getLogger(__name__)
 
@@ -37,11 +38,12 @@ def create_project_request():
 
     NOTE: Users are not allowed to create projects.
     """
-    project_form = request.json
+    project_template_raw = request.data
     try:
-        uuid = ProjectService.create_project_request(project_form)
+        project_template = ProjectTemplate.model_validate_json(project_template_raw)
+        uuid = ProjectService.create_project_request(project_template)
     except Exception as exc:
-        logger.error(f"{exc}. The request was: {project_form}.")
+        logger.error(f"{exc}. The request was: {project_template_raw}.")
         return {
             "message": "Failed to create request. Contact the system administrator."
         }, 500
