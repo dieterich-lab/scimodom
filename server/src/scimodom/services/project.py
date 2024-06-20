@@ -84,7 +84,7 @@ class ProjectService:
         :param smid: SMID
         :type smid: str
         """
-        return self._session.scalars(select(Project).where(Project.id == smid)).one()
+        return self._session.get_one(Project, smid)
 
     def get_projects(self, user: User | None = None) -> list[dict[str, any]]:
         """Retrieve all projects.
@@ -308,7 +308,12 @@ class ProjectService:
         metadata_file = Path(self.DATA_PATH, self.METADATA_PATH, f"{smid}.json")
         with open(metadata_file, "w") as fh:
             fh.write(project_template.model_dump_json(indent=4))
-        request_file = Path(self.DATA_PATH, self.REQUEST_PATH, f"{request_uuid}.json")
+        request_file = Path(
+            self.DATA_PATH,
+            self.METADATA_PATH,
+            self.REQUEST_PATH,
+            f"{request_uuid}.json",
+        )
         request_file.unlink()
 
 

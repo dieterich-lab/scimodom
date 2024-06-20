@@ -212,7 +212,7 @@ def test_add_assembly_exists(Session, data_path, setup):
     with Session() as session, session.begin():
         session.add_all(setup)
     service = _get_assembly_service(Session)
-    assert service.add_assembly(9606, "GRCh37") is None
+    assert service.add_assembly(9606, "GRCh37") == 3
     # normally directory exists for an existing assembly, but
     # this function does not check that, it simple returns if
     # the assembly exists

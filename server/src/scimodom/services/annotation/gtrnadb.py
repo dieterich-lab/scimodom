@@ -51,7 +51,7 @@ class GtRNAdbAnnotationService(GenericAnnotationService):
         """
         return self.get_annotation_from_taxid_and_source(taxa_id, "gtrnadb")
 
-    def create_annotation(self, taxa_id: int, domain: str, name: str) -> None:
+    def create_annotation(self, taxa_id: int, **kwargs) -> None:
         """This method automates the creation of GtRNAdb
         annotations for a given organism. The annotation
         must exists in the database.
@@ -72,6 +72,8 @@ class GtRNAdbAnnotationService(GenericAnnotationService):
         if self._release_exists(annotation.id):
             return
 
+        domain = kwargs["domain"]
+        name = kwargs["name"]
         release_path = self.get_release_path(annotation)
         annotation_paths = self._get_annotation_paths(release_path, domain, name)
         annotation_file = annotation_paths["bed"].annotation_file

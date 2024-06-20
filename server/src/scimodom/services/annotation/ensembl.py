@@ -49,7 +49,7 @@ class EnsemblAnnotationService(GenericAnnotationService):
         """
         return self.get_annotation_from_taxid_and_source(taxa_id, "ensembl")
 
-    def create_annotation(self, taxa_id: int) -> None:
+    def create_annotation(self, taxa_id: int, **kwargs) -> None:
         """This method automates the creation of Ensembl
         annotations for a given organism for the current
         release. The annotation must exist in the database.

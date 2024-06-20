@@ -41,8 +41,7 @@ class AssemblyVersionError(Exception):
 
 
 class LiftOverError(Exception):
-    """Exception for handling too many
-    unmapped records during liftover."""
+    """Exception for handling too many unmapped records during liftover."""
 
     pass
 
@@ -104,8 +103,7 @@ class AssemblyService:
         return Path(AssemblyService.DATA_PATH, AssemblyService.ASSEMBLY_PATH)
 
     def get_chrom_file(self, taxa_id: int) -> Path:
-        """Construct file path (chrom sizes) for a
-        given organism.
+        """Construct chrom file path for a given organism.
 
         :param taxa_id: Taxonomy ID
         :type taxa_id: int
@@ -116,7 +114,8 @@ class AssemblyService:
         return Path(path, organism, name_for_version, self.CHROM_FILE)
 
     def get_chain_file(self, taxa_id: int, name: str) -> Path:
-        """Construct file path (chain file) for organism.
+        """Construct chain file path for organism.
+
         Only to (not from) current version.
 
         :param taxa_id: Taxonomy ID
@@ -160,8 +159,7 @@ class AssemblyService:
         )
 
     def is_latest_assembly(self, assembly: Assembly) -> bool:
-        """Check if assembly version matches the
-        database latest version.
+        """Check if assembly version matches latest version.
 
         :param assembly: Assembly instance
         :type assembly: Assembly
@@ -172,8 +170,7 @@ class AssemblyService:
         return assembly.version == self._version
 
     def get_seqids(self, taxa_id: int) -> list[str]:
-        """Returns the chromosomes for a given assembly
-        as a list.
+        """Return chromosomes for a given assembly as a list.
 
         :param taxa_id: Taxonomy ID
         :type taxa_id: int
@@ -193,7 +190,6 @@ class AssemblyService:
         threshold: float = 0.3,
     ) -> str:
         """Liftover records to current assembly.
-        Unmapped features are discarded.
 
         :param assembly: Assembly instance
         :type assembly: Assembly
@@ -224,27 +220,28 @@ class AssemblyService:
             )
         if unmapped_lines > 0:
             logger.warning(
-                f"{unmapped_lines} records could not be mapped and were discarded... "
+                f"{unmapped_lines} records could not be mapped... "
                 "Contact the system administrator if you have questions."
             )
         return lifted_file
 
-    def add_assembly(self, taxa_id: int, name: str) -> int | None:
-        """Add an alternative assembly to the database if it does
-        not exist. If it exists, then no further checks are done.
+    def add_assembly(self, taxa_id: int, name: str) -> int:
+        """Add an alternative assembly to the database.
+
+        If assembly exists, nothing is done.
 
         :param taxa_id: Taxonomy ID
         :type taxa_id: int
         :param name: Assembly name
         :type name: str
-        :returns: Newly created assembly ID or None
+        :returns: Newly created or existing assembly ID
         :rtype: int
         """
         try:
-            self._session.execute(
+            assembly = self._session.execute(
                 select(Assembly).filter_by(taxa_id=taxa_id, name=name)
             ).scalar_one()
-            return
+            return assembly.id
         except NoResultFound:
             pass
 
@@ -281,8 +278,9 @@ class AssemblyService:
             raise
 
     def prepare_assembly_for_version(self, assembly_id: int) -> None:
-        """Setup directories and files for the current database assembly version,
-        e.g. initial setup. This method does not update the database, i.e.
+        """Prepare directories and files for the latest version.
+
+        This method does not update the database, i.e.
         the assembly must exists.
 
         :param assembly_id: Assembly ID
@@ -291,7 +289,8 @@ class AssemblyService:
         assembly = self.get_assembly_by_id(assembly_id)
         if not self.is_latest_assembly(assembly):
             raise AssemblyVersionError(
-                f"Mismatch between assembly version {assembly.version} and database version {self._version}."
+                f"Mismatch between assembly version {assembly.version} and "
+                f"database version {self._version}."
             )
 
         logger.info(f"Setting up assembly {assembly.name} for current version...")
@@ -300,9 +299,9 @@ class AssemblyService:
         parent = chrom_file.parent
         try:
             parent.mkdir(parents=True, exist_ok=False)
-        except FileExistsError as error:
-            msg = f"Assembly directory exists: {parent}."
-            raise Exception(msg) from error
+        except FileExistsError as exc:
+            exc.add_note(f"Assembly directory exists: {parent}.")
+            raise
 
         try:
             self._handle_gene_build(assembly, chrom_file)
@@ -353,8 +352,8 @@ class AssemblyService:
         coord_sysver = gene_build["default_coord_system_version"]
         if coord_sysver != assembly.name:
             raise AssemblyVersionError(
-                f"Mismatch between assembly {assembly.name} and coord system version "
-                f"{coord_sysver}. Upgrade your database!"
+                f"Mismatch between assembly {assembly.name} and coord system "
+                f"version {coord_sysver}. Upgrade your database!"
             )
         chroms = gene_build["karyotype"]
         top_level = {
@@ -387,7 +386,7 @@ class AssemblyService:
 
 @cache
 def get_assembly_service() -> AssemblyService:
-    """Helper function to set up an AssemblyService object by injecting its dependencies.
+    """Provide helper function to set up an AssemblyService.
 
     :returns: Assembly service instance
     :rtype: AssemblyService

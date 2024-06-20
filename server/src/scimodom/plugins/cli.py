@@ -1,30 +1,31 @@
 from collections import defaultdict
-import json
 from pathlib import Path
-import sys
-import traceback
+import re
 
 import click
-from sqlalchemy import select, exists
+from sqlalchemy import select
+from sqlalchemy.exc import NoResultFound
 
-from scimodom.config import Config
 from scimodom.database.database import get_session
 from scimodom.database.models import (
-    Project,
     Dataset,
     Modification,
     DetectionTechnology,
     Organism,
-    Assembly,
 )
-from scimodom.services.annotation import AnnotationService
-from scimodom.services.assembly import get_assembly_service
-from scimodom.services.bedtools import get_bedtools_service
-from scimodom.services.project import ProjectService
-from scimodom.services.data import DataService
+from scimodom.services.annotation import AnnotationSource, get_annotation_service
+from scimodom.services.dataset import get_dataset_service
+from scimodom.services.project import get_project_service
+from scimodom.services.assembly import (
+    AssemblyVersionError,
+    AssemblyNotFoundError,
+    get_assembly_service,
+)
+from scimodom.services.permission import get_permission_service
 from scimodom.services.setup import get_setup_service
 from scimodom.services.user import get_user_service, NoSuchUser
 import scimodom.utils.utils as utils
+from scimodom.utils.project_dto import ProjectTemplate
 
 
 def validate_dataset_title(ctx, param, value):
@@ -35,9 +36,10 @@ def validate_dataset_title(ctx, param, value):
 
 
 def add_assembly(**kwargs) -> None:
-    """Provides a CLI function to manage assemblies.
-    If "assembly_id" is given, prepares an assembly
-    for the latest version, else adds an alternative
+    """Provide a CLI function to manage assemblies.
+
+    If "assembly_id" is given, prepare an assembly
+    for the latest version, else add an alternative
     assembly using "taxa_id" and "name".
     """
     assembly_service = get_assembly_service()
@@ -53,7 +55,20 @@ def add_assembly(**kwargs) -> None:
         c = click.getchar()
         if c not in ["y", "Y"]:
             return
-        assembly_service.prepare_assembly_for_version(assembly_id)
+        try:
+            assembly_service.prepare_assembly_for_version(assembly_id)
+        except FileExistsError:
+            click.secho(
+                "Assembly directory exists... Aborting!",
+                fg="red",
+            )
+            return
+        except AssemblyVersionError:
+            click.secho(
+                "Cannot create assembly for this version... Aborting!",
+                fg="red",
+            )
+            return
         click.secho("... done!", fg="green")
     else:
         assembly_name = kwargs["assembly_name"]
@@ -67,322 +82,275 @@ def add_assembly(**kwargs) -> None:
         if c not in ["y", "Y"]:
             return
         assembly_id = assembly_service.add_assembly(taxa_id, assembly_name)
-        if assembly_id is None:
-            click.secho(
-                f"Assembly {assembly_name} already exists... nothing will be done!",
-                fg="yellow",
-            )
-            return
-        click.secho(f"... done! New assembly ID is {assembly_id}.", fg="green")
+        click.secho(f"... done! Assembly ID is {assembly_id}.", fg="green")
 
 
-def add_annotation(annotation_id: int) -> None:
-    """Provides a CLI function to set up a new annotation.
-    This function does not add a new annotation to the database,
-    but merely creates the data structure.
+def add_annotation(taxa_id: int, source: AnnotationSource, **kwargs) -> None:
+    """Provide a CLI function to manage annotation.
 
-    :param annotation_id: Annotation ID, must exists.
-    :type annotation_id: int
+    Annotation must exists (only latest version allowed).
+
+    :param taxa_id: Taxonomy ID.
+    :type taxa_id: int
+    :param source: Annotation source
+    :type source: AnnotationSource
     """
-    session = get_session()
-    bedtools_service = get_bedtools_service()
-    service = AnnotationService(
-        session, badtools_service=bedtools_service, annotation_id=annotation_id
-    )
+    annotation_service = get_annotation_service()
     click.secho(
-        f"Preparing annotation for {service._taxid} ({service._release}) to {Config.DATABASE_URI}...",
+        f"Preparing {source.value} annotation for {taxa_id}...",
         fg="green",
     )
     click.secho("Continue [y/n]?", fg="green")
     c = click.getchar()
     if c not in ["y", "Y"]:
         return
-    service.create_annotation()  # commit, unless...
-    click.secho("Successfully created.", fg="green")
-    session.close()
+    annotation_service.create_annotation(source, taxa_id, **kwargs)
+    click.secho("... done!", fg="green")
 
 
-def add_project(project_template: str | Path, add_user: bool = True) -> None:
-    """Provides a CLI function to add a new project.
+def add_project(
+    project_template: ProjectTemplate, request_uuid: str, add_user: bool = True
+) -> None:
+    """Provide a CLI function to add a new project.
 
-    :param project_template: Path to a json file with
-    required fields.
-    :type project_template: str or Path
+    :param project_template: Project template
+    :type project_template: ProjectTemplate
+    :param request_uuid: UUID of request
+    :type request_uuid: str
     :param add_user: Associate user and newly created project
     :type add_user: bool
     """
-    session = get_session()
-    # load project metadata
-    project = json.load(open(project_template))
-    # add project
-    click.secho(
-        f"Adding project {project_template} to {Config.DATABASE_URI}...", fg="green"
-    )
+    project_service = get_project_service()
+    assembly_service = get_assembly_service()
+
+    for metadata in project_template.metadata:
+        try:
+            _add_assembly_to_template_if_none(metadata.organism, assembly_service)
+        except AssemblyNotFoundError:
+            click.secho(
+                f"No such assembly '{metadata.organism.assembly_id}'... Aborting!",
+                fg="red",
+            )
+            return
+    click.secho(f"Adding project {project_template.title}...", fg="green")
     click.secho("Continue [y/n]?", fg="green")
     c = click.getchar()
     if c not in ["y", "Y"]:
         return
-    project_service = ProjectService(session)
-
-    # TODO
-    # validation here
-    # project_template = ProjectTemplate.model_validate_json(project_template_raw)
-    # then pass model (WE NEED TO UPDATE THE MODEL VEFORE WITH ASSEMBLY ID IF NOT THERE)
-    # IE. WE NEED TO CALL ASSEMBLY SERVICE HERE TO CREATE IF NOT THEN ASSIGN
-    # WHAT OTHER CASES?
-    # CHANGE SO THAT THE PORJECT TEMPLATE INPUT IS ONLY THE UUID OF IT, THE ACTUAL
-    # PATH IS PREDEFINED IN PROJECT SERVICE request path wich we can get anyway
-    # pass the uuid here as well
-    project_service.create_project(project)  # commit, unless...
-    click.secho(
-        f"Successfully created. The SMID for this project is {project_service.get_smid()}.",
-        fg="green",
-    )
-    project_service.update_assembly_and_annotation()  # commit, unless...
-    click.secho("Successfully updated assembly and annotation", fg="green")
+    try:
+        smid = project_service.create_project(project_template, request_uuid)
+        click.secho(
+            f"Created project with SMID '{smid}'... done!",
+            fg="green",
+        )
+    except Exception as exc:
+        click.secho(
+            f"Failed to create project: {exc}... Aborting!",
+            fg="red",
+        )
+        return
     if add_user:
-        username = project["contact_email"]
-        click.secho(f"Adding user {username} to newly created project...", fg="green")
-        click.secho("Continue [y/n]?", fg="green")
-        c = click.getchar()
-        if c not in ["y", "Y"]:
-            return
-        user_service = get_user_service()
-        try:
-            user = user_service.get_user_by_email(username)
-        except NoSuchUser:
-            click.secho(
-                f"Unknown user {username}... Aborting!",
-                fg="red",
-            )
-        else:
-            # TODO here and below, call permission service directly, not project service
-            # now crete project return newly created smid
-            project_service.associate_project_to_user(user)  # commit
-            click.secho(
-                "Successfully added user to project.",
-                fg="green",
-            )
+        add_user_to_project(project_template.contact_email, smid)
 
 
 def add_user_to_project(username: str, smid: str) -> None:
-    """Provides a CLI function to force add a user to a project.
+    """Provide a CLI function to add a user to a project.
 
     :param username: Username (email)
     :type username: str
     :param smid: SMID
     :type smid: str
     """
-    session = get_session()
-    click.secho(f"Adding user {username} to {smid}...", fg="green")
+    project_service = get_project_service()
+    user_service = get_user_service()
+    permission_service = get_permission_service()
+    click.secho(f"Adding user '{username}' to project '{smid}'...", fg="green")
     click.secho("Continue [y/n]?", fg="green")
     c = click.getchar()
     if c not in ["y", "Y"]:
         return
-    project_service = ProjectService(session)
-    user_service = get_user_service()
+    try:
+        _ = project_service.get_by_id(smid)
+    except NoResultFound:
+        click.secho(
+            f"Unrecognised SMID {smid}... Aborting!",
+            fg="red",
+        )
+        return
     try:
         user = user_service.get_user_by_email(username)
     except NoSuchUser:
-        click.secho(
-            f"Unknown user {username}... Aborting!",
-            fg="red",
-        )
+        click.secho(f"No such user with {username}... Aborting!", fg="red")
+        return
     else:
-        is_found = session.query(exists().where(Project.id == smid)).scalar()
-        if not is_found:
-            click.secho(
-                f"Unrecognised SMID {smid}... Aborting!",
-                fg="red",
-            )
-            return
-        project_service.associate_project_to_user(user, smid=smid)  # commit
-        click.secho(
-            "Successfully added user to project.",
-            fg="green",
-        )
+        permission_service.insert_into_user_project_association(user, smid)
+        click.secho("Added user to project...", fg="green")
+    click.secho("... done!", fg="green")
 
 
 def add_dataset(
+    file_source: str,
     smid: str,
     title: str,
-    filen: str | Path,
     assembly_id: int,
     modification_ids: list[int],
     organism_id: int,
     technology_id: int,
+    annotation_source: AnnotationSource,
 ) -> None:
-    """Provides a CLI function to add a new dataset
-    to a project. Parameter values are validated by
-    DataService. Project and assembly must exist.
+    """Provide a CLI function to add a new dataset.
 
+    :param file_source: Dataset file.
+    :type file_source: str
     :param smid: SMID (project must exists).
     :type smid: str
     :param title: Dataset title
     :type title: str
-    :param filen: Path to dataset
-    :type filen: str or Path
     :param assembly_id: Assembly ID
     :type assembly_id: int
     :param modification_ids: Modification ID(s) (RNA type, modomics ID)
-    :type modification_ids: int or list of int
+    :type modification_ids: list of int
     :param technology_id: Technology ID (method ID, technology)
     :type technology_id: int
     :param organism_id: Organism ID (taxa ID, cto)
     :type organism_id: int
     """
-    session = get_session()
-
-    service = DataService(
-        session,
-        smid,
-        title,
-        filen,
-        assembly_id,
-        modification_ids=modification_ids,
-        technology_id=technology_id,
-        organism_id=organism_id,
+    dataset_service = get_dataset_service()
+    click.secho(
+        f"Adding dataset '{title}' to project with SMID '{smid}'... ", fg="green"
     )
-    msg = f"Adding dataset {service._filen} to project with SMID={service._smid} for assembly ID={service._assembly_id}, with modification IDs={', '.join([str(m) for m in service._modification_ids])}, technology ID={service._technology_id}, and organism ID={service._organism_id} to {Config.DATABASE_URI}..."
-    click.secho(msg, fg="green")
     click.secho("Continue [y/n]?", fg="green")
     c = click.getchar()
     if c not in ["y", "Y"]:
         return
-    service.create_dataset()  # commit, unless...
+    try:
+        with open(file_source) as fp:
+            eufid = dataset_service.import_dataset(
+                fp,
+                source=file_source,
+                smid=smid,
+                title=title,
+                assembly_id=assembly_id,
+                modification_ids=modification_ids,
+                organism_id=organism_id,
+                technology_id=technology_id,
+                annotation_source=annotation_source,
+            )
+    except Exception as exc:
+        click.secho(f"Failed to create dataset: {exc}... Aborting!", fg="red")
+        return
     click.secho(
-        f"Successfully created. The EUFID for this dataset is {service.get_eufid()}.",
+        f"Created dataset with EUFID '{eufid}'...",
         fg="green",
     )
-    session.close()
+    click.secho("... done!", fg="green")
 
 
-def add_all(directory: Path, templates: list[str]) -> None:
-    """Provides a CLI function to add one or more
-    projects and the associated dataset in batch (no
-    prompt confirmation). This requires a non-standard
-    project template (json) with additional keys:
-    "file_name" and "data_title" for each "metadata" value.
-    All templates and bedRMod (EU-formatted) files must
-    be under the same directory. Values in the template
-    are used "as is" to query the database.
+def add_all(
+    input_directory: Path,
+    project_templates: list[ProjectTemplate],
+    request_uuids: list[str],
+    annotation_source: AnnotationSource,
+) -> None:
+    """Provide a CLI function to batch add projects and dataset.
 
-    :param directory: Directory where project templates and data
-    files are located.
+    The "note" from the metadata template must contain the
+    dataset file name and title as follows:
+    'file=filename.bedrmod, title=title'. All dataset
+    file must be under 'input_directory'.
+
+    :param directory: Directory where data files are located.
     :type directory: Path
-    :param templates: A list of project templates (file name only w/o extension)
-    :type templates: list of str
+    :param project_templates: A list of project templates
+    :type templates: list of ProjectTemplate
+    :param request_uuids: Original request UUIDs
+    :type request_uuis: list of str
+    :param annotation_source: Annotation source
+    :type annotation_source: AnnotationSource
     """
-    extra_cols = {"file": "file_name", "title": "data_title"}
+    regexp = re.compile(r"(file=)(.*)(?:,\s*)(title=)(.*)")
+    project_service = get_project_service()
+    dataset_service = get_dataset_service()
+    assembly_service = get_assembly_service()
 
-    session = get_session()
-
-    projects = _get_projects(directory, templates, list(extra_cols.values()))
-
-    for project in projects:
-        project_file = project["path"]
-        project_title = project["title"]
-        click.secho(f"Adding {project_title}...", fg="green")
-        try:
-            # TODO
-            # validation here
-            # project_template = ProjectTemplate.model_validate_json(project_template_raw)
-            project_service = ProjectService(session)
-            project_service.create_project(project)  # commit, unless...
-            project_service.update_assembly_and_annotation()  # commit, unless
-            smid = project_service.get_smid()
-            metadata = _get_dataset(project, extra_cols["file"])
-            for filen, meta in metadata.items():
-                data_file = Path(directory, filen)
-                if not data_file.is_file():
-                    click.secho(
-                        f"FileNotFoundError: not such file {data_file.as_posix()}...",
-                        fg="red",
-                    )
-                    raise FileNotFoundError
-                if len(meta) > 1:
-                    try:
-                        (
-                            rna_type,
-                            modomics_id,
-                            method_id,
-                            technology,
-                            taxa_id,
-                            cto,
-                            assembly,
-                            title,
-                        ) = _get_repeated(meta, extra_cols["title"])
-                    except TypeError:
-                        click.secho(
-                            f"There is a problem with the template for dataset {filen}...",
-                            fg="red",
-                        )
-                        raise
-                else:
-                    (
-                        rna_type,
-                        modomics_id,
-                        method_id,
-                        technology,
-                        taxa_id,
-                        cto,
-                        assembly,
-                        title,
-                    ) = _get_single(meta[0], extra_cols["title"])
-                # query selection
-                # catch all SQLAlchemy exceptions/database integrity errors...
-                modification_ids = []
-                for mid in modomics_id:
-                    modification_id = session.execute(
-                        select(Modification.id).filter_by(modomics_id=mid, rna=rna_type)
-                    ).scalar_one()
-                    modification_ids.append(modification_id)
-                technology_id = session.execute(
-                    select(DetectionTechnology.id).filter_by(
-                        method_id=method_id, tech=technology
-                    )
-                ).scalar_one()
-                organism_id = session.execute(
-                    select(Organism.id).filter_by(taxa_id=taxa_id, cto=cto)
-                ).scalar_one()
-                # TODO: ??????????
-                # any "new" assembly is created above on create_project()
-                # also field assembly should be assembly_name
-                assembly_id = session.execute(
-                    select(Assembly.id).filter_by(name=assembly, taxa_id=taxa_id)
-                ).scalar_one()
-                # add dataset to project
-                data_service = DataService(
-                    session,
-                    smid,
-                    title,
-                    Path(directory, filen),
-                    assembly_id,
-                    modification_id=modification_ids,
-                    technology_id=technology_id,
-                    organism_id=organism_id,
-                )
-                data_service.create_dataset()  # commit, unless...
+    valid_templates = {}
+    for project_template, request_uuid in zip(project_templates, request_uuids):
+        valid_metadata = []
+        valid_filenames = defaultdict(list)
+        for metadata in project_template.metadata:
+            filename = regexp.search(metadata.note).group(2).strip()
+            try:
+                _add_assembly_to_template_if_none(metadata.organism, assembly_service)
+                valid_metadata.append(metadata)
+                valid_filenames[filename].append((metadata.rna, metadata.modomics_id))
+            except AssemblyNotFoundError:
                 click.secho(
-                    f"Successfully created. The EUFID for this dataset is {data_service.get_eufid()}.",
-                    fg="green",
+                    f"No such assembly '{metadata.organism.assembly_id}'... skipping '{filename}'!",
+                    fg="red",
                 )
-        except Exception as exc:
-            msg = f"Failed to add project template {project_file}: {exc}. Skipping project alltogether!"
-            click.secho(msg, fg="red")
-            traceback.print_exc(file=sys.stdout)
-            session.rollback()
-        else:
+                continue
+        project_template.metadata = valid_metadata
+        if len(valid_metadata) == 0:
             click.secho(
-                f"Successfully created. The SMID for this project is {smid}.",
+                f"No valid dataset... skipping '{project_template.title}'!",
+                fg="red",
+            )
+            continue
+        click.secho(f"Adding project {project_template.title}...", fg="green")
+        try:
+            smid = project_service.create_project(project_template, request_uuid)
+            click.secho(
+                f"Created project with SMID '{smid}'... done!",
                 fg="green",
             )
-        finally:
-            session.close()
+            valid_templates[smid] = (project_template, valid_filenames)
+        except Exception as exc:
+            click.secho(
+                f"Failed to create project: {exc}... skipping {project_template.title}!",
+                fg="red",
+            )
+            continue
+
+    visited = set()
+    for smid, (project, filenames) in valid_templates.items():
+        for metadata in project.metadata:
+            filename = regexp.search(metadata.note).group(2).strip()
+            file_path = Path(input_directory, filename)
+            title = regexp.search(metadata.note).group(4).strip()
+            if filename in visited:
+                continue
+            visited.add(filename)
+            modification_ids = _get_modification_ids(filenames[filename])
+            organism_id = _get_organism_id(metadata.organism)
+            technology_id = _get_technology_id(metadata)
+            try:
+                with open(file_path) as fp:
+                    eufid = dataset_service.import_dataset(
+                        fp,
+                        source=file_path.as_posix(),
+                        smid=smid,
+                        title=title,
+                        assembly_id=metadata.organism.assembly_id,
+                        modification_ids=modification_ids,
+                        organism_id=organism_id,
+                        technology_id=technology_id,
+                        annotation_source=annotation_source,
+                    )
+                click.secho(
+                    f"Created dataset with EUFID '{eufid}' for project with SMID '{smid}'...",
+                    fg="green",
+                )
+            except Exception as exc:
+                click.secho(
+                    f"Failed to create dataset: {exc}... skipping {filename}!", fg="red"
+                )
+                continue
+    click.secho("... done!", fg="green")
 
 
 def upsert(init: bool, **kwargs) -> None:
-    """Provies a CLI function for the SetupService.
+    """Provide a CLI function for the SetupService.
+
     Upsert a given table, or all default tables (defined
     in the config).
 
@@ -409,84 +377,50 @@ def upsert(init: bool, **kwargs) -> None:
     click.secho("Successfully performed INSERT... ON DUPLICATE KEY UPDATE.", fg="green")
 
 
-def _get_single(metadata, title):
+def _add_assembly_to_template_if_none(organism, assembly_service):
+    click.secho("Checking if assembly ID is defined...", fg="green")
+    if organism.assembly_id is None:
+        assembly_id = assembly_service.add_assembly(
+            organism.taxa_id, organism.assembly_name
+        )
+        click.secho(
+            f"Updating project metadata template with assembly ID '{assembly_id}'... ",
+            fg="yellow",
+        )
+        organism.assembly_id = assembly_id
+    else:
+        _ = assembly_service.get_assembly_by_id(organism.assembly_id)
+
+
+def _get_modification_ids(values):
+    modification_ids = []
+    for rna, modomics in values:
+        modification_id = (
+            get_session()
+            .execute(select(Modification.id).filter_by(rna=rna, modomics_id=modomics))
+            .scalar_one()
+        )
+        modification_ids.append(modification_id)
+    return modification_ids
+
+
+def _get_organism_id(organism):
     return (
-        metadata["rna"],
-        [metadata["modomics_id"]],
-        metadata["method_id"],
-        metadata["tech"],
-        int(metadata["organism"]["taxa_id"]),
-        metadata["organism"]["cto"],
-        metadata["organism"]["assembly"],
-        metadata[title],
+        get_session()
+        .execute(
+            select(Organism.id).filter_by(taxa_id=organism.taxa_id, cto=organism.cto)
+        )
+        .scalar_one()
     )
 
 
-def _get_repeated(metadata, title):
-    for key in ["rna", "tech", "method_id"]:
-        if len(set([m[key] for m in metadata])) > 1:
-            click.secho(f"Only one {key} type allowed per dataset!", fg="red")
-            return None
-    for key in ["taxa_id", "cto", "assembly"]:
-        if len(set([m["organism"][key] for m in metadata])) > 1:
-            click.secho(
-                f"Only one {key} type allowed per dataset for organism!", fg="red"
+def _get_technology_id(metadata):
+    return (
+        get_session()
+        .execute(
+            select(DetectionTechnology.id).filter_by(
+                method_id=metadata.method_id, tech=metadata.tech
             )
-            return None
-    if len(set([m[title] for m in metadata])) > 1:
-        click.secho("Titles differ!", fg="red")
-        return None
-    modomics_id = [m["modomics_id"] for m in metadata]
-    if len(set(modomics_id)) == 1:
-        click.secho("Multiple metadata entries appear to be identical!", fg="red")
-        return None
-    return (
-        metadata[0]["rna"],
-        modomics_id,
-        metadata[0]["method_id"],
-        metadata[0]["tech"],
-        int(metadata[0]["organism"]["taxa_id"]),
-        metadata[0]["organism"]["cto"],
-        metadata[0]["organism"]["assembly"],
-        metadata[0][title],
+        )
+        .scalar_one()
     )
-
-
-def _get_templates(directory, templates):
-    all_paths = []
-    for template in templates:
-        path = Path(directory, f"{template}.json")
-        if not path.is_file():
-            click.secho(f"Template {path} missing... Skipping!", fg="red")
-            continue
-        all_paths.append(path)
-    return all_paths
-
-
-def _get_projects(directory, templates, extra_cols):
-    all_templates = _get_templates(directory, templates)
-    all_projects = []
-    for template in all_templates:
-        handle = open(template, "r")
-        project = json.load(handle)
-        project["path"] = template.as_posix()
-        for d in utils.to_list(project["metadata"]):
-            try:
-                utils.check_keys_exist(d.keys(), extra_cols)
-            except:
-                click.secho(
-                    f"Missing keys in {template} for metadata. Skipping project alltogether!",
-                    fg="red",
-                )
-                break
-        else:
-            all_projects.append(project)
-        handle.close()
-    return all_projects
-
-
-def _get_dataset(project, filen):
-    d = defaultdict(list)
-    for metadata in project["metadata"]:
-        d[metadata[filen]].append(metadata)
-    return d
