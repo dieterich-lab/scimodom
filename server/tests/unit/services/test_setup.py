@@ -2,6 +2,7 @@ from io import StringIO
 
 import pytest
 
+from scimodom.database.models import Taxonomy
 from scimodom.services.setup import SetupService
 import scimodom.utils.utils as utils
 
@@ -29,8 +30,6 @@ csvStringIO = StringIO(csvString)
 
 # setup = SetupService(Session())
 
-# model = utils.get_model("Taxonomy")
-# expected_table = setup.get_table(model, csvStringIO)
 # setup.validate_table(model, expected_table)
 
 ## FAILS -
@@ -45,7 +44,6 @@ csvStringIO = StringIO(csvString)
 def test_get_table(Session):
     setup = SetupService(Session())
 
-    model = utils.get_model("Taxonomy")
-    expected_table = setup.get_table(model, csvStringIO)
+    expected_table = setup.get_table(Taxonomy, csvStringIO)
     cols = expected_table.columns.tolist()
     assert cols == ["id", "domain", "kingdom", "phylum"]

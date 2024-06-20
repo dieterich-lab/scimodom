@@ -81,13 +81,13 @@ def add_dataset():
         with open(upload_path) as fp:
             dataset_service.import_dataset(
                 fp,
-                source=upload_path,
+                source=upload_path.as_posix(),
                 smid=dataset_form["smid"],
                 title=dataset_form["title"],
                 assembly_id=dataset_form["assembly_id"],
                 modification_ids=utils.to_list(dataset_form["modification_id"]),
-                technology_id=dataset_form["technology_id"],
                 organism_id=dataset_form["organism_id"],
+                technology_id=dataset_form["technology_id"],
                 annotation_source=AnnotationSource.ENSEMBL,
             )
     except SelectionNotFoundError:

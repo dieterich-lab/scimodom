@@ -1,14 +1,12 @@
-from datetime import date, datetime, timezone
-from itertools import chain
-import json
-from pathlib import Path
-import uuid
+from datetime import datetime
 
 import pytest
-import shortuuid
 from sqlalchemy import select
 
 from scimodom.database.models import (
+    Modification,
+    Organism,
+    DetectionTechnology,
     Project,
     ProjectSource,
     ProjectContact,
@@ -18,357 +16,233 @@ from scimodom.database.models import (
     UserProjectAssociation,
 )
 from scimodom.services.project import ProjectService, DuplicateProjectError
-import scimodom.utils.utils as utils
+from scimodom.utils.project_dto import (
+    ProjectTemplate,
+    ProjectMetaDataDto,
+    ProjectOrganismDto,
+    ProjectSourceDto,
+)
 
 
-def _get_project(
-    project_template,
-    external_sources_fmt="list",
-    metadata_fmt="list",
-    missing_key=None,
-    missing_date=False,
-):
-    """\
-    2023-08-25 Project template (JSON format).
-
-    All keys are required.
-    "external_sources" can be None (null in yml).
-    "external_sources" and "metadata" can be list of dict, or dict.
-
-    Parameters
-    ----------
-    external_sources_fmt: str or None
-        "external_sources" format (list, dict, or None)
-    metadata_fmt: str
-        "metadata" format (list or dict)
-    missing_key: str or None
-        missing_key
-    missing_date: Bool
-        missing_date
-
-    Returns
-    -------
-    dict
-        Project template
-    """
-
-    project = project_template.copy()
-
-    external_sources = project["external_sources"]
-    if external_sources_fmt == "list":
-        pass
-    elif external_sources_fmt == "dict":
-        external_sources = external_sources[0]
-    elif external_sources_fmt is None:
-        external_sources = None
-    else:
-        raise ValueError
-
-    if missing_date:
-        project["date_published"] = None
-
-    metadata = project["metadata"]
-    if metadata_fmt == "list":
-        pass
-    elif metadata_fmt == "dict":
-        metadata = metadata[0]
-    else:
-        raise ValueError
-    project["external_sources"] = external_sources
-    project["metadata"] = metadata
-
-    if missing_key:
-        if missing_key in project.keys():
-            del project[missing_key]
-        else:
-            if not missing_key == "external_sources" and missing_key in list(
-                set(chain.from_iterable(utils.to_list(project["external_sources"])))
-            ):
-                if external_sources_fmt == "list":
-                    del project["external_sources"][0][missing_key]
-                else:
-                    del project["external_sources"][missing_key]
-                # what is None???
-            elif not missing_key == "metadata" and missing_key in list(
-                set(chain.from_iterable(utils.to_list(project["metadata"])))
-            ):
-                if metadata_fmt == "list":
-                    del project["metadata"][0][missing_key]
-                else:
-                    del project["metadata"][missing_key]
-            elif (
-                not missing_key == "organism"
-                and missing_key
-                in utils.to_list(project["metadata"])[0]["organism"].keys()
-            ):
-                if metadata_fmt == "list":
-                    del project["metadata"][0]["organism"][missing_key]
-                else:
-                    del project["metadata"]["organism"][missing_key]
-
-    return project
-
-
-# be careful, this will not pick "new" KeyErrors...
-# but test_project_create_project will
-@pytest.mark.parametrize(
-    "external_sources_fmt,metadata_fmt,missing_key",
-    [
-        # first level keys w/ or w/o external_sources
-        ("list", "list", "title"),
-        (None, "list", "title"),
-        ("list", "list", "summary"),
-        ("list", "list", "contact_name"),
-        ("list", "list", "contact_institution"),
-        ("list", "list", "contact_email"),
-        ("list", "list", "date_published"),
-        ("list", "list", "external_sources"),
-        ("list", "list", "metadata"),
-        # second level keys w/ list or dict
-        ("list", "list", "doi"),
-        ("dict", "list", "doi"),
-        # (None, "list", "doi"), does not raise KeyError!
-        ("list", "list", "pmid"),
-        ("list", "list", "rna"),
-        ("list", "dict", "rna"),
-        ("list", "list", "modomics_id"),
-        ("list", "list", "tech"),
-        ("list", "list", "method_id"),
-        ("list", "list", "organism"),
-        # third level keys w/ list or dict
-        ("list", "list", "taxa_id"),
-        ("list", "dict", "taxa_id"),
-        ("list", "list", "cto"),
-        ("list", "list", "assembly"),
+PROJECT = ProjectTemplate(
+    title="Title",
+    summary="Summary",
+    contact_name="Contact Name",
+    contact_institution="Contact Institution",
+    contact_email="email@example.com",
+    date_published="2024-01-01",
+    external_sources=[ProjectSourceDto(doi="DOI", pmid=12345678)],
+    metadata=[
+        ProjectMetaDataDto(
+            rna="WTS",
+            modomics_id="2000000006A",
+            tech="Tech-seq",
+            method_id="0ee048bc",
+            organism=ProjectOrganismDto(
+                taxa_id=9606, cto="Cell", assembly_name="GRCh38"
+            ),
+        ),
+        ProjectMetaDataDto(
+            rna="WTS",
+            modomics_id="2000000005C",
+            tech="Tech-seq",
+            method_id="0ee048bc",
+            organism=ProjectOrganismDto(
+                taxa_id=10090, cto="Organ", assembly_name="GRCm38"
+            ),
+        ),
     ],
 )
-def test_project_validate_keys_error(
-    external_sources_fmt,
-    metadata_fmt,
-    missing_key,
-    Session,
-    project_template,
-    data_path,
-):
-    project = _get_project(
-        project_template,
-        external_sources_fmt=external_sources_fmt,
-        metadata_fmt=metadata_fmt,
-        missing_key=missing_key,
-    )
-    with pytest.raises(KeyError) as exc:
-        service = ProjectService(Session())
-        service._project = project
-        service._validate_keys()
-    assert str(exc.value) == f"'Keys not found: {missing_key}.'"
-    assert exc.type == KeyError
 
 
-def test_project_add_selection(Session, setup, project_template, data_path):
-    with Session() as session, session.begin():
-        session.add_all(setup)
-
-    project = _get_project(
-        project_template,
-        external_sources_fmt="list",
-        metadata_fmt="list",
-        missing_key=None,
-    )
+def test_project_validate_entry(Session):
     service = ProjectService(Session())
-    service._project = project
-    service._add_selection()
-
-    expected_records = [(1, 1, 1, 1), (2, 1, 1, 2), (3, 2, 2, 3), (4, 2, 1, 1)]
-    with Session() as session, session.begin():
-        records = session.execute(select(Selection)).scalars().all()
-        records = [
-            (r.id, r.modification_id, r.technology_id, r.organism_id) for r in records
-        ]
-        assert records == expected_records
+    assert service._validate_entry(PROJECT) is None
 
 
-@pytest.mark.parametrize(
-    "external_sources_fmt,metadata_fmt,missing_key",
-    [
-        ("list", "list", None),
-        ("dict", "list", None),
-        (None, "list", None),
-    ],
-)
-def test_project_validate_existing_entry(
-    external_sources_fmt,
-    metadata_fmt,
-    missing_key,
-    Session,
-    setup,
-    project_template,
-    data_path,
-):
-    u = uuid.uuid4()
-    smid = shortuuid.encode(u)[: ProjectService.SMID_LENGTH]
-    stamp = datetime.now(timezone.utc).replace(microsecond=0)
-
+def test_project_validate_existing_entry(Session, setup):
+    smid = "12345678"
     with Session() as session, session.begin():
         session.add_all(setup)
-
         contact = ProjectContact(
             contact_name="Contact Name",
             contact_institution="Contact Institution",
-            contact_email="Contact Email",
+            contact_email="email@example.com",
         )
         session.add(contact)
         session.flush()
-
         project = Project(
             id=smid,
             title="Title",
             summary="Summary",
             contact_id=contact.id,
             date_published=datetime.fromisoformat("2024-01-01"),
-            date_added=stamp,
+            date_added=datetime.now(),
         )
-        source1 = ProjectSource(project_id=smid, doi="DOI1", pmid=None)
-        source2 = ProjectSource(project_id=smid, doi="DOI2", pmid=22222222)
-        session.add_all([project, source1, source2])
+        source = ProjectSource(project_id=smid, doi="DOI", pmid=12345678)
+        session.add_all([project, source])
         session.commit()
 
-    project = _get_project(
-        project_template,
-        external_sources_fmt=external_sources_fmt,
-        metadata_fmt=metadata_fmt,
-        missing_key=missing_key,
-    )
-
+    service = ProjectService(Session())
     with pytest.raises(DuplicateProjectError) as exc:
-        service = ProjectService(Session())
-        service._project = project
-        service._validate_entry()
+        service._validate_entry(PROJECT)
     assert (
         str(exc.value)
-        == f"At least one similar record exists with SMID = {smid} and title = Title. Aborting transaction!"
+        == "Suspected duplicate project with SMID '12345678' and title 'Title'."
     )
 
 
-def test_project_validate_entry(Session, project_template, data_path):
-    project = _get_project(
-        project_template,
-        external_sources_fmt="list",
-        metadata_fmt="list",
-        missing_key=None,
-    )
-    service = ProjectService(Session())
-    service._project = project
-    assert service._validate_entry() is None
-
-
-@pytest.mark.parametrize(
-    "missing_date",
-    [
-        False,
-        True,
-    ],
-)
-def test_project_create_project(
-    missing_date, Session, setup, project_template, data_path
-):
+def test_project_add_selection(Session, setup):
     with Session() as session, session.begin():
         session.add_all(setup)
 
-    stamp = datetime.now(timezone.utc).replace(microsecond=0)  # .isoformat()
-    project = _get_project(
-        project_template,
-        external_sources_fmt="list",
-        metadata_fmt="list",
-        missing_key=None,
-        missing_date=missing_date,
-    )
-    # AssemblyService tested in test_assembly.py
-    project_instance = ProjectService(Session())
-    project_instance.create_project(project)
-    project_smid = project_instance.get_smid()
-
-    date_published = datetime.fromisoformat("2024-01-01")
-    if missing_date:
-        date_published = None
-
-    with Session() as session, session.begin():
-        records = session.execute(select(Project)).scalar()
-        assert records.title == "Title"
-        assert records.summary == "Summary"
-        assert records.date_published == date_published
-        assert records.date_added.year == stamp.year
-        assert records.date_added.month == stamp.month
-        assert records.date_added.day == stamp.day
-        smid = records.id
-        assert smid == project_smid
-        contact_id = records.contact_id
-        records = session.execute(select(ProjectContact)).scalar()
-        assert records.contact_name == "Contact Name"
-        assert records.contact_institution == "Contact Institution"
-        assert records.contact_email == "Contact Email"
-        assert records.id == contact_id
-        records = session.execute(select(ProjectSource)).scalars().all()
-        sources = [("DOI1", None), ("DOI2", 22222222)]
-        for record, source in zip(records, sources):
-            assert record.project_id == smid
-            assert record.doi == source[0]
-            assert record.pmid == source[1]
-
-    project_template = json.load(open(Path(data_path.META_PATH, f"{smid}.json")))
-    assert project_template == project
-
-
-def test_project_no_project(Session):
     service = ProjectService(Session())
-    with pytest.raises(AttributeError) as exc:
-        smid = service.get_smid()
-        assert (
-            str(exc.value)
-            == "Undefined SMID. This is only defined when creating a project."
+    service._add_selection_if_none(PROJECT)
+
+    expected_records = [(1, 1, 1, 1), (2, 2, 2, 1)]
+    with Session() as session, session.begin():
+        records = session.execute(select(Selection)).scalars().all()
+        records = [
+            (r.id, r.modification_id, r.organism_id, r.technology_id) for r in records
+        ]
+        assert records == expected_records
+
+
+def test_project_add_selection_exists(Session, setup):
+    with Session() as session, session.begin():
+        session.add_all(setup)
+        technology = DetectionTechnology(method_id="0ee048bc", tech="Tech-seq")
+        session.add(technology)
+        session.flush()
+        selection = Selection(
+            modification_id=1, organism_id=3, technology_id=technology.id
         )
-    assert exc.type == AttributeError
+        session.add(selection)
+        session.commit()
+
+    service = ProjectService(Session())
+    service._add_selection_if_none(PROJECT)
+
+    expected_records = [(1, 1, 3, 1), (2, 1, 1, 1), (3, 2, 2, 1)]
+    with Session() as session, session.begin():
+        records = session.execute(select(Selection)).scalars().all()
+        records = [
+            (r.id, r.modification_id, r.organism_id, r.technology_id) for r in records
+        ]
+        assert records == expected_records
 
 
-def test_query_projects(Session, setup, project_template):
+def test_project_add_modification(Session, setup):
+    with Session() as session, session.begin():
+        session.add_all(setup)
+        modification = Modification(modomics_id="2000000006A", rna="WTS")
+        session.add(modification)
+        session.commit()
+
+    service = ProjectService(Session())
+    for metadata, expected_modification_id in zip(PROJECT.metadata, [1, 2]):
+        assert service._add_modification_if_none(metadata) == expected_modification_id
+
+
+def test_project_add_technology(Session, setup):
+    service = ProjectService(Session())
+    for metadata in PROJECT.metadata:
+        assert service._add_technology_if_none(metadata) == 1
+
+
+def test_project_add_organism(Session, setup):
+    service = ProjectService(Session())
+    for metadata, expected_organism_id in zip(PROJECT.metadata, [1, 2]):
+        assert service._add_organism_if_none(metadata) == expected_organism_id
+
+
+def test_project_add_contact(Session):
+    with Session() as session, session.begin():
+        contact = ProjectContact(
+            contact_name="Another contact Name",
+            contact_institution="Contact Institution",
+            contact_email="another_email@example.com",
+        )
+        session.add(contact)
+        session.commit()
+
+    service = ProjectService(Session())
+    assert service._add_contact_if_none(PROJECT) == 2
+
+
+def test_project_add_project(Session, setup, freezer):
     with Session() as session, session.begin():
         session.add_all(setup)
 
-    stamp = datetime.now(timezone.utc).replace(microsecond=0)  # .isoformat()
-    project1 = _get_project(
-        project_template,
-        external_sources_fmt="list",
-        metadata_fmt="list",
-        missing_key=None,
-        missing_date=None,
-    )
-    project_instance = ProjectService(Session())
-    project_instance.create_project(project1)
-    project_smid1 = project_instance.get_smid()
-
-    project2 = _get_project(
-        project_template,
-        external_sources_fmt="list",
-        metadata_fmt="list",
-        missing_key=None,
-        missing_date=None,
-    )
-    project2["title"] = "Title2"
-    project_instance.create_project(project2)
-    project_smid2 = project_instance.get_smid()
+    freezer.move_to("2024-06-20 12:00:00")
+    service = ProjectService(Session())
+    smid = service._add_project(PROJECT)
 
     with Session() as session, session.begin():
-        # add permission conditionally
-        user = User(email="contact@email", state=UserState.active, password_hash="xxx")
+        project = session.get_one(Project, smid)
+        assert project.title == "Title"
+        assert project.summary == "Summary"
+        assert project.date_published == datetime(2024, 1, 1)
+        assert project.date_added == datetime(2024, 6, 20, 12, 0, 0)
+        contact = session.get_one(ProjectContact, project.contact_id)
+        assert contact.contact_name == "Contact Name"
+        assert contact.contact_institution == "Contact Institution"
+        assert contact.contact_email == "email@example.com"
+        source = session.execute(select(ProjectSource)).scalars().all()
+        assert len(source) == 1
+        assert source[0].project_id == smid
+        assert source[0].doi == "DOI"
+        assert source[0].pmid == 12345678
+
+
+def test_project_get_by_id(Session, setup):
+    with Session() as session, session.begin():
+        session.add_all(setup)
+
+    service = ProjectService(Session())
+    smid = service._add_project(PROJECT)
+    project = service.get_by_id(smid)
+    assert project.id == smid
+    assert project.title == "Title"
+    assert project.summary == "Summary"
+
+
+def test_query_projects(Session, setup):
+    with Session() as session, session.begin():
+        session.add_all(setup)
+        for name, email, smid, title, summary in zip(
+            ["Name 1", "Name 2"],
+            ["email1@example.com", "email2@example.com"],
+            ["12345678", "12345679"],
+            ["Title 1", "Title 2"],
+            ["Summary 1", "Summary 2"],
+        ):
+            contact = ProjectContact(
+                contact_name=name,
+                contact_institution="Contact Institution",
+                contact_email=email,
+            )
+            session.add(contact)
+            session.flush()
+            project = Project(
+                id=smid,
+                title=title,
+                summary=summary,
+                contact_id=contact.id,
+                date_added=datetime(2024, 6, 20, 12, 0, 0),
+            )
+            session.add(project)
+        user = User(
+            email="email1@example.com", state=UserState.active, password_hash="xxx"
+        )
         session.add(user)
         session.flush()
-        user_permission = UserProjectAssociation(
-            user_id=user.id, project_id=project_smid1
-        )
+        user_permission = UserProjectAssociation(user_id=user.id, project_id="12345678")
         session.add(user_permission)
         session.commit()
 
+    service = ProjectService(Session())
     with Session() as session, session.begin():
-        user = session.execute(select(User)).scalar()
-        project_instance = ProjectService(Session())
-        assert len(project_instance.get_projects(user=user)) == 1
-        assert len(project_instance.get_projects()) == 2
+        user = session.get_one(User, 1)
+        assert len(service.get_projects(user=user)) == 1
+        assert len(service.get_projects()) == 2

@@ -1,4 +1,5 @@
 from logging.config import dictConfig
+from pathlib import Path
 
 import click
 from flask_cors import CORS
@@ -15,7 +16,9 @@ from scimodom.api.bam_file import bam_file_api
 from scimodom.api.modification import modification_api
 from scimodom.app_singleton import create_app_singleton
 from scimodom.database.database import make_session, init
+from scimodom.services.annotation import AnnotationSource
 from scimodom.services.setup import get_setup_service
+from scimodom.services.project import ProjectService
 from scimodom.frontend import frontend
 from scimodom.plugins.cli import (
     add_annotation,
@@ -27,6 +30,7 @@ from scimodom.plugins.cli import (
     validate_dataset_title,
     upsert,
 )
+from scimodom.utils.project_dto import ProjectTemplate
 from scimodom.utils.url_routes import (
     API_PREFIX,
     USER_API_ROUTE,
@@ -75,30 +79,30 @@ def create_app():
         "--id",
         default=None,
         type=click.INT,
-        help="Assembly ID. Download files for the current assembly (initial setup). This parameter, if given, overrides all other options.",
+        help="Assembly ID. Prepare a new assembly for the latest version. Assembly must exists. This parameter overrides all other options.",
     )
     @click.option(
         "--name",
         default=None,
         type=click.STRING,
-        help="Assembly name. Download files for any assembly. This option must be used with [--taxid].",
+        help="Assembly name. Add an alternative assembly to the database. This option must be used with [--taxid].",
     )
     @click.option(
         "--taxid",
         default=None,
         type=click.INT,
-        help="Taxonomy ID. Download files for any assembly. This option must be used with [--name].",
+        help="Taxonomy ID. Add an alternative assembly to the database. This option must be used with [--name].",
     )
     def assembly(id, name, taxid):
-        """Prepare assembly."""
+        """Prepare new assembly or add alternative assembly."""
         if id:
             kwargs = {"assembly_id": id}
         else:
             if not name:
                 raise NameError(
-                    "Name [--name] is not defined. One of [--id] or [--name] and [--taxid] is required."
+                    "Name [--name] is not defined. It is required with [--taxid]."
                 )
-            if taxid is None:
+            if not taxid:
                 raise NameError(
                     "Name [--taxid] is not defined. It is required with [--name]."
                 )
@@ -108,18 +112,48 @@ def create_app():
     @app.cli.command(
         "annotation", epilog="Check docs at https://dieterich-lab.github.io/scimodom/."
     )
-    @click.argument("id", type=click.INT)
-    def annotation(id):
+    @click.argument("taxid", type=click.INT)
+    @click.option(
+        "--source",
+        required=True,
+        type=click.Choice(["ensembl", "gtrnadb"], case_sensitive=False),
+        help="Annotation source.",
+    )
+    @click.option(
+        "--domain",
+        default=None,
+        type=click.STRING,
+        help="Taxonomic domain for gtdbrna. This option must be used with [--name].",
+    )
+    @click.option(
+        "--name",
+        default=None,
+        type=click.STRING,
+        help="GtRNAdb species name. This option must be used with [--domain].",
+    )
+    def annotation(taxid, source, domain, name):
         """Prepare annotation.
 
-        ID is the annotation_id (must already exists).
+        TAXA ID is the taxa_id.
         """
-        add_annotation(id)
+        kwargs = {}
+        annotation_source = AnnotationSource(source)
+        if annotation_source == AnnotationSource.GTRNADB:
+            if not domain:
+                raise NameError(
+                    "Name [--domain] is not defined. It is required with [--name]."
+                )
+            if not name:
+                raise NameError(
+                    "Name [--name] is not defined. It is required with [--domain]."
+                )
+            kwargs = {"domain": domain, "name": name}
+        add_annotation(taxid, annotation_source, **kwargs)
 
     @app.cli.command(
         "project", epilog="Check docs at https://dieterich-lab.github.io/scimodom/."
     )
-    @click.argument("template", type=click.Path(exists=True))
+    @click.argument("request_uuid", type=click.STRING)
     @click.option(
         "--skip-add-user",
         is_flag=True,
@@ -127,13 +161,22 @@ def create_app():
         default=False,
         help="Do not add user to project.",
     )
-    def project(template, skip_add_user):
+    def project(request_uuid, skip_add_user):
         """Add a new project to the database.
 
-        TEMPLATE is the path to a project template (json).
+        REQUEST_UUID is the UUID of a project request.
         """
         add_user = not skip_add_user
-        add_project(template, add_user=add_user)
+        project_request_path = Path(
+            ProjectService.DATA_PATH,
+            ProjectService.METADATA_PATH,
+            ProjectService.REQUEST_PATH,
+        )
+        project_request_file = Path(project_request_path, f"{request_uuid}.json")
+        with open(project_request_file, "r") as fh:
+            project_template_raw = fh.read()
+        project_template = ProjectTemplate.model_validate_json(project_template_raw)
+        add_project(project_template, request_uuid, add_user=add_user)
 
     @app.cli.command(
         "permission", epilog="Check docs at https://dieterich-lab.github.io/scimodom/."
@@ -152,68 +195,103 @@ def create_app():
     @app.cli.command(
         "dataset", epilog="Check docs at https://dieterich-lab.github.io/scimodom/."
     )
+    @click.argument("filename", type=click.Path(exists=True))
     @click.argument("smid", type=click.STRING)
     @click.argument("title", type=click.UNPROCESSED, callback=validate_dataset_title)
-    @click.argument("filename", type=click.Path(exists=True))
     @click.option("--assembly", required=True, type=click.INT, help="Assembly ID.")
+    @click.option(
+        "--annotation",
+        required=True,
+        type=click.Choice(["ensembl", "gtrnadb"], case_sensitive=False),
+        help="Annotation source.",
+    )
     @click.option(
         "-m",
         "--modification",
         default=[],
         multiple=True,
+        required=True,
         type=click.INT,
-        help="Modification ID(s). Repeat parameter to pass multiple selection IDs. This option must be used with [--technology] and [--organism].",
+        help="Modification ID(s). Repeat parameter to pass multiple selection IDs.",
     )
     @click.option(
         "-o",
         "--organism",
         default=None,
+        required=True,
         type=click.INT,
-        help="Organism ID. This option must be used with [--modification] and [--technology].",
+        help="Organism ID.",
     )
     @click.option(
         "-t",
         "--technology",
         default=None,
+        required=True,
         type=click.INT,
-        help="Technology ID. This option must be used with [--modification] and [--organism].",
+        help="Technology ID.",
     )
-    def dataset(smid, title, filename, assembly, modification, organism, technology):
+    def dataset(
+        filename, smid, title, assembly, annotation, modification, organism, technology
+    ):
         """Add a new dataset to the database.
 
         \b
+        FILENAME is the path to the bedRMod (EU-formatted) file.
         SMID is the project ID to which this dataset is to be added.
         TITLE is the title of this dataset. String must be quoted.
-        FILENAME is the path to the bedRMod (EU-formatted) file.
         """
-        if not modification:
-            raise NameError("Name [--modification] is not defined.")
-        if technology is None:
-            raise NameError(
-                "Name [--technology] is not defined. It is required with [--modification]."
-            )
-        if organism is None:
-            raise NameError(
-                "Name [--organism] is not defined. It is required with [--modification]."
-            )
+        annotation_source = AnnotationSource(annotation)
         add_dataset(
-            smid, title, filename, assembly, list(modification), organism, technology
+            filename,
+            smid,
+            title,
+            assembly,
+            list(modification),
+            organism,
+            technology,
+            annotation_source,
         )
 
     @app.cli.command(
         "batch", epilog="Check docs at https://dieterich-lab.github.io/scimodom/."
     )
-    @click.argument("directory", type=click.Path(exists=True))
-    @click.argument("templates", nargs=-1, type=click.STRING)
-    def batch(directory, templates):
-        """Add projects and dataset to the database
-        in batch. All files must be under DIRECTORY.
+    @click.argument("input_directory", type=click.Path(exists=True))
+    @click.argument("request_uuids", nargs=-1, type=click.STRING)
+    @click.option(
+        "--annotation",
+        required=True,
+        type=click.Choice(["ensembl", "gtrnadb"], case_sensitive=False),
+        help="Annotation source.",
+    )
+    def batch(input_directory, request_uuids, annotation):
+        """Add projects and dataset in batch.
+        All dataset files must be under INPUT_DIRECTORY.
+        Implicitely assumed that all have the same annotation
+        source.
 
         \b
-        DIRECTORY is the path to templates and bedRMod (EU-formatted) files.
-        TEMPLATES is the name (w/o extension) of one or more project templates.
+        INPUT_DIRECTORY is the path to bedRMod (EU-formatted) files.
+        REQUEST_UUIDS is the name (w/o extension) of one or more project templates.
         """
-        add_all(directory, templates)
+        annotation_source = AnnotationSource(annotation)
+        project_request_path = Path(
+            ProjectService.DATA_PATH,
+            ProjectService.METADATA_PATH,
+            ProjectService.REQUEST_PATH,
+        )
+        request_files = [
+            Path(project_request_path, f"{request_uuid}.json")
+            for request_uuid in request_uuids
+        ]
+        project_template_list = []
+        for request_file in request_files:
+            with open(request_file, "r") as fh:
+                project_template_raw = fh.read()
+            project_template = ProjectTemplate.model_validate_json(project_template_raw)
+            project_template_list.append(project_template)
+        add_all(
+            input_directory, project_template_list, request_uuids, annotation_source
+        )
 
     @app.cli.command(
         "setup", epilog="Check docs at https://dieterich-lab.github.io/scimodom/."

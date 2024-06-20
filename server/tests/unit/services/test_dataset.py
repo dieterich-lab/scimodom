@@ -5,7 +5,6 @@ from os import makedirs
 import pytest
 from sqlalchemy import select
 
-import scimodom.database.queries as queries
 import scimodom.utils.utils as utils
 from scimodom.database.models import (
     Selection,
@@ -28,9 +27,6 @@ from scimodom.services.dataset import (
 from scimodom.services.project import ProjectService
 from scimodom.utils.bed_importer import BedImportEmptyFile, BedImportTooManyErrors
 from scimodom.utils.common_dto import Strand
-
-
-# NOTE: force add project directly to avoid using ProjectService
 
 
 class MockBedToolsService:
@@ -120,100 +116,57 @@ def _get_dataset_service(dependencies):
     )
 
 
-def _add_selection(session, metadata):
-    for d in utils.to_list(metadata):
-        rna = d["rna"]
-        modomics_id = d["modomics_id"]
-        query = queries.query_column_where(
-            Modification, "id", filters={"rna": rna, "modomics_id": modomics_id}
-        )
-        modification_id = session.execute(query).scalar()
-        if not modification_id:
-            modification = Modification(rna=rna, modomics_id=modomics_id)
-            session.add(modification)
-            session.flush()
-            modification_id = modification.id
-
-        tech = d["tech"]
-        method_id = d["method_id"]
-        query = queries.query_column_where(
-            DetectionTechnology,
-            "id",
-            filters={"tech": tech, "method_id": method_id},
-        )
-        technology_id = session.execute(query).scalar()
-        if not technology_id:
-            technology = DetectionTechnology(tech=tech, method_id=method_id)
-            session.add(technology)
-            session.flush()
-            technology_id = technology.id
-
-        d_organism = d["organism"]
-        cto = d_organism["cto"]
-        taxa_id = d_organism["taxa_id"]
-        query = queries.query_column_where(
-            Organism, "id", filters={"cto": cto, "taxa_id": taxa_id}
-        )
-        organism_id = session.execute(query).scalar()
-        if not organism_id:
-            organism = Organism(cto=cto, taxa_id=taxa_id)
-            session.add(organism)
-            session.flush()
-            organism_id = organism.id
-
-        selection = Selection(
-            modification_id=modification_id,
-            technology_id=technology_id,
-            organism_id=organism_id,
-        )
-        session.add(selection)
-        session.flush()
+def _add_setup(session, setup):
+    session.add_all(setup)
+    session.flush()
 
 
-def _add_contact(session, project):
-    contact_name = project["contact_name"]
-    contact_institution = project["contact_institution"]
-    contact_email = project["contact_email"]
+def _add_selection(session):
+    modification = Modification(rna="WTS", modomics_id="2000000006A")
+    technology = DetectionTechnology(tech="Technology 1", method_id="91b145ea")
+    organism = Organism(cto="Cell type 1", taxa_id=9606)
+    session.add_all([modification, organism, technology])
+    session.flush()
+    selection = Selection(
+        modification_id=modification.id,
+        organism_id=organism.id,
+        technology_id=technology.id,
+    )
+    session.add(selection)
+    session.flush()
+
+
+def _add_contact(session):
     contact = ProjectContact(
-        contact_name=contact_name,
-        contact_institution=contact_institution,
-        contact_email=contact_email,
+        contact_name="Contact Name",
+        contact_institution="Contact Institution",
+        contact_email="Contact Email",
     )
     session.add(contact)
     session.flush()
-    contact_id = contact.id
-    return contact_id
+    return contact.id
 
 
-def _mock_project_service(session, project):
-    _add_selection(session, project["metadata"])
-    contact_id = _add_contact(session, project)
-    stamp = datetime.now(timezone.utc).replace(microsecond=0)
-    smid = utils.gen_short_uuid(ProjectService.SMID_LENGTH, [])
-    project_tbl = Project(
-        id=smid,
-        title=project["title"],
-        summary=project["summary"],
-        contact_id=contact_id,
-        date_published=datetime.fromisoformat(project["date_published"]),
-        date_added=stamp,
+def _add_project(session):
+    project = Project(
+        id="12345678",
+        title="Project Title",
+        summary="Project summary",
+        contact_id=_add_contact(session),
+        date_published=datetime.fromisoformat("2024-01-01"),
+        date_added=datetime(2024, 6, 17, 12, 0, 0),
     )
-    sources = [project_tbl]
-    for s in utils.to_list(project["external_sources"]):
-        source = ProjectSource(project_id=smid, doi=s["doi"], pmid=s["pmid"])
-        sources.append(source)
-
-    session.add_all(sources)
-    return smid
+    session.add(project)
+    session.commit()
 
 
 @pytest.fixture
-def project(Session, setup, project_template):  # noqa
-    with Session() as session, session.begin():
-        session.add_all(setup)
-        smid = _mock_project_service(session, project_template)
-        session.commit()
-    yield smid
+def project(Session, setup, freezer):  # noqa
+    session = Session()
+    _add_setup(session, setup)
+    _add_selection(session)
+    _add_project(session)
+    yield "12345678"
 
 
 @pytest.fixture
@@ -382,18 +335,6 @@ def test_bad_import(
     assert str(exc.value) == message
 
 
-# def test_validate_imported_fail():
-#     with pytest.raises(DatasetHeaderError) as exc:
-#         DataService.validate_imported("test", "a", "b")
-#     assert (
-#         str(exc.value)
-#         == "Expected a for test; got b (file header). Aborting transaction!"
-#     )
-#     assert exc.type == DatasetHeaderError
-#
-#
-# def test_validate_imported():
-#     assert DataService.validate_imported("test", "a", "a") is None
 #
 #
 # def test_validate_args_no_smid(Session):
@@ -491,46 +432,6 @@ def test_bad_import(
 #     assert exc.type == SelectionNotFoundError
 #
 #
-# def test_instantiation(Session, setup, project_template):
-#     with Session() as session, session.begin():
-#         session.add_all(setup)
-#         smid = _mock_project_service(session, project_template)
-#         session.commit()
-#     service = DataService(
-#         session=Session(),
-#         smid=smid,
-#         title="title",
-#         filen="filen",
-#         assembly_id=1,
-#         modification_ids=1,
-#         technology_id=1,
-#         organism_id=1,
-#     )
-#     assert service._assembly_name == "GRCh38"
-#     assert service._current_assembly_name == "GRCh38"
-#     assert service._organism_name == "Homo sapiens"
-#     assert service._taxa_id == 9606
-#     assert service._selection_ids == [1]
-#     assert service._modification_names == {"m6A": 1}
-#
-#
-# def test_validate_entry(Session, setup, project_template):
-#     with Session() as session, session.begin():
-#         session.add_all(setup)
-#         smid = _mock_project_service(session, project_template)
-#         session.commit()
-#
-#     service = DataService(
-#         session=Session(),
-#         smid=smid,
-#         title="title",
-#         filen="filen",
-#         assembly_id=1,
-#         modification_ids=1,
-#         technology_id=1,
-#         organism_id=1,
-#     )
-#     assert service._validate_entry() is None
 #
 #
 # def test_validate_existing_entry(Session, setup, project_template):

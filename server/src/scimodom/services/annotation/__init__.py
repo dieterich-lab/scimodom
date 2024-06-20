@@ -99,6 +99,13 @@ class AnnotationService:
             taxa_id
         )
 
+    def create_annotation(
+        self, annotation_source: AnnotationSource, taxa_id: int, **kwargs
+    ) -> Annotation:
+        return self._services_by_annotation_source[annotation_source].create_annotation(
+            taxa_id, **kwargs
+        )
+
     def annotate_data(
         self,
         taxa_id: int,

@@ -308,10 +308,10 @@ class DatasetService:
             .where(Modification.id == idx)
         ).scalar_one()
 
-    def _get_technology(self, idx: int) -> str:
+    def _get_technology(self, idx: int) -> DetectionTechnology:
         return self._session.get_one(DetectionTechnology, idx)
 
-    def _get_organism(self, idx: int) -> int:
+    def _get_organism(self, idx: int) -> Organism:
         return self._session.get_one(Organism, idx)
 
     def _sanitize_selection_ids(self, context):

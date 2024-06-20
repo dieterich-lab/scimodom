@@ -15,9 +15,10 @@ from scimodom.database.models import (
     Dataset,
     Data,
     Assembly,
+    AssemblyVersion,
     Annotation,
+    AnnotationVersion,
 )
-import scimodom.database.queries as queries
 from scimodom.utils.specifications import SPECS_EUF
 
 
@@ -65,12 +66,11 @@ class Exporter:
         :returns: Assembly name
         :rtype: str
         """
-        query = queries.get_assembly_version()
-        version = self._session.execute(query).scalar_one()
-        query = queries.query_column_where(
-            Assembly, "name", filters={"taxa_id": taxa_id, "version": version}
-        )
-        return self._session.execute(query).scalar_one()
+        return self._session.execute(
+            select(Assembly.name)
+            .join(AssemblyVersion, Assembly.version == AssemblyVersion.version_num)
+            .where(Assembly.taxa_id == taxa_id)
+        ).scalar_one()
 
     def _get_annotation_version(self, taxa_id) -> int:
         """Retrieve the current annotation for this Taxa ID.
@@ -80,12 +80,14 @@ class Exporter:
         :returns: Annotation release
         :rtype: int
         """
-        query = queries.get_annotation_version()
-        version = self._session.execute(query).scalar_one()
-        query = queries.query_column_where(
-            Annotation, "release", filters={"taxa_id": taxa_id, "version": version}
-        )
-        return self._session.execute(query).scalar_one()
+        # TODO: annotation source
+        return self._session.execute(
+            select(Annotation.release)
+            .join(
+                AnnotationVersion, Annotation.version == AnnotationVersion.version_num
+            )
+            .where(Annotation.taxa_id == taxa_id, Annotation.source == "ensembl")
+        ).scalar_one()
 
     def _generate_header(self, dataset: Dataset):
         """Generate dataset header.

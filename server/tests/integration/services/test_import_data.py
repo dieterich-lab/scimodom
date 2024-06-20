@@ -16,6 +16,7 @@ from scimodom.database.models import (
     DetectionMethod,
     DatasetModificationAssociation,
     Selection,
+    Data,
     Dataset,
     Modification,
     DetectionTechnology,
@@ -24,6 +25,7 @@ from scimodom.database.models import (
     ProjectSource,
     ProjectContact,
     GenomicAnnotation,
+    DataAnnotation,
 )
 from scimodom.services.dataset import DatasetService
 from scimodom.services.assembly import AssemblyService
@@ -39,44 +41,8 @@ from scimodom.services.project import ProjectService
 import scimodom.utils.utils as utils
 
 
-def _add_setup(session):
-    rna_type = RNAType(id="WTS", name="Whole transcriptome")
-    modomics = Modomics(
-        id="2000000006A",
-        name="N6-methyladenosine",
-        short_name="m6A",
-        moiety="nucleoside",
-    )
-    taxonomy = Taxonomy(
-        id="a1b240af", domain="Eukarya", kingdom="Animalia", phylum="Chordata"
-    )
-    taxa = Taxa(
-        id=9606, name="Homo sapiens", short_name="H. sapiens", taxonomy_id="a1b240af"
-    )
-    assembly_version = AssemblyVersion(version_num="GcatSmFcytpU")
-    assembly = Assembly(
-        name="GRCh38", alt_name="hg38", taxa_id=9606, version="GcatSmFcytpU"
-    )
-    annotation_version = AnnotationVersion(version_num="EyRBnPeVwbzW")
-    annotation = Annotation(
-        release=110, taxa_id=9606, source="ensembl", version="EyRBnPeVwbzW"
-    )
-    method = DetectionMethod(
-        id="91b145ea", cls="NGS 2nd generation", meth="Antibody-based sequencing"
-    )
-    session.add_all(
-        [
-            rna_type,
-            modomics,
-            taxonomy,
-            taxa,
-            assembly_version,
-            assembly,
-            annotation_version,
-            annotation,
-            method,
-        ]
-    )
+def _add_setup(session, setup):
+    session.add_all(setup)
     session.flush()
 
 
@@ -106,16 +72,14 @@ def _add_contact(session):
     return contact.id
 
 
-def _add_source(session, smid):
-    source = ProjectSource(project_id=smid, doi="DOI1", pmid=12345678)
+def _add_source(session):
+    source = ProjectSource(project_id="12345678", doi="DOI", pmid=12345678)
     session.add(source)
-    session.flush()
 
 
 def _add_project(session):
-    smid = utils.gen_short_uuid(ProjectService.SMID_LENGTH, [])
     project = Project(
-        id=smid,
+        id="12345678",
         title="Project Title",
         summary="Project summary",
         contact_id=_add_contact(session),
@@ -124,22 +88,20 @@ def _add_project(session):
     )
     session.add(project)
     session.flush()
-    _add_source(session, smid)
+    _add_source(session)
     session.commit()
-    return smid
 
 
 @pytest.fixture
-def project(Session, freezer):
+def project(Session, setup, freezer):
     freezer.move_to("2024-06-17 12:00:00")
     session = Session()
-    _add_setup(session)
+    _add_setup(session, setup)
     _add_selection(session)
-    return _add_project(session)
+    _add_project(session)
 
 
-EXON = """
-1\t65418\t65433\tG\t.\t+\tENSG00000000001\tprotein_coding
+EXON = """1\t65418\t65433\tG\t.\t+\tENSG00000000001\tprotein_coding
 1\t65418\t65500\tF\t.\t-\tENSG00000000002\tunprocessed_pseudogene
 1\t65519\t65573\tG\t.\t+\tENSG00000000001\tprotein_coding
 1\t69036\t71585\tG\t.\t+\tENSG00000000001\tprotein_coding
@@ -305,8 +267,8 @@ def test_import_simple(Session, project, annotation, tmp_path):
     eufid = service.import_dataset(
         file,
         source="test",
-        smid=project,
-        title="title",
+        smid="12345678",
+        title="Dataset title",
         assembly_id=1,
         modification_ids=[1],
         technology_id=1,
@@ -314,10 +276,27 @@ def test_import_simple(Session, project, annotation, tmp_path):
         annotation_source=AnnotationSource.ENSEMBL,
     )
 
+    expected_annotated_records = [
+        (1, "ENSG00000000001", "Exonic"),
+        (2, "ENSG00000000001", "Exonic"),
+        (3, "ENSG00000000001", "Exonic"),
+        (1, "ENSG00000000001", "5'UTR"),
+        (2, "ENSG00000000001", "CDS"),
+        (3, "ENSG00000000001", "3'UTR"),
+        (4, "ENSG00000000001", "Intronic"),
+        (5, "ENSIntergenic", "Intergenic"),
+    ]
+    expected_records = [
+        ("1", 65420, 1),
+        ("1", 65565, 2),
+        ("1", 71500, 3),
+        ("1", 65580, 4),
+        ("1", 0, 5),
+    ]
     with Session() as session:
         dataset = session.get_one(Dataset, eufid)
-        assert dataset.title == "title"
-        assert dataset.project_id == project
+        assert dataset.title == "Dataset title"
+        assert dataset.project_id == "12345678"
         assert dataset.technology_id == 1
         assert dataset.organism_id == 1
         assert dataset.date_added == datetime(2024, 6, 17, 12, 0, 0)
@@ -328,4 +307,11 @@ def test_import_simple(Session, project, annotation, tmp_path):
         assert dataset.experiment == "Description of experiment."
         assert dataset.external_source is None
 
-        # add checks for records and annotated records
+        records = session.execute(select(Data)).scalars().all()
+        records = set((r.chrom, r.start, r.score) for r in records)
+        assert records == set(expected_records)
+        annotation_records = session.scalars(select(DataAnnotation)).all()
+        annotated_records = set(
+            (r.data_id, r.gene_id, r.feature) for r in annotation_records
+        )
+        assert annotated_records == set(expected_annotated_records)

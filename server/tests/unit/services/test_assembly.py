@@ -198,8 +198,9 @@ def test_add_assembly(Session, data_path, setup):
             "https://ftp.ensembl.org/pub/current_assembly_chain/homo_sapiens/NCBI36_to_GRCh38.chain.gz"
         ],
     )
-    service.add_assembly(9606, "NCBI36")
+    assembly_id = service.add_assembly(9606, "NCBI36")
     chain_file = service.get_chain_file(9606, "NCBI36")
+    # asseemb;y_id is 4
     with Session() as session:
         assert session.query(
             exists().where(Assembly.taxa_id == 9606, Assembly.name == "NCBI36")
@@ -211,7 +212,7 @@ def test_add_assembly_exists(Session, data_path, setup):
     with Session() as session, session.begin():
         session.add_all(setup)
     service = _get_assembly_service(Session)
-    assert service.add_assembly(9606, "GRCh37") is None
+    assert service.add_assembly(9606, "GRCh37") == 3
     # normally directory exists for an existing assembly, but
     # this function does not check that, it simple returns if
     # the assembly exists
@@ -238,7 +239,7 @@ def test_add_assembly_file_exists(Session, chain_file):
         session.add_all([version, taxonomy, taxa, assembly])
     service = _get_assembly_service(Session)
     with pytest.raises(FileExistsError) as exc:
-        assembly = service.add_assembly(9606, "GRCh37")
+        service.add_assembly(9606, "GRCh37")
     assert (
         (str(exc.value))
         == "[Errno 17] File exists: '/tmp/pytest-of-scimodom/data0/assembly/Homo_sapiens/GRCh37'"
