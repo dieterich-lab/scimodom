@@ -1,6 +1,6 @@
 import logging
 from dataclasses import dataclass
-from typing import List, Iterable
+from typing import Iterable
 
 from flask import Blueprint, Response
 from flask_cors import cross_origin
@@ -16,11 +16,10 @@ from scimodom.api.helpers import (
 from scimodom.services.bedtools import get_bedtools_service, BedToolsService
 from scimodom.services.dataset import get_dataset_service
 from scimodom.services.file import get_file_service
-from scimodom.services.data import get_data_service, DataService
+from scimodom.services.data import get_data_service
 from scimodom.services.user import get_user_service
 from scimodom.utils.bed_importer import Bed6Importer, EufImporter
 from scimodom.utils.bedtools_dto import (
-    EufRecord,
     IntersectRecord,
     ClosestRecord,
     SubtractRecord,
@@ -49,7 +48,7 @@ def list_mine():
 
 
 class IntersectResponse(BaseModel):
-    records: List[IntersectRecord]
+    records: list[IntersectRecord]
 
 
 @dataset_api.route("/intersect", methods=["GET"])
@@ -72,7 +71,7 @@ class _CompareContext:
     class Ctx:
         bedtools_service: BedToolsService
         a_records: Iterable[ComparisonRecord]
-        b_records_list: List[Iterable[ComparisonRecord]]
+        b_records_list: list[Iterable[ComparisonRecord]]
         is_strand: bool
 
     def __init__(self):
@@ -166,7 +165,7 @@ def _get_response_from_pydantic_object(obj: BaseModel):
 
 
 class ClosestResponse(BaseModel):
-    records: List[ClosestRecord]
+    records: list[ClosestRecord]
 
 
 @dataset_api.route("/closest", methods=["GET"])
@@ -183,7 +182,7 @@ def closest():
 
 
 class SubtractResponse(BaseModel):
-    records: List[SubtractRecord]
+    records: list[SubtractRecord]
 
 
 @dataset_api.route("/subtract", methods=["GET"])

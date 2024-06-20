@@ -1,7 +1,7 @@
 from functools import cache
 import logging
 from pathlib import Path
-from typing import Iterable, Sequence, List, Any
+from typing import Iterable, Sequence, Any
 
 import pybedtools  # type: ignore
 from pybedtools import BedTool, create_interval_from_list
@@ -419,7 +419,7 @@ class BedToolsService:
     def intersect(
         self,
         a_records: Iterable[ComparisonRecord],
-        b_records_list: List[Iterable[ComparisonRecord]],
+        b_records_list: list[Iterable[ComparisonRecord]],
         is_strand: bool,
         is_sorted: bool = True,
     ) -> Iterable[IntersectRecord]:
@@ -432,7 +432,7 @@ class BedToolsService:
         :param a_records: Left operand of insect operation
         :type a_records: Iterable[ComparisonRecord]
         :param b_records_list: Right operand of insect operation
-        :type b_records_list: List[Iterable[ModificationRecord]]
+        :type b_records_list: list[Iterable[ModificationRecord]]
         :parm is_strand: Perform strand-aware query
         :type is_strand: bool
         :param is_sorted: Invoked sweeping algorithm
@@ -496,7 +496,7 @@ class BedToolsService:
     def closest(
         self,
         a_records: Iterable[ComparisonRecord],
-        b_records_list: List[Iterable[ComparisonRecord]],
+        b_records_list: list[Iterable[ComparisonRecord]],
         is_strand: bool,
         is_sorted: bool = True,
     ) -> Iterable[ClosestRecord]:
@@ -509,7 +509,7 @@ class BedToolsService:
         :param a_records: Left operand of operation
         :type a_records: Iterable[ComparisonRecord]
         :param b_records_list: Right operand of operation
-        :type b_records_list: List[Iterable[ModificationRecord]]
+        :type b_records_list: list[Iterable[ModificationRecord]]
         :parm is_strand: Perform strand-aware query
         :type is_strand: bool
         :param is_sorted: Invoked sweeping algorithm
@@ -547,7 +547,7 @@ class BedToolsService:
     def subtract(
         self,
         a_records: Iterable[ComparisonRecord],
-        b_records_list: List[Iterable[ComparisonRecord]],
+        b_records_list: list[Iterable[ComparisonRecord]],
         is_strand: bool,
         is_sorted: bool = True,
     ) -> Iterable[SubtractRecord]:

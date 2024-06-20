@@ -4,7 +4,7 @@ from functools import cache
 from os import unlink, rename, makedirs, stat, close
 from os.path import join, exists, dirname, basename, isfile
 from tempfile import mkstemp
-from typing import Optional, IO, List, Dict
+from typing import Optional, IO, List, Dict, TextIO
 from uuid import uuid4
 
 from sqlalchemy import select
@@ -71,7 +71,7 @@ class FileService:
         except Exception as exc:
             self._handle_upload_error(exc, path)
 
-    def open_tmp_upload_file_by_id(self, file_id):
+    def open_tmp_upload_file_by_id(self, file_id: str) -> TextIO:
         if not self.VALID_FILE_ID_REGEXP.match(file_id):
             raise ValueError("open_tmp_file_by_id called with bad file_id")
         path = join(Config.UPLOAD_PATH, file_id)
