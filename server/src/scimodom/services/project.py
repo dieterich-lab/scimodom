@@ -141,10 +141,10 @@ class ProjectService:
             smid = self._add_project(project_template)
             self._write_project_template(project_template, smid, request_uuid)
             self._session.commit()
+            return smid
         except:
             self._session.rollback()
             raise
-        return smid
 
     @staticmethod
     def _get_prj_src(project_template: ProjectTemplate):

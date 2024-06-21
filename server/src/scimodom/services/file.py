@@ -28,7 +28,7 @@ class FileService:
     VALID_FILE_ID_REGEXP = re.compile(r"\A[a-zA-Z0-9_-]{1,256}\Z")
 
     def __init__(self, session: Session, temp_path: str, upload_path: str):
-        self._db_session = session
+        self._session = session
         makedirs(temp_path, exist_ok=True)
         makedirs(upload_path, exist_ok=True)
         self._temp_path = temp_path
@@ -108,7 +108,7 @@ class FileService:
             self._create_bam_file(dataset, name, data_stream, max_size)
 
     def get_bam_file(self, dataset: Dataset, name: str) -> BamFile:
-        return self._db_session.scalars(
+        return self._session.scalars(
             select(BamFile).where(
                 and_(
                     BamFile.dataset_id == dataset.id, BamFile.original_file_name == name
@@ -130,7 +130,7 @@ class FileService:
             logger.error(
                 f"Failed to move '{tmp_path}' to '{path}': {str(exc)} - discarding database entry!"
             )
-            self._db_session.delete(bam_file)
+            self._session.delete(bam_file)
             raise exc
 
     @staticmethod
@@ -162,15 +162,15 @@ class FileService:
         )
         path = self._get_bam_file_path(bam_file)
         self._stream_to_file(data_stream, path, max_size)
-        self._db_session.add(bam_file)
-        self._db_session.commit()
+        self._session.add(bam_file)
+        self._session.commit()
 
     def open_bam_file(self, bam_file: BamFile) -> IO[bytes]:
         path = self._get_bam_file_path(bam_file)
         return open(path, "rb")
 
     def get_bam_file_list(self, dataset: Dataset) -> List[Dict[str, any]]:
-        items = self._db_session.scalars(
+        items = self._session.scalars(
             select(BamFile).where(BamFile.dataset_id == dataset.id)
         ).all()
         return [self._get_bam_file_info(i) for i in items]
@@ -190,8 +190,8 @@ class FileService:
             unlink(path)
         except FileNotFoundError:
             pass
-        self._db_session.delete(bam_file)
-        self._db_session.commit()
+        self._session.delete(bam_file)
+        self._session.commit()
 
 
 @cache

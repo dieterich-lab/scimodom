@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Optional
 
 import pandas as pd  # type: ignore # import-untyped
+from sqlalchemy.dialects.mysql import insert
 
 from scimodom.config import Config
 from scimodom.database.database import Base, get_session
@@ -89,17 +90,18 @@ class SetupService:
         :param table: Path to data table
         :type table: pd.DataFrame
         """
-        from sqlalchemy.dialects.mysql import insert
-
-        # Nan to None - check docs
-        table = table.where(pd.notnull(table), None)
-        values = table.to_dict(orient="records")
-        stmt = insert(model).values(values)
-        ucols = {c.name: c for c in stmt.inserted}  # filter id column ?
-        stmt = stmt.on_duplicate_key_update(**ucols)
-
-        self._session.execute(stmt)
-        self._session.commit()
+        try:
+            # Nan to None - check docs
+            table = table.where(pd.notnull(table), None)
+            values = table.to_dict(orient="records")
+            stmt = insert(model).values(values)
+            ucols = {c.name: c for c in stmt.inserted}  # filter id column ?
+            stmt = stmt.on_duplicate_key_update(**ucols)
+            self._session.execute(stmt)
+            self._session.commit()
+        except Exception:
+            self._session.rollback()
+            raise
 
     def upsert_all(self) -> None:
         """Upsert all tables in the configuration file."""
