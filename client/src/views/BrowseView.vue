@@ -56,6 +56,11 @@ const initFilters = (defaultGlobal) => {
 }
 initFilters(props.eufid)
 
+const getFileName = () => {
+  let stamp = new Date()
+  return 'scimodom_browse_' + stamp.toISOString().replaceAll(/:/g, '')
+}
+
 const onExport = () => {
   dt.value.exportCSV()
 }
@@ -84,7 +89,7 @@ onMounted(() => {
             :value="records"
             dataKey="dataset_id"
             ref="dt"
-            exportFilename="scimodom_browse"
+            :exportFilename="getFileName()"
             :paginator="true"
             :rows="5"
             v-model:filters="filters"

@@ -499,11 +499,7 @@ onMounted(() => {
           <Column field="strand" header="Strand" exportHeader="strand"></Column>
           <Column field="coverage" header="Coverage" sortable exportHeader="coverage"></Column>
           <Column field="frequency" header="Frequency" sortable exportHeader="frequency"></Column>
-          <Column field="feature" header="Feature" exportHeader="feature"></Column>
-          <Column field="gene_biotype" header="Biotype" exportHeader="biotype"></Column>
-          <Column field="gene_name" header="Gene" exportHeader="geneName"></Column>
-          <Column field="tech" header="Technology" exportHeader="technology"></Column>
-          <Column field="dataset_id" header="EUFID" exportHeader="eufid">
+          <Column field="dataset_id" header="EUFID" exportHeader="EUFID">
             <template #body="{ data }">
               <Button
                 size="small"
@@ -514,9 +510,14 @@ onMounted(() => {
               />
             </template>
           </Column>
-          <!-- export columns only -->
+          <Column field="tech" header="Technology" exportHeader="Technology"></Column>
+          <!-- export only -->
           <Column field="taxa_id" exportHeader="Organism" style="display: none"></Column>
-          <Column field="cto" exportHeader="cellTissueOrgan" style="display: none"></Column>
+          <Column field="cto" exportHeader="Cell/Tissue" style="display: none"></Column>
+          <!-- export only -->
+          <Column field="feature" header="Feature" exportHeader="Feature"></Column>
+          <Column field="gene_name" header="Gene" exportHeader="Gene"></Column>
+          <Column field="gene_biotype" header="Biotype" exportHeader="Biotype"></Column>
         </DataTable>
       </div>
     </SectionLayout>
