@@ -87,7 +87,7 @@ class _CompareContext:
         self._is_strand = get_valid_boolean_from_request_parameter(
             "strand", default=False
         )
-        self._is_euf = get_valid_boolean_from_request_parameter("is_euf", default=False)
+        self._is_euf = get_valid_boolean_from_request_parameter("euf", default=False)
         self._tmp_file_handle = None
 
         if self._upload_id is None and len(self._comparison_ids) == 0:

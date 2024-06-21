@@ -98,7 +98,7 @@ If you didn't request a new password, please ignore this message and consider re
         self._send(
             to_address=Config.NOTIFICATION_ADDRESS,
             subject="Sci-ModoM - New project request received",
-            text=f"""Project template: {uuid}.json""",
+            text=f"""Project: {uuid}""",
         )
 
 
