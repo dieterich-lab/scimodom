@@ -20,7 +20,7 @@ const useAccessToken = defineStore('access_token', {
         const now_epoch = Date.now() / 1000
         const seconds_to_expire = state.expireEpoch - now_epoch
         if (seconds_to_expire <= 0) {
-          log.console('token getter: Access token expired - unsetting.')
+          console.log('token getter: Access token expired - unsetting.')
           this.unset()
         }
       }

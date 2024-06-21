@@ -1,7 +1,7 @@
 <script setup>
 import { useForm } from 'vee-validate'
 import * as yup from 'yup'
-import { HTTP } from '@/services/API'
+import { HTTP, prepareAPI } from '@/services/API'
 import { useAccessToken } from '@/stores/AccessToken.js'
 import { DIALOG, useDialogState } from '@/stores/DialogState.js'
 import FormBox from '@/components/ui/FormBox.vue'
@@ -40,6 +40,7 @@ function login(values) {
       if (response.status == 200) {
         accessToken.set(email, response.data.access_token)
         dialogState.state = DIALOG.NONE
+        prepareAPI(false)
       }
     })
     .catch((err) => {
