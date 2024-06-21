@@ -253,6 +253,7 @@ class DatasetService:
                 eufid=context.eufid,
                 selection_ids=context.selection_ids,
             )
+            self._session.commit()
         except Exception:
             checkpoint.rollback()
             raise

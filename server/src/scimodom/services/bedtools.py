@@ -391,8 +391,7 @@ class BedToolsService:
         :returns: Path to temporary file
         :rtype: str
         """
-
-        bedtool = pybedtools.BedTool(records)
+        bedtool = BedTool(records)
         if sort:
             bedtool = bedtool.sort()
         return bedtool.fn
@@ -400,18 +399,20 @@ class BedToolsService:
     def create_temp_euf_file(self, records: Iterable[EufRecord]) -> str:
         def generator():
             for record in records:
-                yield (
-                    record.chrom,
-                    record.start,
-                    record.end,
-                    record.name,
-                    record.score,
-                    record.strand.value,
-                    record.thick_start,
-                    record.thick_end,
-                    record.item_rgb,
-                    record.coverage,
-                    record.frequency,
+                yield create_interval_from_list(
+                    [
+                        record.chrom,
+                        record.start,
+                        record.end,
+                        record.name,
+                        record.score,
+                        record.strand.value,
+                        record.thick_start,
+                        record.thick_end,
+                        record.item_rgb,
+                        record.coverage,
+                        record.frequency,
+                    ]
                 )
 
         return self.create_temp_file_from_records(generator())
