@@ -13,7 +13,8 @@ then
     exit 1
 fi
 
-mkdir -p $BEDTOOLS_TMP_PATH
+mkdir -p "$BEDTOOLS_TMP_PATH"
+chmod 1777 "$BEDTOOLS_TMP_PATH"
 
 while [[ 1 = 1 ]]
 do
