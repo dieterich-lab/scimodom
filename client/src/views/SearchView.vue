@@ -236,7 +236,7 @@ function lazyLoad(event) {
       matchMode: 'in'
     }
   }
-  HTTP.get('/modification', {
+  HTTP.get('/modification/', {
     params: {
       modification: selectedModification.value.key,
       organism: selectedOrganism.value.key,
