@@ -1,5 +1,6 @@
 from functools import cache
 import logging
+from os import makedirs
 from pathlib import Path
 from typing import Iterable, Sequence, Any
 
@@ -91,6 +92,7 @@ def _remove_filno(feature, n_fields: int = 9, is_closest: bool = False):
 
 class BedToolsService:
     def __init__(self, tmp_path):
+        makedirs(tmp_path, exist_ok=True)
         pybedtools.helpers.set_tempdir(tmp_path)
 
     def annotate_data_using_ensembl(
