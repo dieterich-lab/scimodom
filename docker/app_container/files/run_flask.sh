@@ -1,5 +1,7 @@
 #!/bin/bash
 
+st -x
+
 echo '### Activating venv ###'
 . /app/venv/bin/activate
 cd /app
