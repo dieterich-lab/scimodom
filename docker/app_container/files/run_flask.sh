@@ -1,6 +1,6 @@
 #!/bin/bash
 
-st -x
+set -x
 
 echo '### Activating venv ###'
 . /app/venv/bin/activate
