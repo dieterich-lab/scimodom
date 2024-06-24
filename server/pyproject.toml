@@ -33,7 +33,7 @@ dependencies = [
   "Flask-Cors",
   "Flask-JWT-Extended",
   "mysqlclient",
-  "numpy",
+  "numpy<2",
   "pandas",
   "pybedtools",
   "python-dotenv",
