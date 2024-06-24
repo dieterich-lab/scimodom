@@ -12,11 +12,8 @@ then
     echo 'mini_cron.sh: No $UPLOAD_PATH - aborting.'
     exit 1
 fi
-if [[ -z $BEDTOOLS_TMP_PATH ]]
-then
-    echo 'mini_cron.sh: No $BEDTOOLS_TMP_PATH - aborting.'
-    exit 1
-fi
+
+mkdir -p $BEDTOOLS_TMP_PATH
 
 while [[ 1 = 1 ]]
 do
