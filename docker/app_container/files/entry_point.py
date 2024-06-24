@@ -46,4 +46,5 @@ write_env_file()
 system("cd /app && /app/mini_cron.sh &")
 system(
     f"exec su - app /app/run_flask.sh {environ.get('HTTP_WORKER_PROCESSES')} {environ.get('HTTP_WORKER_TIMEOUT', 30)}"
+    f" {environ.get('HTTP_REVERSE_PROXY_IPS', '')}"
 )
