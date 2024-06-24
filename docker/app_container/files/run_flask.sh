@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 set -x
 
@@ -9,7 +9,7 @@ echo '### Upgrading Database ###'
 alembic upgrade head
 echo '### Starting gunicorn ###'
 extra_opts=''
-if [[ -n $3 ]]
+if [ "X$3" != X ]
 then
   extra_opts="--forwarded-allow-ips=$3"
 fi
