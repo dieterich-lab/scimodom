@@ -33,11 +33,11 @@ const initFilters = (defaultGlobal) => {
     },
     modomics_sname: {
       operator: FilterOperator.AND,
-      constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }]
+      constraints: [{ value: null, matchMode: FilterMatchMode.EQUALS }]
     },
     tech: {
       operator: FilterOperator.AND,
-      constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }]
+      constraints: [{ value: null, matchMode: FilterMatchMode.EQUALS }]
     },
     taxa_sname: {
       operator: FilterOperator.AND,
@@ -45,11 +45,6 @@ const initFilters = (defaultGlobal) => {
     },
     cto: {
       operator: FilterOperator.AND,
-      constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }]
-    },
-    // access: { value: null, matchMode: FilterMatchMode.IN },
-    access: {
-      operator: FilterOperator.OR,
       constraints: [{ value: null, matchMode: FilterMatchMode.EQUALS }]
     }
   }
@@ -108,8 +103,7 @@ onMounted(() => {
               'modomics_sname',
               'tech',
               'taxa_sname',
-              'cto',
-              'access'
+              'cto'
             ]"
             paginatorTemplate="FirstPageLink PrevPageLink CurrentPageReport NextPageLink LastPageLink  RowsPerPageDropdown"
             :rowsPerPageOptions="[5, 10, 25]"

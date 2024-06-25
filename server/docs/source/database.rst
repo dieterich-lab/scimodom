@@ -15,44 +15,46 @@ created and an email is sent to the system administrator. In the background, the
 .. code-block:: json
 
     {
-        "title": "Title",
-        "summary": "Summary",
-        "contact_name": "Name",
+        "title": "Project Title",
+        "summary": "Project Summary",
+        "contact_name": "Surname, Forename",
         "contact_institution": "Institution",
-        "contact_email": "Email",
-        "date_published": "YYYY-MM-DD",
-        "external_sources": {
-            "doi": "doi",
-            "pmid": "pmid"
-        },
+        "contact_email": "email@example.com",
+        "date_published": "2024-06-11T00:00:00",
+        "external_sources": [
+            {
+                "doi": "10.XXXX/...",
+                "pmid": null
+            }
+        ],
         "metadata": [
             {
                 "rna": "WTS",
                 "modomics_id": "2000000006A",
                 "tech": "m6A-SAC-seq",
                 "method_id": "e00d694d",
-                "organism": {"taxa_id": 9606, "cto": "HeLa", "assembly": "GRCh38"}
+                "organism": {"taxa_id": 9606, "cto": "HeLa", "assembly_name": "GRCh38", "assembly_id": 1},
+                "note": "Note"
             },
             {
                 "rna": "WTS",
                 "modomics_id": "2000000006A",
                 "tech": "m6A-SAC-seq",
                 "method_id": "e00d694d",
-                "organism": {"taxa_id": 9606, "cto": "HEK293", "assembly": "GRCh38"}
+                "organism": {"taxa_id": 9606, "cto": "HEK293", "assembly_name": "GRCh38", "assembly_id": null},
+                "note": ""
             }
         ]
     }
 
-``"external_sources": null`` is allowed, ``"doi": null`` or ``"pmid": null`` are allowed, but not both simultaneously. ``"external_sources"`` can be a list of entries, or a single entry (as above). ``"date_published": null`` is allowed (no public sources). ``"metadata"`` can be a list of entries (as above), or a single entry (at least one entry is required, and all keys are required). Each ``"metadata"`` entry provides information for a given dataset (bedRMod file).
-A single dataset may also require two or more entries for ``metadata`` *e.g.* if two or more modifications are given in the same bedRMod file.
+``"external_sources": []`` and ``"date_published": null`` are allowed (no public sources). If there is at least one source, one of DOI or PMID must be defined, *i.e.* they cannot be both ``"doi": null`` and ``"pmid": null``. DOI format includes only the prefix and suffix, without the doi.org proxy server. ``"metadata"`` is a list of entries with at least one entry. All keys are required, ``"assembly_id"`` and ``"note"`` are optional. Each ``"metadata"`` entry provides information for a given dataset (bedRMod file). A single dataset may also require two or more entries for ``metadata`` *e.g.* if two or more modifications are given in the same bedRMod file.
 
 Each project is assigned a **Sci-ModoM** identifier or **SMID**. The actual project creation and user-project association is currently only handled by ``flask`` commands, see `Flask CLI <https://dieterich-lab.github.io/scimodom/flask.html>`_. Once a project is created, you are associated with the newly created
 project, and you can see it under *User menu* > *Settings*. You are then allowed to upload dataset (bedRMod) and to attach BAM files to a dataset.
 This is done using the upload forms (*Upload bedRMod*, *Attach BAM files*) under *User menu* > *Data* > *Dataset upload*.
 Upon successful upload, a dataset is assigned a EUF identifier or **EUFID**. A given project (**SMID**) can thus have one or more dataset (**EUFID**) attached to it.
 
-Once created, projects are immediately made public. On upload, dataset are immediately made public. Projects and dataset cannot be changed or deleted.
-You can however decide to upload and/or remove dataset attachments (BAM files).
+Once created, projects are immediately made public. On upload, dataset are immediately made public. Projects and dataset cannot be changed or deleted, *i.e.* **SMID** and **EUFID** arfe permanent identifiers. You can however decide to upload and/or remove dataset attachments (BAM files).
 
 
 .. attention::
@@ -65,18 +67,17 @@ You can however decide to upload and/or remove dataset attachments (BAM files).
 .. attention::
 
     The terminology for RNA types is built around the concept of sequencing method rather than the biological definition of RNA species. **Sci-ModoM**
-    currently supports the following types: *(i)* RNAs obtained from *WTS* or *whole transcriptome sequencing* and *(ii)* *tRNA* or *transfer RNA*.
-    If you use a general sequencing method and your data contains *mRNAs* and *non-coding RNAs* (mostly long, but also short such as *mt-RNAs*,
+    currently supports the following types: *(i)* RNAs obtained from *WTS* or *whole transcriptome sequencing* and *(ii)* *tRNA* or *transfer RNA* (*to be soon available*). If you use a general sequencing method and your data contains *mRNAs* and *non-coding RNAs* (mostly long, but also short such as *mt-RNAs*,
     residual *rRNAs*, *etc.*), then choose *WTS*.
 
 .. attention::
 
     Dataset upload will fail if there are too many skipped records *e.g.* due to inconsistent format specifications. The threshold is set at 5%, *i.e.*
     up to 5% of your records can be discarded silently before upload fails. This allows *e.g.* to upload dataset where a small number of entries
-    are from contigs or scaffolds, where strand is undefined, *etc.*
+    are from contigs or scaffolds, *etc.*
 
     Dataset that are of a different assembly version are lifted over before being written to the database. Typically, a number of features may
-    not be "mappable". Since contigs/scaffolds are discarded, that data has been validated for organism, assembly, *etc.*, the number
+    not be "mappable". Since contigs/scaffolds are discarded, and the data has been validated for organism, assembly, *etc.*, the number
     of ummaped features should be small. The threshold is currently set a 30%, *i.e.* up to 30% of your records are allowed to de discarded
     silently before upload fails.
 
