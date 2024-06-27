@@ -359,7 +359,8 @@ class AssemblyService:
         top_level = {
             d["name"]: d["length"]
             for d in gene_build["top_level_region"]
-            if d["coord_system"] == "chromosome" and d["name"] in chroms
+            if d["coord_system"] in ["chromosome", "primary_assembly"]
+            and d["name"] in chroms
         }
         with open(chrom_file, "x") as cfile:
             for chrom in sorted(chroms):

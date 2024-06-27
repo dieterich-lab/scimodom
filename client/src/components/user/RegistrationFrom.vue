@@ -14,14 +14,19 @@ const dialogState = useDialogState()
 const validationSchema = yup.object({
   email: yup
     .string()
-    .required('required field')
-    .email('not a valid address')
+    .required('Email is required!')
+    .email('Invalid email!')
+    .max(320, 'At most 320 characters allowed!')
     .label('Email address'),
-  password: yup.string().required('required field').min(8, 'min 8 characters').label('Password'),
+  password: yup
+    .string()
+    .required('Password is required')
+    .min(8, 'min 8 characters')
+    .label('Password'),
   passwordConfirm: yup
     .string()
     .oneOf([yup.ref('password')], 'Passwords must match')
-    .required('required field')
+    .required('Required field')
     .label('Password confirmation')
 })
 const { defineField, handleSubmit, resetForm, errors } = useForm({
