@@ -14,7 +14,15 @@
           </span>
           <div class="text-900 text-xl mb-3 font-medium dark:text-white/80">Data format</div>
           <span class="text-700 line-height-3 dark:text-white/80">
-            Support and promote the bedRMod format. This format is similar to the
+            Support and promote the
+            <a
+              class="text-primary-500 hover:text-secondary-500"
+              href="https://dieterich-lab.github.io/scimodom/bedrmod.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              >bedRMod</a
+            >
+            format. This format is similar to the
             <a
               class="text-primary-500 hover:text-secondary-500"
               href="https://www.encodeproject.org/data-standards/wgbs/"
@@ -22,7 +30,7 @@
               rel="noopener noreferrer"
               >ENCODE bedMethyl</a
             >
-            format (BED9+2), but includes a header.
+            format (BED9+2).
           </span>
         </div>
         <div class="col-12 md:col-4 mb-4 px-5">
@@ -31,8 +39,8 @@
           </span>
           <div class="text-900 text-xl mb-3 font-medium dark:text-white/80">Database</div>
           <span class="text-700 line-height-3 dark:text-white/80">
-            Starting with m6A and Ψ, we continuously add new data encompassing a wide range of
-            modifications, RNA types (mRNA, tRNA, rRNA), technologies, and species.
+            Starting with m6A, m5C, and Ψ (whole-transcriptome), we continuously add new data
+            encompassing a wide range of modifications, RNA types, technologies, and species.
           </span>
         </div>
         <div class="col-12 md:col-4 mb-4 px-5">
@@ -41,7 +49,7 @@
           </span>
           <div class="text-900 text-xl mb-3 font-medium dark:text-white/80">Tools</div>
           <span class="text-700 line-height-3 dark:text-white/80">
-            Search and compare modifications across dataset. More tools coming: genome browser,
+            Search and compare modifications across datasets. More tools coming: genome browser,
             visualization.
           </span>
         </div>
@@ -51,7 +59,8 @@
           </span>
           <div class="text-900 text-xl mb-3 font-medium dark:text-white/80">Access</div>
           <span class="text-700 line-height-3 dark:text-white/80">
-            Login with data upload, access management, sharing, and more.</span
+            Registration and login is optional. Login with data upload, access management, and
+            more.</span
           >
         </div>
         <div class="col-12 md:col-4 mb-4 px-5">

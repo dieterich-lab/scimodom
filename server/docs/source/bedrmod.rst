@@ -98,6 +98,11 @@ The data section
 
 The first nine columns generally follow the standard `BED specification <https://samtools.github.io/hts-specs/BEDv1.pdf>`_, but the name (4th column) must conform to the `MODOMICS <https://www.genesilico.pl/modomics/modifications>`_ nomenclature for the modification short name, and the score (5th column) is a site-specific measure of confidence. The last two columns contain the coverage (10th column), or number of reads at this position, and the frequency (11th column), or the integer value capped at 100 representing the precentage of reads that are modified at this position. These columns must be separated by tabs and each row must have the same number of columns.
 
+
+.. attention::
+
+    bedRMod is essentially a BED-formatted file, it uses a 0-based, half-open coordinate system. If you use a 1-based index, all your modification sites will be *off-by-one*!
+
 .. attention::
 
     For data upload to Sci-ModoM, chromosomes (1st column) must be formatted following the Ensembl short format *e.g.* 1 and not chr1, or MT and not chrM.

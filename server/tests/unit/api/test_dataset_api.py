@@ -214,7 +214,7 @@ def comparison_services(mocker):
 
 
 @pytest.mark.parametrize(
-    "reference,comparison,upload,is_euf,strand",
+    "reference,comparison,upload,euf,strand",
     [
         (["datasetidAxx"], ["datasetidBxx"], None, None, True),
         (["datasetidAxx", "datasetidBxx"], ["datasetidCxx"], None, None, True),
@@ -224,11 +224,11 @@ def comparison_services(mocker):
     ],
 )
 def test_intersect(
-    test_client, comparison_services, reference, comparison, upload, is_euf, strand
+    test_client, comparison_services, reference, comparison, upload, euf, strand
 ):
     result = test_client.get(
         get_compare_url_parameters(
-            "intersect", reference, comparison, upload, is_euf, strand
+            "intersect", reference, comparison, upload, euf, strand
         )
     )
     assert result.status == "200 OK"
@@ -236,10 +236,10 @@ def test_intersect(
         IntersectResponse.model_validate_json(result.text).records
         == MockBedtoolsService.INTERSECT_RESULT
     )
-    check_comparison_mocks("intersect", reference, comparison, upload, is_euf, strand)
+    check_comparison_mocks("intersect", reference, comparison, upload, euf, strand)
 
 
-def check_comparison_mocks(operation, reference, comparison, upload, is_euf, strand):
+def check_comparison_mocks(operation, reference, comparison, upload, euf, strand):
     assert MockBedtoolsService.last_operation == operation
     assert MockBedtoolsService.last_is_strand == strand
     assert MockBedtoolsService.last_a_dataset == get_a_datasets_as_comparison_records(
@@ -251,7 +251,7 @@ def check_comparison_mocks(operation, reference, comparison, upload, is_euf, str
             == get_b_dataset_list_as_comparison_records(*comparison)
         )
     if upload is not None:
-        if is_euf:
+        if euf:
             assert MockBedtoolsService.last_b_dataset_list == [
                 MockEufImporter.RESULT_AS_COMPARISON
             ]
@@ -262,7 +262,7 @@ def check_comparison_mocks(operation, reference, comparison, upload, is_euf, str
 
 
 def get_compare_url_parameters(
-    operation, reference, comparison=None, upload=None, is_euf=False, strand=True
+    operation, reference, comparison=None, upload=None, euf=False, strand=True
 ):
     parameters = []
     for r in reference:
@@ -276,8 +276,8 @@ def get_compare_url_parameters(
         parameters.append("strand=false")
     if upload is not None:
         parameters.append(f"upload={upload}")
-    if is_euf:
-        parameters.append("is_euf=true")
+    if euf:
+        parameters.append("euf=true")
     return f"/{operation}?" + "&".join(parameters)
 
 
@@ -300,7 +300,7 @@ def get_b_dataset_list_as_comparison_records(*dataset_ids):
 
 
 @pytest.mark.parametrize(
-    "reference,comparison,upload,is_euf,strand",
+    "reference,comparison,upload,euf,strand",
     [
         (["datasetidAxx"], ["datasetidBxx"], None, None, True),
         (["datasetidAxx", "datasetidBxx"], ["datasetidCxx"], None, None, True),
@@ -310,11 +310,11 @@ def get_b_dataset_list_as_comparison_records(*dataset_ids):
     ],
 )
 def test_closest(
-    test_client, comparison_services, reference, comparison, upload, is_euf, strand
+    test_client, comparison_services, reference, comparison, upload, euf, strand
 ):
     result = test_client.get(
         get_compare_url_parameters(
-            "closest", reference, comparison, upload, is_euf, strand
+            "closest", reference, comparison, upload, euf, strand
         )
     )
     assert result.status == "200 OK"
@@ -322,11 +322,11 @@ def test_closest(
         ClosestResponse.model_validate_json(result.text).records
         == MockBedtoolsService.CLOSEST_RESULT
     )
-    check_comparison_mocks("closest", reference, comparison, upload, is_euf, strand)
+    check_comparison_mocks("closest", reference, comparison, upload, euf, strand)
 
 
 @pytest.mark.parametrize(
-    "reference,comparison,upload,is_euf,strand",
+    "reference,comparison,upload,euf,strand",
     [
         (["datasetidAxx"], ["datasetidBxx"], None, None, True),
         (["datasetidAxx", "datasetidBxx"], ["datasetidCxx"], None, None, True),
@@ -336,11 +336,11 @@ def test_closest(
     ],
 )
 def test_subtract(
-    test_client, comparison_services, reference, comparison, upload, is_euf, strand
+    test_client, comparison_services, reference, comparison, upload, euf, strand
 ):
     result = test_client.get(
         get_compare_url_parameters(
-            "subtract", reference, comparison, upload, is_euf, strand
+            "subtract", reference, comparison, upload, euf, strand
         )
     )
     assert result.status == "200 OK"
@@ -348,7 +348,7 @@ def test_subtract(
         SubtractResponse.model_validate_json(result.text).records
         == MockBedtoolsService.SUBTRACT_RESULT
     )
-    check_comparison_mocks("subtract", reference, comparison, upload, is_euf, strand)
+    check_comparison_mocks("subtract", reference, comparison, upload, euf, strand)
 
 
 @pytest.mark.parametrize(
