@@ -1,14 +1,23 @@
 import logging
 from functools import cache
-from pathlib import Path
-from typing import Optional
 
 import pandas as pd  # type: ignore # import-untyped
 from sqlalchemy.dialects.mysql import insert
+from sqlalchemy.orm import Session
 
-from scimodom.config import Config
 from scimodom.database.database import Base, get_session
-import scimodom.utils.utils as utils
+from scimodom.database.models import (
+    RNAType,
+    Modomics,
+    Taxonomy,
+    Taxa,
+    Assembly,
+    AssemblyVersion,
+    Annotation,
+    AnnotationVersion,
+    DetectionMethod,
+)
+from scimodom.services.file import FileService, get_file_service
 
 logger = logging.getLogger(__name__)
 
@@ -20,45 +29,50 @@ class SetupService:
     :type session: Session | scoped_session
     """
 
-    def __init__(self, session) -> None:
-        """Initializer method."""
+    def __init__(self, session: Session, file_service: FileService) -> None:
         self._session = session
-        self._config = Config()
-        self._models_tables = [
-            self._config.rna_tbl,
-            self._config.modomics_tbl,
-            self._config.taxonomy_tbl,
-            self._config.ncbi_taxa_tbl,
-            self._config.assembly_tbl,
-            self._config.assembly_version_tbl,
-            self._config.annotation_tbl,
-            self._config.annotation_version_tbl,
-            self._config.method_tbl,
-        ]
+        self._file_service = file_service
 
-        for _, table in self._models_tables:
-            if not table.is_file():
-                msg = f"No such file or directory: {table.as_posix()}"
-                raise FileNotFoundError(msg)
+        # Should that matter here? Or should we only worry on demand?
+        for name in self.FILE_NAME_TO_DB_TABLE_MAP.keys():
+            if not file_service.check_import_file(name):
+                raise FileNotFoundError(f"No such file or directory: {name}")
 
-    @staticmethod
-    def get_table(model: Base, table: str | Path) -> pd.DataFrame:
+    FILE_NAME_TO_DB_TABLE_MAP = {
+        "rna_type.csv": RNAType,
+        "modomics.csv": Modomics,
+        "taxonomy.csv": Taxonomy,
+        "ncbi_taxa.csv": Taxa,
+        "assembly.csv": Assembly,
+        "assembly_version.csv": AssemblyVersion,
+        "annotation.csv": Annotation,
+        "annotation_version.csv": AnnotationVersion,
+        "method.csv": DetectionMethod,
+    }
+
+    def upsert_one(self, file_name: str):
+        model = self.FILE_NAME_TO_DB_TABLE_MAP[file_name]
+        data = self._get_import_file_as_dataframe(file_name)
+        self._validate_table(model, data)
+        self._bulk_upsert(model, data)
+
+    def _get_import_file_as_dataframe(self, name: str) -> pd.DataFrame:
         """Read table, keeping only relevant columns.
 
-        :param model: SQLAlchemy model
-        :type model: Base
-        :param table: Path to data table
-        :type table: str | Path
+        :param name: Name of the file to import
+        :type name: str
         :returns: Data table
         :rtype: pd.DataFrame
         """
+        model = self.FILE_NAME_TO_DB_TABLE_MAP[name]
         cols = set([column.key for column in model.__table__.columns])
-        df = pd.read_csv(table)
+        with self._file_service.open_import_file(name) as fh:
+            df = pd.read_csv(fh)
         df = df.loc[:, df.columns.isin(cols)]
         return df
 
     @staticmethod
-    def validate_table(model: Base, table: pd.DataFrame) -> None:
+    def _validate_table(model: Base, table: pd.DataFrame) -> None:
         """Validate data table.
 
         :param model: SQLAlchemy model
@@ -82,7 +96,7 @@ class SetupService:
         )
         logger.debug(msg)
 
-    def bulk_upsert(self, model, table: pd.DataFrame) -> None:
+    def _bulk_upsert(self, model, table: pd.DataFrame) -> None:
         """Perform bulk INSERT... ON DUPLICATE KEY UPDATE.
 
         :param model: SQLAlchemy model
@@ -105,13 +119,23 @@ class SetupService:
 
     def upsert_all(self) -> None:
         """Upsert all tables in the configuration file."""
-        for m, t in self._models_tables:
-            model = utils.get_model(m)
-            table = self.get_table(model, t)
-            self.validate_table(model, table)
-            self.bulk_upsert(model, table)
+        for name in self.FILE_NAME_TO_DB_TABLE_MAP.keys():
+            self.upsert_one(name)
+
+    def is_valid_import_file(self, file_name: str) -> bool:
+        return file_name in self.FILE_NAME_TO_DB_TABLE_MAP.keys()
+
+    def get_valid_import_file_names(self) -> list[str]:
+        return list(self.FILE_NAME_TO_DB_TABLE_MAP.keys())
+
+    def get_upsert_message(self, file_name: str) -> str:
+        model = self.FILE_NAME_TO_DB_TABLE_MAP[file_name]
+        return (
+            f"Updating {model.__name__} (table {model.__table__.name}) using "
+            f"the following columns: {model.columns.tolist()}."
+        )
 
 
 @cache
 def get_setup_service() -> SetupService:
-    return SetupService(session=get_session())
+    return SetupService(session=get_session(), file_service=get_file_service())

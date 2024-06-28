@@ -92,9 +92,8 @@ class GtRNAdbAnnotationService(GenericAnnotationService):
 
         try:
             for paths in annotation_paths.values():
-                self._web_service.stream_request_to_file(
-                    paths.url, paths.annotation_file
-                )
+                with open(paths.annotation_file, "wb") as fh:
+                    self._web_service.stream_request_to_file(paths.url, fh)
             self._bedtools_service.gtrnadb_to_bed_features(
                 annotation_file, [list(d.keys())[0] for d in self.FEATURES.values()]
             )
@@ -104,7 +103,7 @@ class GtRNAdbAnnotationService(GenericAnnotationService):
                 annotation_file, annotation.id, release_path.parent.parent.name
             )
             self._session.commit()
-        except:
+        except Exception:
             self._session.rollback()
             shutil.rmtree(release_path)
             raise
@@ -152,7 +151,7 @@ class GtRNAdbAnnotationService(GenericAnnotationService):
 
     # TODO
     def _update_annotation(self, domain, fasta_file):
-        annotation_path = self.get_annotation_path()
+        annotation_path = self._file_service.get_annotation_dir()
         model_file = Path(annotation_path, domain).with_suffix(".cm").as_posix()
         sprinzl_file = Path(annotation_path, domain).with_suffix(".txt").as_posix()
         self._external_service.get_sprinzl_mapping(model_file, fasta_file, sprinzl_file)

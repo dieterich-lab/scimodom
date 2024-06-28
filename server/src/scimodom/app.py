@@ -1,5 +1,4 @@
 from logging.config import dictConfig
-from pathlib import Path
 
 import click
 from flask_cors import CORS
@@ -15,10 +14,11 @@ from scimodom.api.transfer import transfer_api
 from scimodom.api.bam_file import bam_file_api
 from scimodom.api.modification import modification_api
 from scimodom.app_singleton import create_app_singleton
+from scimodom.config import set_config_from_environment, get_config
 from scimodom.database.database import make_session, init
 from scimodom.services.annotation import AnnotationSource
+from scimodom.services.file import get_file_service
 from scimodom.services.setup import get_setup_service
-from scimodom.services.project import ProjectService
 from scimodom.frontend import frontend
 from scimodom.plugins.cli import (
     add_annotation,
@@ -31,15 +31,15 @@ from scimodom.plugins.cli import (
     upsert,
 )
 from scimodom.utils.project_dto import ProjectTemplate
-from scimodom.utils.url_routes import (
+from scimodom.services.url import (
     API_PREFIX,
-    USER_API_ROUTE,
-    PROJECT_API_ROUTE,
-    DATASET_API_ROUTE,
-    TRANSFER_API_ROUTE,
-    DATA_MANAGEMENT_API_ROUTE,
     BAM_FILE_API_ROUTE,
+    DATA_MANAGEMENT_API_ROUTE,
+    DATASET_API_ROUTE,
     MODIFICATION_API_ROUTE,
+    PROJECT_API_ROUTE,
+    TRANSFER_API_ROUTE,
+    USER_API_ROUTE,
 )
 
 
@@ -48,8 +48,8 @@ def create_app():
 
     app = create_app_singleton()
     CORS(app)
-    # does not instantiate the class object...
-    app.config.from_object("scimodom.config.Config")
+    set_config_from_environment()
+    app.config.from_object(get_config())
     # since we haven't called app.logger there shouldn't be any default handlers...
     dictConfig(app.config["LOGGING"])
 
@@ -167,13 +167,8 @@ def create_app():
         REQUEST_UUID is the UUID of a project request.
         """
         add_user = not skip_add_user
-        project_request_path = Path(
-            ProjectService.DATA_PATH,
-            ProjectService.METADATA_PATH,
-            ProjectService.REQUEST_PATH,
-        )
-        project_request_file = Path(project_request_path, f"{request_uuid}.json")
-        with open(project_request_file, "r") as fh:
+        file_service = get_file_service()
+        with file_service.open_project_request_file(request_uuid) as fh:
             project_template_raw = fh.read()
         project_template = ProjectTemplate.model_validate_json(project_template_raw)
         add_project(project_template, request_uuid, add_user=add_user)
@@ -274,18 +269,10 @@ def create_app():
         REQUEST_UUIDS is the name (w/o extension) of one or more project templates.
         """
         annotation_source = AnnotationSource(annotation)
-        project_request_path = Path(
-            ProjectService.DATA_PATH,
-            ProjectService.METADATA_PATH,
-            ProjectService.REQUEST_PATH,
-        )
-        request_files = [
-            Path(project_request_path, f"{request_uuid}.json")
-            for request_uuid in request_uuids
-        ]
+        file_service = get_file_service()
         project_template_list = []
-        for request_file in request_files:
-            with open(request_file, "r") as fh:
+        for uuid in request_uuids:
+            with file_service.open_project_request_file(uuid) as fh:
                 project_template_raw = fh.read()
             project_template = ProjectTemplate.model_validate_json(project_template_raw)
             project_template_list.append(project_template)
@@ -297,36 +284,22 @@ def create_app():
         "setup", epilog="Check docs at https://dieterich-lab.github.io/scimodom/."
     )
     @click.option(
-        "-m",
-        "--model",
-        default=None,
-        type=click.STRING,
-        help="""Upsert MODEL using [--table TABLE]. Performs an INSERT... ON DUPLICATE KEY UPDATE. Requires [--table TABLE]""",
-    )
-    @click.option(
         "-t",
         "--table",
         default=None,
         type=click.STRING,
-        help="""Database table for MODEL with column names. Only columns matching __table__.columns are used. CSV format. Requires [--model MODEL]""",
+        help="Name of the CSV file to use, e.g. ncbi_taxa.csv. The datbase table to load will be determined by that.",
     )
     @click.option(
         "--init",
         is_flag=True,
         help="This flag silently overrides other options. Called on application start-up.",
     )
-    def setup(model, table, init):
+    def setup(table, init):
         """Upsert selected or all default DB tables.
         Selected model/table names must exist.
         """
         kwargs = dict()
-        if not init:
-            if None not in (model, table):
-                kwargs = {"model": model, "table": table}
-            else:
-                raise TypeError(
-                    "'NoneType' object is not a valid argument for [--model] and/or [--table]."
-                )
         upsert(init, **kwargs)
 
     # does this goes here?

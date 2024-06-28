@@ -8,7 +8,7 @@ import pybedtools  # type: ignore
 from pybedtools import BedTool, create_interval_from_list
 
 import scimodom.utils.utils as utils
-from scimodom.config import Config
+from scimodom.config import get_config
 from scimodom.database.models import Data
 from scimodom.utils.bedtools_dto import (
     EufRecord,
@@ -582,4 +582,4 @@ class BedToolsService:
 
 @cache
 def get_bedtools_service():
-    return BedToolsService(tmp_path=Config.BEDTOOLS_TMP_PATH)
+    return BedToolsService(tmp_path=get_config().BEDTOOLS_TMP_PATH)

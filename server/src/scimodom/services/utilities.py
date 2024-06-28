@@ -23,8 +23,8 @@ from scimodom.services.annotation import (
     AnnotationService,
     AnnotationSource,
 )
-from scimodom.services.annotation.generic import GenericAnnotationService
 from scimodom.services.assembly import get_assembly_service, AssemblyService
+from scimodom.services.file import FileService, get_file_service
 from scimodom.utils.specifications import BIOTYPES
 
 
@@ -39,10 +39,12 @@ class UtilitiesService:
         session: Session,
         assembly_service: AssemblyService,
         annotation_service: AnnotationService,
+        file_service: FileService,
     ) -> None:
         self._session = session
         self._assembly_service = assembly_service
         self._annotation_service = annotation_service
+        self._file_service = file_service
 
     def get_rna_types(self) -> list[dict[str, Any]]:
         """Get all RA types.
@@ -140,19 +142,6 @@ class UtilitiesService:
         )
         return [row._asdict() for row in self._session.execute(query)]
 
-    def get_genes(self, selection_ids: list[int]) -> list[str]:
-        """Retrieve gene list for selection.
-
-        :param selection_ids: Selection ID(s)
-        :type selection_ids: list of int
-        :returns: Combined list of genes
-        :rtype: list of str
-        """
-        cache_path = GenericAnnotationService.get_cache_path()
-        files = [Path(cache_path, str(selection_id)) for selection_id in selection_ids]
-        genes = [fc.read_text().split() for fc in files]
-        return list(set(chain(*genes)))
-
     def get_annotation(
         self, annotation_source: AnnotationSource
     ) -> dict[str, list[str]]:
@@ -169,23 +158,6 @@ class UtilitiesService:
         # TODO: do biotypes also depend on RNA type/annotation?
         response["biotypes"] = self.MAPPED_BIOTYPES
         return response
-
-    def get_chroms(self, taxa_id) -> list[dict[str, Any]]:
-        """Provides access to chrom.sizes for a given
-        organism for the latest database version.
-
-        :param taxa_id: Taxonomy ID
-        :type taxa_id: int
-        :returns: chrom names and sizes
-        :rtype: list of dict
-        """
-        chroms = []
-        chrom_file = self._assembly_service.get_chrom_file(taxa_id)
-        with open(chrom_file, "r") as fh:
-            for line in fh:
-                chrom, size = line.strip().split(None, 1)
-                chroms.append({"chrom": chrom, "size": int(size.strip())})
-        return chroms
 
     def get_assemblies(self, taxa_id: int) -> list[dict[str, Any]]:
         """Get available assemblies for given organism.
@@ -223,4 +195,5 @@ def get_utilities_service() -> UtilitiesService:
         session=get_session(),
         assembly_service=get_assembly_service(),
         annotation_service=get_annotation_service(),
+        file_service=get_file_service(),
     )

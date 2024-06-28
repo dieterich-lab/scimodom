@@ -1,19 +1,18 @@
 import json
 import logging
-import shutil
 from functools import cache
 from pathlib import Path
 from posixpath import join as urljoin
-from typing import ClassVar, Callable
+from typing import Iterable
 
 from sqlalchemy import select, func
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session
 
-from scimodom.config import Config
 from scimodom.database.database import get_session
 from scimodom.database.models import Assembly, AssemblyVersion, Taxa
 from scimodom.services.external import get_external_service, ExternalService
+from scimodom.services.file import FileService, get_file_service, AssemblyFileType
 from scimodom.services.web import WebService, get_web_service
 from scimodom.utils.specifications import (
     ASSEMBLY_NUM_LENGTH,
@@ -53,81 +52,27 @@ class AssemblyService:
     :type session: Session
     :param external_service: External service instance
     :type external service: ExternalService
-    :param DATA_PATH: Data path
-    :type DATA_PATH: str | Path | None
-    :param ASSEMBLY_PATH: Path to assembly
-    :type ASSEMBLY_PATH: str
-    :param CHROM_fILE: Reserved file name with a
-    list of allowed chromosomes
-    :type CHROM_FILE: str
-    :param CHAIN_FILE: Chain file template name
-    :type CHAIN_FILE: Callable
+    :param web_service: The web service
+    :type web_service: WebService
+    :param file_service: The file service
+    :type file_service: FileService
     """
-
-    DATA_PATH: ClassVar[str | Path] = Config.DATA_PATH
-    ASSEMBLY_PATH: ClassVar[str] = "assembly"
-    CHROM_FILE: ClassVar[str] = "chrom.sizes"
-    CHAIN_FILE: ClassVar[Callable] = "{source}_to_{target}.chain.gz".format
 
     def __init__(
         self,
         session: Session,
         external_service: ExternalService,
         web_service: WebService,
+        file_service: FileService,
     ) -> None:
         self._session = session
         self._external_service = external_service
         self._web_service = web_service
+        self._file_service = file_service
 
         self._version = self._session.execute(
             select(AssemblyVersion.version_num)
         ).scalar_one()
-
-    def __new__(cls, session: Session, **kwargs):
-        if cls.DATA_PATH is None:
-            raise ValueError("Missing environment variable: DATA_PATH.")
-        elif not Path(cls.DATA_PATH, cls.ASSEMBLY_PATH).is_dir():
-            raise FileNotFoundError(
-                f"No such directory '{Path(cls.DATA_PATH, cls.ASSEMBLY_PATH)}'."
-            )
-        else:
-            return super().__new__(cls)
-
-    @staticmethod
-    def get_assembly_path() -> Path:
-        """Construct parent path to assembly files.
-
-        :returns: Path to assembly
-        :rtype: Path
-        """
-        return Path(AssemblyService.DATA_PATH, AssemblyService.ASSEMBLY_PATH)
-
-    def get_chrom_file(self, taxa_id: int) -> Path:
-        """Construct chrom file path for a given organism.
-
-        :param taxa_id: Taxonomy ID
-        :type taxa_id: int
-        :returns: Path to chrom.sizes
-        :rtype: Path
-        """
-        path, organism, name_for_version = self._path_constructor(taxa_id)
-        return Path(path, organism, name_for_version, self.CHROM_FILE)
-
-    def get_chain_file(self, taxa_id: int, name: str) -> Path:
-        """Construct chain file path for organism.
-
-        Only to (not from) current version.
-
-        :param taxa_id: Taxonomy ID
-        :type taxa_id: int
-        :param name: Assembly name
-        :type name: str
-        :returns: Path to chain file
-        :rtype: Path
-        """
-        path, organism, name_for_version = self._path_constructor(taxa_id)
-        chain_file = self.CHAIN_FILE(source=name, target=name_for_version)
-        return Path(path, organism, name, chain_file)
 
     def get_assembly_by_id(self, assembly_id: int) -> Assembly:
         """Retrieve assembly.
@@ -177,9 +122,10 @@ class AssemblyService:
         :returns: Chromosomes
         :rtype: list of str
         """
-        chrom_file = self.get_chrom_file(taxa_id)
-        with open(chrom_file, "r") as f:
-            lines = f.readlines()
+        with self._file_service.open_assembly_file(
+            taxa_id, AssemblyFileType.CHROM
+        ) as fp:
+            lines = fp.readlines()
         return [line.split()[0] for line in lines]
 
     def liftover(
@@ -204,16 +150,23 @@ class AssemblyService:
         """
         if self.is_latest_assembly(assembly):
             raise AssemblyVersionError("Cannot liftover for latest assembly.")
-        chain_file = self.get_chain_file(assembly.taxa_id, assembly.name)
-        if not chain_file.is_file():
-            raise FileNotFoundError(f"No such file or directory {chain_file}.")
 
-        raw_lines = self._count_lines(raw_file)
+        target_annotation_name = self.get_name_for_version(assembly.taxa_id)
+        chain_file_name = self._get_chain_file_name(
+            assembly.name, target_annotation_name
+        )
+        chain_file = self._file_service.get_assembly_file_path(
+            assembly.taxa_id,
+            file_type=AssemblyFileType.CHAIN,
+            chain_file_name=chain_file_name,
+        )
+
+        raw_lines = self._file_service.count_lines(raw_file)
         lifted_file, unmapped_file = self._external_service.get_crossmap_output(
             raw_file, chain_file.as_posix(), unmapped_file
         )
 
-        unmapped_lines = self._count_lines(unmapped_file)
+        unmapped_lines = self._file_service.count_lines(unmapped_file)
         if unmapped_lines / raw_lines > threshold:
             raise LiftOverError(
                 f"Liftover failed: {unmapped_lines} records of {raw_lines} could not be mapped."
@@ -245,23 +198,20 @@ class AssemblyService:
         except NoResultFound:
             pass
 
-        chain_file = self.get_chain_file(taxa_id, name)
-        parent = chain_file.parent
-        organism = self._get_organism(taxa_id)
-        url = urljoin(
-            ENSEMBL_FTP, ENSEMBL_ASM_MAPPING, organism.lower(), chain_file.name
+        if self._file_service.check_if_assembly_exists(taxa_id):
+            raise FileExistsError(
+                f"Assembly '{name}' already exists (Taxa ID {taxa_id})."
+            )
+
+        chain_file_name = self._get_chain_file_name(
+            name, self.get_name_for_version(taxa_id)
         )
+        url = self._get_ensembl_chain_file_url(taxa_id, chain_file_name)
 
         logger.info(f"Setting up a new assembly for {name}...")
-
         try:
-            parent.mkdir(parents=True, exist_ok=False)
-        except FileExistsError as exc:
-            exc.add_note(f"... but assembly {name} does not exist!")
-            raise
-
-        try:
-            self._web_service.stream_request_to_file(url, chain_file)
+            with self._file_service.create_chain_file(taxa_id, chain_file_name) as fh:
+                self._web_service.stream_request_to_file(url, fh)
             version_nums = (
                 self._session.execute(select(func.distinct(Assembly.version)))
                 .scalars()
@@ -274,8 +224,24 @@ class AssemblyService:
             return assembly.id
         except Exception:
             self._session.rollback()
-            shutil.rmtree(parent)
+            self._file_service.delete_assembly(taxa_id)
             raise
+
+    def _get_ensembl_chain_file_url(self, taxa_id: int, chain_file_name):
+        return urljoin(
+            ENSEMBL_FTP,
+            ENSEMBL_ASM_MAPPING,
+            self._get_organism_for_ensemble_url(taxa_id),
+            chain_file_name,
+        )
+
+    def _get_organism_for_ensemble_url(self, taxa_id: int):
+        organism = self._get_organism(taxa_id)
+        return ("_".join(organism.split())).lower()
+
+    @staticmethod
+    def _get_chain_file_name(source_assembly_name, target_assembly_name):
+        return f"{source_assembly_name}_to_{target_assembly_name}.chain.gz"
 
     def prepare_assembly_for_version(self, assembly_id: int) -> None:
         """Prepare directories and files for the latest version.
@@ -295,19 +261,16 @@ class AssemblyService:
 
         logger.info(f"Setting up assembly {assembly.name} for current version...")
 
-        chrom_file = self.get_chrom_file(assembly.taxa_id)
-        parent = chrom_file.parent
-        try:
-            parent.mkdir(parents=True, exist_ok=False)
-        except FileExistsError as exc:
-            exc.add_note(f"Assembly directory exists: {parent}.")
-            raise
+        if self._file_service.check_if_assembly_exists(assembly.taxa_id):
+            raise FileExistsError(
+                f"Assembly '{assembly.name}' already exists (Taxa ID {assembly.taxa_id})."
+            )
 
         try:
-            self._handle_gene_build(assembly, chrom_file)
-            self._handle_release(parent)
+            self._handle_gene_build(assembly)
+            self._handle_release(assembly)
         except Exception:
-            shutil.rmtree(parent)
+            self._file_service.delete_assembly(assembly.taxa_id)
             raise
 
     def get_name_for_version(self, taxa_id: int) -> str:
@@ -323,31 +286,19 @@ class AssemblyService:
         ).scalar_one()
         return name
 
-    @staticmethod
-    def _count_lines(path):
-        count = 0
-        with open(path) as fp:
-            while True:
-                buffer = fp.read(1024 * 1024)
-                if len(buffer) == 0:
-                    return count
-                count += buffer.count("\n")
-
-    def _handle_release(self, path):
+    def _handle_release(self, assembly):
         url = urljoin(
             ENSEMBL_SERVER,
             ENSEMBL_DATA,
         )
         release = self._web_service.request_as_json(url)
-        with open(Path(path, "release.json"), "w") as f:
-            json.dump(release, f, indent="\t")
+        with self._file_service.create_assembly_file(
+            assembly.taxa_id, AssemblyFileType.RELEASE
+        ) as fp:
+            json.dump(release, fp, indent="\t")
 
-    def _handle_gene_build(self, assembly: Assembly, chrom_file):
-        url = urljoin(
-            ENSEMBL_SERVER,
-            ENSEMBL_ASM,
-            self._get_organism(assembly.taxa_id).lower(),
-        )
+    def _handle_gene_build(self, assembly: Assembly):
+        url = self._get_ensembl_gene_build_url(assembly.taxa_id)
         gene_build = self._web_service.request_as_json(url)
         coord_sysver = gene_build["default_coord_system_version"]
         if coord_sysver != assembly.name:
@@ -361,27 +312,47 @@ class AssemblyService:
             for d in gene_build["top_level_region"]
             if d["coord_system"] == "chromosome" and d["name"] in chroms
         }
-        with open(chrom_file, "x") as cfile:
+        with self._file_service.create_assembly_file(
+            assembly.taxa_id, AssemblyFileType.CHROM
+        ) as fh:
             for chrom in sorted(chroms):
-                cfile.write(f"{chrom}\t{top_level[chrom]}\n")
+                fh.write(f"{chrom}\t{top_level[chrom]}\n")
 
         keys = ["assembly_accession", "assembly_date", "assembly_name"]
         gene_build = {k: v for k, v in gene_build.items() if k in keys}
-        with open(Path(chrom_file.parent, "info.json"), "w") as f:
-            json.dump(gene_build, f, indent="\t")
+        with self._file_service.create_assembly_file(
+            assembly.taxa_id, AssemblyFileType.INFO
+        ) as fh:
+            json.dump(gene_build, fh, indent="\t")
+
+    def _get_ensembl_gene_build_url(self, taxa_id: int):
+        return urljoin(
+            ENSEMBL_SERVER,
+            ENSEMBL_ASM,
+            self._get_organism_for_ensemble_url(taxa_id),
+        )
 
     def _get_organism(self, taxa_id: int) -> str:
         organism = self._session.execute(
             select(Taxa.name).filter_by(id=taxa_id)
         ).scalar_one()
-        organism = "_".join(organism.split())
         return organism
 
-    def _path_constructor(self, taxa_id: int) -> tuple[Path, str, str]:
-        path = self.get_assembly_path()
-        organism = self._get_organism(taxa_id)
-        name_for_version = self.get_name_for_version(taxa_id)
-        return path, organism, name_for_version
+    def get_chroms(self, taxa_id) -> Iterable[dict[str, int]]:
+        """Provides access to chrom.sizes for a given
+        organism for the latest database version.
+
+        :param taxa_id: Taxonomy ID
+        :type taxa_id: int
+        :returns: chrom names and sizes
+        :rtype: Iterable[dict[str, int]]
+        """
+        with self._file_service.open_assembly_file(
+            taxa_id, AssemblyFileType.CHROM
+        ) as fh:
+            for line in fh:
+                chrom, size = line.strip().split(None, 1)
+                yield {"chrom": chrom, "size": int(size.strip())}
 
 
 @cache
@@ -395,4 +366,5 @@ def get_assembly_service() -> AssemblyService:
         session=get_session(),
         external_service=get_external_service(),
         web_service=get_web_service(),
+        file_service=get_file_service(),
     )

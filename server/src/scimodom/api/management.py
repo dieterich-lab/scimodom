@@ -6,7 +6,7 @@ from flask import Blueprint, request
 from flask_cors import cross_origin
 from flask_jwt_extended import jwt_required
 
-from scimodom.config import Config
+from scimodom.config import get_config
 from scimodom.services.assembly import LiftOverError
 
 from scimodom.services.dataset import (
@@ -72,7 +72,7 @@ def add_dataset():
     """
     dataset_form = request.json
     annotation_source = RNA_TYPE_TO_ANNOTATION_SOURCE_MAP[dataset_form["rna_type"]]
-    upload_path = Path(Config.UPLOAD_PATH, dataset_form["file_id"])
+    upload_path = Path(get_config().UPLOAD_PATH, dataset_form["file_id"])
     dataset_service = get_dataset_service()
     try:
         with open(upload_path) as fp:

@@ -1,15 +1,12 @@
 import fcntl
 import logging
 from abc import ABC, abstractmethod
-from enum import Enum
 from pathlib import Path
-from typing import ClassVar
 
 from sqlalchemy import select, func
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session
 
-from scimodom.config import Config
 from scimodom.database.models import (
     Annotation,
     AnnotationVersion,
@@ -23,6 +20,7 @@ from scimodom.services.assembly import AssemblyService
 from scimodom.services.bedtools import BedToolsService
 from scimodom.services.data import DataService
 from scimodom.services.external import ExternalService
+from scimodom.services.file import FileService
 from scimodom.services.web import WebService
 
 logger = logging.getLogger(__name__)
@@ -36,10 +34,6 @@ class AnnotationNotFoundError(Exception):
 
 
 class GenericAnnotationService(ABC):
-    DATA_PATH: ClassVar[str | Path] = Config.DATA_PATH
-    ANNOTATION_PATH: ClassVar[str] = "annotation"
-    CACHE_PATH: ClassVar[Path] = Path("cache", "gene", "selection")
-
     def __init__(
         self,
         session: Session,
@@ -48,6 +42,7 @@ class GenericAnnotationService(ABC):
         bedtools_service: BedToolsService,
         external_service: ExternalService,
         web_service: WebService,
+        file_service: FileService,
     ) -> None:
         """Utility class to handle annotations.
 
@@ -63,6 +58,8 @@ class GenericAnnotationService(ABC):
         :type external_service: ExternalService
         :param web_service: Web Service instance
         :type web_service: WebService
+        :param file_service: FileService
+        :type file_service: FileService
         """
 
         self._session = session
@@ -71,46 +68,11 @@ class GenericAnnotationService(ABC):
         self._bedtools_service = bedtools_service
         self._external_service = external_service
         self._web_service = web_service
+        self._file_service = file_service
 
         self._version = self._session.execute(
             select(AnnotationVersion.version_num)
         ).scalar_one()
-
-    def __new__(cls, session: Session, **kwargs):
-        if cls.DATA_PATH is None:
-            raise ValueError("Missing environment variable: DATA_PATH.")
-        elif not Path(cls.DATA_PATH, cls.ANNOTATION_PATH).is_dir():
-            raise FileNotFoundError(
-                f"No such directory '{Path(cls.DATA_PATH, cls.ANNOTATION_PATH)}'."
-            )
-        if not Path(cls.DATA_PATH, cls.CACHE_PATH).is_dir():
-            logger.warning(
-                f"DATA PATH {Path(cls.DATA_PATH, cls.CACHE_PATH)} not found! Creating!"
-            )
-            Path(cls.DATA_PATH, cls.CACHE_PATH).mkdir(parents=True, mode=0o755)
-        return super().__new__(cls)
-
-    @staticmethod
-    def get_annotation_path() -> Path:
-        """Construct parent path to annotation files.
-
-        :returns: Path to annotation
-        :rtype: Path
-        """
-        return Path(
-            GenericAnnotationService.DATA_PATH, GenericAnnotationService.ANNOTATION_PATH
-        )
-
-    @staticmethod
-    def get_cache_path() -> Path:
-        """Construct path to gene cache (selection).
-
-        :returns: Path to gene cache
-        :rtype: Path
-        """
-        return Path(
-            GenericAnnotationService.DATA_PATH, GenericAnnotationService.CACHE_PATH
-        )
 
     def get_annotation_from_taxid_and_source(
         self, taxa_id: int, source: str
@@ -146,7 +108,6 @@ class GenericAnnotationService(ABC):
         :param selections: Dict of selection ID(s): modification ID(s)
         :type selections: dict of {int: int}
         """
-        cache_path = self.get_cache_path()
         for selection_id, modification_id in selections.items():
             query = select(Data.id).filter_by(
                 dataset_id=eufid, modification_id=modification_id
@@ -165,11 +126,7 @@ class GenericAnnotationService(ABC):
                     set(self._session.execute(query).scalars().all()),
                 )
             )
-
-            with open(Path(cache_path, str(selection_id)), "w") as fc:
-                fcntl.flock(fc.fileno(), fcntl.LOCK_EX)
-                fc.write("\n".join(genes))
-                fcntl.flock(fc.fileno(), fcntl.LOCK_UN)
+            self._file_service.update_gene_cache(selection_id, genes)
 
     def get_release_path(self, annotation: Annotation) -> Path:
         """Construct annotation release path.
@@ -184,7 +141,7 @@ class GenericAnnotationService(ABC):
         ).scalar_one()
         organism_name = "_".join(organism_name.lower().split()).capitalize()
         assembly_name = self._assembly_service.get_name_for_version(annotation.taxa_id)
-        path = self.get_annotation_path()
+        path = self._file_service.get_annotation_dir()
         return Path(path, organism_name, assembly_name, str(annotation.release))
 
     def _release_exists(self, annotation_id) -> bool:

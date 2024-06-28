@@ -1,13 +1,12 @@
 from datetime import datetime, timezone
 import logging
 from functools import cache
+from os import makedirs
 from pathlib import Path
-from typing import ClassVar
 
 from sqlalchemy.orm import Session
 from sqlalchemy import tuple_, and_, or_, select, func
 
-from scimodom.config import Config
 from scimodom.database.database import get_session
 from scimodom.database.models import (
     Project,
@@ -20,6 +19,7 @@ from scimodom.database.models import (
     User,
     UserProjectAssociation,
 )
+from scimodom.services.file import FileService, get_file_service
 from scimodom.utils.project_dto import ProjectTemplate, ProjectMetaDataDto
 from scimodom.utils.specifications import SMID_LENGTH
 from scimodom.utils.utils import gen_short_uuid
@@ -34,28 +34,11 @@ class DuplicateProjectError(Exception):
 
 
 class ProjectService:
-    DATA_PATH: ClassVar[str | Path] = Config.DATA_PATH
-    METADATA_PATH: ClassVar[str] = "metadata"
-    REQUEST_PATH: ClassVar[str] = "project_requests"
-
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: Session, file_service: FileService) -> None:
         self._session = session
+        self._file_service = file_service
 
-    def __new__(cls, session: Session, **kwargs):
-        if cls.DATA_PATH is None:
-            msg = "Missing environment variable: DATA_PATH."
-            raise ValueError(msg)
-        elif not Path(cls.DATA_PATH, cls.METADATA_PATH).is_dir():
-            msg = f"No such directory '{Path(cls.DATA_PATH, cls.METADATA_PATH)}'."
-            raise FileNotFoundError(msg)
-        elif not Path(cls.DATA_PATH, cls.METADATA_PATH, cls.REQUEST_PATH).is_dir():
-            msg = f"No such directory '{Path(cls.DATA_PATH, cls.METADATA_PATH, cls.REQUEST_PATH)}'."
-            raise FileNotFoundError(msg)
-        else:
-            return super().__new__(cls)
-
-    @staticmethod
-    def create_project_request(project_template: ProjectTemplate) -> str:
+    def create_project_request(self, project_template: ProjectTemplate) -> str:
         """Project request constructor.
 
         :param project_template: Validated project template
@@ -63,19 +46,9 @@ class ProjectService:
         :returns: UUID of request
         :rtype: str
         """
-        project_request_path = Path(
-            ProjectService.DATA_PATH,
-            ProjectService.METADATA_PATH,
-            ProjectService.REQUEST_PATH,
-        )
-
         uuid = gen_short_uuid(24, [])
-        filen = Path(project_request_path, f"{uuid}.json")
-
-        logger.info(f"Writing project request to {filen}...")
-
-        with open(filen, "w") as f:
-            f.write(project_template.model_dump_json(indent=4))
+        with self._file_service.create_project_request_file(uuid) as fp:
+            fp.write(project_template.model_dump_json(indent=4))
         return uuid
 
     def get_by_id(self, smid: str) -> Project:
@@ -128,8 +101,8 @@ class ProjectService:
     ) -> str:
         """Project constructor.
 
-        :param project: Validated project template
-        :type project: ProjectTemplate
+        :param project_template: Validated project template
+        :type project_template: ProjectTemplate
         :param request_uuid: UUID of request (original template)
         :type request_uuid: str
         :returns: Newly created project SMID
@@ -142,7 +115,7 @@ class ProjectService:
             self._write_project_template(project_template, smid, request_uuid)
             self._session.commit()
             return smid
-        except:
+        except Exception:
             self._session.rollback()
             raise
 
@@ -305,16 +278,9 @@ class ProjectService:
     def _write_project_template(
         self, project_template: ProjectTemplate, smid: str, request_uuid: str
     ) -> None:
-        metadata_file = Path(self.DATA_PATH, self.METADATA_PATH, f"{smid}.json")
-        with open(metadata_file, "w") as fh:
+        with self._file_service.create_project_metadata_file(smid) as fh:
             fh.write(project_template.model_dump_json(indent=4))
-        request_file = Path(
-            self.DATA_PATH,
-            self.METADATA_PATH,
-            self.REQUEST_PATH,
-            f"{request_uuid}.json",
-        )
-        request_file.unlink()
+        self._file_service.delete_project_request_file(request_uuid)
 
 
 @cache
@@ -324,4 +290,4 @@ def get_project_service():
     :returns: Project service instance
     :rtype: ProjectService
     """
-    return ProjectService(session=get_session())
+    return ProjectService(session=get_session(), file_service=get_file_service())

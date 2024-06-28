@@ -8,7 +8,7 @@ import scimodom.utils.utils as utils
 
 # one example table...
 
-csvString = """id,domain,kingdom,phylum,note
+TAXONOMY_CSV = """id,domain,kingdom,phylum,note
 1,Eukarya,Animalia,Chordata,e.g. human or mouse
 2,Eukarya,Animalia,Arthropoda,e.g. D. melanogaster
 3,Eukarya,Animalia,Nematoda,e.g. C. elegans
@@ -16,7 +16,6 @@ csvString = """id,domain,kingdom,phylum,note
 5,Eukarya,Plantae,,e.g. A. thaliana
 6,Bacteria,,,e.g. E. coli
 7,Vira,,,Not a domain (all viruses)"""
-csvStringIO = StringIO(csvString)
 
 
 # def test_bulk_upsert(Session):
@@ -41,9 +40,22 @@ csvStringIO = StringIO(csvString)
 ##compare table and expected_table
 
 
-def test_get_table(Session):
-    setup = SetupService(Session())
+class MockFileService:
+    @staticmethod
+    def check_import_file(name):
+        return True
+        # return name == 'taxonomy.csv'
 
-    expected_table = setup.get_table(Taxonomy, csvStringIO)
+    @staticmethod
+    def open_import_file(name):
+        if name != "taxonomy.csv":
+            raise FileNotFoundError()
+        return StringIO(TAXONOMY_CSV)
+
+
+def test_get_table(Session):
+    setup = SetupService(Session(), file_service=MockFileService)  # noqa
+
+    expected_table = setup._get_import_file_as_dataframe("taxonomy.csv")
     cols = expected_table.columns.tolist()
     assert cols == ["id", "domain", "kingdom", "phylum"]

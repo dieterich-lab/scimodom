@@ -277,7 +277,7 @@ def get_compare_url_parameters(
     if upload is not None:
         parameters.append(f"upload={upload}")
     if is_euf:
-        parameters.append("is_euf=true")
+        parameters.append("euf=true")
     return f"/{operation}?" + "&".join(parameters)
 
 

@@ -5,6 +5,8 @@ from flask import Blueprint, request
 from flask_cors import cross_origin
 
 from scimodom.services.annotation import RNA_TYPE_TO_ANNOTATION_SOURCE_MAP
+from scimodom.services.assembly import get_assembly_service
+from scimodom.services.file import get_file_service
 from scimodom.services.utilities import get_utilities_service
 
 api = Blueprint("api", __name__)
@@ -50,8 +52,8 @@ def get_selections():
 def get_genes():
     selection_ids = request.args.getlist("selection", type=int)
     # TODO validate selection ids
-    utilities_service = get_utilities_service()
-    return utilities_service.get_genes(selection_ids)
+    file_service = get_file_service()
+    return file_service.get_gene_cache(selection_ids)
 
 
 @api.route("/annotation/<rna_type>", methods=["GET"])
@@ -67,8 +69,8 @@ def get_annotation(rna_type):
 @api.route("/chroms/<taxid>", methods=["GET"])
 @cross_origin(supports_credentials=True)
 def get_chroms(taxid):
-    utilities_service = get_utilities_service()
-    return utilities_service.get_chroms(taxid)
+    assembly_service = get_assembly_service()
+    return assembly_service.get_chroms(taxid)
 
 
 @api.route("/assembly/<taxid>", methods=["GET"])

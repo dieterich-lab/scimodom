@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import BinaryIO
 
 import requests
 
@@ -19,7 +20,7 @@ class WebService:
         return request.json()
 
     @staticmethod
-    def stream_request_to_file(url: str, path: str | Path, mode: str = "wb"):
+    def stream_request_to_file(url: str, stream: BinaryIO):
         """Stream request to file.
 
         :param url: URL
@@ -32,9 +33,8 @@ class WebService:
         with requests.get(url, stream=True) as request:
             if not request.ok:
                 request.raise_for_status()
-            with open(path, mode) as f:
-                for chunk in request.iter_content(chunk_size=1024 * 1024):
-                    f.write(chunk)
+            for chunk in request.iter_content(chunk_size=1024 * 1024):
+                stream.write(chunk)
 
 
 def get_web_service():

@@ -8,6 +8,7 @@ from scimodom.database.buffer import InsertBuffer
 from scimodom.database.models import Annotation, DataAnnotation, GenomicAnnotation
 from scimodom.services.annotation.generic import GenericAnnotationService
 import scimodom.utils.specifications as specs
+from scimodom.services.file import AssemblyFileType
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +64,9 @@ class EnsemblAnnotationService(GenericAnnotationService):
 
         release_path = self.get_release_path(annotation)
         annotation_file, url = self._get_annotation_paths(annotation, release_path)
-        chrom_file = self._assembly_service.get_chrom_file(annotation.taxa_id)
+        chrom_file = self._file_service.get_assembly_file_path(
+            annotation.taxa_id, AssemblyFileType.CHROM
+        )
 
         logger.info(
             f"Setting up Ensembl {annotation.release} for {annotation.taxa_id}..."
@@ -76,7 +79,8 @@ class EnsemblAnnotationService(GenericAnnotationService):
             raise
 
         try:
-            self._web_service.stream_request_to_file(url, annotation_file)
+            with open(annotation_file, "wb") as fh:
+                self._web_service.stream_request_to_file(url, fh)
             self._bedtools_service.ensembl_to_bed_features(
                 annotation_file,
                 chrom_file,

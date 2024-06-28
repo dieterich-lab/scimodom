@@ -7,8 +7,7 @@ from alembic import context
 
 from scimodom.database.database import Base
 import scimodom.database.models  # noqa
-from scimodom.config import Config
-
+from scimodom.config import get_config
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -34,9 +33,7 @@ target_metadata = Base.metadata
 
 
 def get_database_url() -> str:
-    scimodom_config = Config()
-    url = scimodom_config.DATABASE_URI
-    return url
+    return get_config().DATABASE_URI
 
 
 def run_migrations_offline() -> None:

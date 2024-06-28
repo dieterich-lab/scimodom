@@ -16,6 +16,7 @@ from scimodom.services.annotation import (
     EnsemblAnnotationService,
     AnnotationNotFoundError,
 )
+from scimodom.services.file import AssemblyFileType
 
 
 class MockAssemblyService:
@@ -72,6 +73,21 @@ class MockExternalService:
         return Path(Path(fasta_file).parent, "seq_to_sprinzl.tab").as_posix()
 
 
+class MockFileService:
+    @staticmethod
+    def get_assembly_file_path(
+        taxa_id: int, file_type: AssemblyFileType, chain_file_name: str | None = None
+    ) -> Path:
+        if file_type == AssemblyFileType.CHAIN:
+            return Path(f"/data/assembly/{taxa_id}/{chain_file_name}")
+        else:
+            return Path(f"/data/assembly/{taxa_id}/{file_type.value}")
+
+    @staticmethod
+    def get_annotation_dir():
+        return "/data/annotation"
+
+
 def _get_ensembl_annotation_service(
     Session, url_to_result: dict[str, dict] | None = None
 ):
@@ -82,22 +98,11 @@ def _get_ensembl_annotation_service(
         bedtools_service=MockBedToolsService(),  # noqa
         external_service=MockExternalService(),  # noqa
         web_service=MockWebService(url_to_result),  # noqa
+        file_service=MockFileService(),
     )
 
 
 # tests
-
-
-def test_get_annotation_path(data_path):
-    assert EnsemblAnnotationService.get_annotation_path() == Path(
-        data_path.ANNOTATION_PATH
-    )
-
-
-def test_get_gene_cache_path(data_path):
-    assert EnsemblAnnotationService.get_cache_path() == Path(
-        data_path.LOC, "cache", "gene", "selection"
-    )
 
 
 def test_init(Session):
@@ -163,7 +168,7 @@ def test_get_release_path(Session, data_path):
     expected_release_path = Path(
         data_path.ANNOTATION_PATH, "Homo_sapiens", "GRCh38", "110"
     )
-    assert release_path == expected_release_path
+    assert release_path == Path("/data", "annotation", "Homo_sapiens", "GRCh38", "110")
 
 
 def test_release_exists(Session):
@@ -233,7 +238,7 @@ def test_ensembl_annotation_paths(data_path, Session):
         organism="Homo_sapiens", assembly="GRCh38", release="110", fmt="gtf"
     )
     expected_annotation_path = Path(
-        data_path.ANNOTATION_PATH,
+        "/data/annotation",
         "Homo_sapiens",
         "GRCh38",
         "110",

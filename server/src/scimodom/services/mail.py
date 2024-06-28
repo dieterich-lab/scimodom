@@ -1,13 +1,9 @@
 from email.mime.text import MIMEText
 from functools import cache
 from smtplib import SMTP
-from typing import Optional
 
-from scimodom.config import Config
-from scimodom.utils.url_routes import (
-    get_user_registration_link,
-    get_password_reset_link,
-)
+from scimodom.config import get_config
+from scimodom.services.url import UrlService, get_url_service
 
 
 class MailService:
@@ -21,9 +17,17 @@ class MailService:
     :type from_address: str
     """
 
-    def __init__(self, smtp_server: str, from_address: str):
+    def __init__(
+        self,
+        url_service: UrlService,
+        smtp_server: str,
+        from_address: str,
+        notification_address: str,
+    ):
+        self._url_service = url_service
         self._smtp_server = smtp_server
         self._from_address = from_address
+        self._notification_address = notification_address
 
     def _send(self, to_address, subject: str, text: str):
         """
@@ -54,7 +58,7 @@ class MailService:
         :param token: Token
         :type token: str
         """
-        link = get_user_registration_link(email, token)
+        link = self._url_service.get_user_registration_link(email, token)
         self._send(
             to_address=email,
             subject="Sci-ModoM - Confirm your email",
@@ -75,7 +79,7 @@ If you didn't create an account, please ignore this message and consider reporti
         :param token: Token
         :type token: str
         """
-        link = get_password_reset_link(email, token)
+        link = self._url_service.get_password_reset_link(email, token)
         self._send(
             to_address=email,
             subject="Sci-ModoM - Reset your password",
@@ -85,7 +89,8 @@ If this was you, click this link
 
         {link}
 
-If you didn't request a new password, please ignore this message and consider reporting the incident to {self._from_address}.
+If you didn't request a new password, please ignore this message and
+consider reporting the incident to {self._from_address}.
 """,
         )
 
@@ -96,7 +101,7 @@ If you didn't request a new password, please ignore this message and consider re
         :type uuid: str
         """
         self._send(
-            to_address=Config.NOTIFICATION_ADDRESS,
+            to_address=self._notification_address,
             subject="Sci-ModoM - New project request received",
             text=f"""Project: {uuid}""",
         )
@@ -110,14 +115,10 @@ def get_mail_service() -> MailService:
     :returns: Mail service instance
     :rtype: MailService
     """
-    for required_parameter in ["SMTP_SERVER", "SMTP_FROM_ADDRESS"]:
-        value = getattr(Config, required_parameter)
-        if value is None or value == "":
-            raise Exception(
-                f"Internal error: Required parameter '{required_parameter}' not set"
-            )
-
+    config = get_config()
     return MailService(
-        smtp_server=Config.SMTP_SERVER,
-        from_address=Config.SMTP_FROM_ADDRESS,
+        url_service=get_url_service(),
+        smtp_server=config.SMTP_SERVER,
+        from_address=config.SMTP_FROM_ADDRESS,
+        notification_address=config.NOTIFICATION_ADDRESS,
     )

@@ -55,8 +55,16 @@ PROJECT = ProjectTemplate(
 )
 
 
+class MockFileService:
+    pass
+
+
+def get_service(Session):
+    return ProjectService(Session(), file_service=MockFileService())  # noqa
+
+
 def test_project_validate_entry(Session):
-    service = ProjectService(Session())
+    service = get_service(Session)
     assert service._validate_entry(PROJECT) is None
 
 
@@ -83,7 +91,7 @@ def test_project_validate_existing_entry(Session, setup):
         session.add_all([project, source])
         session.commit()
 
-    service = ProjectService(Session())
+    service = get_service(Session)
     with pytest.raises(DuplicateProjectError) as exc:
         service._validate_entry(PROJECT)
     assert (
@@ -96,7 +104,7 @@ def test_project_add_selection(Session, setup):
     with Session() as session, session.begin():
         session.add_all(setup)
 
-    service = ProjectService(Session())
+    service = get_service(Session)
     service._add_selection_if_none(PROJECT)
 
     expected_records = [(1, 1, 1, 1), (2, 2, 2, 1)]
@@ -120,7 +128,7 @@ def test_project_add_selection_exists(Session, setup):
         session.add(selection)
         session.commit()
 
-    service = ProjectService(Session())
+    service = get_service(Session)
     service._add_selection_if_none(PROJECT)
 
     expected_records = [(1, 1, 3, 1), (2, 1, 1, 1), (3, 2, 2, 1)]
@@ -139,19 +147,19 @@ def test_project_add_modification(Session, setup):
         session.add(modification)
         session.commit()
 
-    service = ProjectService(Session())
+    service = get_service(Session)
     for metadata, expected_modification_id in zip(PROJECT.metadata, [1, 2]):
         assert service._add_modification_if_none(metadata) == expected_modification_id
 
 
 def test_project_add_technology(Session, setup):
-    service = ProjectService(Session())
+    service = get_service(Session)
     for metadata in PROJECT.metadata:
         assert service._add_technology_if_none(metadata) == 1
 
 
 def test_project_add_organism(Session, setup):
-    service = ProjectService(Session())
+    service = get_service(Session)
     for metadata, expected_organism_id in zip(PROJECT.metadata, [1, 2]):
         assert service._add_organism_if_none(metadata) == expected_organism_id
 
@@ -166,7 +174,7 @@ def test_project_add_contact(Session):
         session.add(contact)
         session.commit()
 
-    service = ProjectService(Session())
+    service = get_service(Session)
     assert service._add_contact_if_none(PROJECT) == 2
 
 
@@ -175,7 +183,7 @@ def test_project_add_project(Session, setup, freezer):
         session.add_all(setup)
 
     freezer.move_to("2024-06-20 12:00:00")
-    service = ProjectService(Session())
+    service = get_service(Session)
     smid = service._add_project(PROJECT)
 
     with Session() as session, session.begin():
@@ -199,7 +207,7 @@ def test_project_get_by_id(Session, setup):
     with Session() as session, session.begin():
         session.add_all(setup)
 
-    service = ProjectService(Session())
+    service = get_service(Session)
     smid = service._add_project(PROJECT)
     project = service.get_by_id(smid)
     assert project.id == smid
@@ -241,7 +249,7 @@ def test_query_projects(Session, setup):
         session.add(user_permission)
         session.commit()
 
-    service = ProjectService(Session())
+    service = get_service(Session)
     with Session() as session, session.begin():
         user = session.get_one(User, 1)
         assert len(service.get_projects(user=user)) == 1

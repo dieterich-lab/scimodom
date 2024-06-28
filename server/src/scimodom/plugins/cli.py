@@ -361,19 +361,24 @@ def upsert(init: bool, **kwargs) -> None:
     if init:
         setup_service.upsert_all()
     else:
-        model = utils.get_model(kwargs.get("model"))
-        table = setup_service.get_table(model, kwargs.get("table"))
-        setup_service.validate_table(model, table)
-        msg = (
-            f"Updating {model.__name__} (table {model.__table__.name}) using "
-            f"the following columns: {table.columns.tolist()}."
-        )
-        click.secho(msg, fg="green")
+        file_name = kwargs.get("table")
+        if file_name is None:
+            click.secho("The option '--table <name>' is required.", fg="red")
+            exit(1)
+        valid_names = setup_service.get_valid_import_file_names()
+        if file_name not in valid_names:
+            v = ", ".join(valid_names)
+            click.secho(
+                f"The option '--table <name>' needs a valid name ({v}).", fg="red"
+            )
+            exit(1)
+
+        click.secho(setup_service.get_upsert_message(file_name), fg="green")
         click.secho("Continue [y/n]?", fg="green")
         c = click.getchar()
         if c not in ["y", "Y"]:
             return
-        setup_service.bulk_upsert(model, table)
+        setup_service.upsert_one(file_name)
     click.secho("Successfully performed INSERT... ON DUPLICATE KEY UPDATE.", fg="green")
 
 
