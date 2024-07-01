@@ -23,22 +23,32 @@ pipeline {
                 '''
             }
         }
-        stage('Setup NodeJS') {
-            steps {
-                sh '''
-                    cd client
-                    npm install --save-dev
-                '''
-            }
-        }
-        stage('Test Frontend') {
-            steps {
-                sh '''
-                    cd client
-                    npm run test:unit run
-                '''
-            }
-        }
+        //
+        // Ot seems that the issue described in
+        //
+        // https://github.com/nodejs/node/issues/51477
+        //
+        // 1) Is present in Debian 12
+        // 2) actually matters if mode_modules (or ~/.npm ??) ist located on BeeGFS.
+        //
+        // So so no Jenkins tests for the client part - until Debian 13 or so
+        //
+        // stage('Setup NodeJS') {
+        //     steps {
+        //         sh '''
+        //             cd client
+        //             npm install --save-dev
+        //         '''
+        //     }
+        // }
+        // stage('Test Frontend') {
+        //     steps {
+        //         sh '''
+        //             cd client
+        //             npm run test:unit run
+        //         '''
+        //     }
+        // }
     }
     post {
         always {
