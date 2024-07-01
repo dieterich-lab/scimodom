@@ -52,7 +52,7 @@ pipeline {
     }
     post {
         always {
-            junit 'results.xml'
+            junit 'server/results.xml'
         }
         failure {
             emailext to: "${SCIMODOM_DEV_EMAILS}",
