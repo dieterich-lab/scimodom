@@ -130,10 +130,7 @@ class SetupService:
 
     def get_upsert_message(self, file_name: str) -> str:
         model = self.FILE_NAME_TO_DB_TABLE_MAP[file_name]
-        return (
-            f"Updating {model.__name__} (table {model.__table__.name}) using "
-            f"the following columns: {model.columns.tolist()}."
-        )
+        return f"Updating {model.__name__} (table {model.__table__.name})..."
 
 
 @cache

@@ -107,6 +107,7 @@ class UtilitiesService:
             select(
                 Modification.id.label("modification_id"),
                 Modification.rna,
+                RNAType.name.label("rna_name"),
                 Modomics.short_name.label("modomics_sname"),
                 DetectionTechnology.id.label("technology_id"),
                 DetectionMethod.cls,
@@ -132,6 +133,7 @@ class UtilitiesService:
             )
             .join_from(Selection, Organism, Selection.inst_organism)
             .join_from(Modification, Modomics, Modification.inst_modomics)
+            .join_from(Modification, RNAType, Modification.inst_rna)
             .join_from(
                 DetectionTechnology,
                 DetectionMethod,

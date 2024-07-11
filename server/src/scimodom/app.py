@@ -5,21 +5,9 @@ from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from sqlalchemy.orm import scoped_session
 
-from scimodom.api.utilities import api
-from scimodom.api.user import user_api
-from scimodom.api.project import project_api
-from scimodom.api.dataset import dataset_api
-from scimodom.api.management import management_api
-from scimodom.api.transfer import transfer_api
-from scimodom.api.bam_file import bam_file_api
-from scimodom.api.modification import modification_api
 from scimodom.app_singleton import create_app_singleton
 from scimodom.config import set_config_from_environment, get_config
 from scimodom.database.database import make_session, init
-from scimodom.services.annotation import AnnotationSource
-from scimodom.services.file import get_file_service
-from scimodom.services.setup import get_setup_service
-from scimodom.frontend import frontend
 from scimodom.plugins.cli import (
     add_annotation,
     add_assembly,
@@ -30,7 +18,9 @@ from scimodom.plugins.cli import (
     validate_dataset_title,
     upsert,
 )
-from scimodom.utils.project_dto import ProjectTemplate
+from scimodom.services.annotation import AnnotationSource
+from scimodom.services.file import get_file_service
+from scimodom.services.setup import get_setup_service
 from scimodom.services.url import (
     API_PREFIX,
     BAM_FILE_API_ROUTE,
@@ -41,6 +31,7 @@ from scimodom.services.url import (
     TRANSFER_API_ROUTE,
     USER_API_ROUTE,
 )
+from scimodom.utils.project_dto import ProjectTemplate
 
 
 def create_app():
@@ -50,7 +41,6 @@ def create_app():
     CORS(app)
     set_config_from_environment()
     app.config.from_object(get_config())
-    # since we haven't called app.logger there shouldn't be any default handlers...
     dictConfig(app.config["LOGGING"])
 
     engine, session = make_session(app.config["DATABASE_URI"])
@@ -59,16 +49,25 @@ def create_app():
     setup_service = get_setup_service()
     setup_service.upsert_all()
 
+    from scimodom.frontend import frontend
+    from scimodom.api.utilities import api
+    from scimodom.api.bam_file import bam_file_api
+    from scimodom.api.dataset import dataset_api
+    from scimodom.api.management import management_api
+    from scimodom.api.modification import modification_api
+    from scimodom.api.project import project_api
+    from scimodom.api.transfer import transfer_api
+    from scimodom.api.user import user_api
+
+    app.register_blueprint(frontend, url_prefix="/")
     app.register_blueprint(api, url_prefix=f"/{API_PREFIX}")
     app.register_blueprint(bam_file_api, url_prefix=BAM_FILE_API_ROUTE)
-    app.register_blueprint(management_api, url_prefix=DATA_MANAGEMENT_API_ROUTE)
     app.register_blueprint(dataset_api, url_prefix=DATASET_API_ROUTE)
+    app.register_blueprint(management_api, url_prefix=DATA_MANAGEMENT_API_ROUTE)
     app.register_blueprint(modification_api, url_prefix=MODIFICATION_API_ROUTE)
     app.register_blueprint(project_api, url_prefix=PROJECT_API_ROUTE)
     app.register_blueprint(transfer_api, url_prefix=TRANSFER_API_ROUTE)
     app.register_blueprint(user_api, url_prefix=USER_API_ROUTE)
-
-    app.register_blueprint(frontend, url_prefix="/")
 
     jwt = JWTManager(app)
 
@@ -288,7 +287,7 @@ def create_app():
         "--table",
         default=None,
         type=click.STRING,
-        help="Name of the CSV file to use, e.g. ncbi_taxa.csv. The datbase table to load will be determined by that.",
+        help="Name of the CSV file to use, e.g. ncbi_taxa.csv. The database table to load will be determined by that.",
     )
     @click.option(
         "--init",
@@ -300,6 +299,8 @@ def create_app():
         Selected model/table names must exist.
         """
         kwargs = dict()
+        if not init:
+            kwargs = {"table": table}
         upsert(init, **kwargs)
 
     # does this goes here?

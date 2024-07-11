@@ -18,7 +18,7 @@ from scimodom.services.dataset import (
     SpecsError,
 )
 from scimodom.services.annotation import RNA_TYPE_TO_ANNOTATION_SOURCE_MAP
-from scimodom.services.project import ProjectService
+from scimodom.services.project import get_project_service
 from scimodom.services.mail import get_mail_service
 import scimodom.utils.utils as utils
 from scimodom.utils.bed_importer import BedImportTooManyErrors, BedImportEmptyFile
@@ -41,7 +41,8 @@ def create_project_request():
     project_template_raw = request.data
     try:
         project_template = ProjectTemplate.model_validate_json(project_template_raw)
-        uuid = ProjectService.create_project_request(project_template)
+        project_service = get_project_service()
+        uuid = project_service.create_project_request(project_template)
     except Exception as exc:
         logger.error(f"{exc}. The request was: {project_template_raw}.")
         return {

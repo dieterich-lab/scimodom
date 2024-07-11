@@ -31,18 +31,20 @@ The upsert can be done for one model/table at a time, or forced with
 
     flask setup [OPTIONS]
 
+For OPTIONS, use the ``--help`` flag, *e.g.* ``flask setup --help``.
 
 To manage assemblies or annotations, use
 
-.. code-block:: bash
-
-    flask annotation [OPTIONS] ID
 
 .. code-block:: bash
 
     flask assembly [OPTIONS]
 
-For OPTIONS, use the ``--help`` flag, *e.g.* ``flask assembly --help``.
+
+.. code-block:: bash
+
+    flask annotation [OPTIONS] --source [ensembl|gtrnadb] TAXID
+
 
 .. _project_data_setup:
 
@@ -53,51 +55,26 @@ Projects are added with
 
 .. code-block:: bash
 
-    flask project [OPTIONS] TEMPLATE
+    flask project [OPTIONS] REQUEST_UUID
 
-A user is automatically associated with a project upon creation using the email address given in the ``TEMPLATE``.
+A user is automatically associated with a project upon creation using the email address given in the template associated with the ``REQUEST_UUID``.
 After project creation, dataset can be added with
 
 .. code-block:: bash
 
-    flask dataset [OPTIONS] SMID TITLE FILENAME
+    flask dataset [OPTIONS] --assembly INTEGER --annotation [ensembl|gtrnadb] --modification INTEGER --organism INTEGER --technology INTEGER FILENAME SMID TITLE
 
 Dataset upload is normally done via POST request upon login to the running application, accessible through *User menu* > *Data* > *Dataset upload*.
 These steps, except user-project association, can be done all at once with
 
 .. code-block:: bash
 
-    flask batch DIRECTORY [TEMPLATES]
+    flask batch [OPTIONS] --annotation [ensembl|gtrnadb] INPUT_DIRECTORY [REQUEST_UUIDS]...
 
-This requires a non-standard project template (json) with additional keys: ``file_name`` and ``data_title`` for each ``metadata`` value, *e.g.*
-
-.. code-block:: json
-
-    {
-        ...
-        "metadata": {
-            "rna": "WTS",
-            "modomics_id": "2000000006A",
-            "tech": "m6A-SAC-seq",
-            "method_id": "e00d694d",
-            "organism": {"taxa_id": 9606, "cto": "HeLa", "assembly": "GRCh38"},
-            "file_name": "filename.bedrmod",
-            "data_title": "HeLa WT treatment A replicate 1",
-            "extra": [
-                "Homo sapiens",
-                "HeLa",
-                "wild type",
-                "treatment A",
-                "polyA RNA"
-            ]
-        }
-    }
-
-Additional keys are ignored and can be used for documentation. All templates and bedRMod files must be under the same directory.
-Values in the template are used *as is* to query and update the database.
+The ``note`` from the standard project metadata template must contain the dataset file name and title as follows: ``file=filename.bedrmod, title=title``. All bedRMod files must be under ``INPUT_DIRECTORY``.
 
 Permissions can be updated with
 
 .. code-block:: bash
 
-    flask permission USERNAME SMID
+    flask permission [OPTIONS] USERNAME SMID

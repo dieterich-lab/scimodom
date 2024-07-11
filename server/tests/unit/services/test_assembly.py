@@ -64,7 +64,8 @@ class MockFileService:
         self.files_by_name[name] = new_file
         return new_file
 
-    def check_if_assembly_exists(self, taxa_id: int) -> bool:
+    # TODO
+    def check_if_assembly_exists(self, taxa_id: int, assembly_name: str) -> bool:
         return taxa_id in self.existing_assemblies
 
     def delete_assembly(self, taxa_id: int):

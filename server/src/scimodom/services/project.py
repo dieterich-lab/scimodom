@@ -3,6 +3,7 @@ import logging
 from functools import cache
 from os import makedirs
 from pathlib import Path
+from typing import Any
 
 from sqlalchemy.orm import Session
 from sqlalchemy import tuple_, and_, or_, select, func
@@ -59,7 +60,7 @@ class ProjectService:
         """
         return self._session.get_one(Project, smid)
 
-    def get_projects(self, user: User | None = None) -> list[dict[str, any]]:
+    def get_projects(self, user: User | None = None) -> list[dict[str, Any]]:
         """Retrieve all projects.
 
         :param user: Optionally restricts the

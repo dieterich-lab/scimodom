@@ -36,21 +36,32 @@ export default {
       {
         'text-surface-700 dark:text-white/80':
           props.value !== props.modelValue && props.value !== undefined,
-        'bg-surface-0 dark:bg-surface-900':
-          props.value !== props.modelValue && props.value !== undefined,
+        // 'bg-surface-0 dark:bg-surface-900':
+        //   props.value !== props.modelValue && props.value !== undefined,
         'border-surface-300 dark:border-surface-700':
           props.value !== props.modelValue && props.value !== undefined,
-        'border-primary-500 dark:border-primary-400':
+        'bg-primary-500 border-primary-500 dark:bg-primary-400 dark:border-primary-400':
           props.value == props.modelValue && props.value !== undefined
       },
-
       // States
       {
-        'outline-none outline-offset-0': !props.disabled,
-        'peer-focus-visible:ring-2 peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-surface-0 dark:focus-visible:ring-offset-surface-800 peer-focus-visible:ring-primary-500 dark:peer-focus-visible:ring-primary-400':
+        'peer-hover:border-surface-400 dark:peer-hover:border-surface-400':
+          !props.disabled && !props.invalid && props.value !== props.modelValue,
+        'peer-hover:border-primary-hover':
+          !props.disabled && props.value == props.modelValue && props.value !== void 0,
+        'peer-hover:[&>*:first-child]:bg-primary-600 dark:peer-hover:[&>*:first-child]:bg-primary-300':
+          !props.disabled && props.value == props.modelValue && props.value !== void 0,
+        'peer-focus-visible:ring-1 peer-focus-visible:ring-primary-500 dark:peer-focus-visible:ring-primary-400':
           !props.disabled,
-        'opacity-60 cursor-default': props.disabled
+        'bg-surface-200 [&>*:first-child]:bg-surface-600 dark:bg-surface-700 dark:[&>*:first-child]:bg-surface-400 border-surface-300 dark:border-surface-700 select-none pointer-events-none cursor-default':
+          props.disabled
       }
+      // {
+      //   'outline-none outline-offset-0': !props.disabled,
+      //   'peer-focus-visible:ring-2 peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-surface-0 dark:focus-visible:ring-offset-surface-800 peer-focus-visible:ring-primary-500 dark:peer-focus-visible:ring-primary-400':
+      //     !props.disabled,
+      //   'opacity-60 cursor-default': props.disabled
+      // }
     ]
   }),
   input: {

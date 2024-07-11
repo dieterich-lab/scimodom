@@ -146,7 +146,14 @@
                   <h2 class="text-lg font-bold mt-0 mb-2">First release</h2>
                   <p class="mt-0 mb-3 line-height-3">Add data, release version.</p>
                   <div class="border-2 border-solid border-gb-2 rounded">
-                    <div class="border-2 border-solid border-gb-2 rounded" style="width: 25%"></div>
+                    <div class="border-2 border-solid border-gb-2 rounded" style="width: 45%"></div>
+                  </div>
+                </div>
+                <div class="p-3 border-l-4 border-solid border-gb-2 rounded-l dark:text-white/80">
+                  <h2 class="text-lg font-bold mt-0 mb-2">RNA types</h2>
+                  <p class="mt-0 mb-3 line-height-3">Add tRNA.</p>
+                  <div class="border-2 border-solid border-gb-2 rounded">
+                    <div class="border-2 border-solid border-gb-2 rounded" style="width: 15%"></div>
                   </div>
                 </div>
               </div>

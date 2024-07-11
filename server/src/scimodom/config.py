@@ -70,11 +70,6 @@ def get_config() -> Config:
     return _config
 
 
-def set_config(config: Config):
-    global _config
-    _config = config
-
-
 def set_config_from_environment():
     env_file = os.getenv("ENV_FILE", ".env")
     load_dotenv(env_file)

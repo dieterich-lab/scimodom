@@ -8,7 +8,7 @@ from os.path import join, exists, dirname, basename, isfile
 from pathlib import Path
 from shutil import rmtree
 from tempfile import mkstemp
-from typing import Optional, IO, List, Dict, TextIO, BinaryIO, Iterable
+from typing import Optional, IO, List, Dict, TextIO, BinaryIO, Iterable, Any
 from uuid import uuid4
 
 from sqlalchemy import select
@@ -41,10 +41,10 @@ class FileService:
     def __init__(
         self,
         session: Session,
-        data_path: str,
-        temp_path: str,
-        upload_path: str,
-        import_path: str,
+        data_path: str | Path,
+        temp_path: str | Path,
+        upload_path: str | Path,
+        import_path: str | Path,
     ):
         self._session = session
         self._data_path = data_path
@@ -93,12 +93,13 @@ class FileService:
 
     # Gene Cache
 
-    def get_gene_cache(self, selection_ids: Iterable[int]) -> set[str]:
-        """Returns the gene cache for a given selection_id as Iterable
-        :param selection_ids: The selection_id in question.
+    def get_gene_cache(self, selection_ids: Iterable[int]) -> list[str]:
+        """Retrieve gene list for a given selection.
+
+        :param selection_ids: Selection ID(s)
         :type selection_ids: Iterable[int]
         :returns: The genes of the selection
-        :rtype: set[str]
+        :rtype: list[str]
         """
         result = set()
         for selection_id in selection_ids:
@@ -108,13 +109,10 @@ class FileService:
                 genes = set(fh.read().strip().split())
                 flock(fh.fileno(), LOCK_UN)
             result = result | genes
-        return result
+        return list(result)
 
-    def _get_gene_cache_dir(self):
-        return Path(self._data_path, "cache", "gene", "selection")
-
-    def update_gene_cache(self, selection_id: int, genes: Iterable[str]):
-        """Updates gene cache for a selection ID.
+    def update_gene_cache(self, selection_id: int, genes: Iterable[str]) -> None:
+        """Update gene cache for a selection ID.
 
         :param selection_id: The selection_id in question.
         :type selection_id: int
@@ -128,32 +126,66 @@ class FileService:
                 print(g, file=fh)
             flock(fh.fileno(), LOCK_UN)
 
+    def _get_gene_cache_dir(self) -> Path:
+        return Path(self._data_path, "cache", "gene", "selection")
+
     # Project related
 
     def get_project_metadata_dir(self):
+        """Construct parent path to metadata.
+
+        :returns: Path to metadata
+        :rtype: Path
+        """
         return Path(self._data_path, "metadata")
 
     def create_project_metadata_file(self, smid: str) -> TextIO:
+        """Open a metadata file for writing.
+
+        :param smid: Sci-ModoM ID (SMID)
+        :type smid: str
+        :returns: File handle
+        :rtype: TextIO
+        """
         metadata_file = Path(self.get_project_metadata_dir(), f"{smid}.json")
         return open(metadata_file, "w")
 
     def create_project_request_file(self, request_uuid) -> TextIO:
-        path = Path(self.get_project_request_file_path(request_uuid))
+        """Open a metadata (request) file for writing.
+
+        :param smid: Request ID
+        :type smid: str
+        :returns: File handle
+        :rtype: TextIO
+        """
+        path = Path(self._get_project_request_file_path(request_uuid))
         logger.info(f"Writing project request to {path}...")
         return open(path, "w")
 
     def open_project_request_file(self, request_uuid) -> TextIO:
-        path = Path(self.get_project_request_file_path(request_uuid))
+        """Open a metadata (request) file for reading.
+
+        :param smid: Request ID
+        :type smid: str
+        :returns: File handle
+        :rtype: TextIO
+        """
+        path = Path(self._get_project_request_file_path(request_uuid))
         return open(path, "r")
 
-    def delete_project_request_file(self, request_uuid):
-        path = self.get_project_request_file_path(request_uuid)
+    def delete_project_request_file(self, request_uuid) -> None:
+        """Remove a metadata (request) file.
+
+        :param smid: Request ID
+        :type smid: str
+        """
+        path = self._get_project_request_file_path(request_uuid)
         path.unlink()
 
-    def get_project_request_file_path(self, request_uuid):
-        return Path(self.get_project_request_dir(), f"{request_uuid}.json")
+    def _get_project_request_file_path(self, request_uuid):
+        return Path(self._get_project_request_dir(), f"{request_uuid}.json")
 
-    def get_project_request_dir(self):
+    def _get_project_request_dir(self):
         return Path(self.get_project_metadata_dir(), "project_requests")
 
     # Assembly
@@ -163,36 +195,111 @@ class FileService:
         taxa_id: int,
         file_type: AssemblyFileType,
         chain_file_name: str | None = None,
+        chain_assembly_name: str | None = None,
     ) -> Path:
-        """Construct chrom file path for a given organism.
+        """Construct assembly-related file paths for a given organism.
 
         :param taxa_id: Taxa ID
         :type taxa_id: int
-        :param file_type: Type of the assembly file (CHROM, INFO, RELEASE, CHAIN)
+        :param file_type: Type of assembly file (CHROM, INFO, RELEASE, CHAIN)
         :type file_type: AssemblyFileType
-        :param chain_file_name: Only used if file_type is CHAIN - base name of the file
+        :param chain_file_name: Only used if file_type is CHAIN - base chain file name
         :type chain_file_name: str
+        :param assembly_name: Only used if file_type is CHAIN - assembly name
+        :type assembly_name: str
         :returns: Full path to file
         :rtype: Path
         """
-        name = file_type.value
+        file_name = file_type.value
+        assembly_name = self._get_current_assembly_name_from_taxa_id(taxa_id)
         if file_type == AssemblyFileType.CHAIN:
-            if chain_file_name is None:
-                raise ValueError(
-                    "If called with file_type=CHAIN chain_file_name must be supplied!"
-                )
-            name = chain_file_name
+            if chain_file_name is None or chain_assembly_name is None:
+                raise ValueError("Missing chain_file_name and/or assembly_name!")
+            file_name = chain_file_name
+            assembly_name = chain_assembly_name
 
-        return Path(self._get_assembly_dir(taxa_id), name)
+        return Path(self._get_assembly_dir(taxa_id, assembly_name), file_name)
 
-    def _get_assembly_dir(self, taxa_id: int) -> Path:
-        """Construct parent path to assembly files.
+    def open_assembly_file(self, taxa_id: int, file_type: AssemblyFileType) -> TextIO:
+        """Opens an assembly file path for a given organism and returns a file for reading.
+        Chain files are not supported.
 
-        :returns: Path to assembly
-        :rtype: Path
+        :param taxa_id: Taxa ID
+        :type taxa_id: int
+        :param file_type: Type of assembly file (CHROM, INFO, RELEASE, CHAIN)
+        :type file_type: AssemblyFileType
         """
+        if file_type == AssemblyFileType.CHAIN:
+            raise NotImplementedError()
+        path = self.get_assembly_file_path(taxa_id, file_type)
+        return open(path)
+
+    def create_assembly_file(self, taxa_id: int, file_type: AssemblyFileType) -> TextIO:
+        """Open an assembly file for writing for a given organism.
+        If missing, the parent directory is created.
+        Chain files are not supported. Use create_chain_file() instead.
+
+        :param taxa_id: Taxa ID
+        :type taxa_id: int
+        :param file_type: Type of assembly file (CHROM, INFO, RELEASE, CHAIN)
+        :type file_type: AssemblyFileType
+        """
+        if file_type == AssemblyFileType.CHAIN:
+            raise NotImplementedError()
+        path = self.get_assembly_file_path(taxa_id, file_type)
+        makedirs(path.parent, exist_ok=True)
+        return open(path, "x")
+
+    def create_chain_file(
+        self, taxa_id: int, file_name: str, assembly_name
+    ) -> BinaryIO:
+        """Creates chain file for a given organism and returns a file handle to fill it.
+        If missing, the parent directory is created.
+
+        :param taxa_id: Taxa ID
+        :type taxa_id: int
+        :param file_name: Chain file name
+        :type file_name: str
+        :param assembly_name: Assembly name
+        :type assembly_name: str
+        :returns: Writable file handle
+        :rtype: BinaryIO
+        """
+        path = self.get_assembly_file_path(
+            taxa_id,
+            AssemblyFileType.CHAIN,
+            chain_file_name=file_name,
+            chain_assembly_name=assembly_name,
+        )
+        makedirs(path.parent, exist_ok=True)
+        return open(path, "xb")
+
+    def delete_assembly(self, taxa_id: int, assembly_name: str) -> None:
+        """Remove assembly directory structure
+
+        :param taxa_id: Taxa ID
+        :type taxa_id: int
+        :param name: Assembly name
+        :type name: str
+        """
+        rmtree(self._get_assembly_dir(taxa_id, assembly_name))
+
+    def check_if_assembly_exists(self, taxa_id: int, name: str) -> bool:
+        """Check if directory structure exists for a given assembly.
+
+        :param taxa_id: Taxa ID
+        :type taxa_id: int
+        :param name: Assembly name
+        :type name: str
+        """
+        return self._get_assembly_dir(taxa_id, name).is_dir()
+
+    @staticmethod
+    def _get_dir_name_from_organism(organism) -> str:
+        return "_".join(organism.lower().split()).capitalize()
+
+    def _get_assembly_dir(self, taxa_id: int, assembly_name: str) -> Path:
         organism = self._get_organism_from_taxa_id(taxa_id)
-        assembly_name = self._get_assembly_name_from_taxa_id(taxa_id)
         return Path(
             self._data_path,
             "assembly",
@@ -205,63 +312,12 @@ class FileService:
             select(Taxa.name).filter_by(id=taxa_id)
         ).scalar_one()
 
-    def _get_assembly_name_from_taxa_id(self, taxa_id: int) -> str:
+    def _get_current_assembly_name_from_taxa_id(self, taxa_id: int) -> str:
         return self._session.execute(
             select(Assembly.name)
             .join(AssemblyVersion, Assembly.version == AssemblyVersion.version_num)
             .where(Assembly.taxa_id == taxa_id)
         ).scalar_one()
-
-    @staticmethod
-    def _get_dir_name_from_organism(organism):
-        return "_".join(organism.lower().split()).capitalize()
-
-    def check_if_assembly_exists(self, taxa_id: int) -> bool:
-        return self._get_assembly_dir(taxa_id).is_dir()
-
-    def open_assembly_file(self, taxa_id: int, file_type: AssemblyFileType) -> TextIO:
-        """Opens an assembly file path for a given organism and returns a file for reading.
-        Chain files are not supported. Use open_chain_file() instead.
-
-        The parameters are simular as for get_assembly_file_path().
-        """
-        if file_type == AssemblyFileType.CHAIN:
-            raise NotImplementedError()
-        path = self.get_assembly_file_path(taxa_id, file_type)
-        return open(path)
-
-    def create_assembly_file(self, taxa_id: int, file_type: AssemblyFileType) -> TextIO:
-        """Creates assembly file for a given organism and returns a file handle to fill it.
-        If missing, the parent directory is created.
-        Chain files are not supported. Use create_chain_file() instead.
-
-        The parameters are simular as for get_assembly_file_path().
-        """
-        if file_type == AssemblyFileType.CHAIN:
-            raise NotImplementedError()
-        path = self.get_assembly_file_path(taxa_id, file_type)
-        makedirs(path.parent, exist_ok=True)
-        return open(path, "x")
-
-    def create_chain_file(self, taxa_id: int, name: str) -> BinaryIO:
-        """Creates chain file for a given organism and returns a file handle to fill it.
-        If missing, the parent directory is created.
-
-        :param taxa_id: Taxa ID
-        :type taxa_id: int
-        :param name: Only used if file_type is CHAIN - base name of the file
-        :type name: str
-        :returns: Writable file handle
-        :rtype: BinaryIO
-        """
-        path = self.get_assembly_file_path(
-            taxa_id, AssemblyFileType.CHAIN, chain_file_name=name
-        )
-        makedirs(path.parent, exist_ok=True)
-        return open(path, "xb")
-
-    def delete_assembly(self, taxa_id: int):
-        rmtree(self._get_assembly_dir(taxa_id))
 
     # uploaded files
 
@@ -395,7 +451,7 @@ class FileService:
         path = self._get_bam_file_path(bam_file)
         return open(path, "rb")
 
-    def get_bam_file_list(self, dataset: Dataset) -> List[Dict[str, any]]:
+    def get_bam_file_list(self, dataset: Dataset) -> List[Dict[str, Any]]:
         items = self._session.scalars(
             select(BamFile).where(BamFile.dataset_id == dataset.id)
         ).all()

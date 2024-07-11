@@ -201,7 +201,7 @@ const tablePt = {
           <Button
             @click="active = 0"
             rounded
-            label="A"
+            label="1"
             severity="secondary"
             :outlined="active !== 0"
             :pt="buttonPt"
@@ -210,7 +210,7 @@ const tablePt = {
           <Button
             @click="active = 1"
             rounded
-            label="B"
+            label="2"
             severity="secondary"
             :outlined="active !== 1"
             :pt="buttonPt"
@@ -219,7 +219,7 @@ const tablePt = {
           <Button
             @click="active = 2"
             rounded
-            label="C"
+            label="3"
             severity="secondary"
             :outlined="active !== 2"
             :pt="buttonPt"
@@ -228,7 +228,7 @@ const tablePt = {
         </div>
 
         <TabView v-model:activeIndex="active">
-          <TabPanel header="Select reference dataset">
+          <TabPanel header="1. Select reference dataset">
             <div class="h-52">
               <div class="mb-4">
                 Select one organism and choose up to three reference dataset. Use the dataset search
@@ -237,7 +237,7 @@ const tablePt = {
               <CompareStepA v-model="selectedDatasetA" @dataset-updated="datasetUpdated = $event" />
             </div>
           </TabPanel>
-          <TabPanel header="Select dataset for comparison">
+          <TabPanel header="2. Select dataset for comparison">
             <div class="h-52">
               <div class="mb-4">
                 At least one reference dataset must be selected. Upload your own data or select up
@@ -254,7 +254,7 @@ const tablePt = {
               />
             </div>
           </TabPanel>
-          <TabPanel header="Select query criteria">
+          <TabPanel header="3. Select query criteria">
             <div>
               <form @submit="onSubmit">
                 <div class="h-52">
