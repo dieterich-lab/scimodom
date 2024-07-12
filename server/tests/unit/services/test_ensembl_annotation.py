@@ -79,7 +79,7 @@ class MockFileService:
             return Path(f"/data/assembly/{taxa_id}/{file_type.value}")
 
     @staticmethod
-    def get_annotation_dir():
+    def get_annotation_parent_dir():
         return "/data/annotation"
 
 

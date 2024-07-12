@@ -53,11 +53,16 @@ class FileService:
         self._import_path = import_path
 
         for path in [
+            data_path,
             temp_path,
             upload_path,
-            self._get_gene_cache_dir(),
-            self.get_annotation_dir(),
+            import_path,
             self.get_project_metadata_dir(),
+            self._get_project_request_dir(),
+            self.get_annotation_parent_dir(),
+            self.get_assembly_parent_dir(),
+            self._get_gene_cache_dir(),
+            self.get_bam_files_parent_dir(),
         ]:
             makedirs(path, exist_ok=True)
 
@@ -83,7 +88,7 @@ class FileService:
 
     # annotation
 
-    def get_annotation_dir(self) -> Path:
+    def get_annotation_parent_dir(self) -> Path:
         """Construct parent path to annotation files.
 
         :returns: Path to annotation
@@ -189,6 +194,14 @@ class FileService:
         return Path(self.get_project_metadata_dir(), "project_requests")
 
     # Assembly
+
+    def get_assembly_parent_dir(self) -> Path:
+        """Construct parent path to assembly files.
+
+        :returns: Path to assembly
+        :rtype: Path
+        """
+        return Path(self._data_path, "assembly")
 
     def get_assembly_file_path(
         self,
@@ -301,8 +314,7 @@ class FileService:
     def _get_assembly_dir(self, taxa_id: int, assembly_name: str) -> Path:
         organism = self._get_organism_from_taxa_id(taxa_id)
         return Path(
-            self._data_path,
-            "assembly",
+            self.get_assembly_parent_dir(),
             self._get_dir_name_from_organism(organism),
             assembly_name,
         )
@@ -378,6 +390,14 @@ class FileService:
 
     # BAM file
 
+    def get_bam_files_parent_dir(self):
+        """Construct parent path to BAM files.
+
+        :returns: Path to BAM files
+        :rtype: Path
+        """
+        return Path(self._data_path, "bam_files")
+
     def create_or_update_bam_file(
         self,
         dataset: Dataset,
@@ -419,11 +439,14 @@ class FileService:
 
     def _get_bam_file_tmp_path(self, bam_file):
         return join(
-            join(self._data_path, "bam_files"), f"tmp.{bam_file.storage_file_name}"
+            self.get_bam_files_parent_dir().as_posix(),
+            f"tmp.{bam_file.storage_file_name}",
         )
 
     def _get_bam_file_path(self, bam_file):
-        return join(join(self._data_path, "bam_files"), bam_file.storage_file_name)
+        return join(
+            self.get_bam_files_parent_dir().as_posix(), bam_file.storage_file_name
+        )
 
     @staticmethod
     def _handle_upload_error(exception, path):

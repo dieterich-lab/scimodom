@@ -141,7 +141,7 @@ class GenericAnnotationService(ABC):
         ).scalar_one()
         organism_name = "_".join(organism_name.lower().split()).capitalize()
         assembly_name = self._assembly_service.get_name_for_version(annotation.taxa_id)
-        path = self._file_service.get_annotation_dir()
+        path = self._file_service.get_annotation_parent_dir()
         return Path(path, organism_name, assembly_name, str(annotation.release))
 
     def _release_exists(self, annotation_id) -> bool:

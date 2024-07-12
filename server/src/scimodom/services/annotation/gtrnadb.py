@@ -151,7 +151,7 @@ class GtRNAdbAnnotationService(GenericAnnotationService):
 
     # TODO
     def _update_annotation(self, domain, fasta_file):
-        annotation_path = self._file_service.get_annotation_dir()
+        annotation_path = self._file_service.get_annotation_parent_dir()
         model_file = Path(annotation_path, domain).with_suffix(".cm").as_posix()
         sprinzl_file = Path(annotation_path, domain).with_suffix(".txt").as_posix()
         self._external_service.get_sprinzl_mapping(model_file, fasta_file, sprinzl_file)

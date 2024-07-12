@@ -68,7 +68,7 @@ def test_count_lines(Session, tmp_path):
 
 def test_get_annotation_path(Session, tmp_path):
     service = _get_file_service(Session, tmp_path)
-    assert service.get_annotation_dir() == Path(tmp_path, "t_data", "annotation")
+    assert service.get_annotation_parent_dir() == Path(tmp_path, "t_data", "annotation")
 
 
 def test_update_gene_cache(Session, tmp_path):

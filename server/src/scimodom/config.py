@@ -109,10 +109,10 @@ def set_config_from_environment():
         NOTIFICATION_ADDRESS = get_required_parameter("NOTIFICATION_ADDRESS")
         HTTP_PUBLIC_URL = get_required_parameter("HTTP_PUBLIC_URL")
 
-        FLASK_DEBUG = eval(os.getenv("FLASK_DEBUG", Config.FLASK_DEBUG))
+        FLASK_DEBUG = eval(os.getenv("FLASK_DEBUG", str(Config.FLASK_DEBUG)))
         SESSION_COOKIE_SAMESITE = os.getenv("SESSION_COOKIE_SAMESITE")
         SESSION_COOKIE_SECURE = eval(
-            os.getenv("SESSION_COOKIE_SECURE", Config.SESSION_COOKIE_SECURE)
+            os.getenv("SESSION_COOKIE_SECURE", str(Config.SESSION_COOKIE_SECURE))
         )
 
         JWT_SECRET_KEY = SECRET_KEY
