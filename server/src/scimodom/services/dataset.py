@@ -12,7 +12,6 @@ from sqlalchemy.orm import Session
 from scimodom.database.buffer import InsertBuffer
 from scimodom.database.database import get_session
 from scimodom.database.models import (
-    Assembly,
     Dataset,
     DatasetModificationAssociation,
     DetectionTechnology,
@@ -25,7 +24,6 @@ from scimodom.database.models import (
     User,
     UserProjectAssociation,
     Selection,
-    AssemblyVersion,
     Data,
 )
 from scimodom.services.annotation import (
@@ -36,7 +34,6 @@ from scimodom.services.annotation import (
 from scimodom.services.assembly import (
     get_assembly_service,
     AssemblyService,
-    AssemblyVersionError,
 )
 from scimodom.services.bedtools import get_bedtools_service, BedToolsService
 from scimodom.utils import utils
@@ -94,13 +91,6 @@ class SpecsError(Exception):
     """Exception handling for specification errors."""
 
     pass
-
-
-def _none_if_empty(x):
-    if x == "":
-        return None
-    else:
-        return x
 
 
 class DatasetService:
@@ -263,6 +253,37 @@ class DatasetService:
             f"and the following selections: {context.selection_ids}. "
         )
         return context.eufid
+
+    @staticmethod
+    def _check_euf_record(record, importer, context):
+        if record.chrom not in context.seqids:
+            importer.report_error(
+                f"Unrecognized chrom: {record.chrom}. Ignore this warning "
+                "for scaffolds and contigs, otherwise this could be due to misformatting!"
+            )
+            return False
+        if record.name not in context.modification_names:
+            importer.report_error(f"Unrecognized name: {record.name}.")
+            return False
+        return True
+
+    @staticmethod
+    def _get_data_record(record: EufRecord, context):
+        return Data(
+            dataset_id=context.eufid,
+            modification_id=context.modification_names.get(record.name),
+            chrom=record.chrom,
+            start=record.start,
+            end=record.end,
+            name=record.name,
+            score=record.score,
+            strand=record.strand,
+            thick_start=record.thick_start,
+            thick_end=record.thick_end,
+            item_rgb=record.item_rgb,
+            coverage=record.coverage,
+            frequency=record.frequency,
+        )
 
     def _sanitize_import_context(self, context):
         is_found = self._session.query(
@@ -430,37 +451,6 @@ class DatasetService:
                     data = self._get_data_record(record, context)
                     buffer.queue(data)
 
-    @staticmethod
-    def _check_euf_record(record, importer, context):
-        if record.chrom not in context.seqids:
-            importer.report_error(
-                f"Unrecognized chrom: {record.chrom}. Ignore this warning "
-                "for scaffolds and contigs, otherwise this could be due to misformatting!"
-            )
-            return False
-        if record.name not in context.modification_names:
-            importer.report_error(f"Unrecognized name: {record.name}.")
-            return False
-        return True
-
-    @staticmethod
-    def _get_data_record(record: EufRecord, context):
-        return Data(
-            dataset_id=context.eufid,
-            modification_id=context.modification_names.get(record.name),
-            chrom=record.chrom,
-            start=record.start,
-            end=record.end,
-            name=record.name,
-            score=record.score,
-            strand=record.strand,
-            thick_start=record.thick_start,
-            thick_end=record.thick_end,
-            item_rgb=record.item_rgb,
-            coverage=record.coverage,
-            frequency=record.frequency,
-        )
-
     def _do_lift_over(self, importer, context):
         def generator():
             for record in importer.parse():
@@ -487,6 +477,13 @@ class DatasetService:
             )
             self._session.add(association)
         self._session.flush()
+
+
+def _none_if_empty(x):
+    if x == "":
+        return None
+    else:
+        return x
 
 
 @cache

@@ -203,7 +203,7 @@ class AssemblyService:
         unmapped_lines = self._file_service.count_lines(unmapped_file)
         if unmapped_lines / raw_lines > threshold:
             raise LiftOverError(
-                f"Liftover failed: {unmapped_lines} records of {raw_lines} could not be mapped."
+                f"Liftover failed: {unmapped_lines} records out of {raw_lines} could not be mapped."
             )
         if unmapped_lines > 0:
             logger.warning(
@@ -234,7 +234,7 @@ class AssemblyService:
 
         if self._file_service.check_if_assembly_exists(taxa_id, assembly_name):
             raise FileExistsError(
-                f"Directory exists, but assembly '{assembly_name}' does not exists!"
+                f"Directory exists, but assembly '{assembly_name}' does not exist!"
             )
 
         chain_file_name = self._get_chain_file_name(
@@ -277,8 +277,8 @@ class AssemblyService:
         assembly = self.get_assembly_by_id(assembly_id)
         if not self.is_latest_assembly(assembly):
             raise AssemblyVersionError(
-                f"Mismatch between assembly version {assembly.version} and "
-                f"database version {self._version}."
+                f"Mismatch between assembly version '{assembly.version}' and "
+                f"database version '{self._version}'."
             )
 
         logger.info(f"Setting up assembly {assembly.name} for current version...")
@@ -303,11 +303,11 @@ class AssemblyService:
         return urljoin(
             ENSEMBL_FTP,
             ENSEMBL_ASM_MAPPING,
-            self._get_organism_for_ensemble_url(taxa_id),
+            self._get_organism_for_ensembl_url(taxa_id),
             chain_file_name,
         )
 
-    def _get_organism_for_ensemble_url(self, taxa_id: int):
+    def _get_organism_for_ensembl_url(self, taxa_id: int):
         organism = self._get_organism(taxa_id)
         return ("_".join(organism.split())).lower()
 
@@ -315,7 +315,7 @@ class AssemblyService:
         return urljoin(
             ENSEMBL_SERVER,
             ENSEMBL_ASM,
-            self._get_organism_for_ensemble_url(taxa_id),
+            self._get_organism_for_ensembl_url(taxa_id),
         )
 
     def _get_organism(self, taxa_id: int) -> str:

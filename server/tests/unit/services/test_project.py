@@ -1,11 +1,13 @@
 from datetime import datetime
+from pathlib import Path
+from typing import TextIO
 
 import pytest
 from sqlalchemy import select
 
+from mocks.io_mocks import MockStringIO, MockBytesIO
 from scimodom.database.models import (
     Modification,
-    Organism,
     DetectionTechnology,
     Project,
     ProjectSource,
@@ -22,6 +24,48 @@ from scimodom.utils.project_dto import (
     ProjectOrganismDto,
     ProjectSourceDto,
 )
+
+
+class MockFileService:
+    def __init__(self):
+        self.files_by_name: dict[str, MockStringIO | MockBytesIO] = {}
+        self.deleted_requests: list[str] = []
+
+    def get_project_metadata_dir(self) -> Path:
+        return Path("/data", "metadata")
+
+    def create_project_metadata_file(self, smid: str) -> TextIO:
+        metadata_file = Path(self.get_project_metadata_dir(), f"{smid}.json").as_posix()
+        new_file = MockStringIO()
+        self.files_by_name[metadata_file] = new_file
+        return new_file
+
+    def create_project_request_file(self, request_uuid) -> TextIO:
+        request_file = Path(
+            self._get_project_request_file_path(request_uuid)
+        ).as_posix()
+        new_file = MockStringIO()
+        self.files_by_name[request_file] = new_file
+        return new_file
+
+    def delete_project_request_file(self, request_uuid) -> None:
+        name = self._get_project_request_file_path(request_uuid).as_posix()
+        self.deleted_requests.append(name)
+
+    def _get_project_request_file_path(self, request_uuid):
+        return Path(self._get_project_request_dir(), f"{request_uuid}.json")
+
+    def _get_project_request_dir(self):
+        return Path(self.get_project_metadata_dir(), "project_requests")
+
+
+@pytest.fixture
+def file_service():
+    yield MockFileService()
+
+
+def _get_project_service(Session, file_service):
+    return ProjectService(Session(), file_service=file_service)  # noqa
 
 
 PROJECT = ProjectTemplate(
@@ -55,20 +99,70 @@ PROJECT = ProjectTemplate(
 )
 
 
-class MockFileService:
-    pass
+EXPECTED_PROJECT_TEMPLATE = """{
+    "title": "Title",
+    "summary": "Summary",
+    "contact_name": "Contact Name",
+    "contact_institution": "Contact Institution",
+    "contact_email": "email@example.com",
+    "date_published": "2024-01-01T00:00:00",
+    "external_sources": [
+        {
+            "doi": "DOI",
+            "pmid": 12345678
+        }
+    ],
+    "metadata": [
+        {
+            "rna": "WTS",
+            "modomics_id": "2000000006A",
+            "tech": "Tech-seq",
+            "method_id": "0ee048bc",
+            "organism": {
+                "taxa_id": 9606,
+                "cto": "Cell",
+                "assembly_name": "GRCh38",
+                "assembly_id": null
+            },
+            "note": null
+        },
+        {
+            "rna": "WTS",
+            "modomics_id": "2000000005C",
+            "tech": "Tech-seq",
+            "method_id": "0ee048bc",
+            "organism": {
+                "taxa_id": 10090,
+                "cto": "Organ",
+                "assembly_name": "GRCm38",
+                "assembly_id": null
+            },
+            "note": null
+        }
+    ]
+}"""
 
 
-def get_service(Session):
-    return ProjectService(Session(), file_service=MockFileService())  # noqa
+# tests
 
 
-def test_project_validate_entry(Session):
-    service = get_service(Session)
+def test_create_project_request(Session, file_service):
+    service = _get_project_service(Session, file_service)
+    uuid = service.create_project_request(PROJECT)
+    assert (
+        file_service.files_by_name[
+            f"/data/metadata/project_requests/{uuid}.json"
+        ].final_content
+        == EXPECTED_PROJECT_TEMPLATE
+    )
+
+
+def test_project_validate_entry(Session, file_service):
+    service = _get_project_service(Session, file_service)
     assert service._validate_entry(PROJECT) is None
 
 
-def test_project_validate_existing_entry(Session, setup):
+def test_project_validate_existing_entry(Session, file_service, setup):
     smid = "12345678"
     with Session() as session, session.begin():
         session.add_all(setup)
@@ -91,7 +185,7 @@ def test_project_validate_existing_entry(Session, setup):
         session.add_all([project, source])
         session.commit()
 
-    service = get_service(Session)
+    service = _get_project_service(Session, file_service)
     with pytest.raises(DuplicateProjectError) as exc:
         service._validate_entry(PROJECT)
     assert (
@@ -100,11 +194,11 @@ def test_project_validate_existing_entry(Session, setup):
     )
 
 
-def test_project_add_selection(Session, setup):
+def test_project_add_selection(Session, file_service, setup):
     with Session() as session, session.begin():
         session.add_all(setup)
 
-    service = get_service(Session)
+    service = _get_project_service(Session, file_service)
     service._add_selection_if_none(PROJECT)
 
     expected_records = [(1, 1, 1, 1), (2, 2, 2, 1)]
@@ -116,7 +210,7 @@ def test_project_add_selection(Session, setup):
         assert records == expected_records
 
 
-def test_project_add_selection_exists(Session, setup):
+def test_project_add_selection_exists(Session, file_service, setup):
     with Session() as session, session.begin():
         session.add_all(setup)
         technology = DetectionTechnology(method_id="0ee048bc", tech="Tech-seq")
@@ -128,7 +222,7 @@ def test_project_add_selection_exists(Session, setup):
         session.add(selection)
         session.commit()
 
-    service = get_service(Session)
+    service = _get_project_service(Session, file_service)
     service._add_selection_if_none(PROJECT)
 
     expected_records = [(1, 1, 3, 1), (2, 1, 1, 1), (3, 2, 2, 1)]
@@ -140,31 +234,31 @@ def test_project_add_selection_exists(Session, setup):
         assert records == expected_records
 
 
-def test_project_add_modification(Session, setup):
+def test_project_add_modification(Session, file_service, setup):
     with Session() as session, session.begin():
         session.add_all(setup)
         modification = Modification(modomics_id="2000000006A", rna="WTS")
         session.add(modification)
         session.commit()
 
-    service = get_service(Session)
+    service = _get_project_service(Session, file_service)
     for metadata, expected_modification_id in zip(PROJECT.metadata, [1, 2]):
         assert service._add_modification_if_none(metadata) == expected_modification_id
 
 
-def test_project_add_technology(Session, setup):
-    service = get_service(Session)
+def test_project_add_technology(Session, file_service, setup):
+    service = _get_project_service(Session, file_service)
     for metadata in PROJECT.metadata:
         assert service._add_technology_if_none(metadata) == 1
 
 
-def test_project_add_organism(Session, setup):
-    service = get_service(Session)
+def test_project_add_organism(Session, file_service, setup):
+    service = _get_project_service(Session, file_service)
     for metadata, expected_organism_id in zip(PROJECT.metadata, [1, 2]):
         assert service._add_organism_if_none(metadata) == expected_organism_id
 
 
-def test_project_add_contact(Session):
+def test_project_add_contact(Session, file_service):
     with Session() as session, session.begin():
         contact = ProjectContact(
             contact_name="Another contact Name",
@@ -174,16 +268,16 @@ def test_project_add_contact(Session):
         session.add(contact)
         session.commit()
 
-    service = get_service(Session)
+    service = _get_project_service(Session, file_service)
     assert service._add_contact_if_none(PROJECT) == 2
 
 
-def test_project_add_project(Session, setup, freezer):
+def test_project_add_project(Session, file_service, setup, freezer):
     with Session() as session, session.begin():
         session.add_all(setup)
 
     freezer.move_to("2024-06-20 12:00:00")
-    service = get_service(Session)
+    service = _get_project_service(Session, file_service)
     smid = service._add_project(PROJECT)
 
     with Session() as session, session.begin():
@@ -203,11 +297,26 @@ def test_project_add_project(Session, setup, freezer):
         assert source[0].pmid == 12345678
 
 
-def test_project_get_by_id(Session, setup):
+def test_create_project(Session, file_service, setup):
     with Session() as session, session.begin():
         session.add_all(setup)
 
-    service = get_service(Session)
+    service = _get_project_service(Session, file_service)
+    smid = service.create_project(PROJECT, "abcdef123456")
+    assert (
+        file_service.files_by_name[f"/data/metadata/{smid}.json"].final_content
+        == EXPECTED_PROJECT_TEMPLATE
+    )
+    assert file_service.deleted_requests == [
+        "/data/metadata/project_requests/abcdef123456.json"
+    ]
+
+
+def test_project_get_by_id(Session, file_service, setup):
+    with Session() as session, session.begin():
+        session.add_all(setup)
+
+    service = _get_project_service(Session, file_service)
     smid = service._add_project(PROJECT)
     project = service.get_by_id(smid)
     assert project.id == smid
@@ -215,7 +324,7 @@ def test_project_get_by_id(Session, setup):
     assert project.summary == "Summary"
 
 
-def test_query_projects(Session, setup):
+def test_query_projects(Session, file_service, setup):
     with Session() as session, session.begin():
         session.add_all(setup)
         for name, email, smid, title, summary in zip(
@@ -249,7 +358,7 @@ def test_query_projects(Session, setup):
         session.add(user_permission)
         session.commit()
 
-    service = get_service(Session)
+    service = _get_project_service(Session, file_service)
     with Session() as session, session.begin():
         user = session.get_one(User, 1)
         assert len(service.get_projects(user=user)) == 1

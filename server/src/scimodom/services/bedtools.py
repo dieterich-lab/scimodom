@@ -95,220 +95,23 @@ class BedToolsService:
         makedirs(tmp_path, exist_ok=True)
         pybedtools.helpers.set_tempdir(tmp_path)
 
-    def annotate_data_using_ensembl(
-        self,
-        annotation_path: Path,
-        features: dict[str, str],
-        records: Iterable[Data],
-    ) -> Iterable[DataAnnotationRecord]:
-        """Annotate data records, i.e. create
-        records for DataAnnotation. Columns
-        order is (gene_id, data_id, feature).
-        There is no type coercion.
+    @staticmethod
+    def create_temp_file_from_records(
+        records: Iterable[Sequence[Any]], sort: bool = True
+    ) -> str:
+        """Create a bedtool object from records.
 
-        :param annotation_path: Path to annotation
-        :type annotation_path: Path
-        :param records: Data records as BED6+1-like,
-        where the additional field is the "data_id".
-        :type records: Iterable[Data]
-        :param features: Genomic features for which
-        annotation must be created.
-        :type features: dict of {str: str}
-        :returns: Records for DataAnnotation
-        :rtype: Iterable[ModificationRecord]
+        :param records: A iterable over records which can be processed by bedtools
+        :type records: Iterable[Sequence[Any]]
+        :param sort: sort the result
+        :type sort: bool
+        :returns: Path to temporary file
+        :rtype: str
         """
-
-        bedtool_records = self._get_data_as_bedtool_for_annotation(records)
-        if "intergenic" not in features:
-            raise AnnotationFormatError(
-                "Missing feature intergenic from specs. This is due to a change "
-                "in definition. Aborting transaction!"
-            )
-        intergenic_feature = features.pop("intergenic")
-        prefix = None
-        for feature, pretty_feature in features.items():
-            file_name = Path(annotation_path, f"{feature}.bed").as_posix()
-            feature_bedtool = pybedtools.BedTool(file_name)
-            if prefix is None:
-                # any feature_bedtool, exc. intergenic has a gene_id at fields 6...
-                prefix = utils.get_ensembl_prefix(
-                    feature_bedtool[0].fields[6].split(",")[0]
-                )
-            for item in self._intersect_for_annotation(
-                bedtool_records, feature_bedtool, pretty_feature
-            ):
-                yield item
-
-        gene_id = f"{prefix}{intergenic_feature}"
-        file_name = Path(annotation_path, "intergenic.bed").as_posix()
-        feature_bedtool = pybedtools.BedTool(file_name)
-        stream = bedtool_records.intersect(
-            b=feature_bedtool, wa=True, wb=True, s=False, sorted=True
-        )
-        for s in stream:
-            yield DataAnnotationRecord(
-                gene_id=gene_id, data_id=s[6], feature=intergenic_feature
-            )
-
-    @staticmethod
-    def _get_data_as_bedtool_for_annotation(
-        records: Iterable[Data],
-    ) -> BedTool:
-        def generator():
-            for record in records:
-                yield create_interval_from_list(
-                    [
-                        record.chrom,
-                        record.start,
-                        record.end,
-                        record.name,
-                        record.score,
-                        record.strand.value,
-                        record.id,
-                    ]
-                )
-
-        return BedTool(generator()).sort()
-
-    @staticmethod
-    def _intersect_for_annotation(bedtool_records, feature_bedtool, feature):
-        # delim (collapse) Default: ","
-        stream = bedtool_records.intersect(
-            b=feature_bedtool, wa=True, wb=True, s=True, sorted=True
-        )
-        for s in stream:
-            for gene_id in s[13].split(","):
-                yield DataAnnotationRecord(
-                    gene_id=gene_id, data_id=s[6], feature=feature
-                )
-
-    @staticmethod
-    def gtrnadb_to_bed_features(annotation_file: Path, features: list[str]) -> None:
-        """Wrangle GtRNAdb (BED12) annotation to BED format for
-        each genomic features in "features". The files are
-        written to the parent directory of "annotation_file"
-        using "features" as stem, and bed as extension.
-
-        NOTE: "features" are only used to validate consistency
-        with the caller: only exon and intron are defined
-        in this method.
-
-        :param annotation_file: Path to annotation file.
-        The format is implicitely assumed to be BED12.
-        :type annotation_file: Path
-        :param features: Genomic features for which
-        annotation must be created.
-        :type features: list of str
-        """
-        parent = annotation_file.parent
-        annotation_bedtool = pybedtools.BedTool(annotation_file.as_posix()).sort()
-        annotation_bed6 = annotation_bedtool.bed6()
-
-        logger.info(f"Preparing annotation and writing to {parent}...")
-
-        try:
-            features.remove("exon")
-            logger.debug("Writing exon...")
-            file_name = Path(parent, "exon.bed").as_posix()
-            _ = annotation_bed6.merge(s=True, c=[4, 5, 6], o="distinct").moveto(
-                file_name
-            )
-        except ValueError:
-            raise AnnotationFormatError(
-                "Missing feature exon from specs. This is due to a change in definition."
-            )
-
-        try:
-            features.remove("intron")
-            logger.debug("Writing intron...")
-            file_name = Path(parent, "intron.bed").as_posix()
-            # assumes a simple file with non-overlapping exons which should be the case for tRNAs...
-            _ = (
-                annotation_bedtool.introns()
-                .merge(s=True, c=[4, 5, 6], o="distinct")
-                .moveto(file_name)
-            )
-        except ValueError:
-            raise AnnotationFormatError(
-                "Missing feature intron from specs. This is due to a change in definition."
-            )
-
-        try:
-            features.pop()
-            raise AnnotationFormatError(
-                "Handling feature is not implemented. This is due to a change in definition."
-            )
-        except IndexError:
-            pass
-
-    def ensembl_to_bed_features(
-        self, annotation_file: Path, chrom_file: Path, features: dict[str, list[str]]
-    ) -> None:
-        """Wrangle Ensembl (GTF) annotation to BED format for
-        each genomic features in "features". The files are
-        written to the parent directory of "annotation_file"
-        using "features" as stem, and bed as extension.
-
-        NOTE: "extended features" are used to validate consistency
-        with the caller: "conventional features" are extracted
-        on the fly, but intron and intergenic require special treatment.
-
-        :param annotation_file: Path to annotation file.
-        The format is implicitely assumed to be GTF.
-        :type annotation_file: Path
-        :param chrom_file: Path to chrom file
-        :type chrom_file: Path
-        :param features: Genomic features for which
-        annotation must be created.
-        :type features: dict of {str: list of str}
-        """
-        parent = annotation_file.parent
-        annotation_bedtool = pybedtools.BedTool(annotation_file.as_posix()).sort()
-
-        logger.info(f"Preparing annotation and writing to {parent}...")
-
-        for feature in features["conventional"]:
-            logger.debug(f"Writing {feature}...")
-
-            file_name = Path(parent, f"{feature}.bed").as_posix()
-            _ = (
-                self._annotation_to_stream(annotation_bedtool, feature)
-                .merge(s=True, c=[4, 5, 6, 7, 8], o="distinct")
-                .moveto(file_name)
-            )
-
-        file_name = Path(parent, "exon.bed").as_posix()
-        exons = pybedtools.BedTool(file_name)
-        file_name = self._check_feature("intron", features, parent)
-        # why is the sort order lost after subtract?
-        _ = (
-            self._annotation_to_stream(annotation_bedtool, "gene")
-            .subtract(exons, s=True, sorted=True)
-            .sort()
-            .merge(s=True, c=[4, 5, 6, 7, 8], o="distinct")
-        ).moveto(file_name)
-
-        file_name = self._check_feature("intergenic", features, parent)
-        _ = (
-            self._annotation_to_stream(annotation_bedtool, "gene")
-            .complement(g=chrom_file.as_posix())
-            .moveto(file_name)
-        )
-
-    @staticmethod
-    def _annotation_to_stream(annotation_bedtool, feature):
-        return annotation_bedtool.filter(lambda a: a.fields[2] == feature).each(
-            _get_gtf_attrs
-        )
-
-    @staticmethod
-    def _check_feature(feature, features, parent):
-        if feature not in features["extended"]:
-            raise AnnotationFormatError(
-                f"Missing feature {feature} from specs. This is due to a change in definition."
-            )
-        logger.debug(f"Writing {feature}...")
-        return Path(parent, f"{feature}.bed").as_posix()
+        bedtool = BedTool(records)
+        if sort:
+            bedtool = bedtool.sort()
+        return bedtool.fn
 
     @staticmethod
     def get_ensembl_annotation_records(
@@ -379,26 +182,73 @@ class BedToolsService:
             )
 
     @staticmethod
-    def create_temp_file_from_records(
-        records: Iterable[Sequence[Any]], sort: bool = True
-    ) -> str:
-        """Liftover records. Handles conversion to BedTool, but not from,
-        of the liftedOver features. A file is returned pointing
-        to the liftedOver features. The unmapped ones are saved as
-        "unmapped", or discarded.
+    def gtrnadb_to_bed_features(annotation_file: Path, features: list[str]) -> None:
+        """Wrangle GtRNAdb (BED12) annotation to BED format for
+        each genomic features in "features". The files are
+        written to the parent directory of "annotation_file"
+        using "features" as stem, and bed as extension.
 
-        :param records: A iterable over records which can be processed by bedtools
-        :type records: Iterable[Sequence[Any]]
-        :param sort: sort the result
+        NOTE: "features" are only used to validate consistency
+        with the caller: only exon and intron are defined
+        in this method.
+
+        :param annotation_file: Path to annotation file.
+        The format is implicitely assumed to be BED12.
+        :type annotation_file: Path
+        :param features: Genomic features for which
+        annotation must be created.
+        :type features: list of str
+        """
+        parent = annotation_file.parent
+        annotation_bedtool = pybedtools.BedTool(annotation_file.as_posix()).sort()
+        annotation_bed6 = annotation_bedtool.bed6()
+
+        logger.info(f"Preparing annotation and writing to {parent}...")
+
+        try:
+            features.remove("exon")
+            logger.debug("Writing exon...")
+            file_name = Path(parent, "exon.bed").as_posix()
+            _ = annotation_bed6.merge(s=True, c=[4, 5, 6], o="distinct").moveto(
+                file_name
+            )
+        except ValueError:
+            raise AnnotationFormatError(
+                "Missing feature exon from specs. This is due to a change in definition."
+            )
+
+        try:
+            features.remove("intron")
+            logger.debug("Writing intron...")
+            file_name = Path(parent, "intron.bed").as_posix()
+            # assumes a simple file with non-overlapping exons which should be the case for tRNAs...
+            _ = (
+                annotation_bedtool.introns()
+                .merge(s=True, c=[4, 5, 6], o="distinct")
+                .moveto(file_name)
+            )
+        except ValueError:
+            raise AnnotationFormatError(
+                "Missing feature intron from specs. This is due to a change in definition."
+            )
+
+        try:
+            features.pop()
+            raise AnnotationFormatError(
+                "Handling feature is not implemented. This is due to a change in definition."
+            )
+        except IndexError:
+            pass
+
+    def create_temp_euf_file(self, records: Iterable[EufRecord]) -> str:
+        """Create a bedtool object from EUF records.
+
+        :param records: A iterable over EUF records which can be processed by bedtools
+        :type records: Iterable[EufRecord]
         :returns: Path to temporary file
         :rtype: str
         """
-        bedtool = BedTool(records)
-        if sort:
-            bedtool = bedtool.sort()
-        return bedtool.fn
 
-    def create_temp_euf_file(self, records: Iterable[EufRecord]) -> str:
         def generator():
             for record in records:
                 yield create_interval_from_list(
@@ -418,6 +268,115 @@ class BedToolsService:
                 )
 
         return self.create_temp_file_from_records(generator())
+
+    def annotate_data_using_ensembl(
+        self,
+        annotation_path: Path,
+        features: dict[str, str],
+        records: Iterable[Data],
+    ) -> Iterable[DataAnnotationRecord]:
+        """Annotate data records, i.e. create
+        records for DataAnnotation. Columns
+        order is (gene_id, data_id, feature).
+        There is no type coercion.
+
+        :param annotation_path: Path to annotation
+        :type annotation_path: Path
+        :param records: Data records as BED6+1-like,
+        where the additional field is the "data_id".
+        :type records: Iterable[Data]
+        :param features: Genomic features for which
+        annotation must be created.
+        :type features: dict of {str: str}
+        :returns: Records for DataAnnotation
+        :rtype: Iterable[ModificationRecord]
+        """
+
+        bedtool_records = self._get_data_as_bedtool_for_annotation(records)
+        if "intergenic" not in features:
+            raise AnnotationFormatError(
+                "Missing feature intergenic from specs. This is due to a change "
+                "in definition. Aborting transaction!"
+            )
+        intergenic_feature = features.pop("intergenic")
+        prefix = None
+        for feature, pretty_feature in features.items():
+            file_name = Path(annotation_path, f"{feature}.bed").as_posix()
+            feature_bedtool = pybedtools.BedTool(file_name)
+            if prefix is None:
+                # any feature_bedtool, exc. intergenic has a gene_id at fields 6...
+                prefix = utils.get_ensembl_prefix(
+                    feature_bedtool[0].fields[6].split(",")[0]
+                )
+            for item in self._intersect_for_annotation(
+                bedtool_records, feature_bedtool, pretty_feature
+            ):
+                yield item
+
+        gene_id = f"{prefix}{intergenic_feature}"
+        file_name = Path(annotation_path, "intergenic.bed").as_posix()
+        feature_bedtool = pybedtools.BedTool(file_name)
+        stream = bedtool_records.intersect(
+            b=feature_bedtool, wa=True, wb=True, s=False, sorted=True
+        )
+        for s in stream:
+            yield DataAnnotationRecord(
+                gene_id=gene_id, data_id=s[6], feature=intergenic_feature
+            )
+
+    def ensembl_to_bed_features(
+        self, annotation_file: Path, chrom_file: Path, features: dict[str, list[str]]
+    ) -> None:
+        """Wrangle Ensembl (GTF) annotation to BED format for
+        each genomic features in "features". The files are
+        written to the parent directory of "annotation_file"
+        using "features" as stem, and bed as extension.
+
+        NOTE: "extended features" are used to validate consistency
+        with the caller: "conventional features" are extracted
+        on the fly, but intron and intergenic require special treatment.
+
+        :param annotation_file: Path to annotation file.
+        The format is implicitely assumed to be GTF.
+        :type annotation_file: Path
+        :param chrom_file: Path to chrom file
+        :type chrom_file: Path
+        :param features: Genomic features for which
+        annotation must be created.
+        :type features: dict of {str: list of str}
+        """
+        parent = annotation_file.parent
+        annotation_bedtool = pybedtools.BedTool(annotation_file.as_posix()).sort()
+
+        logger.info(f"Preparing annotation and writing to {parent}...")
+
+        for feature in features["conventional"]:
+            logger.debug(f"Writing {feature}...")
+
+            file_name = Path(parent, f"{feature}.bed").as_posix()
+            _ = (
+                self._annotation_to_stream(annotation_bedtool, feature)
+                .merge(s=True, c=[4, 5, 6, 7, 8], o="distinct")
+                .moveto(file_name)
+            )
+
+        file_name = Path(parent, "exon.bed").as_posix()
+        exons = pybedtools.BedTool(file_name)
+        file_name = self._check_feature("intron", features, parent)
+        # why is the sort order lost after subtract?
+        _ = (
+            self._annotation_to_stream(annotation_bedtool, "gene")
+            .subtract(exons, s=True, sorted=True)
+            .sort()
+            .merge(s=True, c=[4, 5, 6, 7, 8], o="distinct")
+        ).moveto(file_name)
+
+        file_name = self._check_feature("intergenic", features, parent)
+        _ = (
+            self._annotation_to_stream(annotation_bedtool, "gene")
+            .complement(g=chrom_file.as_posix())
+            .moveto(file_name)
+        )
 
     def intersect(
         self,
@@ -459,42 +418,6 @@ class BedToolsService:
             b = self._get_modification_from_bedtools_data(s[9:])
             r = IntersectRecord(a=a, b=b)
             yield r
-
-    @staticmethod
-    def _get_modifications_as_bedtool(
-        records: Iterable[ComparisonRecord],
-    ) -> BedTool:
-        def generator():
-            for record in records:
-                yield create_interval_from_list(
-                    [
-                        record.chrom,
-                        record.start,
-                        record.end,
-                        record.name,
-                        record.score,
-                        record.strand.value,
-                        record.eufid,
-                        record.coverage,
-                        record.frequency,
-                    ]
-                )
-
-        return BedTool(generator()).sort()
-
-    @staticmethod
-    def _get_modification_from_bedtools_data(s: Sequence[str]):
-        return ComparisonRecord(
-            chrom=s[0],
-            start=s[1],
-            end=s[2],
-            name=s[3],
-            score=s[4],
-            strand=Strand(s[5]),
-            eufid=s[6],
-            coverage=s[7],
-            frequency=s[8],
-        )
 
     def closest(
         self,
@@ -578,6 +501,89 @@ class BedToolsService:
         bedtool = a_bedtool.subtract(b_bedtool, s=is_strand, sorted=is_sorted)
         for s in bedtool:
             yield SubtractRecord(**self._get_modification_from_bedtools_data(s).dict())
+
+    @staticmethod
+    def _annotation_to_stream(annotation_bedtool, feature):
+        return annotation_bedtool.filter(lambda a: a.fields[2] == feature).each(
+            _get_gtf_attrs
+        )
+
+    @staticmethod
+    def _check_feature(feature, features, parent):
+        if feature not in features["extended"]:
+            raise AnnotationFormatError(
+                f"Missing feature {feature} from specs. This is due to a change in definition."
+            )
+        logger.debug(f"Writing {feature}...")
+        return Path(parent, f"{feature}.bed").as_posix()
+
+    @staticmethod
+    def _get_data_as_bedtool_for_annotation(
+        records: Iterable[Data],
+    ) -> BedTool:
+        def generator():
+            for record in records:
+                yield create_interval_from_list(
+                    [
+                        record.chrom,
+                        record.start,
+                        record.end,
+                        record.name,
+                        record.score,
+                        record.strand.value,
+                        record.id,
+                    ]
+                )
+
+        return BedTool(generator()).sort()
+
+    @staticmethod
+    def _intersect_for_annotation(bedtool_records, feature_bedtool, feature):
+        # delim (collapse) Default: ","
+        stream = bedtool_records.intersect(
+            b=feature_bedtool, wa=True, wb=True, s=True, sorted=True
+        )
+        for s in stream:
+            for gene_id in s[13].split(","):
+                yield DataAnnotationRecord(
+                    gene_id=gene_id, data_id=s[6], feature=feature
+                )
+
+    @staticmethod
+    def _get_modifications_as_bedtool(
+        records: Iterable[ComparisonRecord],
+    ) -> BedTool:
+        def generator():
+            for record in records:
+                yield create_interval_from_list(
+                    [
+                        record.chrom,
+                        record.start,
+                        record.end,
+                        record.name,
+                        record.score,
+                        record.strand.value,
+                        record.eufid,
+                        record.coverage,
+                        record.frequency,
+                    ]
+                )
+
+        return BedTool(generator()).sort()
+
+    @staticmethod
+    def _get_modification_from_bedtools_data(s: Sequence[str]):
+        return ComparisonRecord(
+            chrom=s[0],
+            start=s[1],
+            end=s[2],
+            name=s[3],
+            score=s[4],
+            strand=Strand(s[5]),
+            eufid=s[6],
+            coverage=s[7],
+            frequency=s[8],
+        )
 
 
 @cache

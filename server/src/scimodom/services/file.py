@@ -131,7 +131,7 @@ class FileService:
 
     # Project related
 
-    def get_project_metadata_dir(self):
+    def get_project_metadata_dir(self) -> Path:
         """Construct parent path to metadata.
 
         :returns: Path to metadata

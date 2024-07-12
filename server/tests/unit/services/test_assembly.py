@@ -1,15 +1,13 @@
-from abc import ABC
 from io import StringIO, BytesIO
 from pathlib import Path
 from typing import TextIO, BinaryIO
 
 import pytest
-import requests  # type: ignore
 from sqlalchemy import exists
 
 from mocks.io_mocks import MockStringIO, MockBytesIO
 from mocks.web_service import MockWebService, MockHTTPError
-from scimodom.database.models import Assembly, AssemblyVersion, Taxonomy, Taxa
+from scimodom.database.models import Assembly, AssemblyVersion
 from scimodom.services.assembly import (
     AssemblyService,
     AssemblyNotFoundError,
@@ -28,15 +26,20 @@ class MockFileService:
     def __init__(self):
         self.files_by_name: dict[str, MockStringIO | MockBytesIO] = {}
         self.lines_by_name: dict[str, int] = {}
-        self.existing_assemblies: list[int] = []
-        self.deleted_assemblies: list[int] = []
+        self.existing_assemblies: list[tuple[int, str]] = []
+        self.deleted_assemblies: list[tuple[int, str]] = []
 
     @staticmethod
     def get_assembly_file_path(
-        taxa_id: int, file_type: AssemblyFileType, chain_file_name: str | None = None
+        taxa_id: int,
+        file_type: AssemblyFileType,
+        chain_file_name: str | None = None,
+        chain_assembly_name: str | None = None,
     ) -> Path:
         if file_type == AssemblyFileType.CHAIN:
-            return Path(f"/data/assembly/{taxa_id}/{chain_file_name}")
+            return Path(
+                f"/data/assembly/{taxa_id}/{chain_assembly_name}/{chain_file_name}"
+            )
         else:
             return Path(f"/data/assembly/{taxa_id}/{file_type.value}")
 
@@ -56,20 +59,24 @@ class MockFileService:
         self.files_by_name[name] = new_file
         return new_file
 
-    def create_chain_file(self, taxa_id: int, name: str) -> BinaryIO:
+    def create_chain_file(
+        self, taxa_id: int, file_name: str, assembly_name: str
+    ) -> BinaryIO:
         name = self.get_assembly_file_path(
-            taxa_id, AssemblyFileType.CHAIN, chain_file_name=name
+            taxa_id,
+            AssemblyFileType.CHAIN,
+            chain_file_name=file_name,
+            chain_assembly_name=assembly_name,
         ).as_posix()
         new_file = MockBytesIO()
         self.files_by_name[name] = new_file
         return new_file
 
-    # TODO
     def check_if_assembly_exists(self, taxa_id: int, assembly_name: str) -> bool:
-        return taxa_id in self.existing_assemblies
+        return (taxa_id, assembly_name) in self.existing_assemblies
 
-    def delete_assembly(self, taxa_id: int):
-        self.deleted_assemblies.append(taxa_id)
+    def delete_assembly(self, taxa_id: int, assembly_name: str):
+        self.deleted_assemblies.append((taxa_id, assembly_name))
 
     def count_lines(self, path):
         return self.lines_by_name[path]
@@ -78,11 +85,6 @@ class MockFileService:
 @pytest.fixture
 def file_service():
     yield MockFileService()
-
-
-@pytest.fixture
-def chain_file(file_service):
-    file_service.files_by_name["/data/assembly/9606/GRCh37_to_GRCh38.chain"] = BytesIO()
 
 
 def _get_assembly_service(Session, file_service, url_to_result=None, url_to_data=None):
@@ -99,23 +101,14 @@ def _get_assembly_service(Session, file_service, url_to_result=None, url_to_data
 # tests
 
 
-def test_init(Session, data_path, file_service):
+def test_init(Session, file_service):
     with Session() as session, session.begin():
         session.add(AssemblyVersion(version_num="GcatSmFcytpU"))
     service = _get_assembly_service(Session, file_service)
     assert service._version == "GcatSmFcytpU"
 
 
-def test_get_organism(Session, file_service, data_path, setup):
-    with Session() as session, session.begin():
-        session.add_all(setup)
-    service = _get_assembly_service(Session, file_service)
-    assert (
-        service._get_organism(10090) == "Mus musculus"
-    )  # Converting space to '_' is now done in file service.
-
-
-def test_get_assembly(Session, data_path, setup):
+def test_get_assembly_by_id(Session, file_service, setup):
     with Session() as session, session.begin():
         session.add_all(setup)
     service = _get_assembly_service(Session, file_service)
@@ -127,7 +120,7 @@ def test_get_assembly(Session, data_path, setup):
     assert service._version == "GcatSmFcytpU"
 
 
-def test_get_assembly_fail(Session, data_path):
+def test_get_assembly_by_id_fail(Session):
     with Session() as session, session.begin():
         session.add(AssemblyVersion(version_num="GcatSmFcytpU"))
     service = _get_assembly_service(Session, file_service)
@@ -137,15 +130,36 @@ def test_get_assembly_fail(Session, data_path):
     assert exc.type == AssemblyNotFoundError
 
 
+def test_get_assemblies_by_taxa(Session, file_service, setup):
+    with Session() as session, session.begin():
+        session.add_all(setup)
+    service = _get_assembly_service(Session, file_service)
+    assemblies = service.get_assemblies_by_taxa(9606)
+
+    expected_assemblies = [
+        ("GRCh38", "GcatSmFcytpU"),
+        ("GRCh37", "J9dit7Tfc6Sb"),
+    ]
+    for assembly, expected_assembly in zip(assemblies, expected_assemblies):
+        assert assembly.name == expected_assembly[0]
+        assert assembly.version == expected_assembly[1]
+
+
 @pytest.mark.parametrize("assembly_id,is_latest", [(1, True), (3, False)])
-def test_is_latest_assembly(
-    assembly_id, is_latest, Session, file_service, data_path, setup
-):
+def test_is_latest_assembly(assembly_id, is_latest, Session, file_service, setup):
     with Session() as session, session.begin():
         session.add_all(setup)
     service = _get_assembly_service(Session, file_service)
     assembly = service.get_assembly_by_id(assembly_id)
     assert service.is_latest_assembly(assembly) == is_latest
+
+
+def test_get_name_for_version(Session, file_service, setup):
+    with Session() as session, session.begin():
+        session.add_all(setup)
+    service = _get_assembly_service(Session, file_service)
+    assembly_name = service.get_name_for_version(9606)
+    assert assembly_name == "GRCh38"
 
 
 def test_get_seqids(Session, file_service, setup):
@@ -159,7 +173,23 @@ def test_get_seqids(Session, file_service, setup):
     assert set(seqids) == {"1", "2"}
 
 
-def test_liftover(Session, file_service, setup, chain_file):
+def test_get_chroms(Session, file_service, setup):
+    file_service.files_by_name["/data/assembly/9606/chrom.sizes"] = StringIO(
+        "1\t12345\n2\t123456"
+    )
+    with Session() as session, session.begin():
+        session.add_all(setup)
+    service = _get_assembly_service(Session, file_service)
+    chroms = service.get_chroms(9606)
+    expected_chroms = [{"chrom": "1", "size": 12345}, {"chrom": "2", "size": 123456}]
+    for chrom, expected_chrom in zip(chroms, expected_chroms):
+        assert chrom == expected_chrom
+
+
+def test_liftover(Session, file_service, setup):
+    file_service.files_by_name[
+        "/data/assembly/9606/GRCh37/GRCh37_to_GRCh38.chain.gz"
+    ] = BytesIO()
     with Session() as session, session.begin():
         session.add_all(setup)
     file_service.lines_by_name["unmapped.bed"] = 0
@@ -170,9 +200,10 @@ def test_liftover(Session, file_service, setup, chain_file):
     service.liftover(assembly, "to_be_lifted.bed", unmapped_file="unmapped.bed")
 
 
-# with 3 raw_file records, liftover succeeds with the following warning:
-# 1 records could not be mapped and were discarded... Contact the system administrator if you have questions.
-def test_liftover_fail_count(Session, file_service, setup, chain_file):
+def test_liftover_fail_count(Session, file_service, setup):
+    file_service.files_by_name[
+        "/data/assembly/9606/GRCh37/GRCh37_to_GRCh38.chain.gz"
+    ] = BytesIO()
     with Session() as session, session.begin():
         session.add_all(setup)
     file_service.lines_by_name["unmapped.bed"] = 1
@@ -182,11 +213,30 @@ def test_liftover_fail_count(Session, file_service, setup, chain_file):
     assembly = service.get_assembly_by_id(3)
     with pytest.raises(LiftOverError) as exc:
         service.liftover(assembly, "to_be_lifted.bed", unmapped_file="unmapped.bed")
-    assert (str(exc.value)) == "Liftover failed: 1 records of 3 could not be mapped."
+    assert (
+        str(exc.value)
+    ) == "Liftover failed: 1 records out of 3 could not be mapped."
     assert exc.type == LiftOverError
 
 
-def test_liftover_fail_version(Session, file_service, data_path, setup):
+def test_liftover_warning(Session, file_service, setup, caplog):
+    file_service.files_by_name[
+        "/data/assembly/9606/GRCh37/GRCh37_to_GRCh38.chain.gz"
+    ] = BytesIO()
+    with Session() as session, session.begin():
+        session.add_all(setup)
+    file_service.lines_by_name["unmapped.bed"] = 1
+    file_service.lines_by_name["to_be_lifted.bed"] = 4
+    file_service.lines_by_name["lifted.bed"] = 3
+    service = _get_assembly_service(Session, file_service)
+    assembly = service.get_assembly_by_id(3)
+    service.liftover(assembly, "to_be_lifted.bed", unmapped_file="unmapped.bed")
+    assert caplog.messages == [
+        "1 records could not be mapped... Contact the system administrator if you have questions."
+    ]
+
+
+def test_liftover_fail_version(Session, file_service, setup):
     with Session() as session, session.begin():
         session.add_all(setup)
     service = _get_assembly_service(Session, file_service)
@@ -197,8 +247,12 @@ def test_liftover_fail_version(Session, file_service, data_path, setup):
     assert exc.type == AssemblyVersionError
 
 
-# downloads chain file...
-def test_add_assembly(Session, file_service, data_path, setup):
+# NOTE: test_add_assembly*, and test_prepare_assembly_for_version* all implicitely
+#       test protected methods e.g. _handle_gene_build and _handle_release, that rely
+#       on scimodom.utils.specifications e.g. _get_ensembl_gene_build_url and _get_ensembl_chain_file_url.
+
+
+def test_add_assembly(Session, file_service, setup):
     with Session() as session, session.begin():
         session.add_all(setup)
     service = _get_assembly_service(
@@ -208,53 +262,34 @@ def test_add_assembly(Session, file_service, data_path, setup):
             "https://ftp.ensembl.org/pub/current_assembly_chain/homo_sapiens/NCBI36_to_GRCh38.chain.gz": b"foo"
         },
     )
-    service.add_assembly(9606, "NCBI36")
-    # asseemb;y_id is 4
+    assembly_id = service.add_assembly(9606, "NCBI36")
     with Session() as session:
         assert session.query(
             exists().where(Assembly.taxa_id == 9606, Assembly.name == "NCBI36")
         ).scalar()
-    file = file_service.files_by_name["/data/assembly/9606/NCBI36_to_GRCh38.chain.gz"]
+        assert assembly_id == 4
+    file = file_service.files_by_name[
+        "/data/assembly/9606/NCBI36/NCBI36_to_GRCh38.chain.gz"
+    ]
     assert file.final_content == b"foo"
 
 
-def test_add_assembly_exists(Session, file_service, data_path, setup):
+def test_add_assembly_exists(Session, file_service, setup):
     with Session() as session, session.begin():
         session.add_all(setup)
     service = _get_assembly_service(Session, file_service)
     assert service.add_assembly(9606, "GRCh37") == 3
-    # normally directory exists for an existing assembly, but
-    # this function does not check that, it simple returns if
-    # the assembly exists
-    # if the tests were fully isolated, this should be False...
-    # chain_file = service.get_chain_file(9606, "GRCh37")
-    # assert chain_file.parent.exists() is False
-    #
-    # HW: Check with Etienne - that is a true uni test now!
-    #
 
 
-def test_add_assembly_file_exists(Session, file_service):
+def test_add_assembly_directory_exists(Session, file_service):
     with Session() as session, session.begin():
         version = AssemblyVersion(version_num="GcatSmFcytpU")
-        taxonomy = Taxonomy(
-            id="a1b240af", domain="Eukarya", kingdom="Animalia", phylum="Chordata"
-        )
-        taxa = Taxa(
-            id=9606,
-            name="Homo sapiens",
-            short_name="H. sapiens",
-            taxonomy_id="a1b240af",
-        )
-        assembly = Assembly(
-            name="GRCh38", alt_name="hg38", taxa_id=9606, version="GcatSmFcytpU"
-        )
-        session.add_all([version, taxonomy, taxa, assembly])
-    file_service.existing_assemblies = [9606]
+        session.add(version)
+    file_service.existing_assemblies = [(9606, "GRCh37")]
     service = _get_assembly_service(Session, file_service)
     with pytest.raises(FileExistsError) as exc:
         service.add_assembly(9606, "GRCh37")
-    assert (str(exc.value)) == "Assembly 'GRCh37' already exists (Taxa ID 9606)."
+    assert (str(exc.value)) == "Directory exists, but assembly 'GRCh37' does not exist!"
 
 
 def test_add_assembly_wrong_url(Session, file_service, setup):
@@ -263,6 +298,9 @@ def test_add_assembly_wrong_url(Session, file_service, setup):
     service = _get_assembly_service(Session, file_service)
     with pytest.raises(MockHTTPError):
         service.add_assembly(9606, "GRCH37")
+    assert file_service.deleted_assemblies == [(9606, "GRCH37")]
+    with Session() as session:
+        assert session.query(Assembly).count() == 3
 
 
 EXAMPLE_GENE_BUILD_DATA = {
@@ -283,6 +321,11 @@ EXAMPLE_GENE_BUILD_DATA = {
     ],
 }
 
+
+NEWEST_EXAMPLE_GENE_BUILD_DATA = EXAMPLE_GENE_BUILD_DATA.copy()
+NEWEST_EXAMPLE_GENE_BUILD_DATA["default_coord_system_version"] = "GRCh39"
+
+
 EXPECTED_CHROM_SIZES = """1\t248956422
 2\t242193529
 X\t156040895
@@ -301,7 +344,6 @@ EXPECTED_RELEASE_JSON = """{
 }"""
 
 
-# this now fails because Assembly directory exists: /tmp/pytest-of-scimodom/data0/assembly/Homo_sapiens/GRCh38.
 def test_prepare_assembly_for_version(Session, file_service, setup):
     with Session() as session, session.begin():
         session.add_all(setup)
@@ -328,5 +370,68 @@ def test_prepare_assembly_for_version(Session, file_service, setup):
     )
 
 
-# the above with 2, adn 10090
-# scimodom.services.assembly.AssemblyVersionError: Mismatch between assembly GRCm38 and coord system version GRCm39. Upgrade your database!
+def test_prepare_assembly_for_version_wrong_version(Session, file_service, setup):
+    with Session() as session, session.begin():
+        session.add_all(setup)
+    service = _get_assembly_service(
+        Session,
+        file_service,
+    )
+    with pytest.raises(AssemblyVersionError) as exc:
+        service.prepare_assembly_for_version(3)
+    assert (
+        (str(exc.value))
+        == "Mismatch between assembly version 'J9dit7Tfc6Sb' and database version 'GcatSmFcytpU'."
+    )
+    assert exc.type == AssemblyVersionError
+
+
+def test_prepare_assembly_for_version_directory_exists(Session, file_service, setup):
+    with Session() as session, session.begin():
+        session.add_all(setup)
+    file_service.existing_assemblies = [(9606, "GRCh38")]
+    service = _get_assembly_service(Session, file_service)
+    with pytest.raises(FileExistsError) as exc:
+        service.prepare_assembly_for_version(1)
+    assert (str(exc.value)) == "Assembly 'GRCh38' already exists (Taxa ID 9606)."
+
+
+def test_prepare_assembly_for_version_build_error(Session, file_service, setup):
+    with Session() as session, session.begin():
+        session.add_all(setup)
+    service = _get_assembly_service(
+        Session,
+        file_service,
+        url_to_result={
+            "http://rest.ensembl.org/info/assembly/homo_sapiens": NEWEST_EXAMPLE_GENE_BUILD_DATA,
+            "http://rest.ensembl.org/info/data": {"releases": [112]},
+        },
+    )
+    with pytest.raises(AssemblyVersionError) as exc:
+        service.prepare_assembly_for_version(1)
+    assert (
+        (str(exc.value))
+        == "Mismatch between assembly GRCh38 and coord system version GRCh39. Upgrade your database!"
+    )
+    assert exc.type == AssemblyVersionError
+
+
+def test_get_chain_file_name():
+    assert (
+        AssemblyService._get_chain_file_name("GRCh37", "GRCh38")
+        == "GRCh37_to_GRCh38.chain.gz"
+    )
+
+
+def test_get_organism(Session, file_service, setup):
+    with Session() as session, session.begin():
+        session.add_all(setup)
+    service = _get_assembly_service(Session, file_service)
+    assert service._get_organism(10090) == "Mus musculus"
+
+
+def test_get_organism_for_ensembl_url(Session, file_service, setup):
+    with Session() as session, session.begin():
+        session.add_all(setup)
+    service = _get_assembly_service(Session, file_service)
+    assert service._get_organism_for_ensembl_url(10090) == "mus_musculus"
