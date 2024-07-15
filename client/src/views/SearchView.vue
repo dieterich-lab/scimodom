@@ -12,6 +12,7 @@ import {
 import { HTTP } from '@/services/API.js'
 import StyledHeadline from '@/components/ui/StyledHeadline.vue'
 import SubTitle from '@/components/ui/SubTitle.vue'
+import ModificationInfo from '@/components/modification/ModificationInfo.vue'
 
 const router = useRouter()
 const confirm = useConfirm()
@@ -46,6 +47,8 @@ const records = ref()
 const loading = ref(false)
 const totalRecords = ref(0)
 const lazyParams = ref({})
+const showDetails = ref(false)
+const selectedSite = ref({})
 
 const disabled = computed(() => isAllSelected())
 const confirmed = computed(() => isAnyExtraSelected())
@@ -203,6 +206,11 @@ const onExport = () => {
 
 const navigateTo = (eufid) => {
   router.push({ name: 'browse', params: { eufid: eufid } })
+}
+
+const onOverlay = (record) => {
+  selectedSite.value = { ...record }
+  showDetails.value = true
 }
 
 // functions
@@ -528,7 +536,19 @@ onMounted(() => {
           <Column field="feature" header="Feature" exportHeader="Feature"></Column>
           <Column field="gene_name" header="Gene" exportHeader="Gene"></Column>
           <Column field="gene_biotype" header="Biotype" exportHeader="Biotype"></Column>
+          <Column :exportable="false" style="width: 5%">
+            <template #body="slotProps">
+              <Button
+                icon="pi pi-plus"
+                outlined
+                rounded
+                severity="secondary"
+                @click="onOverlay(slotProps.data)"
+              />
+            </template>
+          </Column>
         </DataTable>
+        <ModificationInfo v-model:visible="showDetails" :site="selectedSite" />
       </div>
     </SectionLayout>
   </DefaultLayout>
