@@ -55,9 +55,11 @@ SESSION_COOKIE_SAMESITE=None
 SESSION_COOKIE_SECURE=True
 UPLOAD_PATH=/path/to/upload
 DATA_PATH=/path/to/data
+BEDTOOLS_TMP_PATH=path/to/bedtools_tmp
 SMTP_SERVER=outgoing-email-server.my-site.org
 SMTP_FROM_ADDRESS=sci-modom-admin@my-site.org
-PUBLIC_URL=https://sci-modom.my-site.org
+NOTIFICATION_ADDRESS=notification-email@my-site.org
+HTTP_PUBLIC_URL=https://sci-modom.my-site.org
 ```
 
 **Important:** If the host name _localhost_ is used in the `DATABASE_URI` the database driver will assume that the database is contacted using a named
