@@ -21,7 +21,9 @@ from scimodom.utils.common_dto import Strand
 def dataset(Session, setup):  # noqa
     stamp = datetime.now(timezone.utc).replace(microsecond=0)
     organism = Organism(id=1, taxa_id=9606, cto="Cell Type 1")
-    modomics = Modomics(id="m1", name="Mod1", short_name="Mod1", moiety="moiety")
+    modomics = Modomics(
+        id="m1", name="Mod1", short_name="Mod1", moiety="moiety", reference_id=1
+    )
     modification = Modification(id=1, modomics_id=modomics.id, rna="Bla")
     method = DetectionMethod(id="m1", cls="c1", meth="Method m1")
     technology = DetectionTechnology(id=1, method_id=method.id, tech="Very Cool Tech")

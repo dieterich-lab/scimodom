@@ -55,15 +55,21 @@ def setup():
             name="N6-methyladenosine",
             short_name="m6A",
             moiety="nucleoside",
+            reference_id=96,
         ),
         Modomics(
             id="2000000005C",
             name="5-methylcytidine",
             short_name="m5C",
             moiety="nucleoside",
+            reference_id=18,
         ),
         Modomics(
-            id="2000000009U", name="pseudouridine", short_name="Y", moiety="nucleoside"
+            id="2000000009U",
+            name="pseudouridine",
+            short_name="Y",
+            moiety="nucleoside",
+            reference_id=118,
         ),
     ]
     add.extend(modomics)
