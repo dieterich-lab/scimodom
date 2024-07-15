@@ -31,7 +31,8 @@ const selectedTechnologyIds = ref([])
 const organism = ref()
 const selectedOrganism = ref()
 const selectionIds = ref([])
-const taxid = ref()
+const taxaId = ref()
+const taxaName = ref()
 const genes = ref()
 const selectedGene = ref()
 const filteredGenes = ref()
@@ -115,7 +116,8 @@ const updateSelection = () => {
   )
   selectedTechnologyIds.value = result.technology
   selectionIds.value = result.selection
-  taxid.value = result.taxid
+  taxaId.value = result.taxaId
+  taxaName.value = result.taxaName
   rnaType.value = result.rna
   if (selectionIds.value.length == 0) {
     // handle the case where all checkboxes are unticked
@@ -123,7 +125,7 @@ const updateSelection = () => {
     chroms.value = undefined
   } else {
     // get chrom.sizes
-    HTTP.get(`/chroms/${taxid.value}`)
+    HTTP.get(`/chroms/${taxaId.value}`)
       .then(function (response) {
         chroms.value = response.data
       })
@@ -225,6 +227,10 @@ function isAnyExtraSelected() {
   return selectedGene.value != null || selectedChrom.value != null
 }
 
+function addOne(value) {
+  return value + 1
+}
+
 function lazyLoad(event) {
   loading.value = true
   lazyParams.value = { ...lazyParams.value, first: event?.first || first.value }
@@ -250,7 +256,7 @@ function lazyLoad(event) {
       organism: selectedOrganism.value.key,
       technology: selectedTechnologyIds.value,
       rnaType: rnaType.value,
-      taxid: taxid.value,
+      taxaId: taxaId.value,
       geneFilter: fmtFilter(filters),
       chrom: selectedChrom.value == null ? null : selectedChrom.value.chrom,
       chromStart: selectedChromStart.value == null ? 0 : selectedChromStart.value,
@@ -500,7 +506,27 @@ onMounted(() => {
             <ProgressSpinner style="width: 60px; height: 60px" strokeWidth="6" />
           </template>
           <Column field="chrom" header="Chrom" sortable exportHeader="chrom"></Column>
-          <Column field="start" header="Start" sortable exportHeader="chromStart"></Column>
+          <Column field="start" header="Start" sortable exportHeader="chromStart">
+            <template #body="{ data }">
+              <a
+                class="text-primary-500 hover:text-secondary-500"
+                :href="
+                  'https://www.ensembl.org/' +
+                  taxaName.replace(/ /g, '_') +
+                  '/Location/View?r=' +
+                  data.chrom +
+                  ':' +
+                  data.start +
+                  '-' +
+                  addOne(data.end) +
+                  ';db=core'
+                "
+                target="_blank"
+                rel="noopener noreferrer"
+                >{{ data.start }}
+              </a>
+            </template>
+          </Column>
           <Column field="end" header="End" exportHeader="chromEnd"></Column>
           <Column field="name" header="Name" exportHeader="name">
             <template #body="{ data }">

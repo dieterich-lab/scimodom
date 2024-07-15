@@ -15,7 +15,7 @@ def get_modifications():
     organism_id = request.args.get("organism", type=int)
     technology_ids = request.args.getlist("technology", type=int)
     rna_type = request.args.get("rnaType", type=str)
-    taxa_id = request.args.get("taxid", type=int)
+    taxa_id = request.args.get("taxaId", type=int)
     gene_filter = request.args.getlist("geneFilter", type=str)
     chrom = request.args.get("chrom", type=str)
     chrom_start = request.args.get("chromStart", type=int)

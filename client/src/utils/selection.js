@@ -57,8 +57,15 @@ export const updSelectionFromAll = (selection, slctMod, slctOrg, slctTech) => {
       idsTech.includes(item.technology_id)
   )
   let selection_id = opts.map((item) => item.selection_id)
-  let taxid = [...new Set(opts.map((item) => item.taxa_id))]
-  // there should be only one RNA type, bt we don't check...
+  let taxaId = [...new Set(opts.map((item) => item.taxa_id))]
+  let taxaName = [...new Set(opts.map((item) => item.taxa_name))]
+  // there should be only one, but we don't check...
   let rna = [...new Set(opts.map((item) => item.rna))]
-  return { selection: selection_id, technology: idsTech, taxid: taxid[0], rna: rna[0] }
+  return {
+    selection: selection_id,
+    technology: idsTech,
+    taxaId: taxaId[0],
+    taxaName: taxaName[0],
+    rna: rna[0]
+  }
 }

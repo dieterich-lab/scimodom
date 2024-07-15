@@ -117,6 +117,7 @@ class UtilitiesService:
                 Taxonomy.domain,
                 Taxonomy.kingdom,
                 Taxa.id.label("taxa_id"),
+                Taxa.name.label("taxa_name"),
                 Taxa.short_name.label("taxa_sname"),
                 Organism.cto,
                 Selection.id.label("selection_id"),
