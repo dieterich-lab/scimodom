@@ -494,7 +494,17 @@ onMounted(() => {
           <Column field="chrom" header="Chrom" sortable exportHeader="chrom"></Column>
           <Column field="start" header="Start" sortable exportHeader="chromStart"></Column>
           <Column field="end" header="End" exportHeader="chromEnd"></Column>
-          <Column field="name" header="Name" exportHeader="name"></Column>
+          <Column field="name" header="Name" exportHeader="name">
+            <template #body="{ data }">
+              <a
+                class="text-primary-500 hover:text-secondary-500"
+                :href="'https://www.genesilico.pl/modomics/modifications/' + data.reference_id"
+                target="_blank"
+                rel="noopener noreferrer"
+                >{{ data.name }}
+              </a>
+            </template>
+          </Column>
           <Column field="score" header="Score" sortable exportHeader="score"></Column>
           <Column field="strand" header="Strand" exportHeader="strand"></Column>
           <Column field="coverage" header="Coverage" sortable exportHeader="coverage"></Column>

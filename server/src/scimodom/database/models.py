@@ -39,6 +39,9 @@ class Modomics(Base):
     id: Mapped[str] = mapped_column(
         String(128), primary_key=True, autoincrement=False
     )  # MODOMICS code
+    reference_id: Mapped[int] = mapped_column(
+        nullable=False, unique=True
+    )  # MODOMICS database id
     name: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
     short_name: Mapped[str] = mapped_column(String(32), nullable=False, unique=True)
     moiety: Mapped[str] = mapped_column(String(32), nullable=False)

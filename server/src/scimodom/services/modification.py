@@ -12,6 +12,8 @@ from scimodom.database.models import (
     DetectionMethod,
     DetectionTechnology,
     GenomicAnnotation,
+    Modification,
+    Modomics,
     Organism,
 )
 from scimodom.services.annotation import (
@@ -199,6 +201,11 @@ class ModificationService:
 
         # paginate
         query = query.offset(first_record).limit(max_records)
+
+        # query = query.add_columns(Modomics.reference_id).join_from(Data, Modification, Data.inst_modification).join_from(Modification, Modomics, Modification.inst_modomics)
+        query = query.add_columns(Modomics.reference_id).join_from(
+            Data, Modomics, Data.name == Modomics.short_name
+        )
 
         return query, length
 
