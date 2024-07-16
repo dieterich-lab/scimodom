@@ -8,7 +8,7 @@ from os.path import join, exists, dirname, basename, isfile
 from pathlib import Path
 from shutil import rmtree
 from tempfile import mkstemp
-from typing import Optional, IO, List, Dict, TextIO, BinaryIO, Iterable, Any
+from typing import Optional, IO, List, Dict, TextIO, BinaryIO, Iterable, Any, ClassVar
 from uuid import uuid4
 
 from sqlalchemy import select
@@ -38,6 +38,13 @@ class FileService:
     BUFFER_SIZE = 1024 * 1024
     VALID_FILE_ID_REGEXP = re.compile(r"\A[a-zA-Z0-9_-]{1,256}\Z")
 
+    ANNOTATION_DEST: ClassVar[str] = "annotation"
+    CACHE_DEST: ClassVar[Path] = Path("cache", "gene", "selection")
+    ASSEMBLY_DEST: ClassVar[str] = "assembly"
+    METADATA_DEST: ClassVar[str] = "metadata"
+    REQUEST_DEST: ClassVar[str] = "project_requests"
+    BAM_DEST: ClassVar[str] = "bam_files"
+
     def __init__(
         self,
         session: Session,
@@ -57,16 +64,16 @@ class FileService:
             temp_path,
             upload_path,
             import_path,
-            self.get_project_metadata_dir(),
+            self._get_project_metadata_dir(),
             self._get_project_request_dir(),
             self.get_annotation_parent_dir(),
-            self.get_assembly_parent_dir(),
+            self._get_assembly_parent_dir(),
             self._get_gene_cache_dir(),
-            self.get_bam_files_parent_dir(),
+            self._get_bam_files_parent_dir(),
         ]:
             makedirs(path, exist_ok=True)
 
-    # generic
+    # General
 
     @staticmethod
     def count_lines(path: str | Path):
@@ -78,7 +85,7 @@ class FileService:
                     return count
                 count += buffer.count("\n")
 
-    # import
+    # Import
 
     def check_import_file(self, name: str):
         return Path(self._import_path, name).is_file()
@@ -86,7 +93,7 @@ class FileService:
     def open_import_file(self, name: str):
         return open(Path(self._import_path, name))
 
-    # annotation
+    # Annotation
 
     def get_annotation_parent_dir(self) -> Path:
         """Construct parent path to annotation files.
@@ -94,9 +101,9 @@ class FileService:
         :returns: Path to annotation
         :rtype: Path
         """
-        return Path(self._data_path, "annotation")
+        return Path(self._data_path, self.ANNOTATION_DEST)
 
-    # Gene Cache
+    # Gene cache
 
     def get_gene_cache(self, selection_ids: Iterable[int]) -> list[str]:
         """Retrieve gene list for a given selection.
@@ -132,17 +139,9 @@ class FileService:
             flock(fh.fileno(), LOCK_UN)
 
     def _get_gene_cache_dir(self) -> Path:
-        return Path(self._data_path, "cache", "gene", "selection")
+        return Path(self._data_path, self.CACHE_DEST)
 
     # Project related
-
-    def get_project_metadata_dir(self) -> Path:
-        """Construct parent path to metadata.
-
-        :returns: Path to metadata
-        :rtype: Path
-        """
-        return Path(self._data_path, "metadata")
 
     def create_project_metadata_file(self, smid: str) -> TextIO:
         """Open a metadata file for writing.
@@ -152,7 +151,7 @@ class FileService:
         :returns: File handle
         :rtype: TextIO
         """
-        metadata_file = Path(self.get_project_metadata_dir(), f"{smid}.json")
+        metadata_file = Path(self._get_project_metadata_dir(), f"{smid}.json")
         return open(metadata_file, "w")
 
     def create_project_request_file(self, request_uuid) -> TextIO:
@@ -187,21 +186,16 @@ class FileService:
         path = self._get_project_request_file_path(request_uuid)
         path.unlink()
 
+    def _get_project_metadata_dir(self) -> Path:
+        return Path(self._data_path, self.METADATA_DEST)
+
     def _get_project_request_file_path(self, request_uuid):
         return Path(self._get_project_request_dir(), f"{request_uuid}.json")
 
     def _get_project_request_dir(self):
-        return Path(self.get_project_metadata_dir(), "project_requests")
+        return Path(self._get_project_metadata_dir(), self.REQUEST_DEST)
 
     # Assembly
-
-    def get_assembly_parent_dir(self) -> Path:
-        """Construct parent path to assembly files.
-
-        :returns: Path to assembly
-        :rtype: Path
-        """
-        return Path(self._data_path, "assembly")
 
     def get_assembly_file_path(
         self,
@@ -311,10 +305,13 @@ class FileService:
     def _get_dir_name_from_organism(organism) -> str:
         return "_".join(organism.lower().split()).capitalize()
 
+    def _get_assembly_parent_dir(self) -> Path:
+        return Path(self._data_path, self.ASSEMBLY_DEST)
+
     def _get_assembly_dir(self, taxa_id: int, assembly_name: str) -> Path:
         organism = self._get_organism_from_taxa_id(taxa_id)
         return Path(
-            self.get_assembly_parent_dir(),
+            self._get_assembly_parent_dir(),
             self._get_dir_name_from_organism(organism),
             assembly_name,
         )
@@ -344,6 +341,16 @@ class FileService:
         self._stream_to_file(stream, path, max_file_size, overwrite_is_ok=True)
         return file_id
 
+    def open_tmp_upload_file_by_id(self, file_id: str) -> TextIO:
+        if not self.VALID_FILE_ID_REGEXP.match(file_id):
+            raise ValueError("open_tmp_file_by_id called with bad file_id")
+        path = join(self._upload_path, file_id)
+        return open(path)
+
+    def check_tmp_upload_file_id(self, file_id: str) -> bool:
+        path = join(self._upload_path, file_id)
+        return isfile(path)
+
     def _stream_to_file(self, data_stream, path, max_size, overwrite_is_ok=False):
         if exists(path) and not overwrite_is_ok:
             raise Exception(
@@ -368,16 +375,6 @@ class FileService:
         except Exception as exc:
             self._handle_upload_error(exc, path)
 
-    def open_tmp_upload_file_by_id(self, file_id: str) -> TextIO:
-        if not self.VALID_FILE_ID_REGEXP.match(file_id):
-            raise ValueError("open_tmp_file_by_id called with bad file_id")
-        path = join(self._upload_path, file_id)
-        return open(path)
-
-    def check_tmp_upload_file_id(self, file_id: str) -> bool:
-        path = join(self._upload_path, file_id)
-        return isfile(path)
-
     # intermediate files
 
     def create_temp_file(self, suffix="") -> str:
@@ -385,18 +382,7 @@ class FileService:
         close(fp)
         return path
 
-    def get_temp_path(self) -> str:
-        return self._temp_path
-
     # BAM file
-
-    def get_bam_files_parent_dir(self):
-        """Construct parent path to BAM files.
-
-        :returns: Path to BAM files
-        :rtype: Path
-        """
-        return Path(self._data_path, "bam_files")
 
     def create_or_update_bam_file(
         self,
@@ -420,6 +406,39 @@ class FileService:
             )
         ).one()
 
+    def open_bam_file(self, bam_file: BamFile) -> IO[bytes]:
+        path = self._get_bam_file_path(bam_file)
+        return open(path, "rb")
+
+    def get_bam_file_list(self, dataset: Dataset) -> List[Dict[str, Any]]:
+        items = self._session.scalars(
+            select(BamFile).where(BamFile.dataset_id == dataset.id)
+        ).all()
+        return [self._get_bam_file_info(i) for i in items]
+
+    def remove_bam_file(self, bam_file: BamFile):
+        path = self._get_bam_file_path(bam_file)
+        try:
+            unlink(path)
+        except FileNotFoundError:
+            pass
+        self._session.delete(bam_file)
+        self._session.commit()
+
+    @staticmethod
+    def _handle_upload_error(exception, path):
+        logger.warning(
+            f"Failed to create file '{path}': {str(exception)} - discarding file."
+        )
+        try:
+            unlink(path)
+        except Exception as unlink_e:
+            logger.warning(f"Failed to delete '{path}': {str(unlink_e)}.")
+        raise exception
+
+    def _get_bam_files_parent_dir(self):
+        return Path(self._data_path, self.BAM_DEST)
+
     def _update_bam_file(self, bam_file, data_stream, max_size):
         tmp_path = self._get_bam_file_tmp_path(bam_file)
         path = self._get_bam_file_path(bam_file)
@@ -439,25 +458,14 @@ class FileService:
 
     def _get_bam_file_tmp_path(self, bam_file):
         return join(
-            self.get_bam_files_parent_dir().as_posix(),
+            self._get_bam_files_parent_dir().as_posix(),
             f"tmp.{bam_file.storage_file_name}",
         )
 
     def _get_bam_file_path(self, bam_file):
         return join(
-            self.get_bam_files_parent_dir().as_posix(), bam_file.storage_file_name
+            self._get_bam_files_parent_dir().as_posix(), bam_file.storage_file_name
         )
-
-    @staticmethod
-    def _handle_upload_error(exception, path):
-        logger.warning(
-            f"Failed to create file '{path}': {str(exception)} - discarding file."
-        )
-        try:
-            unlink(path)
-        except Exception as unlink_e:
-            logger.warning(f"Failed to delete '{path}': {str(unlink_e)}.")
-        raise exception
 
     def _create_bam_file(self, dataset, name, data_stream, max_size):
         bam_file = BamFile(
@@ -470,16 +478,6 @@ class FileService:
         self._session.add(bam_file)
         self._session.commit()
 
-    def open_bam_file(self, bam_file: BamFile) -> IO[bytes]:
-        path = self._get_bam_file_path(bam_file)
-        return open(path, "rb")
-
-    def get_bam_file_list(self, dataset: Dataset) -> List[Dict[str, Any]]:
-        items = self._session.scalars(
-            select(BamFile).where(BamFile.dataset_id == dataset.id)
-        ).all()
-        return [self._get_bam_file_info(i) for i in items]
-
     def _get_bam_file_info(self, bam_file):
         path = self._get_bam_file_path(bam_file)
         stat_info = stat(path)
@@ -488,15 +486,6 @@ class FileService:
             "size_in_bytes": stat_info.st_size,
             "mtime_epoch": stat_info.st_mtime,
         }
-
-    def remove_bam_file(self, bam_file: BamFile):
-        path = self._get_bam_file_path(bam_file)
-        try:
-            unlink(path)
-        except FileNotFoundError:
-            pass
-        self._session.delete(bam_file)
-        self._session.commit()
 
 
 @cache

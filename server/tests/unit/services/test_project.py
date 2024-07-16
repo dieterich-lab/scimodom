@@ -31,11 +31,10 @@ class MockFileService:
         self.files_by_name: dict[str, MockStringIO | MockBytesIO] = {}
         self.deleted_requests: list[str] = []
 
-    def get_project_metadata_dir(self) -> Path:
-        return Path("/data", "metadata")
-
     def create_project_metadata_file(self, smid: str) -> TextIO:
-        metadata_file = Path(self.get_project_metadata_dir(), f"{smid}.json").as_posix()
+        metadata_file = Path(
+            self._get_project_metadata_dir(), f"{smid}.json"
+        ).as_posix()
         new_file = MockStringIO()
         self.files_by_name[metadata_file] = new_file
         return new_file
@@ -52,11 +51,14 @@ class MockFileService:
         name = self._get_project_request_file_path(request_uuid).as_posix()
         self.deleted_requests.append(name)
 
+    def _get_project_metadata_dir(self) -> Path:
+        return Path("/data", "metadata")
+
     def _get_project_request_file_path(self, request_uuid):
         return Path(self._get_project_request_dir(), f"{request_uuid}.json")
 
     def _get_project_request_dir(self):
-        return Path(self.get_project_metadata_dir(), "project_requests")
+        return Path(self._get_project_metadata_dir(), "project_requests")
 
 
 @pytest.fixture
