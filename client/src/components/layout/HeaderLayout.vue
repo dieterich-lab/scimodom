@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { DIALOG, useDialogState } from '@/stores/DialogState.js'
 import { useAccessToken } from '@/stores/AccessToken.js'
 import { useRouter } from 'vue-router'
+import { API_BASE_URL } from '/config.js?url'
 import ScimodomLogo from './ScimodomLogo.vue'
 import NavigationBar from './NavigationBar.vue'
 
@@ -13,6 +14,7 @@ const accessToken = useAccessToken()
 
 const isLoggedIn = computed(() => accessToken.token !== null)
 const userName = computed(getUserName)
+const isDev = computed(() => API_BASE_URL !== 'https://scimodom.dieterichlab.org/api/v0/')
 
 const menu = ref()
 const items = ref([
@@ -94,8 +96,12 @@ function getUserName() {
     class="top-0 z-20 sticky bg-white opacity-90 border-b border-surface-200 dark:bg-surface-900 dark:opacity-100 dark:border-surface-800"
   >
     <div
-      class="p-1 bg-gradient-to-r from-gg-2 from-10% via-gg-1 via-40% via-gb-2 via-60% to-gb-4 to-100%"
-    />
+      :class="[
+        isDev
+          ? 'p-1 bg-gradient-to-r from-red-300 from-10% to-red-800 to-100%'
+          : 'p-1 bg-gradient-to-r from-gg-2 from-10% via-gg-1 via-40% via-gb-2 via-60% to-gb-4 to-100%'
+      ]"
+    ></div>
     <div class="mx-auto w-full max-w-screen-2xl p-2 py-6 lg:py-8 flex flex-wrap items-center">
       <div class="flex flex-wrap 2xl:w-4/5 xl:w-auto">
         <ScimodomLogo />
