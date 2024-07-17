@@ -1,18 +1,11 @@
 from datetime import datetime
 from io import StringIO
-from os import makedirs
 
 import pytest
 from sqlalchemy import select
 
 from scimodom.database.models import (
-    Selection,
     Dataset,
-    Modification,
-    DetectionTechnology,
-    Organism,
-    Project,
-    ProjectContact,
     Assembly,
     Data,
 )
@@ -104,59 +97,6 @@ def _get_dataset_service(
     )
 
 
-def _add_setup(session, setup):
-    session.add_all(setup)
-    session.flush()
-
-
-def _add_selection(session):
-    modification = Modification(rna="WTS", modomics_id="2000000006A")
-    technology = DetectionTechnology(tech="Technology 1", method_id="91b145ea")
-    organism = Organism(cto="Cell type 1", taxa_id=9606)
-    session.add_all([modification, organism, technology])
-    session.flush()
-    selection = Selection(
-        modification_id=modification.id,
-        organism_id=organism.id,
-        technology_id=technology.id,
-    )
-    session.add(selection)
-    session.flush()
-
-
-def _add_contact(session):
-    contact = ProjectContact(
-        contact_name="Contact Name",
-        contact_institution="Contact Institution",
-        contact_email="Contact Email",
-    )
-    session.add(contact)
-    session.flush()
-    return contact.id
-
-
-def _add_project(session):
-    project = Project(
-        id="12345678",
-        title="Project Title",
-        summary="Project summary",
-        contact_id=_add_contact(session),
-        date_published=datetime.fromisoformat("2024-01-01"),
-        date_added=datetime(2024, 6, 17, 12, 0, 0),
-    )
-    session.add(project)
-    session.commit()
-
-
-@pytest.fixture
-def project(Session, setup):  # noqa
-    session = Session()
-    _add_setup(session, setup)
-    _add_selection(session)
-    _add_project(session)
-    yield "12345678"
-
-
 GOOD_EUF_FILE = """#fileformat=bedRModv1.7
 #organism=9606
 #modification_type=RNA
@@ -182,7 +122,9 @@ GOOD_EUF_FILE = """#fileformat=bedRModv1.7
         (r"\Z", "# Extra comment\n# In the end"),
     ],
 )
-def test_import_simple(regexp, replacement, Session, project, freezer):  # noqa
+def test_import_simple(
+    regexp, replacement, Session, selection, project, freezer
+):  # noqa
     euf_file = GOOD_EUF_FILE.replace(regexp, replacement)
     service = _get_dataset_service(Session())
     file = StringIO(euf_file)
@@ -347,6 +289,7 @@ def test_bad_import(
     message,
     record_tuples,
     Session,
+    selection,
     project,
     freezer,
     caplog,

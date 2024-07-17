@@ -1,4 +1,3 @@
-from fixtures.dataset import dataset  # noqa
 from scimodom.services.data import DataService
 from scimodom.utils.common_dto import Strand
 

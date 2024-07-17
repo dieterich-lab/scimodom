@@ -6,29 +6,17 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from scimodom.database.database import init, Base
-from scimodom.database.models import (
-    RNAType,
-    Modomics,
-    Taxonomy,
-    Taxa,
-    Assembly,
-    AssemblyVersion,
-    Annotation,
-    AnnotationVersion,
-    DetectionMethod,
-)
 from scimodom.utils.specifications import SPECS_EUF
 
 # data path
 DataPath = namedtuple("DataPath", "LOC ASSEMBLY_PATH ANNOTATION_PATH META_PATH")
 
-
-@pytest.fixture()
-def EUF_specs():
-    # columns must match "ORM Data/Dataset model"
-    FMT = SPECS_EUF["format"]
-    VERSION = SPECS_EUF["versions"][-1]
-    return FMT, VERSION, SPECS_EUF[VERSION]
+pytest_plugins = [
+    "fixtures.setup",
+    "fixtures.selection",
+    "fixtures.project",
+    "fixtures.dataset",
+]
 
 
 @pytest.fixture()
@@ -44,176 +32,7 @@ def Session():
     session().close()
 
 
-@pytest.fixture()
-def setup():
-    add = []
-    rna_types = [RNAType(id="WTS", name="whole transcriptome")]
-    add.extend(rna_types)
-    modomics = [
-        Modomics(
-            id="2000000006A",
-            name="N6-methyladenosine",
-            short_name="m6A",
-            moiety="nucleoside",
-            reference_id=96,
-        ),
-        Modomics(
-            id="2000000005C",
-            name="5-methylcytidine",
-            short_name="m5C",
-            moiety="nucleoside",
-            reference_id=18,
-        ),
-        Modomics(
-            id="2000000009U",
-            name="pseudouridine",
-            short_name="Y",
-            moiety="nucleoside",
-            reference_id=118,
-        ),
-    ]
-    add.extend(modomics)
-    taxonomy = [
-        Taxonomy(
-            id="a1b240af", domain="Eukarya", kingdom="Animalia", phylum="Chordata"
-        ),
-        Taxonomy(
-            id="455a3823", domain="Eukarya", kingdom="Animalia", phylum="Arthropoda"
-        ),
-    ]
-    add.extend(taxonomy)
-    taxa = [
-        Taxa(
-            id=9606,
-            name="Homo sapiens",
-            short_name="H. sapiens",
-            taxonomy_id="a1b240af",
-        ),
-        Taxa(
-            id=10090,
-            name="Mus musculus",
-            short_name="M. musculus",
-            taxonomy_id="a1b240af",
-        ),
-        Taxa(
-            id=7227,
-            name="Drosophila melanogaster",
-            short_name="D. melanogaster",
-            taxonomy_id="455a3823",
-        ),
-    ]
-    add.extend(taxa)
-    assembly_version = [
-        AssemblyVersion(version_num="GcatSmFcytpU"),
-    ]
-    add.extend(assembly_version)
-    assembly = [
-        Assembly(name="GRCh38", alt_name="hg38", taxa_id=9606, version="GcatSmFcytpU"),
-        Assembly(name="GRCm38", alt_name="mm10", taxa_id=10090, version="GcatSmFcytpU"),
-        Assembly(name="GRCh37", alt_name="hg19", taxa_id=9606, version="J9dit7Tfc6Sb"),
-    ]
-    add.extend(assembly)
-    annotation_version = [
-        AnnotationVersion(version_num="EyRBnPeVwbzW"),
-    ]
-    add.extend(annotation_version)
-    annotation = [
-        Annotation(release=110, taxa_id=9606, source="ensembl", version="EyRBnPeVwbzW"),
-        Annotation(
-            release=110, taxa_id=10090, source="ensembl", version="EyRBnPeVwbzW"
-        ),
-        Annotation(release=109, taxa_id=9606, source="ensembl", version="A8syx5TzWlK0"),
-    ]
-    add.extend(annotation)
-    method = [
-        DetectionMethod(
-            id="0ee048bc", cls="NGS 2nd generation", meth="Chemical-assisted sequencing"
-        ),
-        DetectionMethod(
-            id="91b145ea", cls="NGS 2nd generation", meth="Antibody-based sequencing"
-        ),
-        DetectionMethod(
-            id="01d26feb",
-            cls="NGS 2nd generation",
-            meth="Enzyme/protein-assisted sequencing",
-        ),
-    ]
-    add.extend(method)
-    return add
-
-
-@pytest.fixture()
-def project_template():
-    """\
-    2023-08-25 Project template (JSON format).
-
-    All keys are required.
-    "external_sources" can be None (null in yml).
-    "external_sources" and "metadata" can be list of dict, or dict.
-
-    Parameters
-    ----------
-    external_sources_fmt: str or None
-        "external_sources" format (list, dict, or None)
-    metadata_fmt: str
-        "metadata" format (list or dict)
-    missing_key: str or None
-        missing_key
-
-    Returns
-    -------
-    dict
-        Project template
-    """
-
-    project = dict()
-    project["title"] = "Title"
-    project["summary"] = "Summary"
-    project["contact_name"] = "Contact Name"
-    project["contact_institution"] = "Contact Institution"
-    project["contact_email"] = "Contact Email"
-    project["date_published"] = "2024-01-01"
-    project["external_sources"] = [
-        {"doi": "DOI1", "pmid": None},
-        {"doi": "DOI2", "pmid": 22222222},
-    ]
-    project["metadata"] = [
-        {
-            "rna": "mRNA",
-            "modomics_id": "2000000006A",
-            "tech": "Technology 1",
-            "method_id": "01d26feb",
-            "organism": {"taxa_id": 9606, "cto": "Cell Type 1", "assembly": "GRCh38"},
-        },
-        {
-            "rna": "mRNA",
-            "modomics_id": "2000000006A",
-            "tech": "Technology 1",
-            "method_id": "01d26feb",
-            "organism": {"taxa_id": 9606, "cto": "Cell Type 2", "assembly": "GRCh38"},
-        },
-        {
-            "rna": "mRNA",
-            "modomics_id": "2000000005C",
-            "tech": "Technology 2",
-            "method_id": "01d26feb",
-            "organism": {"taxa_id": 9606, "cto": "Organ 1", "assembly": "GRCh38"},
-        },
-        {
-            "rna": "mRNA",
-            "modomics_id": "2000000005C",
-            "tech": "Technology 1",
-            "method_id": "01d26feb",
-            "organism": {"taxa_id": 9606, "cto": "Cell Type 1", "assembly": "GRCh38"},
-        },
-    ]
-
-    return project
-
-
-# TODO this should be simplified to have only temp dirs fixture for session-wise
-# usage, i.e. top of function, the rest should be handlded in separate tests
-# does it actually have to be session-wise???
+# TODO this is now only used in integration/test_import_data
 @pytest.fixture(scope="session")
 def data_path(tmp_path_factory):
     format = SPECS_EUF["format"]
