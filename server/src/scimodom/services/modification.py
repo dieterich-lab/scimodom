@@ -1,4 +1,5 @@
 from functools import cache
+from tempfile import TemporaryDirectory
 
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
@@ -9,12 +10,12 @@ from scimodom.database.models import (
     Annotation,
     DataAnnotation,
     Dataset,
-    DetectionMethod,
     DetectionTechnology,
     GenomicAnnotation,
     Modification,
     Modomics,
     Organism,
+    Taxa,
 )
 from scimodom.services.annotation import (
     get_annotation_service,
@@ -102,6 +103,57 @@ class ModificationService:
             "records": [row._asdict() for row in self._session.execute(query)],
         }
 
+    def get_modification_site(self, chrom: str, start: int, end: int):
+        """Retrieve information related to a modification site.
+
+        :param chrom: Chromosome
+        :type chrom: str
+        :param start: Start coordinate
+        :type start: int
+        :param end: End coordinate
+        :type end: int
+        """
+        query = (
+            select(
+                Data.dataset_id,
+                Modification.rna,
+                Data.name,
+                Taxa.short_name,
+                Organism.cto,
+                DetectionTechnology.tech,
+                Data.strand,
+                Data.score,
+                Data.coverage,
+                Data.frequency,
+            )
+            .join_from(Data, Dataset, Data.inst_dataset)
+            .join_from(Data, Modification, Data.inst_modification)
+            .join_from(Dataset, Organism, Dataset.inst_organism)
+            .join_from(Dataset, DetectionTechnology, Dataset.inst_technology)
+            .join_from(Organism, Taxa, Organism.inst_taxa)
+            .where(Data.chrom == chrom, Data.start == start, Data.end == end)
+        )
+
+        return {
+            "totalRecords": self._get_length(query, Data),
+            "records": [row._asdict() for row in self._session.execute(query)],
+        }
+
+    @staticmethod
+    def _get_arg_sort(string: str, url_split: str = "%2B") -> str:
+        col, order = string.split(url_split)
+        return f"Data.{col}.{order}()"
+
+    @staticmethod
+    def _get_flt(string, url_split="%2B") -> tuple[str, list[str], str]:
+        col, val, operator = string.split(url_split)
+        return col, val.split(","), operator
+
+    def _get_length(self, query, model) -> int:
+        return self._session.scalar(
+            select(func.count()).select_from(query.with_only_columns(model.id))
+        )
+
     def _return_ensembl_query(
         self,
         annotation: Annotation,
@@ -182,9 +234,7 @@ class ModificationService:
         query = query.group_by(DataAnnotation.data_id)
 
         # get length
-        length = self._session.scalar(
-            select(func.count()).select_from(query.with_only_columns(Data.id))
-        )
+        length = self._get_length(query, Data)
 
         # sort filters
         # index speed up for chrom + start
@@ -200,22 +250,11 @@ class ModificationService:
         # paginate
         query = query.offset(first_record).limit(max_records)
 
-        # query = query.add_columns(Modomics.reference_id).join_from(Data, Modification, Data.inst_modification).join_from(Modification, Modomics, Modification.inst_modomics)
         query = query.add_columns(Modomics.reference_id).join_from(
             Data, Modomics, Data.name == Modomics.short_name
         )
 
         return query, length
-
-    @staticmethod
-    def _get_arg_sort(string: str, url_split: str = "%2B") -> str:
-        col, order = string.split(url_split)
-        return f"Data.{col}.{order}()"
-
-    @staticmethod
-    def _get_flt(string, url_split="%2B") -> tuple[str, list[str], str]:
-        col, val, operator = string.split(url_split)
-        return col, val.split(","), operator
 
 
 @cache

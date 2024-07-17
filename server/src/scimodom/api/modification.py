@@ -45,3 +45,18 @@ def get_modifications():
         {**r, "strand": r["strand"].value} for r in response["records"]
     ]
     return response
+
+
+@modification_api.route("/sitewise", methods=["GET"])
+@cross_origin(supports_credentials=True)
+def get_modification_sitewise():
+    """Get information related to a modification site."""
+    chrom = request.args.get("chrom", type=str)
+    start = request.args.get("start", type=int)
+    end = request.args.get("end", type=int)
+    modification_service = get_modification_service()
+    response = modification_service.get_modification_site(chrom, start, end)
+    response["records"] = [
+        {**r, "strand": r["strand"].value} for r in response["records"]
+    ]
+    return response
