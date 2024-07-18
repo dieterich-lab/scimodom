@@ -1,6 +1,4 @@
 from functools import cache
-from itertools import chain
-from pathlib import Path
 from typing import ClassVar, Any
 
 from sqlalchemy import select
@@ -21,7 +19,6 @@ from scimodom.database.models import (
 from scimodom.services.annotation import (
     get_annotation_service,
     AnnotationService,
-    AnnotationSource,
 )
 from scimodom.services.assembly import get_assembly_service, AssemblyService
 from scimodom.services.file import FileService, get_file_service
@@ -31,8 +28,6 @@ from scimodom.utils.specifications import BIOTYPES
 class UtilitiesService:
     """Collection of common requests that are
     used to run the application."""
-
-    MAPPED_BIOTYPES: ClassVar[list[str]] = sorted(list(set(BIOTYPES.values())))
 
     def __init__(
         self,
@@ -144,23 +139,6 @@ class UtilitiesService:
             .join_from(Taxa, Taxonomy, Taxa.inst_taxonomy)
         )
         return [row._asdict() for row in self._session.execute(query)]
-
-    def get_annotation(
-        self, annotation_source: AnnotationSource
-    ) -> dict[str, list[str]]:
-        response = dict()
-        features = self._annotation_service.get_features(annotation_source)
-        response["features"] = sorted(
-            list(
-                {
-                    **features["conventional"],
-                    **features["extended"],
-                }.values()
-            )
-        )
-        # TODO: do biotypes also depend on RNA type/annotation?
-        response["biotypes"] = self.MAPPED_BIOTYPES
-        return response
 
     def get_assemblies(self, taxa_id: int) -> list[dict[str, Any]]:
         """Get available assemblies for given organism.

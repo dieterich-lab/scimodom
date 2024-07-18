@@ -13,16 +13,18 @@ import { HTTP } from '@/services/API.js'
 import StyledHeadline from '@/components/ui/StyledHeadline.vue'
 import SubTitle from '@/components/ui/SubTitle.vue'
 import ModificationInfo from '@/components/modification/ModificationInfo.vue'
+import GeneSelect from '@/components/search/GeneSelect.vue'
+import BiotypeSelect from '@/components/search/BiotypeSelect.vue'
+import FeatureSelect from '@/components/search/FeatureSelect.vue'
+import ChromSelect from '@/components/search/ChromSelect.vue'
 
 const router = useRouter()
 const confirm = useConfirm()
 
 const options = ref()
-const biotypes = ref()
 const selectedBiotypes = ref()
-const features = ref()
 const selectedFeatures = ref()
-const rnaType = ref()
+const rnaType = ref('')
 const modification = ref()
 const selectedModification = ref()
 const technology = ref()
@@ -31,12 +33,9 @@ const selectedTechnologyIds = ref([])
 const organism = ref()
 const selectedOrganism = ref()
 const selectionIds = ref([])
-const taxaId = ref()
+const taxaId = ref(0)
 const taxaName = ref()
-const genes = ref()
 const selectedGene = ref()
-const filteredGenes = ref()
-const chroms = ref()
 const selectedChrom = ref()
 const selectedChromStart = ref()
 const selectedChromEnd = ref()
@@ -82,7 +81,7 @@ const clearSelection = (value) => {
     selectionIds.value = []
   }
   records.value = undefined
-  rnaType.value = undefined
+  rnaType.value = ''
 }
 const clearAll = (value) => {
   clearSelected(value)
@@ -119,55 +118,12 @@ const updateSelection = () => {
   taxaId.value = result.taxaId
   taxaName.value = result.taxaName
   rnaType.value = result.rna
-  if (selectionIds.value.length == 0) {
+  if (selectionIds.value.length === 0) {
     // handle the case where all checkboxes are unticked
     selectedTechnology.value = undefined
-    chroms.value = undefined
-  } else {
-    // get chrom.sizes
-    HTTP.get(`/chroms/${taxaId.value}`)
-      .then(function (response) {
-        chroms.value = response.data
-      })
-      .catch((error) => {
-        console.log(error)
-      })
-    HTTP.get('/genes', {
-      params: {
-        selection: selectionIds.value
-      },
-      paramsSerializer: {
-        indexes: null
-      }
-    })
-      .then(function (response) {
-        genes.value = response.data.sort()
-      })
-      .catch((error) => {
-        console.log(error)
-      })
-    HTTP.get(`/annotation/${rnaType.value}`)
-      .then(function (response) {
-        biotypes.value = response.data.biotypes
-        features.value = response.data.features
-      })
-      .catch((error) => {
-        console.log(error)
-      })
   }
 }
-const searchGene = (event) => {
-  clearChrom()
-  setTimeout(() => {
-    if (!event.query.trim().length) {
-      filteredGenes.value = [...genes.value]
-    } else {
-      filteredGenes.value = genes.value.filter((g) => {
-        return g.toLowerCase().startsWith(event.query.toLowerCase())
-      })
-    }
-  }, 250)
-}
+
 const confirmSearch = () => {
   if (confirmed.value) {
     lazyLoad()
@@ -238,15 +194,15 @@ function lazyLoad(event) {
   let filters = {
     // matchMode is actually hard coded to "equal" in the BE; forceSelection is toggled
     gene_name: {
-      value: selectedGene.value == undefined ? null : selectedGene.value,
+      value: selectedGene.value === undefined ? null : selectedGene.value,
       matchMode: 'startsWith'
     },
     gene_biotype: {
-      value: selectedBiotypes.value == undefined ? null : selectedBiotypes.value,
+      value: selectedBiotypes.value === undefined ? null : selectedBiotypes.value,
       matchMode: 'in'
     },
     feature: {
-      value: selectedFeatures.value == undefined ? null : selectedFeatures.value,
+      value: selectedFeatures.value === undefined ? null : selectedFeatures.value,
       matchMode: 'in'
     }
   }
@@ -359,65 +315,41 @@ onMounted(() => {
       <Divider />
       <div class="grid grid-cols-1 md:grid-cols-10 gap-6 mt-6">
         <div class="col-span-3">
-          <AutoComplete
-            v-model="selectedGene"
-            :suggestions="filteredGenes"
-            @complete="searchGene"
-            forceSelection
+          <GeneSelect
             placeholder="4. Select gene (optional)"
+            v-model="selectedGene"
+            :selection-ids="selectionIds"
             :disabled="disabled"
-            :pt="{
-              root: { class: 'w-full md:w-full' },
-              input: { class: 'w-full md:w-full' }
-            }"
-            :ptOptions="{ mergeProps: true }"
+            @change="clearChrom()"
           />
         </div>
         <div class="col-span-3">
-          <MultiSelect
-            v-model="selectedBiotypes"
-            :options="biotypes"
+          <BiotypeSelect
             placeholder="5. Select biotype (optional)"
-            :maxSelectedLabels="3"
+            v-model="selectedBiotypes"
+            :rna-type="rnaType"
             :disabled="disabled"
-            :pt="{
-              root: { class: 'w-full md:w-full' }
-            }"
-            :ptOptions="{ mergeProps: true }"
-          >
-          </MultiSelect>
+          />
         </div>
         <div class="col-span-3">
-          <MultiSelect
-            v-model="selectedFeatures"
-            :options="features"
+          <FeatureSelect
             placeholder="6. Select feature (optional)"
-            :maxSelectedLabels="3"
+            v-model="selectedFeatures"
+            :rna-type="rnaType"
             :disabled="disabled"
-            :pt="{
-              root: { class: 'w-full md:w-full' }
-            }"
-            :ptOptions="{ mergeProps: true }"
-          >
-          </MultiSelect>
+          />
         </div>
         <div></div>
       </div>
       <!-- FILTER 3 -->
       <div class="grid grid-cols-1 md:grid-cols-10 gap-6 mt-6">
         <div class="col-span-3">
-          <Dropdown
-            @change="clearCoords()"
-            v-model="selectedChrom"
-            :options="chroms"
-            optionLabel="chrom"
-            showClear
-            :disabled="disabled || !(selectedGene == null)"
+          <ChromSelect
             placeholder="7. Select chromosome (optional)"
-            :pt="{
-              root: { class: 'w-full md:w-full' }
-            }"
-            :ptOptions="{ mergeProps: true }"
+            v-model="selectedChrom"
+            :taxa-id="taxaId"
+            :disabled="disabled || !(selectedGene == null)"
+            @change="clearCoords()"
           />
         </div>
         <div class="col-span-3">
