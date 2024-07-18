@@ -118,6 +118,17 @@ class AnnotationService:
             taxa_id, eufid, selection_ids
         )
 
+    def get_features_by_rna_type(self, rna_type: str) -> list[str]:
+        if rna_type not in RNA_TYPE_TO_ANNOTATION_SOURCE_MAP:
+            raise NotImplementedError(
+                f"The RNA type '{rna_type}' is not yet implemented."
+            )
+        annotation_source = RNA_TYPE_TO_ANNOTATION_SOURCE_MAP[rna_type]
+        features = self.get_features(annotation_source)
+        return sorted(
+            [*features["conventional"].values(), *features["extended"].values()]
+        )
+
 
 @cache
 def get_annotation_service() -> AnnotationService:

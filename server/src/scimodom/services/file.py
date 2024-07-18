@@ -108,6 +108,10 @@ class FileService:
     def get_gene_cache(self, selection_ids: Iterable[int]) -> list[str]:
         """Retrieve gene list for a given selection.
 
+        In the case that a project was created but no data was uploaded so far
+        the gene cash may not be initialized and a FileNotFoundError may be
+        generated.
+
         :param selection_ids: Selection ID(s)
         :type selection_ids: Iterable[int]
         :returns: The genes of the selection
@@ -157,8 +161,8 @@ class FileService:
     def create_project_request_file(self, request_uuid) -> TextIO:
         """Open a metadata (request) file for writing.
 
-        :param smid: Request ID
-        :type smid: str
+        :param request_uuid: Request ID
+        :type request_uuid: str
         :returns: File handle
         :rtype: TextIO
         """
@@ -169,8 +173,8 @@ class FileService:
     def open_project_request_file(self, request_uuid) -> TextIO:
         """Open a metadata (request) file for reading.
 
-        :param smid: Request ID
-        :type smid: str
+        :param request_uuid: Request ID
+        :type request_uuid: str
         :returns: File handle
         :rtype: TextIO
         """
@@ -180,8 +184,8 @@ class FileService:
     def delete_project_request_file(self, request_uuid) -> None:
         """Remove a metadata (request) file.
 
-        :param smid: Request ID
-        :type smid: str
+        :param request_uuid: Request ID
+        :type request_uuid: str
         """
         path = self._get_project_request_file_path(request_uuid)
         path.unlink()
@@ -212,8 +216,8 @@ class FileService:
         :type file_type: AssemblyFileType
         :param chain_file_name: Only used if file_type is CHAIN - base chain file name
         :type chain_file_name: str
-        :param assembly_name: Only used if file_type is CHAIN - assembly name
-        :type assembly_name: str
+        :param chain_assembly_name: Only used if file_type is CHAIN - assembly name
+        :type chain_assembly_name: str
         :returns: Full path to file
         :rtype: Path
         """
@@ -286,8 +290,8 @@ class FileService:
 
         :param taxa_id: Taxa ID
         :type taxa_id: int
-        :param name: Assembly name
-        :type name: str
+        :param assembly_name: Assembly name
+        :type assembly_name: str
         """
         rmtree(self._get_assembly_dir(taxa_id, assembly_name))
 

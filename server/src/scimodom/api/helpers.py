@@ -10,6 +10,7 @@ from scimodom.services.dataset import get_dataset_service
 from scimodom.services.file import get_file_service
 from scimodom.services.permission import get_permission_service
 from scimodom.services.user import get_user_service, NoSuchUser
+from scimodom.services.utilities import get_utilities_service
 
 """
 This module supplies a number of helper functions to be used in various
@@ -135,3 +136,20 @@ def get_valid_boolean_from_request_parameter(
 def validate_request_size(max_size):
     if request.content_length is not None and request.content_length > max_size:
         raise ClientResponseException(413, f"File too large (max. {max_size} bytes)")
+
+
+def get_valid_taxa_id(raw: str) -> int:
+    try:
+        taxa_id = int(raw)
+        if taxa_id < 0:
+            raise ClientResponseException(400, "Bad taxa ID")
+        return taxa_id
+    except ValueError:
+        raise ClientResponseException(400, "Bad taxa ID")
+
+
+def validate_rna_type(rna_type: str):
+    utilities_service = get_utilities_service()
+    valid_rna_types = [x["id"] for x in utilities_service.get_rna_types()]
+    if rna_type not in valid_rna_types:
+        raise ClientResponseException(404, "Unknown RNA type.")
