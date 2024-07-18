@@ -63,13 +63,13 @@ class ModificationService:
         :type chrom_start: int
         :param chrom_end: Chromosome end
         :type chrom_end: int
-        :param first_record: First record
+        :param first_record: first record
         :type first_record: int
-        :param max_records: Number of records
+        :param max_records: number of records
         :type max_records: int
-        :param multi_sort: Sorting criteria
+        :param multi_sort: sorting criteria
         :type multi_sort: list of str
-        :returns: Query results
+        :returns: query results
         :rtype: list of dict
         """
 
@@ -103,15 +103,31 @@ class ModificationService:
             "records": [row._asdict() for row in self._session.execute(query)],
         }
 
-    def get_modification_site(self, chrom: str, start: int, end: int):
+    def get_modification_site(
+        self,
+        chrom: str,
+        start: int,
+        end: int,
+        first_record: int,
+        max_records: int,
+        multi_sort: list[str],
+    ):
         """Retrieve information related to a modification site.
 
         :param chrom: Chromosome
         :type chrom: str
-        :param start: Start coordinate
-        :type start: int
-        :param end: End coordinate
-        :type end: int
+        :param chrom_start: Chromosome start
+        :type chrom_start: int
+        :param chrom_end: Chromosome end
+        :type chrom_end: int
+        :param first_record: first record
+        :type first_record: int
+        :param max_records: number of records
+        :type max_records: int
+        :param multi_sort: sorting criteria
+        :type multi_sort: list of str
+        :returns: query results
+        :rtype: list of dict
         """
         query = (
             select(
@@ -121,6 +137,9 @@ class ModificationService:
                 Taxa.short_name,
                 Organism.cto,
                 DetectionTechnology.tech,
+                Data.chrom,
+                Data.start,
+                Data.end,
                 Data.strand,
                 Data.score,
                 Data.coverage,
@@ -133,6 +152,13 @@ class ModificationService:
             .join_from(Organism, Taxa, Organism.inst_taxa)
             .where(Data.chrom == chrom, Data.start == start, Data.end == end)
         )
+
+        if multi_sort:
+            for flt in multi_sort:
+                expr = self._get_arg_sort(flt)
+                query = query.order_by(eval(expr))
+        query = query.offset(first_record).limit(max_records)
+        query = self._add_modomics_ref_to_data_query(query)
 
         return {
             "totalRecords": self._get_length(query, Data),
@@ -148,6 +174,12 @@ class ModificationService:
     def _get_flt(string, url_split="%2B") -> tuple[str, list[str], str]:
         col, val, operator = string.split(url_split)
         return col, val.split(","), operator
+
+    @staticmethod
+    def _add_modomics_ref_to_data_query(query):
+        return query.add_columns(Modomics.reference_id).join_from(
+            Data, Modomics, Data.name == Modomics.short_name
+        )
 
     def _get_length(self, query, model) -> int:
         return self._session.scalar(
@@ -250,9 +282,7 @@ class ModificationService:
         # paginate
         query = query.offset(first_record).limit(max_records)
 
-        query = query.add_columns(Modomics.reference_id).join_from(
-            Data, Modomics, Data.name == Modomics.short_name
-        )
+        query = self._add_modomics_ref_to_data_query(query)
 
         return query, length
 

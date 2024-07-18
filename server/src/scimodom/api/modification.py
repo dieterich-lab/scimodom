@@ -54,8 +54,14 @@ def get_modification_sitewise():
     chrom = request.args.get("chrom", type=str)
     start = request.args.get("start", type=int)
     end = request.args.get("end", type=int)
+    first_record = request.args.get("firstRecord", type=int)
+    max_records = request.args.get("maxRecords", type=int)
+    multi_sort = request.args.getlist("multiSort", type=str)
+
     modification_service = get_modification_service()
-    response = modification_service.get_modification_site(chrom, start, end)
+    response = modification_service.get_modification_site(
+        chrom, start, end, first_record, max_records, multi_sort
+    )
     response["records"] = [
         {**r, "strand": r["strand"].value} for r in response["records"]
     ]

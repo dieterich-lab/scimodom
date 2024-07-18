@@ -14,7 +14,9 @@ def _get_modification_service(Session):
 
 def test_get_modification_site(Session, dataset):  # noqa
     modification_service = _get_modification_service(Session)
-    response = modification_service.get_modification_site("17", 100001, 100002)
+    response = modification_service.get_modification_site(
+        "17", 100001, 100002, 0, 10, []
+    )
     assert response["totalRecords"] == 2
     assert response["records"][0]["dataset_id"] == "d1"
     assert response["records"][1]["dataset_id"] == "d2"
