@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from functools import cache
 from typing import List, Dict, Optional, TextIO
 
-from sqlalchemy import select, func, exists
+from sqlalchemy import select, func, exists, delete
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session
 
@@ -25,6 +25,7 @@ from scimodom.database.models import (
     UserProjectAssociation,
     Selection,
     Data,
+    DataAnnotation,
 )
 from scimodom.services.annotation import (
     get_annotation_service,
@@ -54,6 +55,8 @@ class _ImportContext:
     technology_id: int
     eufid: str
     annotation_source: AnnotationSource
+    dry_run_flag: bool
+    update_flag: bool
 
     modification_names: dict[str, int] | None = None
     selection_ids: list[int] | None = None
@@ -84,6 +87,10 @@ class DatasetExistsError(Exception):
     """Exception for handling Dataset instantiation,
     e.g. suspected duplicate entries."""
 
+    pass
+
+
+class DataSetUpdateError(Exception):
     pass
 
 
@@ -190,6 +197,8 @@ class DatasetService:
         organism_id: int,
         technology_id: int,
         annotation_source: AnnotationSource,
+        dry_run_flag: bool = False,
+        eufid_to_update: str | None = None,
     ) -> str:
         """Import dataset and records from bedRMod formatted file.
 
@@ -211,9 +220,24 @@ class DatasetService:
         :type technology_id: int
         :param annotation_source: Source of annotation
         :type annotation_source: AnnotationSource
-        :returns: EUFID
+        :param dry_run_flag: If true just pretend to do something - don't change the database. Default is false.
+        :type dry_run_flag: bool
+        :param eufid_to_update: Update existing dataset given by this parameter - don't create a new one.
+        Default is None.
+        :type eufid_to_update: str | None
+        :returns: EUFID - in case of a dry run the value '_dry_run____' is returned.
         :rtype: str
         """
+        if eufid_to_update is not None:
+            eufid = eufid_to_update
+            update_flag = True
+        elif dry_run_flag:
+            eufid = "_dry_run____"
+            update_flag = False
+        else:
+            eufid = self._generate_eufid()
+            update_flag = False
+
         context = _ImportContext(
             smid=smid,
             title=title,
@@ -222,11 +246,15 @@ class DatasetService:
             organism_id=organism_id,
             technology_id=technology_id,
             annotation_source=annotation_source,
-            eufid=self._generate_eufid(),
+            eufid=eufid,
+            dry_run_flag=dry_run_flag,
+            update_flag=update_flag,
         )
         self._sanitize_import_context(context)
 
-        checkpoint = self._session.begin_nested()
+        checkpoint = None
+        if not dry_run_flag:
+            checkpoint = self._session.begin_nested()
         try:
             importer = EufImporter(stream=stream, source=source)
             headers = self._sanitize_header(importer, context)
@@ -236,20 +264,23 @@ class DatasetService:
             else:
                 self._do_direct_import(importer, context)
             self._add_association(context)
-            organism = self._get_organism(context.organism_id)
-            self._annotation_service.annotate_data(
-                taxa_id=organism.taxa_id,
-                annotation_source=context.annotation_source,
-                eufid=context.eufid,
-                selection_ids=context.selection_ids,
-            )
-            self._session.commit()
+            if not dry_run_flag:
+                organism = self._get_organism(context.organism_id)
+                self._annotation_service.annotate_data(
+                    taxa_id=organism.taxa_id,
+                    annotation_source=context.annotation_source,
+                    eufid=context.eufid,
+                    selection_ids=context.selection_ids,
+                )
+                self._session.commit()
         except Exception:
-            checkpoint.rollback()
+            if checkpoint is not None:
+                checkpoint.rollback()
             raise
 
+        dry_run_info = "DRYRUN: NOT " if dry_run_flag else ""
         logger.info(
-            f"Added dataset {context.eufid} to project {context.smid} with title = {context.title}, "
+            f"{dry_run_info}Added dataset {context.eufid} to project {context.smid} with title = {context.title}, "
             f"and the following selections: {context.selection_ids}. "
         )
         return context.eufid
@@ -375,12 +406,21 @@ class DatasetService:
                 Dataset.technology_id == context.technology_id,
             )
         ).scalar_one_or_none()
-        if eufid:
-            msg = (
-                f"Suspected duplicate record with EUFID = {eufid} (SMID = {context.smid}), "
-                f"and title = {context.title}."
-            )
-            raise DatasetExistsError(msg)
+        if context.update_flag:
+            if eufid is None:
+                raise DataSetUpdateError(
+                    f"Failed to find dataset {context.eufid} based meta data!"
+                )
+            elif eufid != context.eufid:
+                raise DataSetUpdateError(
+                    f"Wanted to update dataset {context.eufid} but found {eufid} based on meta data!"
+                )
+        else:
+            if eufid:
+                raise DatasetExistsError(
+                    f"Suspected duplicate record with EUFID = {eufid} (SMID = {context.smid}), "
+                    f"and title = {context.title}."
+                )
 
     def _sanitize_assembly(self, context):
         assembly = self._assembly_service.get_assembly_by_id(context.assembly_id)
@@ -427,6 +467,8 @@ class DatasetService:
         return result
 
     def _create_dataset(self, headers, context):
+        if context.update_flag or context.dry_run_flag:
+            return
         dataset = Dataset(
             id=context.eufid,
             project_id=context.smid,
@@ -445,11 +487,28 @@ class DatasetService:
         self._session.flush()
 
     def _do_direct_import(self, importer, context):
-        with InsertBuffer[Data](self._session) as buffer:
+        if context.dry_run_flag:
             for record in importer.parse():
                 if self._check_euf_record(record, importer, context):
-                    data = self._get_data_record(record, context)
-                    buffer.queue(data)
+                    self._get_data_record(record, context)
+        else:
+            if context.update_flag:
+                self._delete_data_records(context.eufid)
+            with InsertBuffer[Data](self._session) as buffer:
+                for record in importer.parse():
+                    if self._check_euf_record(record, importer, context):
+                        data = self._get_data_record(record, context)
+                        buffer.queue(data)
+
+    def _delete_data_records(self, eufid: str):
+        db = self._session
+        data_ids_to_delete = (
+            db.execute(select(Data.id).filter_by(dataset_id=eufid)).scalars().all()
+        )
+        db.execute(
+            delete(DataAnnotation).where(DataAnnotation.data_id.in_(data_ids_to_delete))
+        )
+        db.execute(delete(Data).filter_by(dataset_id=eufid))
 
     def _do_lift_over(self, importer, context):
         def generator():
@@ -471,6 +530,8 @@ class DatasetService:
             self._do_direct_import(lifted_importer, context)
 
     def _add_association(self, context) -> None:
+        if context.update_flag or context.dry_run_flag:
+            return
         for mid in context.modification_ids:
             association = DatasetModificationAssociation(
                 dataset_id=context.eufid, modification_id=mid

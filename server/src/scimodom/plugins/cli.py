@@ -197,6 +197,8 @@ def add_dataset(
     organism_id: int,
     technology_id: int,
     annotation_source: AnnotationSource,
+    dry_run_flag: bool = False,
+    eufid_to_update: str | None = None,
 ) -> None:
     """Provide a CLI function to add a new dataset.
 
@@ -214,6 +216,12 @@ def add_dataset(
     :type technology_id: int
     :param organism_id: Organism ID (taxa ID, cto)
     :type organism_id: int
+    :param annotation_source: Annotation source
+    :type annotation_source: AnnotationSource
+    :param dry_run_flag: Dry run flag, defaults to False
+    :type dry_run_flag: bool, optional
+    :param eufid_to_update: EUFID ID to update, defaults to None
+    :type eufid_to_update: str, optional
     """
     dataset_service = get_dataset_service()
     click.secho(
@@ -235,6 +243,8 @@ def add_dataset(
                 organism_id=organism_id,
                 technology_id=technology_id,
                 annotation_source=annotation_source,
+                dry_run_flag=dry_run_flag,
+                eufid_to_update=eufid_to_update,
             )
     except Exception as exc:
         click.secho(f"Failed to create dataset: {exc}... Aborting!", fg="red")

@@ -224,8 +224,31 @@ def create_app():
         type=click.INT,
         help="Technology ID.",
     )
+    @click.option(
+        "--dry-run",
+        is_flag=True,
+        show_default=True,
+        default=False,
+        help="Just validate the input.",
+    )
+    @click.option(
+        "--update",
+        default=None,
+        required=False,
+        type=click.STRING,
+        help="Update existing dataset with the supplied EUFID instead of adding a new one.",
+    )
     def dataset(
-        filename, smid, title, assembly, annotation, modification, organism, technology
+        filename,
+        smid,
+        title,
+        assembly,
+        annotation,
+        modification,
+        organism,
+        technology,
+        dry_run,
+        update,
     ):
         """Add a new dataset to the database.
 
@@ -244,6 +267,8 @@ def create_app():
             organism,
             technology,
             annotation_source,
+            dry_run_flag=dry_run,
+            eufid_to_update=update,
         )
 
     @app.cli.command(

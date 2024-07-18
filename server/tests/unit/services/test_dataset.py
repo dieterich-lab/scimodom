@@ -167,6 +167,130 @@ def test_import_simple(
         assert data[0].strand == Strand.FORWARD
 
 
+def test_import_dry_run(Session, selection, project, freezer):  # noqa
+    service = _get_dataset_service(Session())
+    file = StringIO(GOOD_EUF_FILE)
+    freezer.move_to("2017-05-20 11:00:23")
+    eufid = service.import_dataset(
+        file,
+        source="test",
+        smid=project,
+        title="title",
+        assembly_id=1,
+        modification_ids=[1],
+        technology_id=1,
+        organism_id=1,
+        annotation_source=AnnotationSource.ENSEMBL,
+        dry_run_flag=True,
+    )
+
+    assert eufid == "_dry_run____"
+    with Session() as session:
+        datasets = session.execute(select(Dataset)).all()
+        assert len(datasets) == 0
+        data = session.execute(select(Data)).all()
+        assert len(data) == 0
+
+
+def test_import_with_update_no_change(Session, selection, project, freezer):  # noqa
+    service = _get_dataset_service(Session())
+    freezer.move_to("2017-05-20 11:00:23")
+    eufid = service.import_dataset(
+        StringIO(GOOD_EUF_FILE),
+        source="test",
+        smid=project,
+        title="title",
+        assembly_id=1,
+        modification_ids=[1],
+        technology_id=1,
+        organism_id=1,
+        annotation_source=AnnotationSource.ENSEMBL,
+    )
+
+    with Session() as session:
+        dataset = session.get_one(Dataset, eufid)
+        assert dataset.title == "title"
+
+    new_eufid = service.import_dataset(
+        StringIO(GOOD_EUF_FILE),
+        source="test",
+        smid=project,
+        title="title",
+        assembly_id=1,
+        modification_ids=[1],
+        technology_id=1,
+        organism_id=1,
+        annotation_source=AnnotationSource.ENSEMBL,
+        eufid_to_update=eufid,
+    )
+
+    assert new_eufid == eufid
+    with Session() as session:
+        dataset = session.get_one(Dataset, eufid)
+        assert dataset.title == "title"
+
+        data = (
+            session.execute(select(Data).where(Data.dataset_id == eufid))
+            .scalars()
+            .all()
+        )
+        assert len(data) == 1
+        assert data[0].chrom == "1"
+        assert data[0].start == 0
+        assert data[0].name == "m6A"
+        assert data[0].strand == Strand.FORWARD
+
+
+def test_import_with_update_with_change(Session, selection, project, freezer):  # noqa
+    service = _get_dataset_service(Session())
+    freezer.move_to("2017-05-20 11:00:23")
+    eufid = service.import_dataset(
+        StringIO(GOOD_EUF_FILE),
+        source="test",
+        smid=project,
+        title="title",
+        assembly_id=1,
+        modification_ids=[1],
+        technology_id=1,
+        organism_id=1,
+        annotation_source=AnnotationSource.ENSEMBL,
+    )
+
+    with Session() as session:
+        dataset = session.get_one(Dataset, eufid)
+        assert dataset.title == "title"
+
+    new_eufid = service.import_dataset(
+        StringIO(GOOD_EUF_FILE.replace("1000", "555")),
+        source="test",
+        smid=project,
+        title="title",
+        assembly_id=1,
+        modification_ids=[1],
+        technology_id=1,
+        organism_id=1,
+        annotation_source=AnnotationSource.ENSEMBL,
+        eufid_to_update=eufid,
+    )
+
+    assert new_eufid == eufid
+    with Session() as session:
+        dataset = session.get_one(Dataset, eufid)
+        assert dataset.title == "title"
+
+        data = (
+            session.execute(select(Data).where(Data.dataset_id == eufid))
+            .scalars()
+            .all()
+        )
+        assert len(data) == 1
+        assert data[0].score == 555
+        assert data[0].chrom == "1"
+        assert data[0].start == 0
+        assert data[0].name == "m6A"
+        assert data[0].strand == Strand.FORWARD
+
+
 @pytest.mark.parametrize(
     "regexp,replacement,exception,message,record_tuples",
     [
