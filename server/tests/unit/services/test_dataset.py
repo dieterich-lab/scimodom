@@ -2,7 +2,7 @@ from datetime import datetime
 from io import StringIO
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 from scimodom.database.models import (
     Dataset,
@@ -14,6 +14,7 @@ from scimodom.services.dataset import (
     DatasetService,
     SpecsError,
     DatasetHeaderError,
+    DatasetUpdateError,
 )
 from scimodom.utils.bed_importer import BedImportEmptyFile, BedImportTooManyErrors
 from scimodom.utils.common_dto import Strand
@@ -165,6 +166,7 @@ def test_import_simple(
         assert data[0].start == 0
         assert data[0].name == "m6A"
         assert data[0].strand == Strand.FORWARD
+        assert data[0].score == 1000
 
 
 def test_import_dry_run(Session, selection, project, freezer):  # noqa
@@ -182,9 +184,10 @@ def test_import_dry_run(Session, selection, project, freezer):  # noqa
         organism_id=1,
         annotation_source=AnnotationSource.ENSEMBL,
         dry_run_flag=True,
+        eufid="XXXXXXXXXXXX",
     )
 
-    assert eufid == "_dry_run____"
+    assert eufid == "DRYRUNDRYRUN"
     with Session() as session:
         datasets = session.execute(select(Dataset)).all()
         assert len(datasets) == 0
@@ -192,7 +195,7 @@ def test_import_dry_run(Session, selection, project, freezer):  # noqa
         assert len(data) == 0
 
 
-def test_import_with_update_no_change(Session, selection, project, freezer):  # noqa
+def test_import_update_no_change(Session, selection, project, freezer):  # noqa
     service = _get_dataset_service(Session())
     freezer.move_to("2017-05-20 11:00:23")
     eufid = service.import_dataset(
@@ -208,8 +211,7 @@ def test_import_with_update_no_change(Session, selection, project, freezer):  # 
     )
 
     with Session() as session:
-        dataset = session.get_one(Dataset, eufid)
-        assert dataset.title == "title"
+        assert session.scalar(select(func.count()).select_from(Dataset)) == 1
 
     new_eufid = service.import_dataset(
         StringIO(GOOD_EUF_FILE),
@@ -221,13 +223,17 @@ def test_import_with_update_no_change(Session, selection, project, freezer):  # 
         technology_id=1,
         organism_id=1,
         annotation_source=AnnotationSource.ENSEMBL,
-        eufid_to_update=eufid,
+        eufid=eufid,
     )
 
     assert new_eufid == eufid
     with Session() as session:
         dataset = session.get_one(Dataset, eufid)
         assert dataset.title == "title"
+        assert dataset.project_id == project
+        assert dataset.technology_id == 1
+        assert dataset.organism_id == 1
+        assert dataset.date_added == datetime(2017, 5, 20, 11, 0, 23)
 
         data = (
             session.execute(select(Data).where(Data.dataset_id == eufid))
@@ -239,9 +245,10 @@ def test_import_with_update_no_change(Session, selection, project, freezer):  # 
         assert data[0].start == 0
         assert data[0].name == "m6A"
         assert data[0].strand == Strand.FORWARD
+        assert data[0].score == 1000
 
 
-def test_import_with_update_with_change(Session, selection, project, freezer):  # noqa
+def test_import_update_with_change(Session, selection, project, freezer):  # noqa
     service = _get_dataset_service(Session())
     freezer.move_to("2017-05-20 11:00:23")
     eufid = service.import_dataset(
@@ -257,8 +264,7 @@ def test_import_with_update_with_change(Session, selection, project, freezer):  
     )
 
     with Session() as session:
-        dataset = session.get_one(Dataset, eufid)
-        assert dataset.title == "title"
+        assert session.scalar(select(func.count()).select_from(Dataset)) == 1
 
     new_eufid = service.import_dataset(
         StringIO(GOOD_EUF_FILE.replace("1000", "555")),
@@ -270,13 +276,17 @@ def test_import_with_update_with_change(Session, selection, project, freezer):  
         technology_id=1,
         organism_id=1,
         annotation_source=AnnotationSource.ENSEMBL,
-        eufid_to_update=eufid,
+        eufid=eufid,
     )
 
     assert new_eufid == eufid
     with Session() as session:
         dataset = session.get_one(Dataset, eufid)
         assert dataset.title == "title"
+        assert dataset.project_id == project
+        assert dataset.technology_id == 1
+        assert dataset.organism_id == 1
+        assert dataset.date_added == datetime(2017, 5, 20, 11, 0, 23)
 
         data = (
             session.execute(select(Data).where(Data.dataset_id == eufid))
@@ -284,11 +294,30 @@ def test_import_with_update_with_change(Session, selection, project, freezer):  
             .all()
         )
         assert len(data) == 1
-        assert data[0].score == 555
         assert data[0].chrom == "1"
         assert data[0].start == 0
         assert data[0].name == "m6A"
         assert data[0].strand == Strand.FORWARD
+        assert data[0].score == 555
+
+
+def test_import_update_fail(Session, selection, project, freezer):  # noqa
+    service = _get_dataset_service(Session())
+    with pytest.raises(DatasetUpdateError) as exc:
+        service.import_dataset(
+            StringIO(GOOD_EUF_FILE),
+            source="test",
+            smid=project,
+            title="title",
+            assembly_id=1,
+            modification_ids=[1],
+            technology_id=1,
+            organism_id=1,
+            annotation_source=AnnotationSource.ENSEMBL,
+            eufid="XXXXXXXXXXXX",
+        )
+    assert str(exc.value) == "No such dataset: 'XXXXXXXXXXXX'."
+    assert exc.type == DatasetUpdateError
 
 
 @pytest.mark.parametrize(

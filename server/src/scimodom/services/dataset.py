@@ -90,7 +90,10 @@ class DatasetExistsError(Exception):
     pass
 
 
-class DataSetUpdateError(Exception):
+class DatasetUpdateError(Exception):
+    """Exception for handling data records
+    update for existing dataset."""
+
     pass
 
 
@@ -198,7 +201,7 @@ class DatasetService:
         technology_id: int,
         annotation_source: AnnotationSource,
         dry_run_flag: bool = False,
-        eufid_to_update: str | None = None,
+        eufid: str | None = None,
     ) -> str:
         """Import dataset and records from bedRMod formatted file.
 
@@ -220,23 +223,25 @@ class DatasetService:
         :type technology_id: int
         :param annotation_source: Source of annotation
         :type annotation_source: AnnotationSource
-        :param dry_run_flag: If true just pretend to do something - don't change the database. Default is false.
+        :param dry_run_flag: Mock import if true - validate data w/o changing the database. Default is False.
         :type dry_run_flag: bool
-        :param eufid_to_update: Update existing dataset given by this parameter - don't create a new one.
-        Default is None.
-        :type eufid_to_update: str | None
-        :returns: EUFID - in case of a dry run the value '_dry_run____' is returned.
+        :param eufid: Update data and data annotation records for this EUFID (dataset). This is silently
+        ignored if 'dry_run_flag' is set. Default is None.
+        :type eufid: str | None
+        :returns: EUFID - in case of a dry run the value 'DRYRUNDRYRUN' is returned.
         :rtype: str
         """
-        if eufid_to_update is not None:
-            eufid = eufid_to_update
+        update_flag = False
+        if dry_run_flag:
+            eufid = "DRYRUNDRYRUN"
+        elif eufid is not None:
+            try:
+                self._session.get_one(Dataset, eufid)
+            except NoResultFound:
+                raise DatasetUpdateError(f"No such dataset: '{eufid}'.")
             update_flag = True
-        elif dry_run_flag:
-            eufid = "_dry_run____"
-            update_flag = False
         else:
             eufid = self._generate_eufid()
-            update_flag = False
 
         context = _ImportContext(
             smid=smid,
@@ -278,9 +283,8 @@ class DatasetService:
                 checkpoint.rollback()
             raise
 
-        dry_run_info = "DRYRUN: NOT " if dry_run_flag else ""
         logger.info(
-            f"{dry_run_info}Added dataset {context.eufid} to project {context.smid} with title = {context.title}, "
+            f"Added dataset {context.eufid} to project {context.smid} with title = {context.title}, "
             f"and the following selections: {context.selection_ids}. "
         )
         return context.eufid
@@ -407,19 +411,16 @@ class DatasetService:
             )
         ).scalar_one_or_none()
         if context.update_flag:
-            if eufid is None:
-                raise DataSetUpdateError(
-                    f"Failed to find dataset {context.eufid} based meta data!"
-                )
-            elif eufid != context.eufid:
-                raise DataSetUpdateError(
-                    f"Wanted to update dataset {context.eufid} but found {eufid} based on meta data!"
+            if eufid != context.eufid:
+                raise DatasetUpdateError(
+                    f"Provided dataset '{context.eufid}', but found '{eufid}' with "
+                    f"title '{context.title}' (SMID '{context.smid}')."
                 )
         else:
             if eufid:
                 raise DatasetExistsError(
-                    f"Suspected duplicate record with EUFID = {eufid} (SMID = {context.smid}), "
-                    f"and title = {context.title}."
+                    f"Suspected duplicate dataset '{eufid}' (SMID '{context.smid}'), "
+                    f"and title '{context.title}'."
                 )
 
     def _sanitize_assembly(self, context):
@@ -501,14 +502,15 @@ class DatasetService:
                         buffer.queue(data)
 
     def _delete_data_records(self, eufid: str):
-        db = self._session
         data_ids_to_delete = (
-            db.execute(select(Data.id).filter_by(dataset_id=eufid)).scalars().all()
+            self._session.execute(select(Data.id).filter_by(dataset_id=eufid))
+            .scalars()
+            .all()
         )
-        db.execute(
+        self._session.execute(
             delete(DataAnnotation).where(DataAnnotation.data_id.in_(data_ids_to_delete))
         )
-        db.execute(delete(Data).filter_by(dataset_id=eufid))
+        self._session.execute(delete(Data).filter_by(dataset_id=eufid))
 
     def _do_lift_over(self, importer, context):
         def generator():

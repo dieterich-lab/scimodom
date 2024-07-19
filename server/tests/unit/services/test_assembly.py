@@ -5,8 +5,8 @@ from typing import TextIO, BinaryIO
 import pytest
 from sqlalchemy import exists
 
-from mocks.io_mocks import MockStringIO, MockBytesIO
-from mocks.web_service import MockWebService, MockHTTPError
+from tests.mocks.io_mocks import MockStringIO, MockBytesIO
+from tests.mocks.web_service import MockWebService, MockHTTPError
 from scimodom.database.models import Assembly, AssemblyVersion
 from scimodom.services.assembly import (
     AssemblyService,

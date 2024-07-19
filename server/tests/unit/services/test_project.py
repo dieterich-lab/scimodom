@@ -5,7 +5,7 @@ from typing import TextIO
 import pytest
 from sqlalchemy import select
 
-from mocks.io_mocks import MockStringIO, MockBytesIO
+from tests.mocks.io_mocks import MockStringIO, MockBytesIO
 from scimodom.database.models import (
     Modification,
     DetectionTechnology,

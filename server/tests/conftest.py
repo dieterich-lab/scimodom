@@ -12,10 +12,10 @@ from scimodom.utils.specifications import SPECS_EUF
 DataPath = namedtuple("DataPath", "LOC ASSEMBLY_PATH ANNOTATION_PATH META_PATH")
 
 pytest_plugins = [
-    "fixtures.setup",
-    "fixtures.selection",
-    "fixtures.project",
-    "fixtures.dataset",
+    "tests.fixtures.setup",
+    "tests.fixtures.selection",
+    "tests.fixtures.project",
+    "tests.fixtures.dataset",
 ]
 
 

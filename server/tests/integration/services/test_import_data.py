@@ -2,18 +2,11 @@ from datetime import datetime
 from io import StringIO
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 from scimodom.database.models import (
-    Selection,
     Data,
     Dataset,
-    Modification,
-    DetectionTechnology,
-    Organism,
-    Project,
-    ProjectSource,
-    ProjectContact,
     GenomicAnnotation,
     DataAnnotation,
 )
@@ -27,66 +20,6 @@ from scimodom.services.data import DataService
 from scimodom.services.external import ExternalService
 from scimodom.services.web import WebService
 from scimodom.services.file import FileService
-
-
-def _add_setup(session, setup):
-    session.add_all(setup)
-    session.flush()
-
-
-def _add_selection(session):
-    modification = Modification(rna="WTS", modomics_id="2000000006A")
-    technology = DetectionTechnology(tech="Technology 1", method_id="91b145ea")
-    organism = Organism(cto="Cell type 1", taxa_id=9606)
-    session.add_all([modification, organism, technology])
-    session.flush()
-    selection = Selection(
-        modification_id=modification.id,
-        organism_id=organism.id,
-        technology_id=technology.id,
-    )
-    session.add(selection)
-    session.flush()
-
-
-def _add_contact(session):
-    contact = ProjectContact(
-        contact_name="Contact Name",
-        contact_institution="Contact Institution",
-        contact_email="Contact Email",
-    )
-    session.add(contact)
-    session.flush()
-    return contact.id
-
-
-def _add_source(session):
-    source = ProjectSource(project_id="12345678", doi="DOI", pmid=12345678)
-    session.add(source)
-
-
-def _add_project(session):
-    project = Project(
-        id="12345678",
-        title="Project Title",
-        summary="Project summary",
-        contact_id=_add_contact(session),
-        date_published=datetime.fromisoformat("2024-01-01"),
-        date_added=datetime(2024, 6, 17, 12, 0, 0),
-    )
-    session.add(project)
-    session.flush()
-    _add_source(session)
-    session.commit()
-
-
-@pytest.fixture
-def project(Session, setup, freezer):
-    freezer.move_to("2024-06-17 12:00:00")
-    session = Session()
-    _add_setup(session, setup)
-    _add_selection(session)
-    _add_project(session)
 
 
 EXON = """1\t65418\t65433\tG\t.\t+\tENSG00000000001\tprotein_coding
@@ -120,6 +53,26 @@ FEATURES = {
     "intron.bed": INTRON,
     "intergenic.bed": INTERGENIC,
 }
+
+EUF_FILE = """
+#fileformat=bedRModv1.7
+#organism=9606
+#modification_type=RNA
+#assembly=GRCh38
+#annotation_source=Annotation
+#annotation_version=Version
+#sequencing_platform=Sequencing platform
+#basecalling=
+#bioinformatics_workflow=Workflow
+#experiment=Description of experiment.
+#external_source=
+#chrom\tchromstart\tchromEnd\tname\tscore\tstrand\tthickstart\tthickEnd\titermRgb\tcoverage\tfrequency
+1\t65420\t65421\tm6A\t1\t+\t65420\t65421\t0,0,0\t1\t1
+1\t65565\t65566\tm6A\t2\t+\t65565\t65566\t0,0,0\t2\t2
+1\t71500\t71501\tm6A\t3\t+\t71500\t71501\t0,0,0\t3\t3
+1\t65580\t65581\tm6A\t4\t+\t65580\t65581\t0,0,0\t4\t4
+1\t0\t1\tm6A\t5\t+\t0\t1\t0,0,0\t5\t5
+"""
 
 
 def _write_chrom_file(data_path):
@@ -243,34 +196,16 @@ def get_dataset_service(session, tmp_path, data_path):
     )
 
 
-EUF_FILE = """
-#fileformat=bedRModv1.7
-#organism=9606
-#modification_type=RNA
-#assembly=GRCh38
-#annotation_source=Annotation
-#annotation_version=Version
-#sequencing_platform=Sequencing platform
-#basecalling=
-#bioinformatics_workflow=Workflow
-#experiment=Description of experiment.
-#external_source=
-#chrom\tchromstart\tchromEnd\tname\tscore\tstrand\tthickstart\tthickEnd\titermRgb\tcoverage\tfrequency
-1\t65420\t65421\tm6A\t1\t+\t65420\t65421\t0,0,0\t1\t1
-1\t65565\t65566\tm6A\t2\t+\t65565\t65566\t0,0,0\t2\t2
-1\t71500\t71501\tm6A\t3\t+\t71500\t71501\t0,0,0\t3\t3
-1\t65580\t65581\tm6A\t4\t+\t65580\t65581\t0,0,0\t4\t4
-1\t0\t1\tm6A\t5\t+\t0\t1\t0,0,0\t5\t5
-"""
-
-
-def test_import_simple(Session, project, annotation, tmp_path, data_path):
+def test_import_simple(
+    Session, selection, project, annotation, tmp_path, data_path, freezer
+):
     service = get_dataset_service(Session(), tmp_path, data_path[0])
     file = StringIO(EUF_FILE)
+    freezer.move_to("2024-06-20 12:00:00")
     eufid = service.import_dataset(
         file,
         source="test",
-        smid="12345678",
+        smid=project,
         title="Dataset title",
         assembly_id=1,
         modification_ids=[1],
@@ -302,7 +237,7 @@ def test_import_simple(Session, project, annotation, tmp_path, data_path):
         assert dataset.project_id == "12345678"
         assert dataset.technology_id == 1
         assert dataset.organism_id == 1
-        assert dataset.date_added == datetime(2024, 6, 17, 12, 0, 0)
+        assert dataset.date_added == datetime(2024, 6, 20, 12, 0, 0)
         assert dataset.modification_type == "RNA"
         assert dataset.sequencing_platform == "Sequencing platform"
         assert dataset.basecalling is None

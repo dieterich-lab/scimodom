@@ -198,7 +198,7 @@ def add_dataset(
     technology_id: int,
     annotation_source: AnnotationSource,
     dry_run_flag: bool = False,
-    eufid_to_update: str | None = None,
+    eufid: str | None = None,
 ) -> None:
     """Provide a CLI function to add a new dataset.
 
@@ -218,19 +218,27 @@ def add_dataset(
     :type organism_id: int
     :param annotation_source: Annotation source
     :type annotation_source: AnnotationSource
-    :param dry_run_flag: Dry run flag, defaults to False
+    :param dry_run_flag: Dry run flag. Default is False.
     :type dry_run_flag: bool, optional
-    :param eufid_to_update: EUFID ID to update, defaults to None
-    :type eufid_to_update: str, optional
+    :param eufid: EUFID ID for which to update data and data annotation records. Default is None.
+    :type eufid: str, optional
     """
     dataset_service = get_dataset_service()
-    click.secho(
-        f"Adding dataset '{title}' to project with SMID '{smid}'... ", fg="green"
-    )
-    click.secho("Continue [y/n]?", fg="green")
+
+    colour = "green"
+    if dry_run_flag:
+        msg = "DRY RUN: "
+        colour = "yellow"
+    elif eufid is not None:
+        msg = f"Update data records for dataset '{eufid}'..."
+    else:
+        msg = f"Adding dataset '{title}' to project with SMID '{smid}'... "
+    click.secho(msg, fg=colour)
+    click.secho("Continue [y/n]?", fg=colour)
     c = click.getchar()
     if c not in ["y", "Y"]:
         return
+
     try:
         with open(file_source) as fp:
             eufid = dataset_service.import_dataset(
@@ -244,16 +252,15 @@ def add_dataset(
                 technology_id=technology_id,
                 annotation_source=annotation_source,
                 dry_run_flag=dry_run_flag,
-                eufid_to_update=eufid_to_update,
+                eufid=eufid,
             )
     except Exception as exc:
-        click.secho(f"Failed to create dataset: {exc}... Aborting!", fg="red")
+        click.secho(f"Failed to create or update dataset: {exc}... Aborting!", fg="red")
         return
     click.secho(
-        f"Created dataset with EUFID '{eufid}'...",
-        fg="green",
+        f"Created or updated dataset with EUFID '{eufid}'... done!",
+        fg=colour,
     )
-    click.secho("... done!", fg="green")
 
 
 def add_all(

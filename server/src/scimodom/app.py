@@ -229,14 +229,14 @@ def create_app():
         is_flag=True,
         show_default=True,
         default=False,
-        help="Just validate the input.",
+        help="Validate import. No database change.",
     )
     @click.option(
-        "--update",
+        "--eufid",
         default=None,
         required=False,
         type=click.STRING,
-        help="Update existing dataset with the supplied EUFID instead of adding a new one.",
+        help="Update data and data annotation records for existing dataset with the supplied EUFID instead of creating a new one.",
     )
     def dataset(
         filename,
@@ -248,9 +248,9 @@ def create_app():
         organism,
         technology,
         dry_run,
-        update,
+        eufid,
     ):
-        """Add a new dataset to the database.
+        """Add a new dataset to the database or update records for an existing dataset.
 
         \b
         FILENAME is the path to the bedRMod (EU-formatted) file.
@@ -268,7 +268,7 @@ def create_app():
             technology,
             annotation_source,
             dry_run_flag=dry_run,
-            eufid_to_update=update,
+            eufid=eufid,
         )
 
     @app.cli.command(
@@ -286,7 +286,8 @@ def create_app():
         """Add projects and dataset in batch.
         All dataset files must be under INPUT_DIRECTORY.
         Implicitely assumed that all have the same annotation
-        source.
+        source. There is no [--dry-run] option. This method cannot
+        be used to update records for existing datasets.
 
         \b
         INPUT_DIRECTORY is the path to bedRMod (EU-formatted) files.

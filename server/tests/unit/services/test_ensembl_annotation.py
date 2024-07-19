@@ -4,7 +4,7 @@ from posixpath import join as urljoin
 import pytest
 
 import scimodom.utils.specifications as specs
-from mocks.web_service import MockWebService
+from tests.mocks.web_service import MockWebService
 from scimodom.database.models import (
     Annotation,
     AnnotationVersion,
