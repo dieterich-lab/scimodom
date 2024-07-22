@@ -35,7 +35,6 @@ def Session():
 # TODO this is now only used in integration/test_import_data
 @pytest.fixture(scope="session")
 def data_path(tmp_path_factory):
-    format = SPECS_EUF["format"]
     version = SPECS_EUF["versions"][-1]
     loc = tmp_path_factory.mktemp("data")
     ASSEMBLY_PATH = loc / "assembly"
@@ -49,7 +48,7 @@ def data_path(tmp_path_factory):
     SUB_PATH.mkdir()
 
     with open(Path(loc, "test.bed"), "w") as f:
-        f.write(f"#fileformat={format}v{version}\n")
+        f.write(f"#fileformat=bedRModv{version}\n")
         f.write("#organism=9606\n")
         f.write("#modification_type=RNA\n")
         f.write("#assembly=GRCh38\n")
@@ -66,7 +65,7 @@ def data_path(tmp_path_factory):
         f.write("1\t0\t10\tm6A\t1000\t+\t0\t10\t0,0,0\t10\t1\n")
 
     with open(Path(loc, "test_header_fail.bed"), "w") as f:
-        f.write(f"#fileformat={format}v{version}\n")
+        f.write(f"#fileformat=bedRModv{version}\n")
         f.write("#organism=9606\n")
         f.write("#modification_type=RNA\n")
         f.write("#assembly=\n")
@@ -83,7 +82,7 @@ def data_path(tmp_path_factory):
         f.write("1\t0\t10\tm6A\t1000\t+\t0\t10\t0,0,0\t10\t1\n")
 
     with open(Path(loc, "test_data_fail.bed"), "w") as f:
-        f.write(f"#fileformat={format}v{version}\n")
+        f.write(f"#fileformat=bedRModv{version}\n")
         f.write("#organism=9606\n")
         f.write("#modification_type=RNA\n")
         f.write("#assembly=GRCh38\n")
