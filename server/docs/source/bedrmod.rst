@@ -5,7 +5,7 @@ bedRMod format
 
 The bedRMod format specification working group.
 
-Version v1.7. June 2024
+Version v1.8. July 2024
 
 
 The bedRMod format specification
@@ -37,7 +37,7 @@ The bedRMod file is a tabulated count of base modifications from every sequencin
 The header section
 ^^^^^^^^^^^^^^^^^^
 
-Each line starts with a ``#`` and contains the header tag and its value, separated by a ``=``, *e.g.* ``#fileformat=bedRModv1.7``.
+Each line starts with a ``#`` and contains the header tag and its value, separated by a ``=``, *e.g.* ``#fileformat=bedRModv1.8``.
 As bedRMod contains data for only one organism, only one reference to organism, assembly, annotation source, and annotation version is possible.
 
 .. list-table:: bedRMod header
@@ -47,7 +47,7 @@ As bedRMod contains data for only one organism, only one reference to organism, 
    * - Tag
      - Description
    * - fileformat
-     - Fileformat and version *e.g.* bedRModv1.7
+     - Fileformat and version *e.g.* bedRModv1.8
    * - organism
      - NCBI taxid
    * - modification_type
@@ -63,7 +63,7 @@ As bedRMod contains data for only one organism, only one reference to organism, 
    * - basecalling
      - Basecalling model information where relevant
    * - bioinformatics_workflow
-     - Reference to bioinformatics workflow *e.g.* GitHub
+     - Reference to bioinformatics workflow *e.g.* GitHub, or information relevant to score, coverage and/or frequency calculation
    * - experiment
      - Information about experimental protocol, design, *etc.* or link to *e.g.* openBIS
    * - external_source
@@ -75,7 +75,7 @@ empty *e.g.*
 
 ::
 
-    #fileformat=bedRModv1.7
+    #fileformat=bedRModv1.8
     #organism=9606
     #modification_type=RNA
     #assembly=GRCh38
@@ -98,20 +98,26 @@ The data section
 
 The first nine columns generally follow the standard `BED specification <https://samtools.github.io/hts-specs/BEDv1.pdf>`_, but the name (4th column) must conform to the `MODOMICS <https://www.genesilico.pl/modomics/modifications>`_ nomenclature for the modification short name, and the score (5th column) is a site-specific measure of confidence. The last two columns contain the coverage (10th column), or number of reads at this position, and the frequency (11th column), or the integer value capped at 100 representing the precentage of reads that are modified at this position. These columns must be separated by tabs and each row must have the same number of columns.
 
+.. note::
+
+  Sci-ModoM requirements
+
+  To enable quantitative data comparison, the score (5th column) is defined as ``round(-log10(p value))``, where ``p value`` is calculated from a statistical test. A value of 0 indicates missing data *e.g.* p values were not calculated. The coverage (10th column) can be 0, if the number of reads at this position is not available, but frequency (11th column) MUST always be present. Modification frequency or stoichiometry is a minimal requirement for quantitative data comparison.
+
 
 .. attention::
 
-    bedRMod is essentially a BED-formatted file, it uses a 0-based, half-open coordinate system. If you use a 1-based index, all your modification sites will be *off-by-one*!
+  bedRMod is essentially a BED-formatted file, it uses a 0-based, half-open coordinate system. If you use a 1-based index, all your modification sites will be *off-by-one*!
 
 .. attention::
 
-    For data upload to Sci-ModoM, chromosomes (1st column) must be formatted following the Ensembl short format *e.g.* 1 and not chr1, or MT and not chrM.
-    Only chromosomes are considered, records from contigs/scaffolds are discarded. The modification name (4th column) must match exactly the chosen
-    modifications, according to the `MODOMICS <https://www.genesilico.pl/modomics/modifications>`_ nomenclature for the modification short name. Rows with out-of-range values for score (5th column) or frequency (11th column) are discarded.
+  For data upload to Sci-ModoM, chromosomes (1st column) must be formatted following the Ensembl short format *e.g.* 1 and not chr1, or MT and not chrM.
+  Only chromosomes are considered, records from contigs/scaffolds are discarded. The modification name (4th column) must match exactly the chosen
+  modifications, according to the `MODOMICS <https://www.genesilico.pl/modomics/modifications>`_ nomenclature for the modification short name. Rows with out-of-range values for score (5th column) or frequency (11th column) are discarded.
 
 .. warning::
 
-    File upload will fail if there are too many skipped records, *e.g.* due to wrong chromosome formatting, too many contigs, out-of-range values, *etc.*
+  File upload will fail if there are too many skipped records, *e.g.* due to wrong chromosome formatting, too many contigs, out-of-range values, *etc.*
 
 
 Additional columns
@@ -134,4 +140,4 @@ Context can be recorded using chromStart/End + thickStart/End, additional column
 Download
 ^^^^^^^^
 
-A PDF version of the latest specification can be downloaded `here <https://github.com/anmabu/bedRMod/blob/587107220516b1f7f5dc645dafd771e9e1a2b289/bedRModv1.7.pdf>`_.
+A PDF version of the latest specification can be downloaded `here <https://github.com/anmabu/bedRMod/blob/47e85b9aa48016fdb262259332cb399e787e1d3a/bedRModv1.8.pdf>`_.
