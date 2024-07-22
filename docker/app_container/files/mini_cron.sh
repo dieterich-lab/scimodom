@@ -5,19 +5,27 @@ set -e -u
 . .env
 
 sleep_seconds=600
-upload_max_age_minutes=60
+max_age_minutes=60
 
 if [[ -z $UPLOAD_PATH ]]
 then
     echo 'mini_cron.sh: No $UPLOAD_PATH - aborting.'
     exit 1
 fi
-
-mkdir -p "$BEDTOOLS_TMP_PATH"
-chmod 1777 "$BEDTOOLS_TMP_PATH"
+if [[ -z $BEDTOOLS_TMP_PATH ]]
+then
+    echo 'mini_cron.sh: No $BEDTOOLS_TMP_PATH - aborting.'
+    exit 1
+fi
 
 while [[ 1 = 1 ]]
 do
-    find "$UPLOAD_PATH" "$BEDTOOLS_TMP_PATH" -type f -mmin +${upload_max_age_minutes} -delete
+    for path_to_clean in "$UPLOAD_PATH" "$BEDTOOLS_TMP_PATH"
+    do
+        if [[ -d $path_to_clean ]]
+        then
+            find "$path_to_clean" -type f -mmin +${max_age_minutes} -delete
+        fi
+    done
     sleep $sleep_seconds
 done
