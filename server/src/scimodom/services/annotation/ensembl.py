@@ -136,6 +136,9 @@ class EnsemblAnnotationService(GenericAnnotationService):
             release=annotation.release,
             fmt=self.FMT,
         )
+        # TODO: AD HOC
+        if annotation.taxa_id in [4932, 6239]:
+            filen = filen.replace(".chr", "")
         url = urljoin(
             specs.ENSEMBL_FTP,
             f"release-{annotation.release}",
