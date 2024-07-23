@@ -379,7 +379,7 @@ class FileService:
         self._create_folder(dirname(path))
         try:
             bytes_written = 0
-            with open(path, "wb", opener=write_opener()) as fp:
+            with open(path, "wb", opener=write_opener) as fp:
                 while True:
                     buffer = data_stream.read(self.BUFFER_SIZE)
                     if len(buffer) == 0:
