@@ -12,7 +12,7 @@ def test_exporter(Session, dataset):  # noqa
 
     assert (
         content
-        == """#fileformat=bedRModv1.7
+        == """#fileformat=bedRModv1.8
 #organism=9606
 #modification_type=RNA
 #assembly=GRCh38

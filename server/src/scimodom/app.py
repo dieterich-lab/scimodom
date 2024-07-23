@@ -8,16 +8,16 @@ from sqlalchemy.orm import scoped_session
 from scimodom.app_singleton import create_app_singleton
 from scimodom.config import set_config_from_environment, get_config
 from scimodom.database.database import make_session, init
-from scimodom.plugins.cli import (
-    add_annotation,
-    add_assembly,
+
+from scimodom.cli.assembly import add_assembly
+from scimodom.cli.annotation import add_annotation
+from scimodom.cli.project import (
     add_project,
     add_user_to_project,
-    add_dataset,
-    add_all,
-    validate_dataset_title,
-    upsert,
+    create_project_template,
 )
+from scimodom.cli.dataset import add_dataset, add_all, add_selection
+from scimodom.cli.utilities import validate_dataset_title, upsert
 from scimodom.services.annotation import AnnotationSource
 from scimodom.services.file import get_file_service
 from scimodom.services.setup import get_setup_service
@@ -150,6 +150,82 @@ def create_app():
         add_annotation(taxid, annotation_source, **kwargs)
 
     @app.cli.command(
+        "metadata", epilog="Check docs at https://dieterich-lab.github.io/scimodom/."
+    )
+    @click.argument("dataset_csv", type=click.Path(exists=True))
+    @click.option("--title", type=click.STRING, required=True, help="Project title")
+    @click.option("--summary", type=click.STRING, required=True, help="Project summary")
+    @click.option("--surname", type=click.STRING, required=True, help="Surname")
+    @click.option("--forename", type=click.STRING, required=True, help="Forename")
+    @click.option("--institution", type=click.STRING, required=True, help="Affiliation")
+    @click.option("--email", type=click.STRING, required=True, help="Email")
+    @click.option(
+        "--published", type=click.DateTime(formats=["%Y-%m-%d"]), help="Date published"
+    )
+    @click.option(
+        "--doi",
+        type=click.STRING,
+        multiple=True,
+        help="List of DOI(s). Repeat in the same order as PMID(s). Use 'null' if there is a PMID w/o a DOI.",
+    )
+    @click.option(
+        "--pmid",
+        type=click.INT,
+        multiple=True,
+        help="List of PMID(s). Repeat in the same order as DOI(s). Use '0' if there is a DOI w/o a PMID.",
+    )
+    @click.option(
+        "--method-id",
+        type=click.STRING,
+        required=False,
+        help="Method ID. If given, this is used for all datasets, unless method is given in DATASET_CSV.",
+    )
+    def metadata(
+        dataset_csv,
+        title,
+        summary,
+        surname,
+        forename,
+        institution,
+        email,
+        published,
+        doi,
+        pmid,
+        method_id,
+    ):
+        """Create a new project template from a list of datasets.
+
+        \b
+        DATASET_CSV is the path to a CSV file containing dataset information, one per row, with the
+        following header:
+          - file: File name (if using batch).
+          - title: Dataset title (if using batch).
+          - rna_type: Valid RNA type.
+          - modification: Valid MODOMICS short name. If a dataset has more than 1 modification,
+            repeat the row for this dataset, changing only the modification short name.
+          - taxa_id: Valid taxa ID.
+          - cto: Cell/tissue description.
+          - assembly: Valid assembly name.
+          - technology: Detection technology name (tech).
+          - method [optional]: Valid detection method (meth), overrides METHOD_ID if given.
+          - note [optional]: If note is present, file and title are ignored.
+          - assembly_id [optional]: If not present, this will be inferred.
+        """
+        create_project_template(
+            dataset_csv,
+            title,
+            summary,
+            surname,
+            forename,
+            institution,
+            email,
+            published,
+            doi,
+            pmid,
+            method_id=method_id,
+        )
+
+    @app.cli.command(
         "project", epilog="Check docs at https://dieterich-lab.github.io/scimodom/."
     )
     @click.argument("request_uuid", type=click.STRING)
@@ -185,6 +261,49 @@ def create_app():
         SMID is the project ID to which this user is to be associated.
         """
         add_user_to_project(username, smid)
+
+    @app.cli.command(
+        "selection", epilog="Check docs at https://dieterich-lab.github.io/scimodom/."
+    )
+    @click.option(
+        "--rna",
+        required=True,
+        type=click.STRING,
+        help="Valid RNA type",
+    )
+    @click.option(
+        "--modification",
+        required=True,
+        type=click.STRING,
+        help="Modification (MODOMICS) short name.",
+    )
+    @click.option(
+        "--taxid",
+        required=True,
+        type=click.INT,
+        help="Valid Taxa ID.",
+    )
+    @click.option(
+        "--cto",
+        required=True,
+        type=click.STRING,
+        help="Cell/Tissue.",
+    )
+    @click.option(
+        "--method-id",
+        required=True,
+        type=click.STRING,
+        help="Method ID.",
+    )
+    @click.option(
+        "--technology",
+        required=True,
+        type=click.STRING,
+        help="Technology name.",
+    )
+    def selection(rna, modification, taxid, cto, method_id, technology):
+        """Add a new selection to the database."""
+        add_selection(rna, modification, taxid, cto, method_id, technology)
 
     @app.cli.command(
         "dataset", epilog="Check docs at https://dieterich-lab.github.io/scimodom/."
@@ -329,7 +448,6 @@ def create_app():
             kwargs = {"table": table}
         upsert(init, **kwargs)
 
-    # does this goes here?
     @app.teardown_appcontext
     def cleanup(exception=None):
         app.session.remove()

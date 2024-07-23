@@ -7,18 +7,9 @@ EUFID_LENGTH = 12
 ASSEMBLY_NUM_LENGTH = 12
 
 # EUF
+# cf. DatasetService, Exporter
 SPECS_EUF = {
-    "format": "bedRMod",
-    "header": {"comment": "#", "delimiter": "="},
-    "delimiter": "\t",
-    # all int types are checked for non-negative values on import (default)
-    "constraints": {
-        "score": "score <= 1000",
-        "frequency": "frequency <= 100",
-        "strict": ["coverage", "frequency"],
-        "strand": ["+", "-", "."],
-    },
-    "versions": ["1.6", "1.7"],
+    "versions": ["1.6", "1.7", "1.8"],
     "1.6": {
         "headers": {
             "fileformat": "file_format",
@@ -78,19 +69,29 @@ SPECS_EUF = {
             "annotation_source",
             "annotation_version",
         ],
-        "columns": {
-            "chrom": "chrom",
-            "chromStart": "start",
-            "chromEnd": "end",
-            "name": "name",
-            "score": "score",
-            "strand": "strand",
-            "thickStart": "thick_start",
-            "thickEnd": "thick_end",
-            "itemRgb": "item_rgb",
-            "coverage": "coverage",
-            "frequency": "frequency",
+    },
+    "1.8": {
+        "headers": {
+            "fileformat": "file_format",
+            "organism": "taxa_id",
+            "modification_type": "modification_type",
+            "assembly": "assembly_name",
+            "annotation_source": "annotation_source",
+            "annotation_version": "annotation_version",
+            "sequencing_platform": "sequencing_platform",
+            "basecalling": "basecalling",
+            "bioinformatics_workflow": "bioinformatics_workflow",
+            "experiment": "experiment",
+            "external_source": "external_source",
         },
+        "required": [
+            "fileformat",
+            "organism",
+            "modification_type",
+            "assembly",
+            "annotation_source",
+            "annotation_version",
+        ],
     },
 }
 
