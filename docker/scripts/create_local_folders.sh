@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# We don't want to bother container user sto install Python packages.
+# We don't want to bother the container user to install Python packages.
 # So we simulate here the dotenv package by a shell wrapper.
 
 set -eu

@@ -3,7 +3,7 @@ import re
 from enum import Enum
 from fcntl import flock, LOCK_SH, LOCK_EX, LOCK_UN
 from functools import cache
-from os import unlink, rename, makedirs, stat, close
+from os import unlink, rename, makedirs, stat, close, umask
 from os.path import join, exists, dirname, basename, isfile
 from pathlib import Path
 from shutil import rmtree
@@ -59,19 +59,23 @@ class FileService:
         self._upload_path = upload_path
         self._import_path = import_path
 
-        for path in [
-            data_path,
-            temp_path,
-            upload_path,
-            import_path,
-            self._get_project_metadata_dir(),
-            self._get_project_request_dir(),
-            self.get_annotation_parent_dir(),
-            self._get_assembly_parent_dir(),
-            self._get_gene_cache_dir(),
-            self._get_bam_files_parent_dir(),
-        ]:
-            makedirs(path, exist_ok=True)
+        old_umask = umask(0o07)
+        try:
+            for path in [
+                data_path,
+                temp_path,
+                upload_path,
+                import_path,
+                self._get_project_metadata_dir(),
+                self._get_project_request_dir(),
+                self.get_annotation_parent_dir(),
+                self._get_assembly_parent_dir(),
+                self._get_gene_cache_dir(),
+                self._get_bam_files_parent_dir(),
+            ]:
+                makedirs(path, mode=0o2770, exist_ok=True)
+        finally:
+            umask(old_umask)
 
     # General
 
