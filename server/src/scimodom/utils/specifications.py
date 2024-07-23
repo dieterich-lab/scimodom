@@ -97,11 +97,11 @@ SPECS_EUF = {
 
 # Assembly/Annotation
 ENSEMBL_FTP = "https://ftp.ensembl.org/pub"
-ENSEMBL_SERVER = "http://rest.ensembl.org"
+# release 110
+ENSEMBL_SERVER = "http://jul2023.rest.ensembl.org"  # "http://rest.ensembl.org"
 ENSEMBL_DATA = "info/data"
 ENSEMBL_ASM = "info/assembly"
-# ENSEMBL_ASM_MAPPING = "assembly_mapping"
-ENSEMBL_ASM_MAPPING = "current_assembly_chain"
+ENSEMBL_ASM_MAPPING = "release-110/assembly_chain"  # "current_assembly_chain"
 
 # GtRNAdb annotation
 GTRNADB_URL = "http://gtrnadb.ucsc.edu/genomes/"

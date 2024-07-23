@@ -259,7 +259,7 @@ def test_add_assembly(Session, file_service, setup):
         Session,
         file_service,
         url_to_data={
-            "https://ftp.ensembl.org/pub/current_assembly_chain/homo_sapiens/NCBI36_to_GRCh38.chain.gz": b"foo"
+            "https://ftp.ensembl.org/pub/release-110/assembly_chain/homo_sapiens/NCBI36_to_GRCh38.chain.gz": b"foo"
         },
     )
     assembly_id = service.add_assembly(9606, "NCBI36")
@@ -339,7 +339,7 @@ EXPECTED_INFO_JSON = """{
 
 EXPECTED_RELEASE_JSON = """{
 \t"releases": [
-\t\t112
+\t\t110
 \t]
 }"""
 
@@ -351,8 +351,8 @@ def test_prepare_assembly_for_version(Session, file_service, setup):
         Session,
         file_service,
         url_to_result={
-            "http://rest.ensembl.org/info/assembly/homo_sapiens": EXAMPLE_GENE_BUILD_DATA,
-            "http://rest.ensembl.org/info/data": {"releases": [112]},
+            "http://jul2023.rest.ensembl.org/info/assembly/homo_sapiens": EXAMPLE_GENE_BUILD_DATA,
+            "http://jul2023.rest.ensembl.org/info/data": {"releases": [110]},
         },
     )
     service.prepare_assembly_for_version(1)
@@ -403,8 +403,8 @@ def test_prepare_assembly_for_version_build_error(Session, file_service, setup):
         Session,
         file_service,
         url_to_result={
-            "http://rest.ensembl.org/info/assembly/homo_sapiens": NEWEST_EXAMPLE_GENE_BUILD_DATA,
-            "http://rest.ensembl.org/info/data": {"releases": [112]},
+            "http://jul2023.rest.ensembl.org/info/assembly/homo_sapiens": NEWEST_EXAMPLE_GENE_BUILD_DATA,
+            "http://jul2023.rest.ensembl.org/info/data": {"releases": [112]},
         },
     )
     with pytest.raises(AssemblyVersionError) as exc:
