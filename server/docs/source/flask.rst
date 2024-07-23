@@ -10,7 +10,7 @@ Flask CLI documentation.
 Setup
 -----
 
-At lauchtime, the app uses tables defined in ``config.py`` to perform an ``INSERT... ON DUPLICATE KEY UPDATE``
+At lauchtime, the app uses tables defined in ``SetupService.FILE_NAME_TO_DB_TABLE_MAP`` to perform an ``INSERT... ON DUPLICATE KEY UPDATE``
 
 .. code-block:: python
 
@@ -72,6 +72,20 @@ These steps, except user-project association, can be done all at once with
     flask batch [OPTIONS] --annotation [ensembl|gtrnadb] INPUT_DIRECTORY [REQUEST_UUIDS]...
 
 The ``note`` from the standard project metadata template must contain the dataset file name and title as follows: ``file=filename.bedrmod, title=title``. All bedRMod files must be under ``INPUT_DIRECTORY``.
+
+To facilitate batch upload, project templates can be created from a tabulated list of datasets with
+
+.. code-block:: bash
+
+    flask metadata [OPTIONS] --title TEXT --summary TEXT --surname TEXT --forename TEXT --institution TEXT --email TEXT DATASET_CSV
+
+For a detailed description of DATASET_CSV format, use the ``--help`` flag, *e.g.* ``flask metadata --help``.
+
+A new selection can be added with
+
+.. code-block:: bash
+
+    flask selection [OPTIONS] --rna TEXT --modification TEXT --taxid INTEGER --cto TEXT --method-id TEXT --technology TEXT
 
 Permissions can be updated with
 
