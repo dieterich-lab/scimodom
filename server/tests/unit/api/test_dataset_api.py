@@ -152,7 +152,7 @@ class MockBed6Importer:
     ]
 
     RESULT_AS_COMPARISON = [
-        ComparisonRecord(**x.__dict__, coverage=0, frequency=0, eufid="upload      ")
+        ComparisonRecord(**x.__dict__, coverage=0, frequency=1, eufid="upload      ")
         for x in RESULT
     ]
 

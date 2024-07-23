@@ -389,7 +389,7 @@ class Data(Base):
         CheckConstraint("thick_start < thick_end", name="tstart_end"),
         CheckConstraint("score >= 0", name="score"),
         CheckConstraint("score <= 1000", name="score_max"),
-        CheckConstraint("coverage > 0", name="cov_strict"),
+        CheckConstraint("coverage >= 0", name="cov_strict"),
         CheckConstraint("frequency > 0", name="freq_strict"),
         CheckConstraint("frequency <= 100", name="freq_max"),
     )

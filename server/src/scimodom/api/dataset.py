@@ -152,7 +152,7 @@ class _CompareContext:
             for x in Bed6Importer(stream=self._tmp_file_handle).parse():
                 raw_record = x.model_dump()
                 yield ComparisonRecord(
-                    eufid="upload      ", frequency=0, coverage=0, **raw_record
+                    eufid="upload      ", frequency=1, coverage=0, **raw_record
                 )
 
     def __exit__(self, exc_type, exc_value, traceback):

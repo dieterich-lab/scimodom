@@ -6,7 +6,7 @@ from scimodom.utils.common_dto import Strand
 
 NonNegativInt = Annotated[int, Field(ge=0)]
 Score = Annotated[int, Field(ge=0, le=1000)]
-PercentInt = Annotated[int, Field(ge=0, le=100)]
+PositivePercentInt = Annotated[int, Field(gt=0, le=100)]
 DatasetId = Annotated[str, Field(min_length=12, max_length=12)]
 
 
@@ -32,7 +32,7 @@ class EufRecord(Bed6Record):
     thick_end: NonNegativInt
     item_rgb: str
     coverage: NonNegativInt
-    frequency: PercentInt
+    frequency: PositivePercentInt
 
     @model_validator(mode="after")
     def check_thick_start_end(self) -> Self:
@@ -45,7 +45,7 @@ class EufRecord(Bed6Record):
 
 class ComparisonRecord(Bed6Record):
     coverage: NonNegativInt
-    frequency: PercentInt
+    frequency: PositivePercentInt
     eufid: DatasetId
 
 
