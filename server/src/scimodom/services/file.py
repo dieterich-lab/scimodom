@@ -1,4 +1,5 @@
 import logging
+import os
 import re
 from enum import Enum
 from fcntl import flock, LOCK_SH, LOCK_EX, LOCK_UN
@@ -24,6 +25,10 @@ logger = logging.getLogger(__name__)
 
 
 DEFAULT_MODE = 0o660
+
+
+def write_opener(path, flags):
+    return os.open(path, flags, DEFAULT_MODE)
 
 
 class FileTooLarge(Exception):
@@ -147,7 +152,7 @@ class FileService:
         :type genes: Iterable[str]
         """
         path = Path(self._get_gene_cache_dir(), str(selection_id))
-        with open(path, "w", mode=DEFAULT_MODE) as fh:
+        with open(path, "w", opener=write_opener) as fh:
             flock(fh.fileno(), LOCK_EX)
             for g in genes:
                 print(g, file=fh)
@@ -167,7 +172,7 @@ class FileService:
         :rtype: TextIO
         """
         metadata_file = Path(self._get_project_metadata_dir(), f"{smid}.json")
-        return open(metadata_file, "w", mode=DEFAULT_MODE)
+        return open(metadata_file, "w", opener=write_opener)
 
     def create_project_request_file(self, request_uuid) -> TextIO:
         """Open a metadata (request) file for writing.
@@ -179,7 +184,7 @@ class FileService:
         """
         path = Path(self._get_project_request_file_path(request_uuid))
         logger.info(f"Writing project request to {path}...")
-        return open(path, "w", mode=DEFAULT_MODE)
+        return open(path, "w", opener=write_opener)
 
     def open_project_request_file(self, request_uuid) -> TextIO:
         """Open a metadata (request) file for reading.
@@ -270,7 +275,7 @@ class FileService:
             raise NotImplementedError()
         path = self.get_assembly_file_path(taxa_id, file_type)
         self._create_folder(path.parent)
-        return open(path, "x", mode=DEFAULT_MODE)
+        return open(path, "x", opener=write_opener)
 
     def create_chain_file(
         self, taxa_id: int, file_name: str, assembly_name
@@ -294,7 +299,7 @@ class FileService:
             chain_assembly_name=assembly_name,
         )
         self._create_folder(path.parent)
-        return open(path, "xb", mode=DEFAULT_MODE)
+        return open(path, "xb", opener=write_opener)
 
     def delete_assembly(self, taxa_id: int, assembly_name: str) -> None:
         """Remove assembly directory structure
@@ -374,7 +379,7 @@ class FileService:
         self._create_folder(dirname(path))
         try:
             bytes_written = 0
-            with open(path, "wb", mode=DEFAULT_MODE) as fp:
+            with open(path, "wb", opener=write_opener()) as fp:
                 while True:
                     buffer = data_stream.read(self.BUFFER_SIZE)
                     if len(buffer) == 0:
