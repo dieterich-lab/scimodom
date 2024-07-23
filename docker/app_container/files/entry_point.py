@@ -46,7 +46,7 @@ write_env_file()
 system("cd /app && /app/mini_cron.sh &")
 system("find /uploads /import /data -exec chown app {} \\;")
 system("find /uploads /import /data -exec chgrp 0 {} \\;")
-system("find /uploads /import /data -exec chmod g+wr {} \\;")
+system("find /uploads /import /data -exec chmod g+wr,o-rwx {} \\;")
 system("find /uploads /import /data -type d -exec chmod g+xs {} \\;")
 system(
     f"exec su - app /app/run_flask.sh {environ.get('HTTP_WORKER_PROCESSES')} {environ.get('HTTP_WORKER_TIMEOUT', 30)}"

@@ -23,6 +23,9 @@ from scimodom.database.models import Dataset, BamFile, Taxa, Assembly, AssemblyV
 logger = logging.getLogger(__name__)
 
 
+DEFAULT_MODE = 0o660
+
+
 class FileTooLarge(Exception):
     pass
 
@@ -59,21 +62,25 @@ class FileService:
         self._upload_path = upload_path
         self._import_path = import_path
 
+        for path in [
+            data_path,
+            temp_path,
+            upload_path,
+            import_path,
+            self._get_project_metadata_dir(),
+            self._get_project_request_dir(),
+            self.get_annotation_parent_dir(),
+            self._get_assembly_parent_dir(),
+            self._get_gene_cache_dir(),
+            self._get_bam_files_parent_dir(),
+        ]:
+            self._create_folder(path)
+
+    @staticmethod
+    def _create_folder(path):
         old_umask = umask(0o07)
         try:
-            for path in [
-                data_path,
-                temp_path,
-                upload_path,
-                import_path,
-                self._get_project_metadata_dir(),
-                self._get_project_request_dir(),
-                self.get_annotation_parent_dir(),
-                self._get_assembly_parent_dir(),
-                self._get_gene_cache_dir(),
-                self._get_bam_files_parent_dir(),
-            ]:
-                makedirs(path, mode=0o2770, exist_ok=True)
+            makedirs(path, mode=0o2770, exist_ok=True)
         finally:
             umask(old_umask)
 
@@ -140,7 +147,7 @@ class FileService:
         :type genes: Iterable[str]
         """
         path = Path(self._get_gene_cache_dir(), str(selection_id))
-        with open(path, "w") as fh:
+        with open(path, "w", mode=DEFAULT_MODE) as fh:
             flock(fh.fileno(), LOCK_EX)
             for g in genes:
                 print(g, file=fh)
@@ -160,7 +167,7 @@ class FileService:
         :rtype: TextIO
         """
         metadata_file = Path(self._get_project_metadata_dir(), f"{smid}.json")
-        return open(metadata_file, "w")
+        return open(metadata_file, "w", mode=DEFAULT_MODE)
 
     def create_project_request_file(self, request_uuid) -> TextIO:
         """Open a metadata (request) file for writing.
@@ -172,7 +179,7 @@ class FileService:
         """
         path = Path(self._get_project_request_file_path(request_uuid))
         logger.info(f"Writing project request to {path}...")
-        return open(path, "w")
+        return open(path, "w", mode=DEFAULT_MODE)
 
     def open_project_request_file(self, request_uuid) -> TextIO:
         """Open a metadata (request) file for reading.
@@ -262,8 +269,8 @@ class FileService:
         if file_type == AssemblyFileType.CHAIN:
             raise NotImplementedError()
         path = self.get_assembly_file_path(taxa_id, file_type)
-        makedirs(path.parent, exist_ok=True)
-        return open(path, "x")
+        self._create_folder(path.parent)
+        return open(path, "x", mode=DEFAULT_MODE)
 
     def create_chain_file(
         self, taxa_id: int, file_name: str, assembly_name
@@ -286,8 +293,8 @@ class FileService:
             chain_file_name=file_name,
             chain_assembly_name=assembly_name,
         )
-        makedirs(path.parent, exist_ok=True)
-        return open(path, "xb")
+        self._create_folder(path.parent)
+        return open(path, "xb", mode=DEFAULT_MODE)
 
     def delete_assembly(self, taxa_id: int, assembly_name: str) -> None:
         """Remove assembly directory structure
@@ -364,12 +371,10 @@ class FileService:
             raise Exception(
                 f"FileService._stream_to_file(): Refusing to overwrite existing file: '{path}'!"
             )
-        parent = dirname(path)
-        if not exists(parent):
-            makedirs(path)
+        self._create_folder(dirname(path))
         try:
             bytes_written = 0
-            with open(path, "wb") as fp:
+            with open(path, "wb", mode=DEFAULT_MODE) as fp:
                 while True:
                     buffer = data_stream.read(self.BUFFER_SIZE)
                     if len(buffer) == 0:
