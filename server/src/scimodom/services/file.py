@@ -28,7 +28,11 @@ DEFAULT_MODE = 0o660
 
 
 def write_opener(path, flags):
-    return os.open(path, flags, DEFAULT_MODE)
+    old_umask = umask(0o07)
+    try:
+        return os.open(path, flags, DEFAULT_MODE)
+    finally:
+        umask(old_umask)
 
 
 class FileTooLarge(Exception):
