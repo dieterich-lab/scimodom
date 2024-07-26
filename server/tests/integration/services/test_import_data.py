@@ -116,7 +116,6 @@ def get_assembly_service(session, external_service, web_service, file_service):
 
 def get_annotation_service(
     session,
-    assembly_service,
     data_service,
     bedtools_service,
     external_service,
@@ -128,7 +127,6 @@ def get_annotation_service(
         services_by_annotation_source={
             AnnotationSource.ENSEMBL: EnsemblAnnotationService(
                 session=session,
-                assembly_service=assembly_service,
                 data_service=data_service,
                 bedtools_service=bedtools_service,
                 external_service=external_service,
@@ -137,7 +135,6 @@ def get_annotation_service(
             ),
             AnnotationSource.GTRNADB: GtRNAdbAnnotationService(
                 session=session,
-                assembly_service=assembly_service,
                 data_service=data_service,
                 bedtools_service=bedtools_service,
                 external_service=external_service,
@@ -181,7 +178,6 @@ def get_dataset_service(session, tmp_path, data_path):
     )
     annotation_service = get_annotation_service(
         session,
-        assembly_service,
         data_service,
         bedtools_service,
         external_service,

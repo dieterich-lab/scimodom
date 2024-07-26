@@ -2,7 +2,7 @@ import logging
 from dataclasses import dataclass
 from typing import Iterable
 
-from flask import Blueprint, Response
+from flask import Blueprint
 from flask_cors import cross_origin
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from pydantic import BaseModel
@@ -12,6 +12,7 @@ from scimodom.api.helpers import (
     get_valid_tmp_file_id_from_request_parameter,
     get_valid_boolean_from_request_parameter,
     ClientResponseException,
+    get_response_from_pydantic_object,
 )
 from scimodom.services.bedtools import get_bedtools_service, BedToolsService
 from scimodom.services.dataset import get_dataset_service
@@ -56,12 +57,10 @@ class IntersectResponse(BaseModel):
 def intersect():
     try:
         with _CompareContext() as ctx:
-            records = ctx.bedtools_service.intersect(
+            records = ctx.bedtools_service.intersect_comparison_records(
                 ctx.a_records, ctx.b_records_list, is_strand=ctx.is_strand
             )
-            return _get_response_from_pydantic_object(
-                IntersectResponse(records=records)
-            )
+            return get_response_from_pydantic_object(IntersectResponse(records=records))
     except ClientResponseException as e:
         return e.response_tupel
 
@@ -160,10 +159,6 @@ class _CompareContext:
             self._tmp_file_handle.close()
 
 
-def _get_response_from_pydantic_object(obj: BaseModel):
-    return Response(response=obj.json(), status=200, mimetype="application/json")
-
-
 class ClosestResponse(BaseModel):
     records: list[ClosestRecord]
 
@@ -173,10 +168,10 @@ class ClosestResponse(BaseModel):
 def closest():
     try:
         with _CompareContext() as ctx:
-            records = ctx.bedtools_service.closest(
+            records = ctx.bedtools_service.closest_comparison_records(
                 ctx.a_records, ctx.b_records_list, is_strand=ctx.is_strand
             )
-            return _get_response_from_pydantic_object(ClosestResponse(records=records))
+            return get_response_from_pydantic_object(ClosestResponse(records=records))
     except ClientResponseException as e:
         return e.response_tupel
 
@@ -190,9 +185,9 @@ class SubtractResponse(BaseModel):
 def subtract():
     try:
         with _CompareContext() as ctx:
-            records = ctx.bedtools_service.subtract(
+            records = ctx.bedtools_service.subtract_comparison_records(
                 ctx.a_records, ctx.b_records_list, is_strand=ctx.is_strand
             )
-            return _get_response_from_pydantic_object(SubtractResponse(records=records))
+            return get_response_from_pydantic_object(SubtractResponse(records=records))
     except ClientResponseException as e:
         return e.response_tupel

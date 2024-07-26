@@ -18,7 +18,6 @@ from scimodom.services.annotation.generic import (
     AnnotationNotFoundError,
 )
 from scimodom.services.annotation.gtrnadb import GtRNAdbAnnotationService
-from scimodom.services.assembly import get_assembly_service, AssemblyService
 from scimodom.services.bedtools import get_bedtools_service, BedToolsService
 from scimodom.services.data import get_data_service, DataService
 from scimodom.services.external import get_external_service, ExternalService
@@ -44,8 +43,6 @@ class AnnotationService:
 
     :param session: SQLAlchemy ORM session
     :type session: Session
-    :param assembly_service: Assembly service instance
-    :type assembly service: AssemblyService
     :param data_service: Data service instance
     :type data service: DataService
     :param bedtools_service: Bedtools service instance
@@ -134,7 +131,6 @@ class AnnotationService:
 def get_annotation_service() -> AnnotationService:
     """Helper function to set up an AnnotationService object by injecting its dependencies."""
     session = get_session()
-    assembly_service = get_assembly_service()
     data_service = get_data_service()
     bedtools_service = get_bedtools_service()
     external_service = get_external_service()
@@ -145,7 +141,6 @@ def get_annotation_service() -> AnnotationService:
         services_by_annotation_source={
             AnnotationSource.ENSEMBL: EnsemblAnnotationService(
                 session=session,
-                assembly_service=assembly_service,
                 data_service=data_service,
                 bedtools_service=bedtools_service,
                 external_service=external_service,
@@ -154,7 +149,6 @@ def get_annotation_service() -> AnnotationService:
             ),
             AnnotationSource.GTRNADB: GtRNAdbAnnotationService(
                 session=session,
-                assembly_service=assembly_service,
                 data_service=data_service,
                 bedtools_service=bedtools_service,
                 external_service=external_service,

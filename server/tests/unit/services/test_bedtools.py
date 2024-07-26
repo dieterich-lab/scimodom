@@ -1,3 +1,4 @@
+from io import StringIO
 import pytest
 
 from pybedtools import BedTool
@@ -9,6 +10,7 @@ from scimodom.utils.bedtools_dto import (
     ClosestRecord,
     SubtractRecord,
     ComparisonRecord,
+    Bed6Record,
 )
 from scimodom.utils.common_dto import Strand
 
@@ -282,9 +284,11 @@ EXPECTED_RESULT_INTERSECT_A_WITH_BC = [
 ]
 
 
-def test_intersect(bedtools_service):
+def test_intersect_comparison_records(bedtools_service):
     result = list(
-        bedtools_service.intersect(DATASET_A, [DATASET_B, DATASET_C], is_strand=True)
+        bedtools_service.intersect_comparison_records(
+            DATASET_A, [DATASET_B, DATASET_C], is_strand=True
+        )
     )
     assert result == EXPECTED_RESULT_INTERSECT_A_WITH_BC
 
@@ -418,9 +422,11 @@ EXPECTED_RESULT_CLOSEST_A_WITH_BC = [
 ]
 
 
-def test_closest(bedtools_service):
+def test_closest_comparison_records(bedtools_service):
     result = list(
-        bedtools_service.closest(DATASET_A, [DATASET_B, DATASET_C], is_strand=True)
+        bedtools_service.closest_comparison_records(
+            DATASET_A, [DATASET_B, DATASET_C], is_strand=True
+        )
     )
     assert result == EXPECTED_RESULT_CLOSEST_A_WITH_BC
 
@@ -440,9 +446,11 @@ EXPECTED_RESULT_SUBTRACT_A_WITH_BC = [
 ]
 
 
-def test_subtract(bedtools_service):
+def test_subtract_comparison_records(bedtools_service):
     result = list(
-        bedtools_service.subtract(DATASET_A, [DATASET_B, DATASET_C], is_strand=True)
+        bedtools_service.subtract_comparison_records(
+            DATASET_A, [DATASET_B, DATASET_C], is_strand=True
+        )
     )
     assert result == EXPECTED_RESULT_SUBTRACT_A_WITH_BC
 
@@ -475,8 +483,12 @@ EXPECTED_RESULT_INTERSECT_A_WITH_B = [
 ]
 
 
-def test_intersect_simple(bedtools_service):
-    result = list(bedtools_service.intersect(DATASET_A, [DATASET_B], is_strand=True))
+def test_intersect_comparison_records_simple(bedtools_service):
+    result = list(
+        bedtools_service.intersect_comparison_records(
+            DATASET_A, [DATASET_B], is_strand=True
+        )
+    )
     assert result == EXPECTED_RESULT_INTERSECT_A_WITH_B
 
 
@@ -584,8 +596,12 @@ EXPECTED_RESULT_CLOSEST_A_WITH_B = [
 ]
 
 
-def test_closest_simple(bedtools_service):
-    result = list(bedtools_service.closest(DATASET_A, [DATASET_B], is_strand=True))
+def test_closest_comparison_records_simple(bedtools_service):
+    result = list(
+        bedtools_service.closest_comparison_records(
+            DATASET_A, [DATASET_B], is_strand=True
+        )
+    )
     assert result == EXPECTED_RESULT_CLOSEST_A_WITH_B
 
 
@@ -637,13 +653,78 @@ EXPECTED_RESULT_SUBTRACT_A_WITH_B = [
 ]
 
 
-def test_subtract_simple(bedtools_service):
-    result = list(bedtools_service.subtract(DATASET_A, [DATASET_B], is_strand=True))
+def test_subtract_comparison_records_simple(bedtools_service):
+    result = list(
+        bedtools_service.subtract_comparison_records(
+            DATASET_A, [DATASET_B], is_strand=True
+        )
+    )
     assert result == EXPECTED_RESULT_SUBTRACT_A_WITH_B
 
 
-def test_get_modification_from_bedtools_data():
-    record = BedToolsService._get_modification_from_bedtools_data(
+RECORDS_A = [
+    Bed6Record(
+        chrom="1",
+        start=101,
+        end=102,
+        name="m6A",
+        score=1,
+        strand=Strand.FORWARD,
+    ),
+    Bed6Record(
+        chrom="1",
+        start=199,
+        end=200,
+        name="m6A",
+        score=2,
+        strand=Strand.FORWARD,
+    ),
+]
+BED_FILE = """1\t100\t108\t4\t5\t+\t7\t8\t9\t10\t11\t12
+1\t195\t202\t4\t5\t-\t7\t8\t9\t10\t11\t12"""
+EXPECTED_RESULT_INTERSECT_BED6_A_WITH_B = [
+    Bed6Record(
+        chrom="1",
+        start=100,
+        end=108,
+        name="4",
+        score=5,
+        strand=Strand.FORWARD,
+    ),
+]
+
+
+def test_intersect_bed6_records(bedtools_service):
+    result = list(
+        bedtools_service.intersect_bed6_records(
+            RECORDS_A, StringIO(BED_FILE), is_strand=True
+        )
+    )
+    assert result == EXPECTED_RESULT_INTERSECT_BED6_A_WITH_B
+
+
+def test_get_bed6_record_from_bedtool():
+    record = BedToolsService._get_bed6_record_from_bedtool(
+        [
+            "1",
+            "1043431",
+            "1043432",
+            "Y",
+            "190",
+            Strand.FORWARD,
+        ]
+    )
+    assert isinstance(record, Bed6Record)
+    assert record.chrom == "1"
+    assert record.start == 1043431
+    assert record.end == 1043432
+    assert record.name == "Y"
+    assert record.score == 190
+    assert record.strand == Strand.FORWARD
+
+
+def test_get_comparison_record_from_bedtool():
+    record = BedToolsService._get_comparison_record_from_bedtool(
         [
             "1",
             "1043431",
@@ -668,8 +749,41 @@ def test_get_modification_from_bedtools_data():
     assert record.frequency == 19
 
 
-def test_get_modifications_as_bedtool():
-    bedtool = BedToolsService._get_modifications_as_bedtool(
+def test_get_bed6_record_to_bedtool():
+    bedtool = BedToolsService._get_bed6_record_to_bedtool(
+        [
+            Bed6Record(
+                chrom="1",
+                start=1043431,
+                end=1043432,
+                name="Y",
+                score=190,
+                strand=Strand.FORWARD,
+            ),
+            Bed6Record(
+                chrom="1",
+                start=1031,
+                end=1032,
+                name="Y",
+                score=0,
+                strand=Strand.REVERSE,
+            ),
+        ]
+    )
+    assert isinstance(bedtool, BedTool)
+    # All features have chrom, start, stop, name, score, and strand attributes.
+    # Note that start and stop are integers, while everything else (including score) is a string.
+    # https://daler.github.io/pybedtools/intervals.html
+    expected_records = [(1031, "0", "-"), (1043431, "190", "+")]
+    for record, expected_record in zip(bedtool, expected_records):
+        assert record.chrom == "1"
+        assert record.start == expected_record[0]
+        assert record.score == expected_record[1]
+        assert record.strand == expected_record[2]
+
+
+def test_get_comparison_record_to_bedtool():
+    bedtool = BedToolsService._get_comparison_record_to_bedtool(
         [
             ComparisonRecord(
                 chrom="1",

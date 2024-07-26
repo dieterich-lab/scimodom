@@ -100,8 +100,12 @@ def get_chroms(taxa_id: str):
         return {"message": "No chrom data available for this taxa (2)."}, 404
 
 
-@api.route("/assembly/<taxid>", methods=["GET"])
+@api.route("/assembly/<taxa_id>", methods=["GET"])
 @cross_origin(supports_credentials=True)
-def get_assemblies(taxid):
+def get_assemblies(taxa_id):
     utilities_service = get_utilities_service()
-    return utilities_service.get_assemblies(taxid)
+    try:
+        taxa_id_as_int = get_valid_taxa_id(taxa_id)
+        return utilities_service.get_assemblies(taxa_id_as_int)
+    except ClientResponseException as e:
+        return e.response_tupel

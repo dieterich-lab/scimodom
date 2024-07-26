@@ -19,21 +19,6 @@ from scimodom.services.annotation import (
 from scimodom.services.file import AssemblyFileType
 
 
-class MockAssemblyService:
-    def __init__(self):
-        pass
-
-    @staticmethod
-    def get_name_for_version(taxa_id: int) -> str:
-        if taxa_id == 9606:
-            return "GRCh38"
-        else:
-            return "GRCm38"
-
-    def get_seqids(self, taxa_id):
-        pass
-
-
 class MockDataService:
     def __init__(self):
         pass
@@ -79,8 +64,14 @@ class MockFileService:
             return Path(f"/data/assembly/{taxa_id}/{file_type.value}")
 
     @staticmethod
-    def get_annotation_parent_dir():
-        return "/data/annotation"
+    def get_annotation_dir(taxa_id):
+        if taxa_id == 9606:
+            assembly = "GRCh38"
+            name = "Homo_sapiens"
+        else:
+            assembly = "GRCm38"
+            name = "Mus_musculus"
+        return f"/data/annotation/{name}/{assembly}"
 
 
 def _get_ensembl_annotation_service(
@@ -88,7 +79,6 @@ def _get_ensembl_annotation_service(
 ):
     return EnsemblAnnotationService(
         session=Session(),
-        assembly_service=MockAssemblyService(),  # noqa
         data_service=MockDataService(),  # noqa
         bedtools_service=MockBedToolsService(),  # noqa
         external_service=MockExternalService(),  # noqa

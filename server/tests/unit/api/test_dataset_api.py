@@ -109,7 +109,7 @@ class MockBedtoolsService:
     ]
     SUBTRACT_RESULT = [SubtractRecord(**DEFAULT_COMPARISON_RECORD.dict())]
 
-    def intersect(
+    def intersect_comparison_records(
         self,
         a_records: Iterable[ComparisonRecord],
         b_records_list: list[Iterable[ComparisonRecord]],
@@ -125,7 +125,7 @@ class MockBedtoolsService:
         MockBedtoolsService.last_b_dataset_list = [list(x) for x in b_records_list]
         MockBedtoolsService.last_is_strand = is_strand
 
-    def closest(
+    def closest_comparison_records(
         self,
         a_records: Iterable[ComparisonRecord],
         b_records_list: list[Iterable[ComparisonRecord]],
@@ -134,7 +134,7 @@ class MockBedtoolsService:
         self._log_operation("closest", a_records, b_records_list, is_strand)
         return MockBedtoolsService.CLOSEST_RESULT
 
-    def subtract(
+    def subtract_comparison_records(
         self,
         a_records: Iterable[ComparisonRecord],
         b_records_list: list[Iterable[ComparisonRecord]],

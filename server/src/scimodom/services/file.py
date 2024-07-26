@@ -78,7 +78,7 @@ class FileService:
             import_path,
             self._get_project_metadata_dir(),
             self._get_project_request_dir(),
-            self.get_annotation_parent_dir(),
+            self._get_annotation_parent_dir(),
             self._get_assembly_parent_dir(),
             self._get_gene_cache_dir(),
             self._get_bam_files_parent_dir(),
@@ -113,14 +113,25 @@ class FileService:
     def open_import_file(self, name: str):
         return open(Path(self._import_path, name))
 
-    # Annotation
+    # Annotation incl. extended annotations (miRNA targets, RBP binding sites, etc.)
 
-    def get_annotation_parent_dir(self) -> Path:
-        """Construct parent path to annotation files.
+    def get_annotation_dir(self, taxa_id: int) -> Path:
+        """Construct path to annotation files.
 
-        :returns: Path to annotation
+        :param taxa_id: Taxa ID
+        :type taxa_id: int
+        :returns: Path to annotation directory
         :rtype: Path
         """
+        assembly_name = self._get_current_assembly_name_from_taxa_id(taxa_id)
+        organism = self._get_organism_from_taxa_id(taxa_id)
+        return Path(
+            self._get_annotation_parent_dir(),
+            self._get_dir_name_from_organism(organism),
+            assembly_name,
+        )
+
+    def _get_annotation_parent_dir(self) -> Path:
         return Path(self._data_path, self.ANNOTATION_DEST)
 
     # Gene cache

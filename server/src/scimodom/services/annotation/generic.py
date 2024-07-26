@@ -16,7 +16,6 @@ from scimodom.database.models import (
     Taxa,
     Selection,
 )
-from scimodom.services.assembly import AssemblyService
 from scimodom.services.bedtools import BedToolsService
 from scimodom.services.data import DataService
 from scimodom.services.external import ExternalService
@@ -37,7 +36,6 @@ class GenericAnnotationService(ABC):
     def __init__(
         self,
         session: Session,
-        assembly_service: AssemblyService,
         data_service: DataService,
         bedtools_service: BedToolsService,
         external_service: ExternalService,
@@ -48,8 +46,6 @@ class GenericAnnotationService(ABC):
 
         :param session: SQLAlchemy ORM session
         :type session: Session
-        :param assembly_service: Assembly service instance
-        :type assembly service: AssemblyService
         :param data_service: Data service instance
         :type data service: DataService
         :param bedtools_service: Bedtools service instance
@@ -63,7 +59,6 @@ class GenericAnnotationService(ABC):
         """
 
         self._session = session
-        self._assembly_service = assembly_service
         self._data_service = data_service
         self._bedtools_service = bedtools_service
         self._external_service = external_service
@@ -136,13 +131,8 @@ class GenericAnnotationService(ABC):
         :returns: Annotation release path
         :rtype: Path
         """
-        organism_name = self._session.execute(
-            select(Taxa.name).filter_by(id=annotation.taxa_id)
-        ).scalar_one()
-        organism_name = "_".join(organism_name.lower().split()).capitalize()
-        assembly_name = self._assembly_service.get_name_for_version(annotation.taxa_id)
-        path = self._file_service.get_annotation_parent_dir()
-        return Path(path, organism_name, assembly_name, str(annotation.release))
+        path = self._file_service.get_annotation_dir(annotation.taxa_id)
+        return Path(path, str(annotation.release))
 
     def _release_exists(self, annotation_id) -> bool:
         """Check if release exists by checking if the database

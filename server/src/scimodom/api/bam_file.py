@@ -3,7 +3,7 @@ from flask_cors import cross_origin
 from flask_jwt_extended import jwt_required
 
 from scimodom.api.helpers import (
-    get_validate_dataset,
+    get_valid_dataset,
     get_user_with_write_permission_on_dataset,
     get_valid_bam_file,
     ClientResponseException,
@@ -21,7 +21,7 @@ MAX_BAM_FILE_SIZE = 1024 * 1024 * 1024
 @cross_origin(supports_credentials=True)
 def list_bam_files(dataset_id: str):
     try:
-        dataset = get_validate_dataset(dataset_id)
+        dataset = get_valid_dataset(dataset_id)
     except ClientResponseException as e:
         return e.response_tupel
 
@@ -34,7 +34,7 @@ def list_bam_files(dataset_id: str):
 @jwt_required()
 def post_bam_file(dataset_id: str, name: str):
     try:
-        dataset = get_validate_dataset(dataset_id)
+        dataset = get_valid_dataset(dataset_id)
         _ = get_user_with_write_permission_on_dataset(dataset)
         validate_request_size(MAX_BAM_FILE_SIZE)
     except ClientResponseException as e:
@@ -54,7 +54,7 @@ def post_bam_file(dataset_id: str, name: str):
 @cross_origin(supports_credentials=True)
 def get_bam_file(dataset_id: str, name: str):
     try:
-        dataset = get_validate_dataset(dataset_id)
+        dataset = get_valid_dataset(dataset_id)
         bam_file = get_valid_bam_file(dataset, name)
     except ClientResponseException as e:
         return e.response_tupel
@@ -83,7 +83,7 @@ def get_bam_file(dataset_id: str, name: str):
 @jwt_required()
 def delete_bam_file(dataset_id: str, name: str):
     try:
-        dataset = get_validate_dataset(dataset_id)
+        dataset = get_valid_dataset(dataset_id)
         _ = get_user_with_write_permission_on_dataset(dataset)
         bam_file = get_valid_bam_file(dataset, name)
     except ClientResponseException as e:

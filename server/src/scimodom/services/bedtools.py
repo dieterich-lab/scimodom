@@ -2,7 +2,7 @@ from functools import cache
 import logging
 from os import makedirs
 from pathlib import Path
-from typing import Iterable, Sequence, Any
+from typing import Iterable, Sequence, Any, TextIO
 
 import pybedtools  # type: ignore
 from pybedtools import BedTool, create_interval_from_list
@@ -11,6 +11,7 @@ import scimodom.utils.utils as utils
 from scimodom.config import get_config
 from scimodom.database.models import Data
 from scimodom.utils.bedtools_dto import (
+    Bed6Record,
     EufRecord,
     DataAnnotationRecord,
     GenomicAnnotationRecord,
@@ -292,7 +293,7 @@ class BedToolsService:
         :rtype: Iterable[ModificationRecord]
         """
 
-        bedtool_records = self._get_data_as_bedtool_for_annotation(records)
+        bedtool_records = self._get_data_to_bedtool_for_annotation(records)
         if "intergenic" not in features:
             raise AnnotationFormatError(
                 "Missing feature intergenic from specs. This is due to a change "
@@ -378,7 +379,7 @@ class BedToolsService:
             .moveto(file_name)
         )
 
-    def intersect(
+    def intersect_comparison_records(
         self,
         a_records: Iterable[ComparisonRecord],
         b_records_list: list[Iterable[ComparisonRecord]],
@@ -391,20 +392,20 @@ class BedToolsService:
         column after the complete -a record lists the file number
         from which the overlap came.
 
-        :param a_records: Left operand of insect operation
+        :param a_records: Left operand of operation
         :type a_records: Iterable[ComparisonRecord]
-        :param b_records_list: Right operand of insect operation
-        :type b_records_list: list[Iterable[ModificationRecord]]
+        :param b_records_list: Right operand of operation
+        :type b_records_list: list[Iterable[ComparisonRecord]]
         :parm is_strand: Perform strand-aware query
         :type is_strand: bool
         :param is_sorted: Invoked sweeping algorithm
         :type is_sorted: bool
         :returns: records
-        :rtype: list of tuples
+        :rtype: Iterable of IntersectRecord
         """
 
-        a_bedtool = self._get_modifications_as_bedtool(a_records)
-        b_bedtools = [self._get_modifications_as_bedtool(x) for x in b_records_list]
+        a_bedtool = self._get_comparison_record_to_bedtool(a_records)
+        b_bedtools = [self._get_comparison_record_to_bedtool(x) for x in b_records_list]
         bedtool = a_bedtool.intersect(
             b=[b.fn for b in b_bedtools],
             wa=True,  # write the original entry in A for each overlap
@@ -414,12 +415,12 @@ class BedToolsService:
         )
         stream = bedtool.each(_remove_filno)
         for s in stream:
-            a = self._get_modification_from_bedtools_data(s[:9])
-            b = self._get_modification_from_bedtools_data(s[9:])
+            a = self._get_comparison_record_from_bedtool(s[:9])
+            b = self._get_comparison_record_from_bedtool(s[9:])
             r = IntersectRecord(a=a, b=b)
             yield r
 
-    def closest(
+    def closest_comparison_records(
         self,
         a_records: Iterable[ComparisonRecord],
         b_records_list: list[Iterable[ComparisonRecord]],
@@ -435,20 +436,20 @@ class BedToolsService:
         :param a_records: Left operand of operation
         :type a_records: Iterable[ComparisonRecord]
         :param b_records_list: Right operand of operation
-        :type b_records_list: list[Iterable[ModificationRecord]]
+        :type b_records_list: list[Iterable[ComparisonRecord]]
         :parm is_strand: Perform strand-aware query
         :type is_strand: bool
         :param is_sorted: Invoked sweeping algorithm
         :type is_sorted: bool
         :returns: records
-        :rtype: list of tuples
+        :rtype: Iterable of ClosestRecord
         """
 
         # BED6+3
         n_fields = 9
 
-        a_bedtool = self._get_modifications_as_bedtool(a_records)
-        b_bedtools = [self._get_modifications_as_bedtool(x) for x in b_records_list]
+        a_bedtool = self._get_comparison_record_to_bedtool(a_records)
+        b_bedtools = [self._get_comparison_record_to_bedtool(x) for x in b_records_list]
         bedtool = a_bedtool.closest(
             b=[b.fn for b in b_bedtools],
             io=True,  # Ignore features in B that overlap A
@@ -465,12 +466,12 @@ class BedToolsService:
         )
         for s in stream:
             yield ClosestRecord(
-                a=self._get_modification_from_bedtools_data(s[:9]),
-                b=self._get_modification_from_bedtools_data(s[9:18]),
+                a=self._get_comparison_record_from_bedtool(s[:9]),
+                b=self._get_comparison_record_from_bedtool(s[9:18]),
                 distance=s[18],
             )
 
-    def subtract(
+    def subtract_comparison_records(
         self,
         a_records: Iterable[ComparisonRecord],
         b_records_list: list[Iterable[ComparisonRecord]],
@@ -482,13 +483,13 @@ class BedToolsService:
         :param a_records: Left operand of operation
         :type a_records: Iterable[ComparisonRecord]
         :param b_records_list: Right operand of operation
-        :type b_records_list: Iterable[ModificationRecord]
+        :type b_records_list: Iterable[ComparisonRecord]
         :parm is_strand: Perform strand-aware query
         :type is_strand: bool
         :param is_sorted: Invoked sweeping algorithm
         :type is_sorted: bool
         :returns: records
-        :rtype: list of tuples
+        :rtype: Iterable of SubtractRecord
         """
 
         def b_generator():
@@ -496,11 +497,48 @@ class BedToolsService:
                 for r in records:
                     yield r
 
-        a_bedtool = self._get_modifications_as_bedtool(a_records)
-        b_bedtool = self._get_modifications_as_bedtool(b_generator())
+        a_bedtool = self._get_comparison_record_to_bedtool(a_records)
+        b_bedtool = self._get_comparison_record_to_bedtool(b_generator())
         bedtool = a_bedtool.subtract(b_bedtool, s=is_strand, sorted=is_sorted)
         for s in bedtool:
-            yield SubtractRecord(**self._get_modification_from_bedtools_data(s).dict())
+            yield SubtractRecord(**self._get_comparison_record_from_bedtool(s).dict())
+
+    def intersect_bed6_records(
+        self,
+        a_records: Iterable[Bed6Record],
+        b_stream: TextIO,
+        is_strand: bool,
+        is_sorted: bool = True,
+    ) -> Iterable[Bed6Record]:
+        """Wrapper for pybedtools.bedtool.BedTool.intersect
+
+        This method only returns the original B feature when
+        an overlap is found with A!
+
+        :param a_records: Left operand of operation
+        :type a_records: Iterable[Bed6Record]
+        :param b_stream: Right operand of operation.
+        The file is truncated to BED6.
+        :type b_stream: TextIO
+        :parm is_strand: Perform strand-aware query
+        :type is_strand: bool
+        :param is_sorted: Invoked sweeping algorithm
+        :type is_sorted: bool
+        :returns: records
+        :rtype: Iterable of Bed6Record
+        """
+        a_bedtool = self._get_bed6_record_to_bedtool(a_records)
+        b_bedtool = BedTool(b_stream)
+        if not is_sorted:
+            b_bedtool = b_bedtool.sort()
+        bedtool = a_bedtool.intersect(
+            b=b_bedtool,
+            wb=True,
+            s=is_strand,
+            sorted=is_sorted,
+        )
+        for b in bedtool:
+            yield self._get_bed6_record_from_bedtool(b[6:12])
 
     @staticmethod
     def _annotation_to_stream(annotation_bedtool, feature):
@@ -518,7 +556,7 @@ class BedToolsService:
         return Path(parent, f"{feature}.bed").as_posix()
 
     @staticmethod
-    def _get_data_as_bedtool_for_annotation(
+    def _get_data_to_bedtool_for_annotation(
         records: Iterable[Data],
     ) -> BedTool:
         def generator():
@@ -550,7 +588,26 @@ class BedToolsService:
                 )
 
     @staticmethod
-    def _get_modifications_as_bedtool(
+    def _get_bed6_record_to_bedtool(
+        records: Iterable[Bed6Record],
+    ) -> BedTool:
+        def generator():
+            for record in records:
+                yield create_interval_from_list(
+                    [
+                        record.chrom,
+                        record.start,
+                        record.end,
+                        record.name,
+                        record.score,
+                        record.strand.value,
+                    ]
+                )
+
+        return BedTool(generator()).sort()
+
+    @staticmethod
+    def _get_comparison_record_to_bedtool(
         records: Iterable[ComparisonRecord],
     ) -> BedTool:
         def generator():
@@ -572,7 +629,18 @@ class BedToolsService:
         return BedTool(generator()).sort()
 
     @staticmethod
-    def _get_modification_from_bedtools_data(s: Sequence[str]):
+    def _get_bed6_record_from_bedtool(s: Sequence[str]) -> Bed6Record:
+        return Bed6Record(
+            chrom=s[0],
+            start=s[1],
+            end=s[2],
+            name=s[3],
+            score=s[4],
+            strand=Strand(s[5]),
+        )
+
+    @staticmethod
+    def _get_comparison_record_from_bedtool(s: Sequence[str]) -> ComparisonRecord:
         return ComparisonRecord(
             chrom=s[0],
             start=s[1],
