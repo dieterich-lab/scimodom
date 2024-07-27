@@ -10,6 +10,7 @@ from scimodom.services.modification import get_modification_service
 from scimodom.api.helpers import (
     ClientResponseException,
     get_valid_coords,
+    get_valid_targets_type,
     get_valid_taxa_id,
     get_response_from_pydantic_object,
 )
@@ -88,14 +89,6 @@ def get_modification_targets(target_type):
     """Get information related to miRNA target and
     RBP binding sites that may be affected by a
     modification site."""
-    # taxid = get_valid_taxa_id(target_type)
-    # try:
-    #     chrom, start, end, strand = get_valid_coords(taxid)
-    #     print(f"{chrom}, {start}, {end}, {strand}")
-    # except ClientResponseException as e:
-    #     return e.response_tupel
-    # return {"message": "OK"}, 200
-
     try:
         with _TargetsContext(target_type) as ctx:
             records = ctx.bedtools_service.intersect_bed6_records(
@@ -119,7 +112,7 @@ class _TargetsContext:
         is_strand: bool
 
     def __init__(self, target_type):
-        self._target_type = target_type  # TODO VALIDATION
+        self._target_type = get_valid_targets_type(target_type)
         self._is_strand = True
         taxa_id = request.args.get("taxaId")
         self._taxa_id = get_valid_taxa_id(taxa_id)
@@ -128,11 +121,9 @@ class _TargetsContext:
     def __enter__(self) -> Ctx:
         file_service = get_file_service()
         try:
-            filen = "/home/eboileau/Downloads/Predicted_Target_Locations.default_predictions.hg19.bed"
-            self._annotation_targets_file = open(filen, "r")
-            # self._annotation_targets_file = file_service.open_annotation_targets_file(
-            #     self._taxa_id, self._target_type
-            # )
+            self._annotation_targets_file = file_service.open_annotation_targets_file(
+                self._taxa_id, self._target_type
+            )
         except FileNotFoundError:
             # return empty record and log ? NotImplementedError
             pass

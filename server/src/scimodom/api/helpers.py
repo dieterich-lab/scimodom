@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 from scimodom.database.models import Dataset, User, BamFile
 from scimodom.services.dataset import get_dataset_service
-from scimodom.services.file import get_file_service
+from scimodom.services.file import TargetsFileType, get_file_service
 from scimodom.services.permission import get_permission_service
 from scimodom.services.user import get_user_service, NoSuchUser
 from scimodom.services.utilities import get_utilities_service
@@ -168,6 +168,13 @@ def validate_rna_type(rna_type: str) -> None:
     valid_rna_types = [x["id"] for x in utilities_service.get_rna_types()]
     if rna_type not in valid_rna_types:
         raise ClientResponseException(404, "Unknown RNA type")
+
+
+def get_valid_targets_type(raw: str) -> TargetsFileType:
+    try:
+        return TargetsFileType[raw]
+    except KeyError:
+        raise ClientResponseException(404, "Unknown targets type")
 
 
 def get_valid_coords(taxa_id: int) -> tuple[str, int, int, Strand]:

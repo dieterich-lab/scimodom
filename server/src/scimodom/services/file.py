@@ -46,6 +46,10 @@ class AssemblyFileType(Enum):
     CHAIN = "__CHAIN__"
 
 
+class TargetsFileType(Enum):
+    MIRNA = "mirna.bed"
+
+
 class FileService:
     BUFFER_SIZE = 1024 * 1024
     VALID_FILE_ID_REGEXP = re.compile(r"\A[a-zA-Z0-9_-]{1,256}\Z")
@@ -130,6 +134,21 @@ class FileService:
             self._get_dir_name_from_organism(organism),
             assembly_name,
         )
+
+    def open_annotation_targets_file(
+        self, taxa_id: int, target_type: TargetsFileType
+    ) -> TextIO:
+        """Open a target annotation file for reading.
+
+        :param taxa_id: Taxa ID
+        :type taxa_id: int
+        :param target_type: Which file to open
+        :type target_type: TargetsFileType
+        :returns: File handle
+        :rtype: TextIO
+        """
+        path = Path(self.get_annotation_dir(taxa_id), target_type.value)
+        return open(path, "r")
 
     def _get_annotation_parent_dir(self) -> Path:
         return Path(self._data_path, self.ANNOTATION_DEST)
