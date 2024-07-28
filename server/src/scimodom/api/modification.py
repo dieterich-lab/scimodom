@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import logging
 from typing import Iterable, TextIO
 
 from flask import Blueprint, request
@@ -19,7 +20,13 @@ from scimodom.utils.bedtools_dto import Bed6Record
 from scimodom.services.file import get_file_service
 from scimodom.utils.common_dto import Strand
 
+logger = logging.getLogger(__name__)
+
 modification_api = Blueprint("modification_api", __name__)
+
+
+class IntersectResponse(BaseModel):
+    records: list[Bed6Record]
 
 
 @modification_api.route("/", methods=["GET"])
@@ -99,10 +106,6 @@ def get_modification_targets(target_type):
         return e.response_tupel
 
 
-class IntersectResponse(BaseModel):
-    records: list[Bed6Record]
-
-
 class _TargetsContext:
     @dataclass
     class Ctx:
@@ -120,18 +123,22 @@ class _TargetsContext:
 
     def __enter__(self) -> Ctx:
         file_service = get_file_service()
+        bedtools_service = get_bedtools_service()
         try:
             self._annotation_targets_file = file_service.open_annotation_targets_file(
                 self._taxa_id, self._target_type
             )
         except FileNotFoundError:
-            # return empty record and log ? NotImplementedError
-            pass
+            logger.warning(
+                f"API not implemented for Taxa ID '{self._taxa_id}': silently returning empty response!"
+            )
+            temp_file = bedtools_service.create_temp_file_from_records([], sort=False)
+            self._annotation_targets_file = open(temp_file, "r")
 
         a_records = self._get_bed6_records_from_request(self._coords)
 
         return self.Ctx(
-            bedtools_service=get_bedtools_service(),
+            bedtools_service=bedtools_service,
             a_records=a_records,
             b_stream=self._annotation_targets_file,
             is_strand=self._is_strand,

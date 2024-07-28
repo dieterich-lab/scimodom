@@ -529,8 +529,6 @@ class BedToolsService:
         """
         a_bedtool = self._get_bed6_record_to_bedtool(a_records)
         b_bedtool = BedTool(b_stream)
-        if not is_sorted:
-            b_bedtool = b_bedtool.sort()
         bedtool = a_bedtool.intersect(
             b=b_bedtool,
             wb=True,

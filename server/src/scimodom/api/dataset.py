@@ -32,6 +32,18 @@ logger = logging.getLogger(__name__)
 dataset_api = Blueprint("dataset_api", __name__)
 
 
+class IntersectResponse(BaseModel):
+    records: list[IntersectRecord]
+
+
+class ClosestResponse(BaseModel):
+    records: list[ClosestRecord]
+
+
+class SubtractResponse(BaseModel):
+    records: list[SubtractRecord]
+
+
 @dataset_api.route("/list_all", methods=["GET"])
 def list_all():
     dataset_service = get_dataset_service()
@@ -48,10 +60,6 @@ def list_mine():
     return dataset_service.get_datasets(user)
 
 
-class IntersectResponse(BaseModel):
-    records: list[IntersectRecord]
-
-
 @dataset_api.route("/intersect", methods=["GET"])
 @cross_origin(supports_credentials=True)
 def intersect():
@@ -61,6 +69,32 @@ def intersect():
                 ctx.a_records, ctx.b_records_list, is_strand=ctx.is_strand
             )
             return get_response_from_pydantic_object(IntersectResponse(records=records))
+    except ClientResponseException as e:
+        return e.response_tupel
+
+
+@dataset_api.route("/closest", methods=["GET"])
+@cross_origin(supports_credentials=True)
+def closest():
+    try:
+        with _CompareContext() as ctx:
+            records = ctx.bedtools_service.closest_comparison_records(
+                ctx.a_records, ctx.b_records_list, is_strand=ctx.is_strand
+            )
+            return get_response_from_pydantic_object(ClosestResponse(records=records))
+    except ClientResponseException as e:
+        return e.response_tupel
+
+
+@dataset_api.route("/subtract", methods=["GET"])
+@cross_origin(supports_credentials=True)
+def subtract():
+    try:
+        with _CompareContext() as ctx:
+            records = ctx.bedtools_service.subtract_comparison_records(
+                ctx.a_records, ctx.b_records_list, is_strand=ctx.is_strand
+            )
+            return get_response_from_pydantic_object(SubtractResponse(records=records))
     except ClientResponseException as e:
         return e.response_tupel
 
@@ -157,37 +191,3 @@ class _CompareContext:
     def __exit__(self, exc_type, exc_value, traceback):
         if self._tmp_file_handle is not None:
             self._tmp_file_handle.close()
-
-
-class ClosestResponse(BaseModel):
-    records: list[ClosestRecord]
-
-
-@dataset_api.route("/closest", methods=["GET"])
-@cross_origin(supports_credentials=True)
-def closest():
-    try:
-        with _CompareContext() as ctx:
-            records = ctx.bedtools_service.closest_comparison_records(
-                ctx.a_records, ctx.b_records_list, is_strand=ctx.is_strand
-            )
-            return get_response_from_pydantic_object(ClosestResponse(records=records))
-    except ClientResponseException as e:
-        return e.response_tupel
-
-
-class SubtractResponse(BaseModel):
-    records: list[SubtractRecord]
-
-
-@dataset_api.route("/subtract", methods=["GET"])
-@cross_origin(supports_credentials=True)
-def subtract():
-    try:
-        with _CompareContext() as ctx:
-            records = ctx.bedtools_service.subtract_comparison_records(
-                ctx.a_records, ctx.b_records_list, is_strand=ctx.is_strand
-            )
-            return get_response_from_pydantic_object(SubtractResponse(records=records))
-    except ClientResponseException as e:
-        return e.response_tupel
