@@ -100,6 +100,10 @@ class FileService:
     # General
 
     @staticmethod
+    def open_file_for_reading(path: str | Path) -> TextIO:
+        return open(path, "r")
+
+    @staticmethod
     def count_lines(path: str | Path):
         count = 0
         with open(path) as fp:

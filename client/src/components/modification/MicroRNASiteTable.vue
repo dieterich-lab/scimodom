@@ -2,7 +2,6 @@
 import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { HTTP } from '@/services/API.js'
-import { fmtOrder } from '@/utils/index.js'
 
 const props = defineProps({
   coords: {
@@ -14,20 +13,12 @@ const props = defineProps({
 const router = useRouter()
 
 const dt = ref()
-const first = ref(0)
-const rows = ref(10)
 const records = ref()
-const loading = ref(false)
-const totalRecords = ref(0)
-const lazyParams = ref({
-  first: first.value,
-  rows: rows.value
-})
 
 watch(
   () => props.coords,
   () => {
-    lazyLoad()
+    load()
   },
   { immediate: true }
 )
@@ -35,17 +26,7 @@ watch(
 // table-related utilities
 const getFileName = () => {
   let stamp = new Date()
-  return 'scimodom_per_site_' + stamp.toISOString().replaceAll(/:/g, '')
-}
-
-const onPage = (event) => {
-  lazyParams.value = event
-  lazyLoad(event)
-}
-
-const onSort = (event) => {
-  lazyParams.value = event
-  lazyLoad(event)
+  return 'scimodom_mirna_targets_' + stamp.toISOString().replaceAll(/:/g, '')
 }
 
 const onExport = () => {
@@ -56,26 +37,33 @@ const navigateTo = (eufid) => {
   router.push({ name: 'browse', params: { eufid: eufid } })
 }
 
-function lazyLoad(event) {
-  loading.value = true
-  lazyParams.value = { ...lazyParams.value, first: event?.first || first.value }
-  HTTP.get('/modification/sitewise', {
+function load(event) {
+  HTTP.get('/modification/target/MIRNA', {
     params: {
+      taxaId: props.coords.taxa_id,
       chrom: props.coords.chrom,
       start: props.coords.start,
       end: props.coords.end,
-      firstRecord: lazyParams.value.first,
-      maxRecords: lazyParams.value.rows,
-      multiSort: fmtOrder(lazyParams.value.multiSortMeta)
+      strand: props.coords.strand
     },
     paramsSerializer: {
       indexes: null
     }
   })
     .then(function (response) {
-      records.value = response.data.records
-      totalRecords.value = response.data.totalRecords
-      loading.value = false
+      records.value = response.data.records.map(function (obj) {
+        let name = obj.name.split(':')
+        return {
+          chrom: obj.chrom,
+          start: obj.start,
+          end: obj.end,
+          strand: obj.strand,
+          score: obj.score,
+          source: name[0],
+          target: name[1],
+          mirna: name[2]
+        }
+      })
     })
     .catch((error) => {
       console.log(error)
@@ -84,23 +72,7 @@ function lazyLoad(event) {
 </script>
 
 <template>
-  <DataTable
-    :value="records"
-    dataKey="id"
-    ref="dt"
-    :exportFilename="getFileName()"
-    lazy
-    paginator
-    :totalRecords="totalRecords"
-    :loading="loading"
-    :first="first"
-    :rows="rows"
-    @page="onPage($event)"
-    @sort="onSort($event)"
-    removableSort
-    sortMode="multiple"
-    stripedRows
-  >
+  <DataTable :value="records" dataKey="id" ref="dt" :exportFilename="getFileName()" stripedRows>
     <template #header>
       <div style="text-align: right">
         <Button
@@ -113,41 +85,17 @@ function lazyLoad(event) {
         />
       </div>
     </template>
-    <template #loading>
-      <ProgressSpinner style="width: 60px; height: 60px" strokeWidth="6" />
+    <template #empty>
+      <p class="text-center text-secondary-500 font-semibold">
+        No known miRNA target site affected by this modification!
+      </p>
     </template>
-    <Column field="dataset_id" header="EUFID" exportHeader="EUFID">
-      <template #body="{ data }">
-        <Button
-          size="small"
-          :label="data.dataset_id"
-          severity="secondary"
-          text
-          @click="navigateTo(data.dataset_id)"
-        />
-      </template>
-    </Column>
-    <Column field="rna" header="RNA"></Column>
-    <Column field="name" header="Name" exportHeader="name">
-      <template #body="{ data }">
-        <a
-          class="text-primary-500 hover:text-secondary-500"
-          :href="'https://www.genesilico.pl/modomics/modifications/' + data.reference_id"
-          target="_blank"
-          rel="noopener noreferrer"
-          >{{ data.name }}
-        </a>
-      </template>
-    </Column>
-    <Column field="short_name" header="Organism"></Column>
-    <Column field="cto" header="Cell/Tissue"></Column>
-    <Column field="tech" header="Technology"></Column>
-    <Column field="chrom" exportHeader="chrom" style="display: none"></Column>
-    <Column field="start" exportHeader="chromStart" style="display: none"></Column>
-    <Column field="end" exportHeader="chromEnd" style="display: none"></Column>
-    <Column field="strand" exportHeader="strand" style="display: none"></Column>
-    <Column field="score" header="Score" sortable exportHeader="score"></Column>
-    <Column field="coverage" header="Coverage" sortable exportHeader="coverage"></Column>
-    <Column field="frequency" header="Frequency" sortable exportHeader="frequency"></Column>
+    <Column field="mirna" header="miRNA"></Column>
+    <Column field="target" header="Target"></Column>
+    <Column field="source" header="Source"></Column>
+    <Column field="start" header="Start"></Column>
+    <Column field="end" header="End"></Column>
+    <Column field="score" header="Score"></Column>
+    <Column field="strand" header="strand"></Column>
   </DataTable>
 </template>

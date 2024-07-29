@@ -61,6 +61,7 @@ function lazyLoad(event) {
   lazyParams.value = { ...lazyParams.value, first: event?.first || first.value }
   HTTP.get('/modification/sitewise', {
     params: {
+      taxaId: props.coords.taxa_id,
       chrom: props.coords.chrom,
       start: props.coords.start,
       end: props.coords.end,

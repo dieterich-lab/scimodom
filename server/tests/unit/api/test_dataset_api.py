@@ -29,20 +29,22 @@ def test_client():
     yield app.test_client()
 
 
-class MockFileService:
-    VALID_TEMP_FILE_ID = "im_the_only_valid_temp_file_id"
-    FILE_CONTENT = "temp file content"
-
-    @staticmethod
-    def check_tmp_upload_file_id(file_id):
-        return file_id == MockFileService.VALID_TEMP_FILE_ID
-
-    @staticmethod
-    def open_tmp_upload_file_by_id(file_id):
-        if file_id == MockFileService.VALID_TEMP_FILE_ID:
-            return StringIO(MockFileService.FILE_CONTENT)
-        else:
-            raise FileNotFoundError("That is no valid file ID")
+@pytest.fixture
+def comparison_services(mocker):
+    mocker.patch(
+        "scimodom.api.dataset.get_file_service", return_value=MockFileService()
+    )
+    mocker.patch(
+        "scimodom.api.helpers.get_file_service", return_value=MockFileService()
+    )
+    mocker.patch(
+        "scimodom.api.dataset.get_data_service", return_value=MockDataService()
+    )
+    mocker.patch(
+        "scimodom.api.dataset.get_bedtools_service", return_value=MockBedtoolsService()
+    )
+    mocker.patch("scimodom.api.dataset.Bed6Importer", return_value=MockBed6Importer)
+    mocker.patch("scimodom.api.dataset.EufImporter", return_value=MockEufImporter)
 
 
 def _get_dummy_data_record(dataset_id, data_id):
@@ -69,6 +71,22 @@ DATA_BY_DATASET_ID = {
     "datasetidBxx": [_get_dummy_data_record("datasetidBxx", i) for i in range(2)],
     "datasetidCxx": [_get_dummy_data_record("datasetidCxx", i) for i in range(1)],
 }
+
+
+class MockFileService:
+    VALID_TEMP_FILE_ID = "im_the_only_valid_temp_file_id"
+    FILE_CONTENT = "temp file content"
+
+    @staticmethod
+    def check_tmp_upload_file_id(file_id):
+        return file_id == MockFileService.VALID_TEMP_FILE_ID
+
+    @staticmethod
+    def open_tmp_upload_file_by_id(file_id):
+        if file_id == MockFileService.VALID_TEMP_FILE_ID:
+            return StringIO(MockFileService.FILE_CONTENT)
+        else:
+            raise FileNotFoundError("That is no valid file ID")
 
 
 class MockDataService:
@@ -195,24 +213,6 @@ class MockEufImporter:
             yield x
 
 
-@pytest.fixture
-def comparison_services(mocker):
-    mocker.patch(
-        "scimodom.api.dataset.get_file_service", return_value=MockFileService()
-    )
-    mocker.patch(
-        "scimodom.api.helpers.get_file_service", return_value=MockFileService()
-    )
-    mocker.patch(
-        "scimodom.api.dataset.get_data_service", return_value=MockDataService()
-    )
-    mocker.patch(
-        "scimodom.api.dataset.get_bedtools_service", return_value=MockBedtoolsService()
-    )
-    mocker.patch("scimodom.api.dataset.Bed6Importer", return_value=MockBed6Importer)
-    mocker.patch("scimodom.api.dataset.EufImporter", return_value=MockEufImporter)
-
-
 @pytest.mark.parametrize(
     "reference,comparison,upload,euf,strand",
     [
@@ -237,66 +237,6 @@ def test_intersect(
         == MockBedtoolsService.INTERSECT_RESULT
     )
     check_comparison_mocks("intersect", reference, comparison, upload, euf, strand)
-
-
-def check_comparison_mocks(operation, reference, comparison, upload, euf, strand):
-    assert MockBedtoolsService.last_operation == operation
-    assert MockBedtoolsService.last_is_strand == strand
-    assert MockBedtoolsService.last_a_dataset == get_a_datasets_as_comparison_records(
-        *reference
-    )
-    if comparison is not None:
-        assert (
-            MockBedtoolsService.last_b_dataset_list
-            == get_b_dataset_list_as_comparison_records(*comparison)
-        )
-    if upload is not None:
-        if euf:
-            assert MockBedtoolsService.last_b_dataset_list == [
-                MockEufImporter.RESULT_AS_COMPARISON
-            ]
-        else:
-            assert MockBedtoolsService.last_b_dataset_list == [
-                MockBed6Importer.RESULT_AS_COMPARISON
-            ]
-
-
-def get_compare_url_parameters(
-    operation, reference, comparison=None, upload=None, euf=False, strand=True
-):
-    parameters = []
-    for r in reference:
-        parameters.append(f"reference={r}")
-    if comparison is not None:
-        for r in comparison:
-            parameters.append(f"comparison={r}")
-    if strand:
-        parameters.append("strand=true")
-    else:
-        parameters.append("strand=false")
-    if upload is not None:
-        parameters.append(f"upload={upload}")
-    if euf:
-        parameters.append("euf=true")
-    return f"/{operation}?" + "&".join(parameters)
-
-
-def get_a_datasets_as_comparison_records(*dataset_ids):
-    return [
-        ComparisonRecord(**r.__dict__, eufid=r.dataset_id)
-        for i in dataset_ids
-        for r in DATA_BY_DATASET_ID[i]
-    ]
-
-
-def get_b_dataset_list_as_comparison_records(*dataset_ids):
-    return [
-        [
-            ComparisonRecord(**r.__dict__, eufid=r.dataset_id)
-            for r in DATA_BY_DATASET_ID[i]
-        ]
-        for i in dataset_ids
-    ]
 
 
 @pytest.mark.parametrize(
@@ -382,3 +322,63 @@ def test_bad_url(test_client, comparison_services, url, http_status, message):
     result = test_client.get(url)
     assert result.status_code == http_status
     assert result.json["message"] == message
+
+
+def check_comparison_mocks(operation, reference, comparison, upload, euf, strand):
+    assert MockBedtoolsService.last_operation == operation
+    assert MockBedtoolsService.last_is_strand == strand
+    assert MockBedtoolsService.last_a_dataset == get_a_datasets_as_comparison_records(
+        *reference
+    )
+    if comparison is not None:
+        assert (
+            MockBedtoolsService.last_b_dataset_list
+            == get_b_dataset_list_as_comparison_records(*comparison)
+        )
+    if upload is not None:
+        if euf:
+            assert MockBedtoolsService.last_b_dataset_list == [
+                MockEufImporter.RESULT_AS_COMPARISON
+            ]
+        else:
+            assert MockBedtoolsService.last_b_dataset_list == [
+                MockBed6Importer.RESULT_AS_COMPARISON
+            ]
+
+
+def get_compare_url_parameters(
+    operation, reference, comparison=None, upload=None, euf=False, strand=True
+):
+    parameters = []
+    for r in reference:
+        parameters.append(f"reference={r}")
+    if comparison is not None:
+        for r in comparison:
+            parameters.append(f"comparison={r}")
+    if strand:
+        parameters.append("strand=true")
+    else:
+        parameters.append("strand=false")
+    if upload is not None:
+        parameters.append(f"upload={upload}")
+    if euf:
+        parameters.append("euf=true")
+    return f"/{operation}?" + "&".join(parameters)
+
+
+def get_a_datasets_as_comparison_records(*dataset_ids):
+    return [
+        ComparisonRecord(**r.__dict__, eufid=r.dataset_id)
+        for i in dataset_ids
+        for r in DATA_BY_DATASET_ID[i]
+    ]
+
+
+def get_b_dataset_list_as_comparison_records(*dataset_ids):
+    return [
+        [
+            ComparisonRecord(**r.__dict__, eufid=r.dataset_id)
+            for r in DATA_BY_DATASET_ID[i]
+        ]
+        for i in dataset_ids
+    ]

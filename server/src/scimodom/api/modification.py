@@ -73,9 +73,9 @@ def get_modifications():
 @cross_origin(supports_credentials=True)
 def get_modification_sitewise():
     """Get information related to a modification site."""
-    chrom = request.args.get("chrom", type=str)
-    start = request.args.get("start", type=int)
-    end = request.args.get("end", type=int)
+    raw_taxa_id = request.args.get("taxaId")
+    taxa_id = get_valid_taxa_id(raw_taxa_id)
+    chrom, start, end, _ = get_valid_coords(taxa_id)
     first_record = request.args.get("firstRecord", type=int)
     max_records = request.args.get("maxRecords", type=int)
     multi_sort = request.args.getlist("multiSort", type=str)
@@ -133,7 +133,9 @@ class _TargetsContext:
                 f"API not implemented for Taxa ID '{self._taxa_id}': silently returning empty response!"
             )
             temp_file = bedtools_service.create_temp_file_from_records([], sort=False)
-            self._annotation_targets_file = open(temp_file, "r")
+            self._annotation_targets_file = file_service.open_file_for_reading(
+                temp_file
+            )
 
         a_records = self._get_bed6_records_from_request(self._coords)
 

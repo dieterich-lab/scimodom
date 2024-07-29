@@ -157,7 +157,7 @@ def get_valid_taxa_id(raw: str) -> int:
     try:
         taxa_id = int(raw)
         if taxa_id not in taxa_ids:
-            raise ClientResponseException(400, "Unrecognized Taxa ID")
+            raise ClientResponseException(404, "Unrecognized Taxa ID")
         return taxa_id
     except ValueError:
         raise ClientResponseException(400, "Invalid Taxa ID")
@@ -187,7 +187,7 @@ def get_valid_coords(taxa_id: int) -> tuple[str, int, int, Strand]:
     chroms = assembly_service.get_chroms(taxa_id)
     if chrom not in [d["chrom"] for d in chroms]:
         raise ClientResponseException(
-            400, f"Unrecognized chrom '{chrom}' for Taxa '{taxa_id}'"
+            404, f"Unrecognized chrom '{chrom}' for Taxa '{taxa_id}'"
         )
     if not start < end:
         raise ClientResponseException(
