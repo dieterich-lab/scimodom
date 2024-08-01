@@ -2,10 +2,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from scimodom.database.models import (
-    Dataset,
-    Data,
-)
+from scimodom.database.models import Dataset, Data, DatasetModificationAssociation
 from scimodom.utils.common_dto import Strand
 
 
@@ -20,7 +17,7 @@ def dataset(Session, selection, project):  # noqa
         modification_type="RNA",
         basecalling="bc1",
         bioinformatics_workflow="wf1",
-        project_id=project,
+        project_id=project.id,
         sequencing_platform="sp1",
         experiment="experiment 1",
         external_source="ext. source 1",
@@ -66,7 +63,7 @@ def dataset(Session, selection, project):  # noqa
         modification_type="RNA",
         basecalling="bc2",
         bioinformatics_workflow="wf2",
-        project_id=project,
+        project_id=project.id,
         sequencing_platform="sp2",
         experiment="experiment 2",
         external_source="ext. source 2",
@@ -88,7 +85,21 @@ def dataset(Session, selection, project):  # noqa
         coverage=10,
         frequency=10,
     )
+    association1 = DatasetModificationAssociation(dataset_id="d1", modification_id=1)
+    association2 = DatasetModificationAssociation(dataset_id="d1", modification_id=2)
+    association3 = DatasetModificationAssociation(dataset_id="d2", modification_id=1)
     session = Session()
-    session.add_all([dataset1, dataset2, data1, data2, data3])
+    session.add_all(
+        [
+            dataset1,
+            dataset2,
+            data1,
+            data2,
+            data3,
+            association1,
+            association2,
+            association3,
+        ]
+    )
     session.commit()
     yield (dataset1, dataset2)

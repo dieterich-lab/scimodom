@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from sqlalchemy.orm import Session
-from sqlalchemy import tuple_, and_, or_, select, func
+from sqlalchemy import tuple_, and_, or_, select, func, delete
 
 from scimodom.database.database import get_session
 from scimodom.database.models import (
@@ -116,6 +116,37 @@ class ProjectService:
             self._write_project_template(project_template, smid, request_uuid)
             self._session.commit()
             return smid
+        except Exception:
+            self._session.rollback()
+            raise
+
+    def delete_project(self, project: Project) -> None:
+        """Delete a project and all associated data. There
+        must be no conflicting foreign key constraints
+        (not using ON DELETE CASCADE), i.e. dataset and
+        associated data must be deleted first.
+
+        Delete from the following tables:
+        - project_source
+        - user_project_association
+        - project
+        - project_contact
+
+        :param smid: Project instance
+        :type smid: Project
+        """
+        try:
+            self._session.execute(
+                delete(ProjectSource).filter_by(project_id=project.id)
+            )
+            self._session.execute(
+                delete(UserProjectAssociation).filter_by(project_id=project.id)
+            )
+            contact = self._session.get_one(ProjectContact, project.contact_id)
+            if len(contact.projects) == 1:
+                self._session.delete(contact)
+            self._session.delete(project)
+            self._session.commit()
         except Exception:
             self._session.rollback()
             raise

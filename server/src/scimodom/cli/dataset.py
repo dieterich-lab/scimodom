@@ -1,6 +1,7 @@
 from collections import defaultdict
 from pathlib import Path
 import re
+from typing import Iterator
 
 import click
 from sqlalchemy import select
@@ -9,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from scimodom.database.database import get_session
 from scimodom.database.models import (
+    Dataset,
     Modification,
     DetectionTechnology,
     Organism,
@@ -289,6 +291,29 @@ def add_selection(
             fg="red",
         )
         session.rollback()
+
+
+def delete_selection(selection: Selection) -> None:
+    session = get_session()
+    session.delete(selection)
+    session.commit()
+    # TODO delete gene cache
+
+
+def get_selection_from_dataset(dataset: Dataset) -> Iterator[Selection]:
+    session = get_session()
+    modification_ids = [
+        association.modification_id for association in dataset.associations
+    ]
+    for modification_id in modification_ids:
+        selection = session.execute(
+            select(Selection).filter_by(
+                modification_id=modification_id,
+                organism_id=dataset.organism_id,
+                technology_id=dataset.technology_id,
+            )
+        ).scalar_one()
+        yield selection
 
 
 def _get_modification_ids(values):

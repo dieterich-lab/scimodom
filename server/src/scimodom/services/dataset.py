@@ -37,6 +37,7 @@ from scimodom.services.assembly import (
     AssemblyService,
 )
 from scimodom.services.bedtools import get_bedtools_service, BedToolsService
+from scimodom.services.file import FileService, get_file_service
 from scimodom.utils import utils
 from scimodom.utils.bed_importer import EufImporter
 from scimodom.utils.bedtools_dto import EufRecord
@@ -109,11 +110,13 @@ class DatasetService:
     def __init__(
         self,
         session: Session,
+        file_service: FileService,
         bedtools_service: BedToolsService,
         assembly_service: AssemblyService,
         annotation_service: AnnotationService,
     ):
         self._session = session
+        self._file_service = file_service
         self._bedtools_service = bedtools_service
         self._assembly_service = assembly_service
         self._annotation_service = annotation_service
@@ -288,6 +291,39 @@ class DatasetService:
             f"and the following selections: {context.selection_ids}. "
         )
         return context.eufid
+
+    def delete_dataset(self, dataset: Dataset) -> None:
+        """Delete a dataset and all associated data.
+
+        Delete from the following tables:
+        - data_annotation
+        - data
+        - dataset_modification_association
+        - bam_file
+        - dataset
+
+        Associated BAM files are deleted from
+        the file system.
+
+        :param dataset: Dataset instance to delete
+        :type dataset: Dataset
+        """
+        try:
+            self._delete_data_records(dataset.id)
+            self._session.execute(
+                delete(DatasetModificationAssociation).filter_by(dataset_id=dataset.id)
+            )
+            bam_list = self._file_service.get_bam_file_list(dataset)
+            for bam in bam_list:
+                bam_file = self._file_service.get_bam_file(
+                    dataset, bam["original_file_name"]
+                )
+                self._file_service.remove_bam_file(bam_file)
+            self._session.delete(dataset)
+            self._session.commit()
+        except Exception:
+            self._session.rollback()
+            raise
 
     @staticmethod
     def _check_euf_record(record, importer, context):
@@ -559,6 +595,7 @@ def get_dataset_service() -> DatasetService:
 
     return DatasetService(
         session=get_session(),
+        file_service=get_file_service(),
         bedtools_service=get_bedtools_service(),
         assembly_service=get_assembly_service(),
         annotation_service=get_annotation_service(),

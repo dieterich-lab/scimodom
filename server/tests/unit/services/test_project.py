@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import TextIO
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from tests.mocks.io_mocks import MockStringIO, MockBytesIO
 from scimodom.database.models import (
@@ -200,8 +200,8 @@ def test_project_add_selection(Session, file_service, setup):
     with Session() as session, session.begin():
         session.add_all(setup)
 
-    service = _get_project_service(Session, file_service)
-    service._add_selection_if_none(PROJECT)
+        service = _get_project_service(Session, file_service)
+        service._add_selection_if_none(PROJECT)
 
     expected_records = [(1, 1, 1, 1), (2, 2, 2, 1)]
     with Session() as session, session.begin():
@@ -222,10 +222,10 @@ def test_project_add_selection_exists(Session, file_service, setup):
             modification_id=1, organism_id=3, technology_id=technology.id
         )
         session.add(selection)
-        session.commit()
+        session.flush()
 
-    service = _get_project_service(Session, file_service)
-    service._add_selection_if_none(PROJECT)
+        service = _get_project_service(Session, file_service)
+        service._add_selection_if_none(PROJECT)
 
     expected_records = [(1, 1, 3, 1), (2, 1, 1, 1), (3, 2, 2, 1)]
     with Session() as session, session.begin():
@@ -278,9 +278,9 @@ def test_project_add_project(Session, file_service, setup, freezer):
     with Session() as session, session.begin():
         session.add_all(setup)
 
-    freezer.move_to("2024-06-20 12:00:00")
-    service = _get_project_service(Session, file_service)
-    smid = service._add_project(PROJECT)
+        freezer.move_to("2024-06-20 12:00:00")
+        service = _get_project_service(Session, file_service)
+        smid = service._add_project(PROJECT)
 
     with Session() as session, session.begin():
         project = session.get_one(Project, smid)
@@ -365,3 +365,17 @@ def test_query_projects(Session, file_service, setup):
         user = session.get_one(User, 1)
         assert len(service.get_projects(user=user)) == 1
         assert len(service.get_projects()) == 2
+
+
+def test_delete_project(Session, project, file_service):
+    service = _get_project_service(Session, file_service)
+    service.delete_project(project)
+
+    with Session() as session:
+        assert session.scalar(select(func.count()).select_from(Project)) == 0
+        assert session.scalar(select(func.count()).select_from(ProjectSource)) == 0
+        assert session.scalar(select(func.count()).select_from(ProjectContact)) == 0
+        assert (
+            session.scalar(select(func.count()).select_from(UserProjectAssociation))
+            == 0
+        )

@@ -186,6 +186,7 @@ def get_dataset_service(session, tmp_path, data_path):
     )
     return DatasetService(
         session=session,
+        file_service=file_service,
         bedtools_service=bedtools_service,
         annotation_service=annotation_service,
         assembly_service=assembly_service,
@@ -201,7 +202,7 @@ def test_import_simple(
     eufid = service.import_dataset(
         file,
         source="test",
-        smid=project,
+        smid=project.id,
         title="Dataset title",
         assembly_id=1,
         modification_ids=[1],

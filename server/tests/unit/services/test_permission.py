@@ -36,10 +36,12 @@ def test_insert_user_project_association(Session):
         session.add(project)
         session.flush()
         smid = project.id
+        user_id = user.id
 
-        service = PermissionService(Session())
+        service = PermissionService(session)
         service.insert_into_user_project_association(user, smid)
 
+    with Session() as session, session.begin():
         records = session.execute(select(UserProjectAssociation)).scalar()
-        assert records.user_id == user.id
+        assert records.user_id == user_id
         assert records.project_id == smid

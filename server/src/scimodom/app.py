@@ -15,6 +15,7 @@ from scimodom.cli.project import (
     add_project,
     add_user_to_project,
     create_project_template,
+    delete_project,
 )
 from scimodom.cli.dataset import add_dataset, add_all, add_selection
 from scimodom.cli.utilities import validate_dataset_title, upsert
@@ -423,6 +424,28 @@ def create_app():
         add_all(
             input_directory, project_template_list, request_uuids, annotation_source
         )
+
+    @app.cli.command(
+        "delete", epilog="Check docs at https://dieterich-lab.github.io/scimodom/."
+    )
+    @click.option(
+        "-s",
+        "--selection",
+        default=[],
+        multiple=True,
+        required=False,
+        type=click.INT,
+        help="Selection ID(s) to delete. Repeat parameter to pass multiple selection IDs. Use at your own risk!",
+    )
+    @click.argument("smid", type=click.STRING)
+    def delete(smid, selection):
+        """Delete a project and all associated
+        data from the database. Deleting
+        selections at your own risk.
+
+        SMID is the Sci-ModoM project ID.
+        """
+        delete_project(smid, selection)
 
     @app.cli.command(
         "setup", epilog="Check docs at https://dieterich-lab.github.io/scimodom/."

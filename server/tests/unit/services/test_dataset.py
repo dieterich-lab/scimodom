@@ -1,11 +1,15 @@
 from datetime import datetime
 from io import StringIO
+from typing import Any
 
 import pytest
 from sqlalchemy import select, func
+from sqlalchemy.sql.operators import and_
 
 from scimodom.database.models import (
+    BamFile,
     Dataset,
+    DatasetModificationAssociation,
     Assembly,
     Data,
 )
@@ -18,6 +22,38 @@ from scimodom.services.dataset import (
 )
 from scimodom.utils.bed_importer import BedImportEmptyFile, BedImportTooManyErrors
 from scimodom.utils.common_dto import Strand
+
+
+class MockFileService:
+    def __init__(self, session):
+        self._session = session
+        self.deleted_bam_files: list[str] = []
+
+    def remove_bam_file(self, bam_file):
+        self.deleted_bam_files.append(bam_file.original_file_name)
+        self._session.delete(bam_file)
+        self._session.commit()
+
+    def get_bam_file(self, dataset: Dataset, name: str) -> BamFile:
+        return self._session.scalars(
+            select(BamFile).where(
+                and_(
+                    BamFile.dataset_id == dataset.id, BamFile.original_file_name == name
+                )
+            )
+        ).one()
+
+    def get_bam_file_list(self, dataset: Dataset) -> list[dict[str, Any]]:
+        items = self._session.scalars(
+            select(BamFile).where(BamFile.dataset_id == dataset.id)
+        ).all()
+        return [self._get_bam_file_info(i) for i in items]
+
+    @staticmethod
+    def _get_bam_file_info(bam_file):
+        return {
+            "original_file_name": bam_file.original_file_name,
+        }
 
 
 class MockBedToolsService:
@@ -88,6 +124,7 @@ def _get_dataset_service(
         }
     return DatasetService(
         session=session,
+        file_service=MockFileService(session),
         bedtools_service=MockBedToolsService(),  # noqa
         assembly_service=MockAssemblyService(
             is_latest=is_latest_asembly, assemblies_by_id=assemblies_by_id
@@ -133,7 +170,7 @@ def test_import_simple(
     eufid = service.import_dataset(
         file,
         source="test",
-        smid=project,
+        smid=project.id,
         title="title",
         assembly_id=1,
         modification_ids=[1],
@@ -145,7 +182,7 @@ def test_import_simple(
     with Session() as session:
         dataset = session.get_one(Dataset, eufid)
         assert dataset.title == "title"
-        assert dataset.project_id == project
+        assert dataset.project_id == project.id
         assert dataset.technology_id == 1
         assert dataset.organism_id == 1
         assert dataset.date_added == datetime(2017, 5, 20, 11, 0, 23)
@@ -176,7 +213,7 @@ def test_import_dry_run(Session, selection, project, freezer):  # noqa
     eufid = service.import_dataset(
         file,
         source="test",
-        smid=project,
+        smid=project.id,
         title="title",
         assembly_id=1,
         modification_ids=[1],
@@ -198,10 +235,11 @@ def test_import_dry_run(Session, selection, project, freezer):  # noqa
 def test_import_update_no_change(Session, selection, project, freezer):  # noqa
     service = _get_dataset_service(Session())
     freezer.move_to("2017-05-20 11:00:23")
+    project_id = project.id
     eufid = service.import_dataset(
         StringIO(GOOD_EUF_FILE),
         source="test",
-        smid=project,
+        smid=project_id,
         title="title",
         assembly_id=1,
         modification_ids=[1],
@@ -216,7 +254,7 @@ def test_import_update_no_change(Session, selection, project, freezer):  # noqa
     new_eufid = service.import_dataset(
         StringIO(GOOD_EUF_FILE),
         source="test",
-        smid=project,
+        smid=project_id,
         title="title",
         assembly_id=1,
         modification_ids=[1],
@@ -230,7 +268,7 @@ def test_import_update_no_change(Session, selection, project, freezer):  # noqa
     with Session() as session:
         dataset = session.get_one(Dataset, eufid)
         assert dataset.title == "title"
-        assert dataset.project_id == project
+        assert dataset.project_id == project_id
         assert dataset.technology_id == 1
         assert dataset.organism_id == 1
         assert dataset.date_added == datetime(2017, 5, 20, 11, 0, 23)
@@ -251,10 +289,11 @@ def test_import_update_no_change(Session, selection, project, freezer):  # noqa
 def test_import_update_with_change(Session, selection, project, freezer):  # noqa
     service = _get_dataset_service(Session())
     freezer.move_to("2017-05-20 11:00:23")
+    project_id = project.id
     eufid = service.import_dataset(
         StringIO(GOOD_EUF_FILE),
         source="test",
-        smid=project,
+        smid=project_id,
         title="title",
         assembly_id=1,
         modification_ids=[1],
@@ -269,7 +308,7 @@ def test_import_update_with_change(Session, selection, project, freezer):  # noq
     new_eufid = service.import_dataset(
         StringIO(GOOD_EUF_FILE.replace("1000", "555")),
         source="test",
-        smid=project,
+        smid=project_id,
         title="title",
         assembly_id=1,
         modification_ids=[1],
@@ -283,7 +322,7 @@ def test_import_update_with_change(Session, selection, project, freezer):  # noq
     with Session() as session:
         dataset = session.get_one(Dataset, eufid)
         assert dataset.title == "title"
-        assert dataset.project_id == project
+        assert dataset.project_id == project_id
         assert dataset.technology_id == 1
         assert dataset.organism_id == 1
         assert dataset.date_added == datetime(2017, 5, 20, 11, 0, 23)
@@ -307,7 +346,7 @@ def test_import_update_fail(Session, selection, project, freezer):  # noqa
         service.import_dataset(
             StringIO(GOOD_EUF_FILE),
             source="test",
-            smid=project,
+            smid=project.id,
             title="title",
             assembly_id=1,
             modification_ids=[1],
@@ -455,7 +494,7 @@ def test_bad_import(
         service.import_dataset(
             file,
             source="test",
-            smid=project,
+            smid=project.id,
             title="title",
             assembly_id=1,
             modification_ids=[1],
@@ -465,3 +504,36 @@ def test_bad_import(
         )
     assert str(exc.value) == message
     assert caplog.record_tuples == record_tuples
+
+
+def test_delete_dataset(Session, dataset, bam_file):
+    service = _get_dataset_service(Session())
+    service.delete_dataset(dataset[0])
+
+    with Session() as session:
+        assert session.scalar(select(func.count()).select_from(Dataset)) == 1
+        eufid0 = dataset[0].id
+        eufid1 = dataset[1].id
+        remaining_dataset = session.get_one(Dataset, eufid1)  # noqa
+        for eufid, expected_length in zip([eufid0, eufid1], [0, 1]):
+            data = (
+                session.execute(select(Data).where(Data.dataset_id == eufid))
+                .scalars()
+                .all()
+            )
+            assert len(data) == expected_length
+            dataset_association = (
+                session.execute(
+                    select(DatasetModificationAssociation).filter_by(dataset_id=eufid)
+                )
+                .scalars()
+                .all()
+            )
+            assert len(dataset_association) == expected_length
+            bam_list = (
+                session.execute(select(BamFile).filter_by(dataset_id=eufid))
+                .scalars()
+                .all()
+            )
+            assert len(bam_list) == expected_length
+        assert service._file_service.deleted_bam_files == ["d1_1.bam", "d1_2.bam"]
