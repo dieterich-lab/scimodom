@@ -435,13 +435,16 @@ def create_app():
         multiple=True,
         required=False,
         type=click.INT,
-        help="Selection ID(s) to delete. Repeat parameter to pass multiple selection IDs. Use at your own risk!",
+        help="Selection ID(s) to delete. Repeat parameter to pass multiple selection IDs.",
     )
     @click.argument("smid", type=click.STRING)
     def delete(smid, selection):
         """Delete a project and all associated
-        data from the database. Deleting
-        selections at your own risk.
+        data from the database. If given, delete
+        selections (and gene cache) associated
+        with the project data. Selections
+        may be associated with other datasets,
+        delete at your own risk!
 
         SMID is the Sci-ModoM project ID.
         """

@@ -196,6 +196,15 @@ class FileService:
                 print(g, file=fh)
             flock(fh.fileno(), LOCK_UN)
 
+    def delete_gene_cache(self, selection_id: int) -> None:
+        """Remove a gene cache file for a given selection.
+
+        :param selection_id: Selection ID
+        :type selection_id: int
+        """
+        path = Path(self._get_gene_cache_dir(), str(selection_id))
+        path.unlink()
+
     def _get_gene_cache_dir(self) -> Path:
         return Path(self._data_path, self.CACHE_DEST)
 

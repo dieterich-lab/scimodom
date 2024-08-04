@@ -28,6 +28,10 @@ class MockFileService:
     def __init__(self, session):
         self._session = session
         self.deleted_bam_files: list[str] = []
+        self.deleted_gene_cache: list[int] = []
+
+    def delete_gene_cache(self, selection_id: int) -> None:
+        self.deleted_gene_cache.append(selection_id)
 
     def remove_bam_file(self, bam_file):
         self.deleted_bam_files.append(bam_file.original_file_name)

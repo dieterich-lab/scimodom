@@ -210,6 +210,9 @@ def delete_project(smid: str, selection_ids: list[int]) -> None:
     BAM files associated with a dataset belonging
     to this project are deleted from the file system.
 
+    If given, selection IDs are deleted and
+    gene cache files are removed.
+
     :param smid: Project ID (SMID)
     :type smid: str
     :param selection_ids: List of selection IDs to delete,

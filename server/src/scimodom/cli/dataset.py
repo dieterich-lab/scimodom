@@ -20,6 +20,7 @@ from scimodom.cli.utilities import add_assembly_to_template_if_none, get_modomic
 from scimodom.services.annotation import AnnotationSource
 from scimodom.services.assembly import AssemblyNotFoundError, get_assembly_service
 from scimodom.services.dataset import get_dataset_service
+from scimodom.services.file import get_file_service
 from scimodom.services.project import get_project_service
 from scimodom.utils.project_dto import (
     ProjectMetaDataDto,
@@ -295,9 +296,14 @@ def add_selection(
 
 def delete_selection(selection: Selection) -> None:
     session = get_session()
-    session.delete(selection)
-    session.commit()
-    # TODO delete gene cache
+    file_service = get_file_service()
+    try:
+        session.delete(selection)
+        file_service.delete_gene_cache(selection.id)
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
 
 
 def get_selection_from_dataset(dataset: Dataset) -> Iterator[Selection]:
