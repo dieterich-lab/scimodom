@@ -53,7 +53,8 @@ const onExport = () => {
 }
 
 const navigateTo = (eufid) => {
-  router.push({ name: 'browse', params: { eufid: eufid } })
+  const { href } = router.resolve({ name: 'browse', params: { eufid: eufid } })
+  window.open(href, '_blank')
 }
 
 function lazyLoad(event) {
