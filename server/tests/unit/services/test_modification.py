@@ -17,7 +17,7 @@ def test_get_modification_site(Session, dataset):  # noqa
     response = modification_service.get_modification_site(
         "17", 100001, 100002, 0, 10, []
     )
-    assert response["totalRecords"] == 2
+    assert len(response["records"]) == 2
     assert response["records"][0]["dataset_id"] == "d1"
     assert response["records"][1]["dataset_id"] == "d2"
     assert response["records"][0]["cto"] == "Cell type 1"

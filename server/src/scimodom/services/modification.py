@@ -132,6 +132,7 @@ class ModificationService:
         query = (
             select(
                 Data.dataset_id,
+                Data.modification_id,
                 Modification.rna,
                 Data.name,
                 Taxa.short_name,
@@ -160,10 +161,7 @@ class ModificationService:
         query = query.offset(first_record).limit(max_records)
         query = self._add_modomics_ref_to_data_query(query)
 
-        return {
-            "totalRecords": self._get_length(query, Data),
-            "records": [row._asdict() for row in self._session.execute(query)],
-        }
+        return {"records": [row._asdict() for row in self._session.execute(query)]}
 
     @staticmethod
     def _get_arg_sort(string: str, url_split: str = "%2B") -> str:

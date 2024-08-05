@@ -74,8 +74,12 @@ function lazyLoad(event) {
     }
   })
     .then(function (response) {
-      records.value = response.data.records
-      totalRecords.value = response.data.totalRecords
+      records.value = response.data.records.filter(
+        (record) =>
+          record.dataset_id != props.coords.dataset_id &&
+          record.modification_id != props.coords.modification_id
+      )
+      totalRecords.value = records.value.length
       loading.value = false
     })
     .catch((error) => {
@@ -116,6 +120,11 @@ function lazyLoad(event) {
     </template>
     <template #loading>
       <ProgressSpinner style="width: 60px; height: 60px" strokeWidth="6" />
+    </template>
+    <template #empty>
+      <p class="text-center text-secondary-500 font-semibold">
+        This modification site is not reported in other datasets!
+      </p>
     </template>
     <Column field="dataset_id" header="EUFID" exportHeader="EUFID">
       <template #body="{ data }">
