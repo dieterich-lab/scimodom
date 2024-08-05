@@ -47,7 +47,8 @@ class AssemblyFileType(Enum):
 
 
 class TargetsFileType(Enum):
-    MIRNA = "mirna.bed"
+    MIRNA = "mirna.bed".format
+    RBP = "rbp_{chrom}.bed".format
 
 
 class FileService:
@@ -55,7 +56,8 @@ class FileService:
     VALID_FILE_ID_REGEXP = re.compile(r"\A[a-zA-Z0-9_-]{1,256}\Z")
 
     ANNOTATION_DEST: ClassVar[str] = "annotation"
-    CACHE_DEST: ClassVar[Path] = Path("cache", "gene", "selection")
+    GENE_CACHE_DEST: ClassVar[Path] = Path("cache", "gene", "selection")
+    MOTIF_CACHE_DEST: ClassVar[Path] = Path("cache", "motifs", "PWMs_logo")
     ASSEMBLY_DEST: ClassVar[str] = "assembly"
     METADATA_DEST: ClassVar[str] = "metadata"
     REQUEST_DEST: ClassVar[str] = "project_requests"
@@ -85,6 +87,7 @@ class FileService:
             self._get_annotation_parent_dir(),
             self._get_assembly_parent_dir(),
             self._get_gene_cache_dir(),
+            self._get_motif_cache_dir(),
             self._get_bam_files_parent_dir(),
         ]:
             self._create_folder(path)
@@ -140,7 +143,7 @@ class FileService:
         )
 
     def open_annotation_targets_file(
-        self, taxa_id: int, target_type: TargetsFileType
+        self, taxa_id: int, target_type: TargetsFileType, chrom: str
     ) -> TextIO:
         """Open a target annotation file for reading.
 
@@ -148,16 +151,18 @@ class FileService:
         :type taxa_id: int
         :param target_type: Which file to open
         :type target_type: TargetsFileType
+        :param chrom: Chromosome (for split targets file)
+        :type chrom: str
         :returns: File handle
         :rtype: TextIO
         """
-        path = Path(self.get_annotation_dir(taxa_id), target_type.value)
+        path = Path(self.get_annotation_dir(taxa_id), target_type.value(chrom=chrom))
         return open(path, "r")
 
     def _get_annotation_parent_dir(self) -> Path:
         return Path(self._data_path, self.ANNOTATION_DEST)
 
-    # Gene cache
+    # cache
 
     def get_gene_cache(self, selection_ids: Iterable[int]) -> list[str]:
         """Retrieve gene list for a given selection.
@@ -205,8 +210,19 @@ class FileService:
         path = Path(self._get_gene_cache_dir(), str(selection_id))
         path.unlink()
 
+    def get_motif_logo(self, motif: str) -> Path:
+        """Retrieve the logo for motif.
+
+        :param motif: Motif ID
+        :type motif: str
+        """
+        return Path(self._get_motif_cache_dir(), f"{motif}.PWM.png")
+
     def _get_gene_cache_dir(self) -> Path:
-        return Path(self._data_path, self.CACHE_DEST)
+        return Path(self._data_path, self.GENE_CACHE_DEST)
+
+    def _get_motif_cache_dir(self) -> Path:
+        return Path(self._data_path, self.MOTIF_CACHE_DEST)
 
     # Project related
 

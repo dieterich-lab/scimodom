@@ -26,7 +26,7 @@ watch(
 // table-related utilities
 const getFileName = () => {
   let stamp = new Date()
-  return 'scimodom_mirna_targets_' + stamp.toISOString().replaceAll(/:/g, '')
+  return 'scimodom_binding_sites_' + stamp.toISOString().replaceAll(/:/g, '')
 }
 
 const onExport = () => {
@@ -37,8 +37,10 @@ const navigateTo = (eufid) => {
   router.push({ name: 'browse', params: { eufid: eufid } })
 }
 
+const zeroPad = (num, places) => String(num).padStart(places, '0')
+
 function load(event) {
-  HTTP.get('/modification/target/MIRNA', {
+  HTTP.get('/modification/target/RBP', {
     params: {
       taxaId: props.coords.taxa_id,
       chrom: props.coords.chrom,
@@ -58,10 +60,11 @@ function load(event) {
           start: obj.start,
           end: obj.end,
           strand: obj.strand,
-          score: obj.score,
+          score: obj.score / 1000,
           source: name[0],
           target: name[1],
-          mirna: name[2]
+          motif: zeroPad(name[2], 3),
+          rbp: name[3]
         }
       })
     })
@@ -87,10 +90,10 @@ function load(event) {
     </template>
     <template #empty>
       <p class="text-center text-secondary-500 font-semibold">
-        No known miRNA target site affected by this modification!
+        No known RBP binding site affected by this modification!
       </p>
     </template>
-    <Column field="mirna" header="miRNA"></Column>
+    <Column field="rbp" header="RBP"></Column>
     <Column field="target" header="Target"></Column>
     <Column field="source" header="Source"></Column>
     <Column field="start" header="Start"></Column>

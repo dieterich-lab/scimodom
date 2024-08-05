@@ -126,7 +126,7 @@ class _TargetsContext:
         bedtools_service = get_bedtools_service()
         try:
             self._annotation_targets_file = file_service.open_annotation_targets_file(
-                self._taxa_id, self._target_type
+                self._taxa_id, self._target_type, chrom=self._coords[0]
             )
         except FileNotFoundError:
             logger.warning(

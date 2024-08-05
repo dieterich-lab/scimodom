@@ -4,6 +4,7 @@ import Dialog from 'primevue/dialog'
 import SubTitle from '@/components/ui/SubTitle.vue'
 import ModificationSiteTable from '@/components/modification/ModificationSiteTable.vue'
 import MicroRNASiteTable from '@/components/modification/MicroRNASiteTable.vue'
+import RBPSiteTable from '@/components/modification/RBPSiteTable.vue'
 
 const props = defineProps({
   site: {
@@ -38,9 +39,13 @@ const header = () => {
   >
     <SubTitle :small="true">This site is also reported in the following datasets:</SubTitle>
     <ModificationSiteTable :coords="site" />
-    <SubTitle :small="true"
+    <SubTitle :small="true" :padding="true"
       >The following miRNA target sites may be affected by this modification:</SubTitle
     >
     <MicroRNASiteTable :coords="site" />
+    <SubTitle :small="true" :padding="true"
+      >The following RBP binding sites may be affected by this modification:</SubTitle
+    >
+    <RBPSiteTable :coords="site" />
   </Dialog>
 </template>

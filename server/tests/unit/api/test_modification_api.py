@@ -79,24 +79,29 @@ class MockUtilitiesService:
 
 class MockFileService:
     VALID_TAXA = [9606, 10090]
-    FILE_CONTENT = "1\t3284722\t3284729\tTargetScan:Target:miR\t75\t+"
+    FILE_CONTENT = {
+        TargetsFileType.MIRNA: "1\t3284722\t3284729\tTargetScan:Target:miR\t75\t+",
+        TargetsFileType.RBP: "1\t2403126\t2403133\toRNAment:Target:1:Motif\t750\t+",
+    }
 
     @staticmethod
     def open_file_for_reading(path):  # noqa
         return StringIO("")
 
     @staticmethod
-    def open_annotation_targets_file(taxa_id: int, target_type: TargetsFileType):
+    def open_annotation_targets_file(
+        taxa_id: int, target_type: TargetsFileType, chrom: str
+    ):  # noqa
         if taxa_id in MockFileService.VALID_TAXA and isinstance(
             target_type, TargetsFileType
         ):
-            return StringIO(MockFileService.FILE_CONTENT)
+            return StringIO(MockFileService.FILE_CONTENT[target_type])
         else:
             raise FileNotFoundError
 
 
 class MockBedtoolsService:
-    INTERSECTION_RECORDS = [
+    RECORDS = [
         Bed6Record(
             chrom="1",
             start=3284722,
@@ -104,7 +109,15 @@ class MockBedtoolsService:
             name="TargetScan:Target:miR",
             score=75,
             strand=Strand.FORWARD,
-        )
+        ),
+        Bed6Record(
+            chrom="1",
+            start=2403126,
+            end=2403133,
+            name="oRNAment:Target:1:Motif",
+            score=750,
+            strand=Strand.FORWARD,
+        ),
     ]
 
     @staticmethod
@@ -121,6 +134,11 @@ class MockBedtoolsService:
         is_strand: bool,
         is_sorted: bool = True,
     ) -> Iterable[Bed6Record]:  # noqa
+        line = b_stream.getvalue()
+        if "TargetScan" in line:
+            MockBedtoolsService.INTERSECTION_RECORDS = [MockBedtoolsService.RECORDS[0]]
+        else:
+            MockBedtoolsService.INTERSECTION_RECORDS = [MockBedtoolsService.RECORDS[1]]
         return MockBedtoolsService.INTERSECTION_RECORDS
 
 
@@ -172,8 +190,14 @@ def test_get_modification_targets_bad_url(
     assert result.json["message"] == message
 
 
-def test_get_modification_targets(test_client, comparison_services):
-    url = "/target/MIRNA?taxaId=9606&chrom=1&start=3284723&end=3284724&strand=%2B"
+@pytest.mark.parametrize(
+    "url",
+    [
+        "/target/MIRNA?taxaId=9606&chrom=1&start=3284723&end=3284724&strand=%2B",
+        "/target/RBP?taxaId=9606&chrom=1&start=2403131&end=2403132&strand=%2B",
+    ],
+)
+def test_get_modification_targets(test_client, comparison_services, url):
     result = test_client.get(url)
     assert result.status == "200 OK"
     assert (

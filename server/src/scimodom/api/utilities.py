@@ -3,6 +3,7 @@ from flask_cors import cross_origin
 from sqlalchemy.exc import NoResultFound
 
 from scimodom.api.helpers import (
+    get_valid_logo,
     get_valid_taxa_id,
     ClientResponseException,
     validate_rna_type,
@@ -107,5 +108,14 @@ def get_assemblies(taxa_id):
     try:
         taxa_id_as_int = get_valid_taxa_id(taxa_id)
         return utilities_service.get_assemblies(taxa_id_as_int)
+    except ClientResponseException as e:
+        return e.response_tupel
+
+
+@api.route("/logos/<motif>", methods=["GET"])
+@cross_origin(supports_credentials=True)
+def get_logo_file(motif):
+    try:
+        return {"image": get_valid_logo(motif).as_posix()}
     except ClientResponseException as e:
         return e.response_tupel

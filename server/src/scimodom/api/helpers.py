@@ -1,3 +1,4 @@
+from pathlib import Path
 import re
 from typing import Optional
 
@@ -202,6 +203,14 @@ def get_valid_coords(taxa_id: int) -> tuple[str, int, int, Strand]:
     except ValueError:
         raise ClientResponseException(400, "Invalid strand value")
     return (chrom, start, end, strand_dto)
+
+
+def get_valid_logo(motif: str) -> Path:
+    file_service = get_file_service()
+    try:
+        return file_service.get_motif_logo(motif)
+    except FileNotFoundError:
+        raise ClientResponseException(404, "Unknown motif")
 
 
 # Response
