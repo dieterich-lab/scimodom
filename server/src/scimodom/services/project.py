@@ -146,6 +146,7 @@ class ProjectService:
             if len(contact.projects) == 1:
                 self._session.delete(contact)
             self._session.delete(project)
+            self._file_service.delete_project_metadata_file(project.id)
             self._session.commit()
         except Exception:
             self._session.rollback()

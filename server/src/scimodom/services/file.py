@@ -221,6 +221,15 @@ class FileService:
         metadata_file = Path(self._get_project_metadata_dir(), f"{smid}.json")
         return open(metadata_file, "w", opener=write_opener)
 
+    def delete_project_metadata_file(self, smid: str) -> None:
+        """Remove a metadata file.
+
+        :param smid: Sci-ModoM ID (SMID)
+        :type smid: str
+        """
+        path = Path(self._get_project_metadata_dir(), f"{smid}.json")
+        path.unlink()
+
     def create_project_request_file(self, request_uuid) -> TextIO:
         """Open a metadata (request) file for writing.
 

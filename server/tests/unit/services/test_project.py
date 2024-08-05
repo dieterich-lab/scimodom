@@ -30,6 +30,7 @@ class MockFileService:
     def __init__(self):
         self.files_by_name: dict[str, MockStringIO | MockBytesIO] = {}
         self.deleted_requests: list[str] = []
+        self.deleted_projects: list[str] = []
 
     def create_project_metadata_file(self, smid: str) -> TextIO:
         metadata_file = Path(
@@ -50,6 +51,10 @@ class MockFileService:
     def delete_project_request_file(self, request_uuid) -> None:
         name = self._get_project_request_file_path(request_uuid).as_posix()
         self.deleted_requests.append(name)
+
+    def delete_project_metadata_file(self, smid) -> None:
+        name = Path(self._get_project_metadata_dir(), f"{smid}.json").as_posix()
+        self.deleted_projects.append(name)
 
     def _get_project_metadata_dir(self) -> Path:
         return Path("/data", "metadata")
@@ -379,3 +384,4 @@ def test_delete_project(Session, project, file_service):
             session.scalar(select(func.count()).select_from(UserProjectAssociation))
             == 0
         )
+    assert file_service.deleted_projects == ["/data/metadata/12345678.json"]
