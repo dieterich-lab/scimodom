@@ -460,7 +460,11 @@ onMounted(() => {
               </a>
             </template>
           </Column>
-          <Column field="end" header="End" exportHeader="chromEnd"></Column>
+          <Column field="end" exportHeader="chromEnd">
+            <template #header>
+              <span v-tooltip.top="'Open interval (end excluded)'">End</span>
+            </template>
+          </Column>
           <Column field="name" header="Name" exportHeader="name">
             <template #body="{ data }">
               <a
@@ -472,11 +476,26 @@ onMounted(() => {
               </a>
             </template>
           </Column>
-          <Column field="score" header="Score" sortable exportHeader="score"></Column>
+          <Column field="score" sortable exportHeader="score">
+            <template #header>
+              <span v-tooltip.top="'-log10(p) or 0 if undefined'">Score</span>
+            </template>
+          </Column>
           <Column field="strand" header="Strand" exportHeader="strand"></Column>
-          <Column field="coverage" header="Coverage" sortable exportHeader="coverage"></Column>
-          <Column field="frequency" header="Frequency" sortable exportHeader="frequency"></Column>
-          <Column field="dataset_id" header="EUFID" exportHeader="EUFID">
+          <Column field="coverage" sortable exportHeader="coverage">
+            <template #header>
+              <span v-tooltip.top="'0 if not available'">Coverage</span>
+            </template>
+          </Column>
+          <Column field="frequency" sortable exportHeader="frequency">
+            <template #header>
+              <span v-tooltip.top="'Modification stoichiometry'">Frequency</span>
+            </template>
+          </Column>
+          <Column field="dataset_id" exportHeader="EUFID">
+            <template #header>
+              <span v-tooltip.top="'Dataset ID'">EUFID</span>
+            </template>
             <template #body="{ data }">
               <Button
                 size="small"

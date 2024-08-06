@@ -40,6 +40,7 @@ import TabPanel from 'primevue/tabpanel'
 import TabView from 'primevue/tabview'
 import Textarea from 'primevue/textarea'
 import ToggleButton from 'primevue/togglebutton'
+import Tooltip from 'primevue/tooltip'
 import TreeSelect from 'primevue/treeselect'
 // layout components
 import DefaultLayout from '@/components/layout/DefaultLayout.vue'
@@ -60,6 +61,8 @@ app.use(DialogService)
 app.use(router)
 app.use(VueCookies)
 app.use(createPinia())
+
+app.directive('tooltip', Tooltip)
 
 app.component('AutoComplete', AutoComplete)
 app.component('Button', Button)

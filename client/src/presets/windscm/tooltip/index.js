@@ -3,6 +3,7 @@ export default {
     class: [
       // Position
       'absolute',
+      'p-fadein',
       // Spacing
       {
         'px-1.5':
@@ -28,9 +29,9 @@ export default {
       'rounded-md',
 
       // Color
-      'text-surface-900 dark:text-surface-0/80',
-      'bg-surface-0 dark:bg-surface-900',
-      'ring-1 ring-inset ring-surface-200 dark:ring-surface-800 ring-offset-0',
+      'text-surface-700 dark:text-surface-900',
+      'bg-surface-0 dark:bg-surface-50',
+      'ring-1 ring-inset ring-surface-700 dark:ring-surface-900 ring-offset-0',
 
       // Misc
       'whitespace-pre-line',
