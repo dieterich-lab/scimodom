@@ -10,7 +10,10 @@ const model = defineModel()
         <label for="criteria1" class="ml-2">
           <span class="inline font-bold">Intersection</span>
         </label>
-        <p class="mt-0 ml-8 text-sm">Search for overlaps between A and B on the same strand.</p>
+        <p class="mt-0 ml-8 text-sm">
+          Search for overlaps between <span class="font-semibold">1</span> and
+          <span class="font-semibold">2</span> on the same strand.
+        </p>
       </div>
       <div class="w-1/2">
         <RadioButton v-model="model" inputId="criteria2" name="step3" value="intersect-false" />
@@ -18,7 +21,8 @@ const model = defineModel()
           <span class="inline font-bold">Intersection (strand-unaware)</span>
         </label>
         <p class="mt-0 ml-8 text-sm">
-          Search for overlaps between A and B without respect to strand.
+          Search for overlaps between <span class="font-semibold">1</span> and
+          <span class="font-semibold">2</span> without respect to strand.
         </p>
       </div>
     </div>
@@ -29,7 +33,8 @@ const model = defineModel()
           <span class="inline font-bold">Closest</span>
         </label>
         <p class="mt-0 ml-8 text-sm">
-          Search for closest non-overlaps in B (wrt. A) on the same strand.
+          Search for closest non-overlaps in <span class="font-semibold">2</span> (wrt.
+          <span class="font-semibold">1</span>) on the same strand.
         </p>
       </div>
       <div class="w-1/2">
@@ -38,7 +43,8 @@ const model = defineModel()
           <span class="inline font-bold">Closest (strand-unaware)</span>
         </label>
         <p class="mt-0 ml-8 text-sm">
-          Search for closest non-overlaps in B (wrt. A) without respect to strand.
+          Search for closest non-overlaps in <span class="font-semibold">2</span> (wrt.
+          <span class="font-semibold">1</span>) without respect to strand.
         </p>
       </div>
     </div>
@@ -49,7 +55,9 @@ const model = defineModel()
           <span class="inline font-bold">Difference</span>
         </label>
         <p class="mt-0 ml-8 text-sm">
-          Search for strict non-overlaps in A (modifications in A but not in B) on the same strand.
+          Search for strict non-overlaps in reference (modifications in
+          <span class="font-semibold">1</span> but not in <span class="font-semibold">2</span>) on
+          the same strand.
         </p>
       </div>
       <div class="w-1/2">
@@ -58,8 +66,9 @@ const model = defineModel()
           <span class="inline font-bold">Difference (strand-unaware)</span>
         </label>
         <p class="mt-0 ml-8 text-sm">
-          Search for strict non-overlaps in A (modifications in A but not in B) without respect to
-          strand.
+          Search for strict non-overlaps in reference (modifications in
+          <span class="font-semibold">1</span> but not in <span class="font-semibold">2</span>)
+          without respect to strand.
         </p>
       </div>
     </div>

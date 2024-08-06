@@ -25,25 +25,97 @@ const selectedDatasetB = ref([])
 const dt = ref()
 const records = ref()
 const columns = [
-  { field: 'a.chrom', header: 'Chrom', exportHeader: 'chrom', sortable: true },
-  { field: 'a.start', header: 'Start', exportHeader: 'chromStart', sortable: true },
-  { field: 'a.end', header: 'End', exportHeader: 'chromEnd', sortable: false },
-  { field: 'a.name', header: 'Name', exportHeader: 'name', sortable: false },
-  { field: 'a.score', header: 'Score', exportHeader: 'score', sortable: true },
-  { field: 'a.strand', header: 'Strand', exportHeader: 'strand', sortable: false },
-  { field: 'a.eufid', header: 'EUFID', exportHeader: 'eufid', sortable: false },
-  { field: 'a.coverage', header: 'Coverage', exportHeader: 'coverage', sortable: true },
-  { field: 'a.frequency', header: 'Frequency', exportHeader: 'frequency', sortable: true },
-  { field: 'b.chrom', header: 'Chrom', exportHeader: 'chromB', sortable: true },
-  { field: 'b.start', header: 'Start', exportHeader: 'chromStartB', sortable: true },
-  { field: 'b.end', header: 'End', exportHeader: 'chromEndB', sortable: false },
-  { field: 'b.name', header: 'Name', exportHeader: 'nameB', sortable: false },
-  { field: 'b.score', header: 'Score', exportHeader: 'scoreB', sortable: true },
-  { field: 'b.strand', header: 'Strand', exportHeader: 'strandB', sortable: false },
-  { field: 'b.eufid', header: 'EUFID', exportHeader: 'eufidB', sortable: false },
-  { field: 'b.coverage', header: 'Coverage', exportHeader: 'coverageB', sortable: true },
-  { field: 'b.frequency', header: 'Frequency', exportHeader: 'frequencyB', sortable: true },
-  { field: 'distance', header: 'Distance', exportHeader: 'distance', sortable: false }
+  { field: 'a.chrom', header: 'Chrom', exportHeader: 'chrom_ref', sortable: true, tooltip: '' },
+  {
+    field: 'a.start',
+    header: 'Start',
+    exportHeader: 'chromStart_ref',
+    sortable: true,
+    tooltip: ''
+  },
+  {
+    field: 'a.end',
+    header: 'End',
+    exportHeader: 'chromEnd_ref',
+    sortable: false,
+    tooltip: 'Open (end excluded)'
+  },
+  { field: 'a.name', header: 'Name', exportHeader: 'name_ref', sortable: false, tooltip: '' },
+  {
+    field: 'a.score',
+    header: 'Score',
+    exportHeader: 'score_ref',
+    sortable: true,
+    tooltip: '-log10(p) or 0 if undefined'
+  },
+  { field: 'a.strand', header: 'Strand', exportHeader: 'strand_ref', sortable: false, tooltip: '' },
+  {
+    field: 'a.eufid',
+    header: 'EUFID',
+    exportHeader: 'EUFID_ref',
+    sortable: false,
+    tooltip: 'Dataset ID'
+  },
+  {
+    field: 'a.coverage',
+    header: 'Coverage',
+    exportHeader: 'coverage_ref',
+    sortable: true,
+    tooltip: '0 if not available'
+  },
+  {
+    field: 'a.frequency',
+    header: 'Frequency',
+    exportHeader: 'frequency_ref',
+    sortable: true,
+    tooltip: 'Modification stoichiometry'
+  },
+  { field: 'b.chrom', header: 'Chrom', exportHeader: 'chrom', sortable: true, tooltip: '' },
+  { field: 'b.start', header: 'Start', exportHeader: 'chromStart', sortable: true, tooltip: '' },
+  {
+    field: 'b.end',
+    header: 'End',
+    exportHeader: 'chromEnd',
+    sortable: false,
+    tooltip: 'Open (end excluded)'
+  },
+  { field: 'b.name', header: 'Name', exportHeader: 'name', sortable: false, tooltip: '' },
+  {
+    field: 'b.score',
+    header: 'Score',
+    exportHeader: 'score',
+    sortable: true,
+    tooltip: '-log10(p) or 0 if undefined'
+  },
+  { field: 'b.strand', header: 'Strand', exportHeader: 'strand', sortable: false, tooltip: '' },
+  {
+    field: 'b.eufid',
+    header: 'EUFID',
+    exportHeader: 'EUFID',
+    sortable: false,
+    tooltip: 'Dataset ID or upload'
+  },
+  {
+    field: 'b.coverage',
+    header: 'Coverage',
+    exportHeader: 'coverage',
+    sortable: true,
+    tooltip: '0 if not available'
+  },
+  {
+    field: 'b.frequency',
+    header: 'Frequency',
+    exportHeader: 'frequency',
+    sortable: true,
+    tooltip: 'Modification stoichiometry or 1 for BED6'
+  },
+  {
+    field: 'distance',
+    header: 'Distance',
+    exportHeader: 'Distance',
+    sortable: false,
+    tooltip: 'Distance to closest feature'
+  }
 ]
 
 const { handleSubmit, resetForm } = useForm()
@@ -85,7 +157,7 @@ function intersect(is_strand) {
         indexes: null
       }
     }),
-    'Failed to do intersect',
+    'Failed to intersect',
     dialogState
   ).then((data) => {
     records.value = data.records.map((x) => {
@@ -99,16 +171,6 @@ function intersect(is_strand) {
   })
 }
 
-function getCompareParams(is_strand) {
-  return {
-    reference: selectedDatasetA.value,
-    comparison: selectedDatasetB.value,
-    upload: datasetUploaded.value,
-    strand: is_strand,
-    euf: isEUF.value
-  }
-}
-
 function closest(is_strand) {
   handleRequestWithErrorReporting(
     HTTP.get('/dataset/closest', {
@@ -117,7 +179,7 @@ function closest(is_strand) {
         indexes: null
       }
     }),
-    'Failed to do closest',
+    'Failed to closest',
     dialogState
   ).then((data) => {
     records.value = data.records
@@ -133,7 +195,7 @@ function subtract(is_strand) {
         indexes: null
       }
     }),
-    'Failed to do intersect',
+    'Failed to subtract',
     dialogState
   ).then((data) => {
     records.value = data.records.map((x) => {
@@ -157,8 +219,14 @@ function subtract(is_strand) {
   })
 }
 
-const onExport = () => {
-  dt.value.exportCSV()
+function getCompareParams(is_strand) {
+  return {
+    reference: selectedDatasetA.value,
+    comparison: selectedDatasetB.value,
+    upload: datasetUploaded.value,
+    strand: is_strand,
+    euf: isEUF.value
+  }
 }
 
 function validateField(value) {
@@ -185,6 +253,16 @@ const tablePt = {
   virtualScrollerSpacer: {
     class: 'flex'
   }
+}
+
+// table-related utilities
+const getFileName = () => {
+  let stamp = new Date()
+  return 'scimodom_compare_' + stamp.toISOString().replaceAll(/:/g, '')
+}
+
+const onExport = () => {
+  dt.value.exportCSV()
 }
 </script>
 
@@ -289,6 +367,7 @@ const tablePt = {
         <DataTable
           :value="records"
           ref="dt"
+          :exportFilename="getFileName()"
           sortMode="multiple"
           removableSort
           scrollable
@@ -313,10 +392,15 @@ const tablePt = {
           <template #loading>
             <ProgressSpinner style="width: 60px; height: 60px" strokeWidth="6" />
           </template>
+          <template #empty>
+            <p class="text-center text-secondary-500 font-semibold">
+              No records match your search criteria!
+            </p>
+          </template>
           <ColumnGroup type="header">
             <Row>
-              <Column header="Reference dataset A" :colspan="9" />
-              <Column header="Comparison dataset B" :colspan="10" />
+              <Column header="Reference dataset(s)" :colspan="9" />
+              <Column header="Comparison dataset(s)" :colspan="10" />
             </Row>
             <Row>
               <Column
@@ -324,9 +408,11 @@ const tablePt = {
                 :key="col.field"
                 :field="col.field"
                 :sortable="col.sortable"
-                :header="col.header"
                 style="w-{1/19}"
               >
+                <template #header>
+                  <span v-tooltip.top="col.tooltip">{{ col.header }}</span>
+                </template>
               </Column>
             </Row>
           </ColumnGroup>

@@ -462,7 +462,7 @@ onMounted(() => {
           </Column>
           <Column field="end" exportHeader="chromEnd">
             <template #header>
-              <span v-tooltip.top="'Open interval (end excluded)'">End</span>
+              <span v-tooltip.top="'Open (end excluded)'">End</span>
             </template>
           </Column>
           <Column field="name" header="Name" exportHeader="name">
