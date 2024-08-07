@@ -506,7 +506,7 @@ class BedToolsService:
     def intersect_bed6_records(
         self,
         a_records: Iterable[Bed6Record],
-        b_stream: TextIO,
+        stream: TextIO,
         is_strand: bool,
         is_sorted: bool = True,
     ) -> Iterable[Bed6Record]:
@@ -517,9 +517,9 @@ class BedToolsService:
 
         :param a_records: Left operand of operation
         :type a_records: Iterable[Bed6Record]
-        :param b_stream: Right operand of operation.
+        :param stream: Right operand of operation.
         The file is truncated to BED6.
-        :type b_stream: TextIO
+        :type stream: TextIO
         :parm is_strand: Perform strand-aware query
         :type is_strand: bool
         :param is_sorted: Invoked sweeping algorithm
@@ -528,7 +528,7 @@ class BedToolsService:
         :rtype: Iterable of Bed6Record
         """
         a_bedtool = self._get_bed6_record_to_bedtool(a_records)
-        b_bedtool = BedTool(b_stream)
+        b_bedtool = BedTool(stream)
         bedtool = a_bedtool.intersect(
             b=b_bedtool,
             wb=True,
@@ -537,6 +537,27 @@ class BedToolsService:
         )
         for b in bedtool:
             yield self._get_bed6_record_from_bedtool(b[6:12])
+
+    def getfasta(
+        self, records: Iterable[Bed6Record], fasta_file: Path, is_strand: bool
+    ) -> str:
+        """Wrapper for pybedtools.bedtool.BedTool.sequence
+
+        :param records: Records
+        :type records: Itetable[Bed6Record]
+        :param fasta_file: FASTA file
+        :type fasta_file: Path
+        :parm is_strand: Force strandedness. If the
+        feature occupies the antisense strand,
+        the sequence will be reverse complemented.
+        :type is_strand: bool
+        :returns: FASTA file with sequences
+        :rtype: str
+        """
+        fasta = BedTool(fasta_file)
+        bedtool = self._get_bed6_record_to_bedtool(records)
+        sequence = bedtool.sequence(fi=fasta, s=is_strand)
+        return sequence.seqfn
 
     @staticmethod
     def _annotation_to_stream(annotation_bedtool, feature):

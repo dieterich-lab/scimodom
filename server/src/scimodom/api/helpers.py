@@ -178,7 +178,7 @@ def get_valid_targets_type(raw: str) -> TargetsFileType:
         raise ClientResponseException(404, "Unknown targets type")
 
 
-def get_valid_coords(taxa_id: int) -> tuple[str, int, int, Strand]:
+def get_valid_coords(taxa_id: int, context: int = 0) -> tuple[str, int, int, Strand]:
     chrom = request.args.get("chrom", type=str)
     start = request.args.get("start", type=int)
     end = request.args.get("end", type=int)
@@ -194,7 +194,8 @@ def get_valid_coords(taxa_id: int) -> tuple[str, int, int, Strand]:
         raise ClientResponseException(
             400, "Invalid coordinates: start must be smaller than end"
         )
-    if not end < [d for d in chroms if d["chrom"] == chrom][0]["size"]:
+    chrom_size = [d for d in chroms if d["chrom"] == chrom][0]["size"]
+    if not end < chrom_size:
         raise ClientResponseException(
             400, "Invalid coordinates: end is greater than chrom size"
         )
@@ -202,6 +203,15 @@ def get_valid_coords(taxa_id: int) -> tuple[str, int, int, Strand]:
         strand_dto = Strand(strand)
     except ValueError:
         raise ClientResponseException(400, "Invalid strand value")
+
+    if context > 0:
+        start = start - context
+        if start < 0:
+            start = 0
+        end = end + context
+        if end > chrom_size:
+            end = chrom_size
+
     return (chrom, start, end, strand_dto)
 
 

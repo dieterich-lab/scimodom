@@ -2,6 +2,7 @@
 import Dialog from 'primevue/dialog'
 
 import SubTitle from '@/components/ui/SubTitle.vue'
+import ModificationContext from '@/components/modification/ModificationContext.vue'
 import ModificationSiteTable from '@/components/modification/ModificationSiteTable.vue'
 import MicroRNASiteTable from '@/components/modification/MicroRNASiteTable.vue'
 import RBPSiteTable from '@/components/modification/RBPSiteTable.vue'
@@ -37,7 +38,10 @@ const header = () => {
     }"
     :ptOptions="{ mergeProps: true }"
   >
-    <SubTitle :small="true">This site is also reported in the following datasets:</SubTitle>
+    <SubTitle :small="true"> Genomic context: <ModificationContext :coords="site" /> </SubTitle>
+    <SubTitle :small="true" :padding="true"
+      >This site is also reported in the following datasets:</SubTitle
+    >
     <ModificationSiteTable :coords="site" />
     <SubTitle :small="true" :padding="true"
       >The following miRNA target sites may be affected by this modification:</SubTitle

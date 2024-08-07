@@ -44,6 +44,7 @@ class AssemblyFileType(Enum):
     INFO = "info.json"
     RELEASE = "release.json"
     CHAIN = "__CHAIN__"
+    DNA = "{organism}.{assembly}.dna.chromosome.{chrom}.fa.gz".format
 
 
 class TargetsFileType(Enum):
@@ -293,6 +294,7 @@ class FileService:
         self,
         taxa_id: int,
         file_type: AssemblyFileType,
+        chrom: str | None = None,
         chain_file_name: str | None = None,
         chain_assembly_name: str | None = None,
     ) -> Path:
@@ -302,10 +304,12 @@ class FileService:
         :type taxa_id: int
         :param file_type: Type of assembly file (CHROM, INFO, RELEASE, CHAIN)
         :type file_type: AssemblyFileType
+        :param chrom: Only used if file_type is DNA
+        :type chrom: str | None
         :param chain_file_name: Only used if file_type is CHAIN - base chain file name
-        :type chain_file_name: str
+        :type chain_file_name: str | None
         :param chain_assembly_name: Only used if file_type is CHAIN - assembly name
-        :type chain_assembly_name: str
+        :type chain_assembly_name: str | None
         :returns: Full path to file
         :rtype: Path
         """
@@ -316,6 +320,15 @@ class FileService:
                 raise ValueError("Missing chain_file_name and/or assembly_name!")
             file_name = chain_file_name
             assembly_name = chain_assembly_name
+        if file_type == AssemblyFileType.DNA:
+            if chrom is None:
+                raise ValueError("Missing chrom!")
+            organism = self._get_dir_name_from_organism(
+                self._get_organism_from_taxa_id(taxa_id)
+            )
+            file_name = file_type.value(
+                organism=organism, assembly=assembly_name, chrom=chrom
+            )
 
         return Path(self._get_assembly_dir(taxa_id, assembly_name), file_name)
 
@@ -471,6 +484,15 @@ class FileService:
         fp, path = mkstemp(dir=self._temp_path, suffix=suffix)
         close(fp)
         return path
+
+    @staticmethod
+    def read_sequence_context(fasta_file: str) -> str:
+        try:
+            with open(fasta_file, "r") as fh:
+                sequence = fh.readlines()[1].strip()
+        except IndexError:
+            sequence = ""
+        return sequence
 
     # BAM file
 
