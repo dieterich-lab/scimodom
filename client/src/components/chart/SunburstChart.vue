@@ -1,17 +1,13 @@
-<template>
-  <div ref="chart" class="chart"></div>
-  <div
-    ref="tooltip"
-    class="tooltip"
-    style="position: absolute; opacity: 0; pointer-events: none; transition: opacity 0.3s"
-  ></div>
-</template>
-
 <script>
-import * as d3 from 'd3'
+import Plotly from 'plotly.js-dist'
+import { HTTP } from '@/services/API.js'
 
 export default {
   name: 'SunburstChart',
+  props: ['chart'],
+  setup(props) {
+    const chart = props.chart
+  },
   data() {
     return {
       data: null
@@ -23,145 +19,158 @@ export default {
   methods: {
     async fetchData() {
       try {
-        const response = await fetch('http://localhost:5173/public/data.json')
-        if (!response.ok) {
-          throw new Error('Network response was not ok ' + response.statusText)
-        }
-        const data = await response.json()
-        this.data = data[0]
-        console.log('Fetched data:', this.data) // Log fetched data for verification
+        const response = await HTTP.get(`/sunburst/${this.chart}`)
+        const data = await response.data
+        this.calculateCumulativeSize(data[0])
+        this.data = this.processData(data[0]) // Assuming data is an array and you need the first element
         this.createChart()
       } catch (error) {
         console.error('Error fetching data:', error)
       }
     },
-    createChart() {
-      const width = 700
-      const radius = width / 2
+    calculateCumulativeSize(node) {
+      if (!node.children) {
+        return node.size || 0
+      }
+      let totalSize = 0
+      for (let child of node.children) {
+        totalSize += this.calculateCumulativeSize(child)
+      }
+      node.cumulativeSize = totalSize
+      return totalSize
+    },
+    getColors() {
+      return [
+        '#00b052',
+        '#02aeed',
+        '#6ac886',
+        '#7acff4',
+        '#c0e7ca',
+        '#e0f4fd',
+        '#00b052',
+        '#02aeed',
+        '#6ac886',
+        '#7acff4',
+        '#c0e7ca',
+        '#e0f4fd',
+        '#00b052',
+        '#02aeed',
+        '#6ac886',
+        '#7acff4',
+        '#c0e7ca',
+        '#e0f4fd',
+        '#00b052',
+        '#02aeed',
+        '#6ac886',
+        '#7acff4',
+        '#c0e7ca',
+        '#e0f4fd'
+      ]
+    },
+    // Function to lighten a color by a certain percentage.
+    // This is used to create variations in color for child nodes.
+    lightenColor(color, depth) {
+      // Convert the hex color to an integer.
+      const num = parseInt(color.slice(1), 16)
 
-      const svg = d3
-        .select(this.$refs.chart)
-        .append('svg')
-        .attr('width', width)
-        .attr('height', width)
-        .append('g')
-        .attr('transform', `translate(${radius},${radius})`)
+      // Adjust the amount based on the depth. The deeper the node, the less lightening is applied.
+      const amt = Math.round(2.55 * (depth * 5)) // Adjust the multiplier for finer control.
 
-      const tooltip = d3.select(this.$refs.tooltip) // Correctly define tooltip within D3 context
+      // Extract the red, green, and blue components and apply the adjustment.
+      const R = (num >> 16) - amt
+      const G = ((num >> 8) & 0x00ff) - amt
+      const B = (num & 0x0000ff) - amt
 
-      const partition = d3.partition().size([2 * Math.PI, radius])
+      // Reassemble the color, ensuring each component is within valid range.
+      return `#${(0x1000000 + (R > 0 ? R : 0) * 0x10000 + (G > 0 ? G : 0) * 0x100 + (B > 0 ? B : 0))
+        .toString(16)
+        .slice(1)}`
+    },
+    processData(data) {
+      const ids = []
+      const labels = []
+      const parents = []
+      const values = []
+      const colors = []
+      const textColors = [] // Array to hold the text colors for labels.
+      const customdata = []
 
-      const root = d3
-        .hierarchy(this.data)
-        .sum((d) => (d.size && !d.children ? d.size : 0))
-        .sort((a, b) => b.value - a.value)
+      const colorPalette = this.getColors()
+      // Object to store the base color for each first-level node.
+      const baseColors = {}
+      function traverse(node, parent, depth, parentColor) {
+        const id = parent ? `${parent}-${node.name}` : node.name
+        ids.push(id)
+        labels.push(node.name)
+        parents.push(parent)
+        values.push(node.size || 0)
 
-      partition(root)
+        let color
+        let textColor = 'white' // Default text color is white.
 
-      const arc = d3
-        .arc()
-        .startAngle((d) => d.x0)
-        .endAngle((d) => d.x1)
-        .innerRadius((d) => d.y0)
-        .outerRadius((d) => d.y1)
+        if (depth === 0) {
+          color = '#F4F1F5FF'
+          textColor = 'black' // Keep root level label in black.
+        } else if (depth === 1) {
+          // Check if the node is a first-level node.
+          // Assign a color from the palette to first-level nodes.
+          color = colorPalette[ids.length % colorPalette.length]
+          baseColors[node.name] = color // Store the base color for later use.
+        } else {
+          // For subsequent levels, lighten the parent's color.
+          color = this.lightenColor(parentColor, depth) // Adjust lightness by depth level.
+        }
 
-      const path = svg
-        .selectAll('path')
-        .data(root.descendants())
-        .enter()
-        .append('path')
-        .attr('d', arc)
-        .style('fill', (d) => d.data.color || '#ccc')
-        .on('mouseover', function (event, d) {
-          const color = d3.select(this).style('fill')
-          tooltip
-            .style('opacity', 1)
-            .html(`Name: ${d.data.name}<br>Size: ${d.value}`)
-            .style('left', event.pageX + 10 + 'px')
-            .style('top', event.pageY - 20 + 'px')
-            .style('background-color', color)
-        })
-        .on('mouseout', function () {
-          tooltip.style('opacity', 0)
-        })
-        .on('click', clicked)
-        .append('title')
-        .text((d) => `${d.data.name}\n${d.value}`)
+        colors.push(color) // Add the calculated color to the colors array.
+        textColors.push(textColor) // Assign the text color to the textColors array.
 
-      function clicked(event, p) {
-        console.log('Clicked on:', p.data.name) // Log click event for verification
-        root.each((d) => (d.current = d.target || d))
+        // colors.push(colorPalette[depth % colorPalette.length]);
+        customdata.push(node.cumulativeSize || node.size || 0)
 
-        const parent = p.parent
-        const depth = p.depth
-
-        // Rescale
-        root.each((d) => {
-          d.target = {
-            x0: Math.max(0, Math.min(1, (d.x0 - p.x0) / (p.x1 - p.x0))) * 2 * Math.PI,
-            x1: Math.max(0, Math.min(1, (d.x1 - p.x0) / (p.x1 - p.x0))) * 2 * Math.PI,
-            y0: Math.max(0, d.y0 - p.y0),
-            y1: Math.max(0, d.y1 - p.y0)
-          }
-        })
-
-        const t = svg.transition().duration(750)
-
-        path
-          .transition(t)
-          .tween('data', (d) => {
-            const i = d3.interpolate(d.current, d.target)
-            return (t) => (d.current = i(t))
-          })
-          .attrTween('d', (d) => () => arc(d.current))
+        if (node.children) {
+          node.children.forEach((child) => traverse.call(this, child, id, depth + 1, color))
+        }
       }
 
-      // Add labels
-      svg
-        .selectAll('text')
-        .data(root.descendants())
-        .enter()
-        .append('text')
-        .attr('transform', function (d) {
-          const x = (((d.x0 + d.x1) / 2) * 180) / Math.PI
-          if (d.depth === 0) {
-            return `translate(0, 0)`
-          } else if (d.data.name === 'Y') {
-            // Specific adjustment for 'Y'
-            return `rotate(${x - 90}) translate(${(d.y0 + d.y1) / 2},0) rotate(${
-              x < 270 && x > 90 ? 180 : 0
-            })`
-          } else {
-            return `rotate(${x - 90}) translate(${(d.y0 + d.y1) / 2},0) rotate(${
-              x < 180 ? 0 : 180
-            })`
-          }
-        })
-        .attr('dy', '0.35em')
-        .attr('dx', '0.5em')
-        .text((d) => d.data.name)
-        .style('text-anchor', 'middle')
-        .style('font-size', '10px')
+      // Start the traversal from the root node, passing an empty string for the parent and depth 0.
+      traverse.call(this, data, '', 0, '')
+
+      return [
+        {
+          type: 'sunburst',
+          ids: ids,
+          labels: labels,
+          parents: parents,
+          values: values,
+          marker: { colors: colors, line: { width: 1 } },
+          textfont: { color: textColors }, // Set the text color for each label.
+          customdata: customdata,
+          hovertemplate: '<b>%{label}</b> : %{customdata}<extra></extra>',
+          textinfo: 'label',
+          insidetextorientation: 'horizontal'
+        }
+      ]
+    },
+    createChart() {
+      const layout = {
+        margin: { t: 0, l: 0, r: 0, b: 0 },
+        sunburstcolorway: this.getColors(),
+        extendsunburstcolorway: true
+      }
+
+      Plotly.newPlot(this.$refs.chart, this.data, layout)
+
+      this.$refs.chart.on('plotly_click', (event) => {
+        const point = event.points[0]
+        if (point) {
+          Plotly.restyle(this.$refs.chart, 'root', [point.id])
+        }
+      })
     }
   }
 }
 </script>
 
-<style scoped>
-.chart {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-}
-
-.tooltip {
-  background-color: white;
-  border: 1px solid #d3d3d3;
-  border-radius: 5px;
-  padding: 10px;
-  color: black;
-  font-size: 12px;
-  max-width: 200px;
-}
-</style>
+<template>
+  <div ref="chart"></div>
+</template>
