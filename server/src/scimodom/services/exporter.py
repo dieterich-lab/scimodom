@@ -109,6 +109,7 @@ class Exporter:
         yield f"#bioinformatics_workflow={_or_default(dataset.bioinformatics_workflow, '')}\n"
         yield f"#experiment={_or_default(dataset.experiment, '')}\n"
         yield f"#external_source={_or_default(dataset.external_source, '')}\n"
+        yield f"#internal_source=EUFID:{dataset.id} SMID:{dataset.project_id}\n"
         yield "#chrom\tchromStart\tchromEnd\tname\tscore\tstrand\tthickStart\tthickEnd\titemRgb\tcoverage\tfrequency\n"
 
     def _generate_records(self, dataset: Dataset):

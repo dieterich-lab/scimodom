@@ -95,7 +95,11 @@ function load(event) {
     <Column field="source" header="Source"></Column>
     <Column field="start" header="Start"></Column>
     <Column field="end" header="End"></Column>
-    <Column field="score" header="Score"></Column>
+    <Column field="score">
+      <template #header>
+        <span v-tooltip.top="'context++ score percentile'">Score</span>
+      </template>
+    </Column>
     <Column field="strand" header="Strand"></Column>
   </DataTable>
 </template>

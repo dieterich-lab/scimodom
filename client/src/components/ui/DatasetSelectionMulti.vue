@@ -51,7 +51,16 @@ function getEmptyMessage() {
     :selectionLimit="selectLimit"
     :emptyMessage="getEmptyMessage()"
     filter
-    :filterFields="['dataset_id', 'dataset_title', 'dataset_info']"
+    :filterFields="[
+      'dataset_id',
+      'dataset_title',
+      'project_title',
+      'project_id',
+      'rna',
+      'modomics_sname',
+      'cto',
+      'tech'
+    ]"
     optionValue="dataset_id"
     optionLabel="dataset_id"
     :placeholder="placeholder"

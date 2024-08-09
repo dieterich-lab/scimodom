@@ -406,7 +406,7 @@ onMounted(() => {
           ref="dt"
           :exportFilename="getFileName()"
           lazy
-          paginator
+          :paginator="true"
           :totalRecords="totalRecords"
           :loading="loading"
           :first="first"
@@ -416,6 +416,8 @@ onMounted(() => {
           removableSort
           sortMode="multiple"
           stripedRows
+          paginatorTemplate="FirstPageLink PrevPageLink CurrentPageReport NextPageLink LastPageLink"
+          currentPageReportTemplate="Showing {first} to {last} of {totalRecords} records"
         >
           <template #header>
             <div style="text-align: right">
@@ -427,6 +429,7 @@ onMounted(() => {
                 raised
                 @click="onExport($event)"
                 :disabled="disabled"
+                v-tooltip.top="'Export current view'"
               />
             </div>
           </template>
