@@ -14,6 +14,7 @@
     "axios": "^1.7.2",
     "jwt-decode": "^4.0.0",
     "pinia": "^2.1.7",
+    "plotly.js-dist": "^2.34.0",
     "primeicons": "^7.0.0",
     "primevue": "^3.52.0",
     "vee-validate": "^4.13.1",

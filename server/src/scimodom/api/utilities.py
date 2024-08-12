@@ -119,3 +119,19 @@ def get_logo_file(motif):
         return {"image": get_valid_logo(motif).as_posix()}
     except ClientResponseException as e:
         return e.response_tupel
+
+
+@api.route("/sunburst/<chart>", methods=["GET"])
+@cross_origin(supports_credentials=True)
+def get_sunburst_chart(chart):
+    if chart not in ["search", "browse"]:
+        raise ClientResponseException(404, "Unrecognized chart type.")
+    utitlies_service = get_utilities_service()
+    return utitlies_service.get_chart_data(chart)
+
+
+@api.route("/release", methods=["GET"])
+@cross_origin(supports_credentials=True)
+def get_release():
+    utitlies_service = get_utilities_service()
+    return utitlies_service.get_release_info()
