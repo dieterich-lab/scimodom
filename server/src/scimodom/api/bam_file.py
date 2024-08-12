@@ -14,7 +14,7 @@ from scimodom.services.file import get_file_service, FileTooLarge
 bam_file_api = Blueprint("bam_file_api", __name__)
 
 BUFFER_SIZE = 1024 * 1024
-MAX_BAM_FILE_SIZE = 1024 * 1024 * 1024
+MAX_BAM_FILE_SIZE = 2 * 1024 * 1024 * 1024
 
 
 @bam_file_api.route("/all/<dataset_id>", methods=["GET"])

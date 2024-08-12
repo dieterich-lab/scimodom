@@ -12,7 +12,7 @@ const UPLOAD_STATE = Object.freeze({
 const MAX_PARALLEL_UPLOADS = 1
 const WAIT_UNTIL_EXPIRING_SUCCESSFUL_JOB_MS = 10 * 60 * 1000
 
-const MAX_FILE_SIZE = 1024 * 1024 * 1024
+const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024
 const MAX_FILE_SIZE_ERROR = `File to large (max ${MAX_FILE_SIZE} bytes)`
 
 function sleep(ms) {

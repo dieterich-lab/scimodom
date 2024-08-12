@@ -17,7 +17,9 @@ import CardLink from '@/components/ui/CardLink.vue'
       <div>
         <CardLink icon="pi pi-list dark:text-white/80" route="browse">
           <template v-slot:title> Data repository </template>
-          <template v-slot:content> Browse through or search the available datasets. </template>
+          <template v-slot:content>
+            Browse through and download available datasets, access metadata and more.
+          </template>
           <template v-slot:link> Browse </template>
         </CardLink>
       </div>

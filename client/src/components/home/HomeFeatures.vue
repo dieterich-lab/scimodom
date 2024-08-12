@@ -39,8 +39,8 @@
           </span>
           <div class="text-900 text-xl mb-3 font-medium dark:text-white/80">Database</div>
           <span class="text-700 line-height-3 dark:text-white/80">
-            Starting with m6A, m5C, and Ψ (whole-transcriptome), we continuously add new data
-            encompassing a wide range of modifications, RNA types, technologies, and species.
+            Starting with whole-transcriptome m6A, m5C, Ψ, 2'-O-Me, and m7G, we continuously add
+            data encompassing a wide range of modifications, technologies, and species.
           </span>
         </div>
         <div class="col-12 md:col-4 mb-4 px-5">
@@ -49,8 +49,7 @@
           </span>
           <div class="text-900 text-xl mb-3 font-medium dark:text-white/80">Tools</div>
           <span class="text-700 line-height-3 dark:text-white/80">
-            Search and compare modifications across datasets. More tools coming: genome browser,
-            visualization.
+            Search and compare modifications across datasets.
           </span>
         </div>
         <div class="col-12 md:col-4 mb-4 px-5">

@@ -92,3 +92,9 @@ Permissions can be updated with
 .. code-block:: bash
 
     flask permission [OPTIONS] USERNAME SMID
+
+If required, a project and all associated data can be removed with
+
+.. code-block:: bash
+
+    flask delete [OPTIONS] SMID
