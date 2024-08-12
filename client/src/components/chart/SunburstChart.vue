@@ -97,7 +97,7 @@ export default {
 
       const colorPalette = this.getColors()
       // Object to store the base color for each first-level node.
-      const baseColors = {}
+      const baseColors = []
       function traverse(node, parent, depth, parentColor) {
         const id = parent ? `${parent}-${node.name}` : node.name
         ids.push(id)
@@ -114,8 +114,9 @@ export default {
         } else if (depth === 1) {
           // Check if the node is a first-level node.
           // Assign a color from the palette to first-level nodes.
-          color = colorPalette[ids.length % colorPalette.length]
-          baseColors[node.name] = color // Store the base color for later use.
+          // color = colorPalette[ids.length % colorPalette.length]
+          color = colorPalette[baseColors.length % colorPalette.length]
+          baseColors.push(color) // Store the base color for later use.
         } else {
           // For subsequent levels, lighten the parent's color.
           color = this.lightenColor(parentColor, depth) // Adjust lightness by depth level.
