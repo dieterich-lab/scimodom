@@ -58,8 +58,8 @@
           </span>
           <div class="text-900 text-xl mb-3 font-medium dark:text-white/80">Access</div>
           <span class="text-700 line-height-3 dark:text-white/80">
-            Registration and login is optional. Login with data upload, access management, and
-            more.</span
+            Free and open to all users. There is no login required. Optional login with access
+            management and data upload.</span
           >
         </div>
         <div class="col-12 md:col-4 mb-4 px-5">
@@ -97,7 +97,7 @@
       </div>
     </div>
     <div class="flex justify-center mt-8 animate-pulse">
-      <RouterLink :to="{ name: 'documentation' }">
+      <RouterLink :to="{ name: 'about-docs' }">
         <Button icon="pi pi-arrow-right" label="Learn more" rounded />
       </RouterLink>
     </div>

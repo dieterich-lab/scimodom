@@ -41,7 +41,7 @@ import Logo from '@/assets/images/rmap-logo.svg'
                 >
               </li>
               <li class="mb-4">
-                <RouterLink :to="{ name: 'documentation' }">
+                <RouterLink :to="{ name: 'about-docs' }">
                   <span class="hover:underline dark:text-surface-400">Documentation</span>
                 </RouterLink>
               </li>

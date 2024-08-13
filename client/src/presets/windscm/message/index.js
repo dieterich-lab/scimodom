@@ -7,11 +7,11 @@ export default {
       // 'ring-1 ring-inset ring-surface-200 dark:ring-surface-700 ring-offset-0',
 
       // Colors
-      'bg-surface-0 dark:bg-surface-800',
+      'bg-surface-0 dark:bg-surface-900',
 
       {
-        'text-blue-500 dark:text-blue-300': props.severity == 'info',
-        'text-green-500 dark:text-green-300': props.severity == 'success',
+        'text-secondary-500 dark:text-secondary-300': props.severity == 'info',
+        'text-primary-500 dark:text-primary-300': props.severity == 'success',
         'text-orange-500 dark:text-orange-300': props.severity == 'warn',
         'text-red-500 dark:text-red-300': props.severity == 'error'
       }

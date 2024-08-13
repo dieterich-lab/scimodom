@@ -219,7 +219,7 @@ onMounted(() => {
         Fill the upload form for each dataset (bedRMod file) that belongs to this project. For more
         information on the bedRMod format, consult the
         <RouterLink
-          :to="{ name: 'documentation' }"
+          :to="{ name: 'management-docs' }"
           target="_blank"
           class="inline-flex items-center font-semibold text-primary-500 hover:text-secondary-500"
           >Documentation.

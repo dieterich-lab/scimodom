@@ -146,7 +146,7 @@ onMounted(() => {
           a dataset. Add a new metadata sheet for each dataset that belongs to this project or for
           each modification associated with a single dataset. Consult the
           <RouterLink
-            :to="{ name: 'documentation' }"
+            :to="{ name: 'management-docs' }"
             target="_blank"
             class="inline-flex items-center font-semibold text-primary-500 hover:text-secondary-500"
             >Documentation

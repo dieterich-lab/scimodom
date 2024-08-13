@@ -4,7 +4,15 @@ import SearchView from '@/views/SearchView.vue'
 import BrowseView from '@/views/BrowseView.vue'
 import CompareView from '@/views/CompareView.vue'
 import DownloadView from '@/views/DownloadView.vue'
-import DocumentationView from '@/views/DocumentationView.vue'
+import DocumentationView from '@/views/TestDoc.vue'
+// import DocumentationView from '@/views/DocumentationView.vue'
+import DocAbout from '@/components/documentation/DocAbout.vue'
+import DocSearch from '@/components/documentation/DocSearch.vue'
+import DocBrowse from '@/components/documentation/DocBrowse.vue'
+import DocCompare from '@/components/documentation/DocCompare.vue'
+import DocManagement from '@/components/documentation/DocManagement.vue'
+import DocFAQs from '@/components/documentation/DocFAQs.vue'
+
 import HomeRoadmap from '@/components/home/HomeRoadmap.vue'
 
 import PageMaintenance from '@/components/default/PageMaintenance.vue'
@@ -39,7 +47,6 @@ const router = createRouter({
       path: '/compare',
       name: 'compare',
       component: CompareView
-      // redirect: { name: 'maintenance' }
     },
     {
       path: '/download',
@@ -49,8 +56,39 @@ const router = createRouter({
     },
     {
       path: '/documentation',
-      name: 'documentation',
-      component: DocumentationView
+      component: DocumentationView,
+      children: [
+        {
+          path: 'about',
+          name: 'about-docs',
+          component: DocAbout
+        },
+        {
+          path: 'search',
+          name: 'search-docs',
+          component: DocSearch
+        },
+        {
+          path: 'browse',
+          name: 'browse-docs',
+          component: DocBrowse
+        },
+        {
+          path: 'compare',
+          name: 'compare-docs',
+          component: DocCompare
+        },
+        {
+          path: 'management',
+          name: 'management-docs',
+          component: DocManagement
+        },
+        {
+          path: 'faqs',
+          name: 'faqs-docs',
+          component: DocFAQs
+        }
+      ]
     },
     {
       path: '/roadmap',

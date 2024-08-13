@@ -4,9 +4,9 @@ import { HTTP } from '@/services/API.js'
 
 export default {
   name: 'SunburstChart',
-  props: ['chart'],
+  props: ['view'],
   setup(props) {
-    const chart = props.chart
+    const view = props.view
   },
   data() {
     return {
@@ -19,7 +19,7 @@ export default {
   methods: {
     async fetchData() {
       try {
-        const response = await HTTP.get(`/sunburst/${this.chart}`)
+        const response = await HTTP.get(`/sunburst/${this.view}`)
         const data = await response.data
         this.calculateCumulativeSize(data[0])
         this.data = this.processData(data[0]) // Assuming data is an array and you need the first element

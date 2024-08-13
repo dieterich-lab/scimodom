@@ -12,7 +12,7 @@
       <span>Compare</span>
     </RouterLink>
 
-    <RouterLink :to="{ name: 'documentation' }">
+    <RouterLink :to="{ name: 'about-docs' }">
       <span>Documentation</span>
     </RouterLink>
   </nav>

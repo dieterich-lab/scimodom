@@ -32,10 +32,10 @@ onMounted(() => {
         </p>
         <div class="flex flex-row pt-12">
           <div class="basis-1/2">
-            <SunburstChart chart="search" />
+            <SunburstChart view="search" />
           </div>
           <div class="basis-1/2">
-            <SunburstChart chart="browse" />
+            <SunburstChart view="browse" />
           </div>
         </div>
       </div>
