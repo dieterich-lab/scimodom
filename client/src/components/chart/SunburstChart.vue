@@ -153,6 +153,9 @@ export default {
       ]
     },
     createChart() {
+      if (this.$refs.chart === null) {
+        return // Silently bail out if DOM element has gone, e.g. because user left the page already
+      }
       const layout = {
         margin: { t: 0, l: 0, r: 0, b: 0 },
         sunburstcolorway: this.getColors(),
