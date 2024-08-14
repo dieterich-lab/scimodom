@@ -51,8 +51,9 @@ BAD_EUF_FILE = """#chrom\tchromStart\tchromEnd\tname\tscore\tstrand\tthickStart\
 
 def test_euf_error(caplog):
     stream = StringIO(BAD_EUF_FILE)
+    importer = EufImporter(stream=stream, source="test")
     with pytest.raises(BedImportTooManyErrors):
-        _ = list(EufImporter(stream=stream, source="test").parse())
+        _ = list(importer.parse())
     assert caplog.record_tuples == [
         (
             "scimodom.utils.bed_importer",
@@ -67,9 +68,15 @@ def test_euf_error(caplog):
         (
             "scimodom.utils.bed_importer",
             logging.ERROR,
-            "Found too many errors ins 'test' (valid: 1, errors: 2)",
+            "Found too many errors in test (valid: 1, errors: 2)",
         ),
     ]
+    assert (
+        importer.get_error_summary()
+        == """test, line 2: Expected 11 fields, but got 10
+test, line 3: '*' is not a valid Strand
+"""
+    )
 
 
 def test_euf_error_without_error_rate(caplog):

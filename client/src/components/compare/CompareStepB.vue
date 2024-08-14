@@ -56,7 +56,7 @@ function uploader(event) {
       uploadedFile.value = file.name
       let ext = file.name.split('.').pop()
       isEUF.value = ext.toLowerCase() === 'bedrmod'
-      emit('datasetUploaded', data.file_id)
+      emit('datasetUploaded', { id: data.file_id, name: file.name })
     })
     .catch((e) => {
       clear()

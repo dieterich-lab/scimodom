@@ -419,7 +419,7 @@ def test_import_update_fail(Session, selection, project, freezer):  # noqa
             "1\t0\t10\tm6A\t1000\t+\t0\t10\t0,0,0\t10\t1",
             "1\t0\t10\tm6A\t1000\t+\t0\t10\t0,0,0\t10",
             BedImportTooManyErrors,
-            "Found too many errors ins 'test' (valid: 0, errors: 1)",
+            "Found too many errors in test (valid: 0, errors: 1)",
             [
                 (
                     "scimodom.utils.bed_importer",
@@ -429,7 +429,7 @@ def test_import_update_fail(Session, selection, project, freezer):  # noqa
                 (
                     "scimodom.utils.bed_importer",
                     40,
-                    "Found too many errors ins 'test' (valid: 0, errors: 1)",
+                    "Found too many errors in test (valid: 0, errors: 1)",
                 ),
             ],
         ),
@@ -444,7 +444,7 @@ def test_import_update_fail(Session, selection, project, freezer):  # noqa
             "1\t0\t10\tm6A\t1000\t+\t0\t10\t0,0,0\t10\t1",
             "1\t0\t10\tm6\t1000\t+\t0\t10\t0,0,0\t10\t1",
             BedImportTooManyErrors,
-            "Found too many errors ins 'test' (valid: 0, errors: 1)",
+            "Found too many errors in test (valid: 0, errors: 1)",
             [
                 (
                     "scimodom.utils.bed_importer",
@@ -454,7 +454,7 @@ def test_import_update_fail(Session, selection, project, freezer):  # noqa
                 (
                     "scimodom.utils.bed_importer",
                     40,
-                    "Found too many errors ins 'test' (valid: 0, errors: 1)",
+                    "Found too many errors in test (valid: 0, errors: 1)",
                 ),
             ],
         ),
@@ -462,7 +462,7 @@ def test_import_update_fail(Session, selection, project, freezer):  # noqa
             "1\t0\t10\tm6A\t1000\t+\t0\t10\t0,0,0\t10\t1",
             "2\t0\t10\tm6A\t1000\t+\t0\t10\t0,0,0\t10\t1",
             BedImportTooManyErrors,
-            "Found too many errors ins 'test' (valid: 0, errors: 1)",
+            "Found too many errors in test (valid: 0, errors: 1)",
             [
                 (
                     "scimodom.utils.bed_importer",
@@ -472,7 +472,7 @@ def test_import_update_fail(Session, selection, project, freezer):  # noqa
                 (
                     "scimodom.utils.bed_importer",
                     40,
-                    "Found too many errors ins 'test' (valid: 0, errors: 1)",
+                    "Found too many errors in test (valid: 0, errors: 1)",
                 ),
             ],
         ),

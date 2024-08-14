@@ -159,16 +159,20 @@ function intersect(is_strand) {
     }),
     'Failed to intersect',
     dialogState
-  ).then((data) => {
-    records.value = data.records.map((x) => {
-      return {
-        a: x.a,
-        b: x.b,
-        distance: ''
-      }
+  )
+    .then((data) => {
+      records.value = data.records.map((x) => {
+        return {
+          a: x.a,
+          b: x.b,
+          distance: ''
+        }
+      })
+      loading.value = false
     })
-    loading.value = false
-  })
+    .catch(() => {
+      loading.value = false
+    })
 }
 
 function closest(is_strand) {
@@ -181,10 +185,14 @@ function closest(is_strand) {
     }),
     'Failed to closest',
     dialogState
-  ).then((data) => {
-    records.value = data.records
-    loading.value = false
-  })
+  )
+    .then((data) => {
+      records.value = data.records
+      loading.value = false
+    })
+    .catch(() => {
+      loading.value = false
+    })
 }
 
 function subtract(is_strand) {
@@ -197,33 +205,38 @@ function subtract(is_strand) {
     }),
     'Failed to subtract',
     dialogState
-  ).then((data) => {
-    records.value = data.records.map((x) => {
-      return {
-        a: x,
-        b: {
-          chrom: '',
-          start: '',
-          end: '',
-          name: '',
-          score: '',
-          strand: '',
-          eufid: '',
-          coverage: '',
-          frequency: ''
-        },
-        distance: ''
-      }
+  )
+    .then((data) => {
+      records.value = data.records.map((x) => {
+        return {
+          a: x,
+          b: {
+            chrom: '',
+            start: '',
+            end: '',
+            name: '',
+            score: '',
+            strand: '',
+            eufid: '',
+            coverage: '',
+            frequency: ''
+          },
+          distance: ''
+        }
+      })
+      loading.value = false
     })
-    loading.value = false
-  })
+    .catch(() => {
+      loading.value = false
+    })
 }
 
 function getCompareParams(is_strand) {
   return {
     reference: selectedDatasetA.value,
     comparison: selectedDatasetB.value,
-    upload: datasetUploaded.value,
+    upload: datasetUploaded.value.id,
+    upload_name: datasetUploaded.value.name,
     strand: is_strand,
     euf: isEUF.value
   }

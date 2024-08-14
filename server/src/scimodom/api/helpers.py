@@ -44,6 +44,7 @@ Function to generate a response object, e.g. from a DTO.
 
 VALID_DATASET_ID_REGEXP = re.compile(r"\A[a-zA-Z0-9]{1,256}\Z")
 VALID_FILENAME_REGEXP = re.compile(r"\A[a-zA-Z0-9.,_-]{1,256}\Z")
+INVALID_CHARS_REGEXP = re.compile(r"[^a-zA-Z0-9.,_-]")
 MAX_DATASET_IDS_IN_LIST = 3
 
 
@@ -124,6 +125,16 @@ def get_valid_tmp_file_id_from_request_parameter(
             404, "Temporary file not found - your upload may have expired"
         )
     return raw_id
+
+
+def get_valid_remote_file_name_from_request_parameter(
+    parameter: str, default: str = "uploaded file"
+) -> Optional[str]:
+    raw = request.args.get(parameter, type=str)
+    if raw is None or raw == "":
+        return default
+    else:
+        return re.sub(INVALID_CHARS_REGEXP, "?", raw)
 
 
 def get_valid_boolean_from_request_parameter(

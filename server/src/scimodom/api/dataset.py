@@ -13,13 +13,19 @@ from scimodom.api.helpers import (
     get_valid_boolean_from_request_parameter,
     ClientResponseException,
     get_response_from_pydantic_object,
+    get_valid_remote_file_name_from_request_parameter,
 )
 from scimodom.services.bedtools import get_bedtools_service, BedToolsService
 from scimodom.services.dataset import get_dataset_service
 from scimodom.services.file import get_file_service
 from scimodom.services.data import get_data_service
 from scimodom.services.user import get_user_service
-from scimodom.utils.bed_importer import Bed6Importer, EufImporter
+from scimodom.utils.bed_importer import (
+    Bed6Importer,
+    EufImporter,
+    BedImportTooManyErrors,
+    BedImportEmptyFile,
+)
 from scimodom.utils.bedtools_dto import (
     IntersectRecord,
     ClosestRecord,
@@ -117,6 +123,9 @@ class _CompareContext:
         self._upload_id = get_valid_tmp_file_id_from_request_parameter(
             "upload", is_optional=True
         )
+        self._upload_name = get_valid_remote_file_name_from_request_parameter(
+            "upload_name"
+        )
         self._is_strand = get_valid_boolean_from_request_parameter(
             "strand", default=False
         )
@@ -177,16 +186,26 @@ class _CompareContext:
                 )
 
     def _get_comparison_records_from_file(self):
+        dummy_values = {"eufid": "upload      "}
         if self._is_euf:
-            for x in EufImporter(stream=self._tmp_file_handle).parse():
-                raw_record = x.model_dump()
-                yield ComparisonRecord(eufid="upload      ", **raw_record)
+            importer = EufImporter(
+                stream=self._tmp_file_handle, source=self._upload_name
+            )
         else:
-            for x in Bed6Importer(stream=self._tmp_file_handle).parse():
+            importer = Bed6Importer(
+                stream=self._tmp_file_handle, source=self._upload_name
+            )
+            dummy_values = {**dummy_values, "frequency": 1, "coverage": 0}
+        try:
+            for x in importer.parse():
                 raw_record = x.model_dump()
-                yield ComparisonRecord(
-                    eufid="upload      ", frequency=1, coverage=0, **raw_record
-                )
+                yield ComparisonRecord(**raw_record, **dummy_values)
+        except BedImportTooManyErrors as e:
+            raise ClientResponseException(
+                400, f"{str(e)}\n\n{importer.get_error_summary()}"
+            )
+        except BedImportEmptyFile as e:
+            raise ClientResponseException(400, "Uploaded file had no records")
 
     def __exit__(self, exc_type, exc_value, traceback):
         if self._tmp_file_handle is not None:
