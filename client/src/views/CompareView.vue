@@ -235,8 +235,8 @@ function getCompareParams(is_strand) {
   return {
     reference: selectedDatasetA.value,
     comparison: selectedDatasetB.value,
-    upload: datasetUploaded.value.id,
-    upload_name: datasetUploaded.value.name,
+    upload: datasetUploaded.value?.id,
+    upload_name: datasetUploaded.value?.name,
     strand: is_strand,
     euf: isEUF.value
   }
