@@ -174,7 +174,9 @@
                 </div>
                 <div class="p-3 border-l-4 border-solid border-gb-2 rounded-l dark:text-white/80">
                   <h2 class="text-lg font-bold mt-0 mb-2">Analysis & Visualization</h2>
-                  <p class="mt-0 mb-3 line-height-3">DB visualization, online data analysis.</p>
+                  <p class="mt-0 mb-3 line-height-3">
+                    DB visualization, online data analysis and tools.
+                  </p>
                   <div class="border-2 border-solid border-gb-2 rounded">
                     <div class="border-2 border-solid border-gb-2 rounded" style="width: 0%"></div>
                   </div>
@@ -242,7 +244,18 @@
                   </div>
                 </div>
                 <div class="flex-1 flex gap-3 flex-col"></div>
-                <div class="flex-1 flex gap-3 flex-col"></div>
+                <div class="flex-1 flex gap-3 flex-col">
+                  <div class="p-3 border-l-4 border-solid border-gb-4 rounded-l dark:text-white/80">
+                    <h2 class="text-lg font-bold mt-0 mb-2">Application</h2>
+                    <p class="mt-0 mb-3 line-height-3">REST API and related documentation.</p>
+                    <div class="border-2 border-solid border-gb-4 rounded">
+                      <div
+                        class="border-2 border-solid border-gb-4 rounded"
+                        style="width: 15%"
+                      ></div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
             <!-- DESIGN ------------------ -->

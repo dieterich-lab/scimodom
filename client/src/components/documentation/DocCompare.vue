@@ -35,7 +35,7 @@ import img4 from '@/assets/images/docs/compare4.png'
         >Data coming from a different assembly or an inconsistent choice of reference dataset will
         lead to spurious comparison results</Message
       >
-      Finally, Select the operation you want to perform on the datasets selected in previous steps:
+      Finally, select the operation you want to perform on the datasets selected in previous steps:
       <img :src="img3" class="object-center mt-6 mb-6" alt="Compare: filter 3" />
     </p>
     <p class="indent-4 text-lg underline underline-offset-8 decoration-gb-4/25 font-semibold">
