@@ -5,22 +5,21 @@ Draft or long-running issues, WIP, triage, and additional references or context 
 
 * TODO SCIMODOM DRAFT ISSUES
 
-** TODO MAINTENANCE [1/2]
+** TODO MAINTENANCE [0/1]
 
 - [ ] ~pre-commit run --all-files~ under server (.pre-commit-config.yaml) runs for all files incl. client.
-- [X] Add *CrossMap* to requirements.
 
-** TODO STYLE [1/20]
+** TODO STYLE [1/22]
 
 - [ ] DEADLINE: <2024-09-30 Mon> To harmonize style across views, components, and presets (colours, behaviour, dark mode, /etc./).
 
 - [ ] CascadeSelect :: /cf./ [[https://github.com/dieterich-lab/scimodom/issues/103][Cascade truncated.]]
 - [ ] CascadeSelect :: "No available options" is not defined, /cf./ TreeSelect or Dropdown. Styling is different.
-- [ ] In ~ProjectMetadata,vue~, some placeholders are grey, others are black/darker (resp. ligher in dark mode).
+- [ ] In ~ProjectMetadata,vue~, some placeholders are grey, others are black/darker (resp. lighter in dark mode).
 - [ ] Dark mode (specific issues)
   - [ ] Logos are displayed in greyscale in dark mode, as invert also inverts the colors. Otherwise, we may have to use 2 logos,
     or create SVGs.
-  - [ ] ~DataTable~: ~stripedRows~ removed, it doesn't work well with dark mode. Modify the preset?
+  - [ ] ~DataTable~: ~stripedRows~ for dark mode.
 - [ ] URGENT :: ~VirtualScroll~ not working, see [[https://github.com/primefaces/primevue-tailwind/issues/108][Missing preset for VirtualScroller]] and [[https://github.com/primefaces/primevue-tailwind/issues/168][VirtualScroller not working with DataTabe.]]
 - [ ] Placeholder text color ~TreeSelect~ /vs./ ~MultiSelect~.
 - [ ] Default preset color is secondary for ~DataTable~, ~Paginator~, and ~tabView~. Why not use a local ~ptOptions~
@@ -45,114 +44,59 @@ Draft or long-running issues, WIP, triage, and additional references or context 
 - [ ] Form validation and warnings/messages styling/text for login/sign up/reset components.
 - [ ] Large numbers don't show nicely in the Search paginator.
 - [ ] Outdated presets for Lara. Remove?
+- [ ] Add MeterGroup or ProgessBar for upload? See also [[https://github.com/dieterich-lab/scimodom/issues/94][Dataset upload progress]].
 
-** TODO PEP [1/8]
+** TODO PEP/TYPING [0/3]
 
-- Note taken on [2024-02-03 Sat 07:51] \\
-  Check [[https://github.com/dieterich-lab/scimodom/issues/28][Add type hints, docstrings]], there are some long-term impovements. See [[https://docs.sqlalchemy.org/en/20/orm/extensions/mypy.html][Mypy / Pep-484 Support for ORM Mappings]] for SQLAlchemy-related, also [[https://realpython.com/python-type-checking/][type checking]] in general. \\
-  Mypy to pre-commit, check examples https://lyz-code.github.io/blue-book/devops/mypy/, https://pre-commit.com/hooks.html, https://github.com/pre-commit/mirrors-mypy, https://jaredkhan.com/blog/mypy-pre-commit. \\
-  Other resources that I found useful: https://adamj.eu/tech/2021/06/14/python-type-hints-3-somewhat-unexpected-uses-of-typing-any-in-pythons-standard-library/, https://quantlane.com/blog/type-checking-large-codebase/, https://docs.joshuatz.com/cheatsheets/python/types/.
-
-- [ ] [2024-02-03 Sat]
-  [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/src/scimodom/utils/operations.py::import pybedtools # type: ignore]]
-- [ ] [2024-02-03 Sat] Uncomment and fix errors.
-  [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/pyproject.toml::strict = "True"]]
-- [ ] [2024-02-03 Sat] ~# type: ignore~ top level does not work for scimodom.api.models. I don't know how to handle these. File excluded in pyproject.toml.
+- [ ] [2024-02-03 Fri] Uncomment [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/pyproject.toml::strict = "True"]]
+  and fix errors, add missing stubs for flask-cors, requests, /etc./
+- [ ] [2024-08-21 Wed] [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/src/scimodom/services/bedtools.py::"import pybedtools"]]
+- [ ] [2024-02-03 Fir] ~# type: ignore~ top level does not work for scimodom.api.models. File excluded:
   [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/pyproject.toml::"scimodom.utils.models.py"]]
-- [ ] [2024-02-03 Sat]
-  [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/src/scimodom/services/annotation.py::import requests # type: ignore]]
-- [ ] Check [[https://docs.sqlalchemy.org/en/20/changelog/whatsnew_20.html#migrating-an-existing-mapping][Migrating an Existing Mapping]], go beyond step 3, although typing is supported from step 3 onwards:
-  Step one - declarative_base() is superseded by DeclarativeBase
-  Step two - replace Declarative use of Column with mapped_column()
-  Step three - apply exact Python types as needed using Mapped.
-  Step four - remove mapped_column() directives where no longer needed
-  Step five - make use of pep-593 Annotated to package common directives into types
-- [ ] In setup, we use pandas. Type check is disabled. The problem is that there is in fact no type casting, tables are read and values
-  are bulk upserted.
-- [ ] Harmonize docstrings /e.g./ ~str~ /vs./ ~String~ /etc./. Order of arguments. Add ~Raises~. Add docstrings where missing.
-- [X] [2024-02-03 Sat] [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/src/scimodom/api/__init__.py::E402 module level import not at top of file]]
 
-** TODO GENERAL [20/35]
+** TODO TESTS [0/9]
 
-- [ ] download :: Download view temporarily removed, this feature is relegated. Do we want selective/schema DB dumps? Do we want
-  to allow ~Export~ to export "all" selected records, not only those lazy loaded and shown on the screen (~SearchView.vue~)? See
-  also [[https://github.com/dieterich-lab/scimodom/issues/62][Search view data export]]
+- [ ] warnings :: freezgun, pydantic
 
-- [ ] dependencies :: replace pandas in ~SetupService~.
+- [ ] refactor :: Use tests/fixtures throughout wherever possible. Some tests may still contain redundant locally defined fixtures.
+  ~conftest.py::data_path~ is only used by ~test_import_data~, this should be simplified /cf./ ~tool.pytest.ini_options~.
+- [ ] refactor :: ~test_ensembl~ subject to [[https://github.com/dieterich-lab/scimodom/issues/119][Annotation services]]. Currently it is not possible to fully isolate these tests.
 
-- [X] refactor :: Move ~upsert.py~. Call at startup.
-- [ ] refactor :: Can we add type casting methods directly in each ORM model class?
-- [ ] refactor :: ~getUserName~ in ~headerLayout~ to store getter.
+- [ ] missing :: ~test_dataset~ does not test ~DatasetImportError~, ~SelectionNotFoundError~, ~DatasetExistsError~.
+- [ ] missing :: Integration tests.
+- [ ] missing :: Missing models in ~test_bedtools_dto~, ~test_project_dto~, /etc./
+- [ ] missing :: ~test_bedtools~ has limited scope, some protected methods are not tested (isolation?). Everything
+  that touches annotation is not really tested (see related tests if testing could be reasonnably divided/isolated).
 
-- [X] models :: Add ~Dataset~ contact and/or date added?
-- [X] models :: ~assembly_id: Mapped[int] = mapped_column(ForeignKey("assembly.id"))~ in ~Dataset~ (and relationships) is redundant,
-  we don't need to know the assembly, as there is only one in the DB!
-- [X] models :: RNA type nomenclature enforcement. /Partly implemented, see [[https://github.com/dieterich-lab/scimodom/issues/97][RNA types]] for the rest/.
+- [ ] EUFID length is not validated? See /e.g./ dataset fixture. Same for random SMIDs...
+- [ ] I've noticed in some cases that adding rows to models with FK constraints succeeds even when the FK does
+  not exists, /e.g./ ~association_id~. This should be investigated, otherwise this "invalidates" a test!
 
-- [X] import :: [2024-02-16 Fri] Add exception if /e.g./ more than 30% of features are unmapped.
-  [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/src/scimodom/services/assembly.py::Unmapped features are discarded.]]
-- [X] import :: What happens if /e.g./ too many rows are skipped or in the worst case there is no records (/e.g./ if chroms are
-  not formatted short/Ensembl-style)? Maybe we should have a "no commit" fallback and warning/error. See /e.g./ during testing upload
-  with mock data: ~WARNING scimodom.services.annotation.annotate_data.193 | No records found for Kr6uj7QzWfLJ...~.
-- [X] import :: ~_validate_columns~ (EUFHeaderImporter) adjusted to check first /non-comment/ row, and raises a ~SpecsError~ if the column
-  count does not match (or if emtpy). On the other hand, EUFDataImporter ignore bad rows. Maybe it would make more sense to NOT
-  validate the column count in EUFHEaderImporter, leave it to EUFDataImporter to handle it, and add a test to check how
-  many rows were skipped (/e.g./ if a file has chrom long format style, it will be skipped entirely), or if the file was empty,
-  before writing to the database.
-- [X] import :: Buffer by chunk (no flush)?
-- [ ] import :: Title is ~VARCHAR(255)~ (dataset/project) but there is no check on project/dataset creation (batch or dataset).
-  For the FE forms, add a max. length/validation.
+** TODO GENERAL [0/9]
 
-- [ ] test :: [2024-02-18 Sun] [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/tests/unit/conftest.py::def data_path(tmp_path_factory, monkeypatch):]]
-  I see no other choice than using ~scope=sesion~, with either *pytest-dotenv* or setting a global env (=pyproject.toml=) for all tests, and
-  using a single directory. What I would like to is to use ~monkeypatch.setenv~ to /dynamically/ set ~DATA_PATH~ to ~loc~ (tmp directory for test),
-  to isolate each test, but calling ~AssemblyService~ or ~AnnotationService~ overrides ~DATA_PATH~, as this loads the config, which in turn
-  loads the dotenv file.
-- [ ] test :: Integration tests?
+- [ ] dependencies :: Pandas is used only in ~SetupService~.
 
-- [ ] search :: Features and biotypes are fixed, but /e.g./ do biotypes change with organism?
-- [X] search :: Export: (1) add additional columns /e.g./ taxa_id, cto, RNA type, /etc./ that are hidden from the table, but that requires adding these
-  to the select query, we need to see if that impacts performance; if not, then (2) add a header with at least modification, taxa_id, and cto; if not
-  then (3) format filename (this is the current solution).
-- [X] browse :: Additional information for the ~Dialog~ or for the export? /e.g./ ~sequencing_platform~, ~basecalling~, ~bioinformatics_workflow~,
-   ~experiment~, and/or ~ProjectContact~ (~Project~ or eventually ~Dataset~ contact).
-- [ ] browse :: Maybe the project ~added_date~ is not needed?
-- [ ] project :: When adding more than 1 metadata sheet, assembly is reset, also resetting the model. This is not critical,
-  since we ask user to write the assembly as input, but would be nice to sort.
+- [ ] refactor :: ~FileService~ "mixes" *os* and *pathlib*, and this also causes a number of typing errors; and there are some
+  methods that should be protected that are not. The "chain file constructor" should go to ~FileService~. Also now
+  the ~AssemblyFileType~ is problematic (type warnings). This should be addressed with refactoring of [[https://github.com/dieterich-lab/scimodom/issues/119][Annotation services]].
+- [ ] refactor :: Setup is not fully sorted: the case of import tables and ~IMPORT_DIR~, /cf./ [[https://github.com/dieterich-lab/scimodom/issues/126][startup]] and [[https://github.com/dieterich-lab/scimodom/issues/116][directory permission]],
+  is still to be addressed.
 
-- [X] router :: All routes to ~/~ with backward/forward navigation? This does not allow either to open a link in a new tab. Also how would
-  that work with route guards, secure routes, /etc./? Finally, with route params (/e.g./ ~Browse~, where EUFID is directly added to the index),
-  this sounds like a strange choice... For ~Browse~ in particular, when clicking on EUFID in ~Search~, we want a new tab, to avoid loosing
-  the current search results. /Moved to an issue, see [[https://github.com/dieterich-lab/scimodom/issues/16][Set-up routing configuration]]/.
+- [ ] docs :: Update GitHub installation instructions, /e.g./ add instructions how to create project/data for testing, add dumps for testing,
+  import tables, /etc/. Some instructions are wrong, for instance the ~pip install~ command misses the "dot". How to mock login (login may be
+  tricky /e.g./ with google accounts)?
 
-- [ ] store :: Import/use pinia before router. Options /vs./ Composition. Add pinia as argument to router ~beforeEach~. Check =ways-to-use-pinia=.
+- [ ] validation :: Project or dataset title is a ~VARCHAR(255)~. Form validation is done in the client, but should be systematically implemented
+  for the API (and include other fields with constraints, see also [[https://github.com/dieterich-lab/scimodom/issues/152][Not all API endpoints are fine]]).
+  The CLI validates title for dataset, but not for project, metadata, or batch.
 
+- [ ] forms :: When adding more than 1 metadata sheet, the assembly is reset, also resetting the model. This is not critical,
+  since the user is requested to confirm the assembly as input anyway, but maybe this can be simplified?
 - [ ] forms :: Add lazy validation to form fields, in particular for login/sign up? Check also strict, see https://github.com/jquense/yup
-- [ ] forms :: Do not load the full ~yup~ package, but only what is needed. Customize validation (login /vs./ sign up). Revisit messages. See
+- [ ] forms :: Do not load the full ~yup~ package. Customize validation (login /vs./ sign up) and revisit messages. See
   /e.g./ https://tailwind.primevue.org/inputtext/#helptext. Classes are wrong, there is no ~p-error~, /etc./
 
-- [X] email :: Env vars (SMTP, /etc./) probably need to go to the =docker-compose.yml= for production, /etc./? Also do we have twice the same
-  env var for PUBLIC SERVER?
-
-- [ ] operations/specs :: Does bedtools support strand ~.~? Constraints to Data model in import?
-
-- [X] docs :: Only Ensembl short format for chrom, they will be ignored.
-- [X] docs :: bedRMod = 1 organism (incl. cell type/tissue), 1 technology, 1 RNA type (mRNA, tRNA, /etc./), but 1+ modification (name field).
-- [ ] docs :: Only GTF format (annotation).
-- [X] docs :: The header in bedRMod and selection must match exactly /e.g./ GRCh38 and hg38 will throw an exception.
-- [X] docs :: Flask CLI.
-- [ ] docs :: Dataset/project title length (json template or project creation form).
-
-- [ ] [2024-02-22 Thu] [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/src/scimodom/plugins/cli.py::session.rollback()]]
-  Session does not rollback. Why? Does this also happens somewhere else?
-- [X] How to consistently and robustly handle suspected discrepancies at upload (form fields vs. header,
-  form fields vs. data records) to avoid DB transactions?
-
-- [X] Biotype mapping: how to? Write into table, and use only mapping, or map on the fly?
-- [X] ~Datatable dataKey="id"~
-- [X] Default ordering of data (Search, Browse, Compare). EUF import does not need to be sorted. Sorting is done on the fly for annotation.
-  Default sort order in Search + sorting enabled. No default sort in Browse. For Compare, data is returned after sorting for intersect,
-  closest, or subtract.
+- [ ] store :: Import/use pinia before router. Options /vs./ Composition. Add pinia as argument to router ~beforeEach~. Check =ways-to-use-pinia=.
 
 *** TODO FEATURE REQUEST [0/2]
 
