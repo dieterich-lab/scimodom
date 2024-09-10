@@ -1,154 +1,145 @@
 # Sci-ModoM
 
-## Overview
-
 The application consists of the following components:
 
 - Database: MariaDB
-- Server: A REST-API backend using Python3 and Flask
+- Server: A REST-API backend using the SQLAlchemy Database Toolkit for Python and Flask
 - Client: A Web-GUI using Vue.js
 
-### General setup
+## General setup
 
-At lauchtime, the app uses tables defined in `SetupService` to populate the database. These tables **must** exist. They are used both in development and production. They **must** be located under `IMPORT_PATH` (defaults to _server/import_, or specify in _.env_ file).
+At launch time, the app uses tables defined in `SetupService` to populate the database. These tables **must** exist and be located under `IMPORT_PATH`. By default, this path is located under _server/import_, and can be specified in the environment file. Once setup is complete, assembly and annotation files must be added. See [Flask CLI - Setup](https://dieterich-lab.github.io/scimodom/flask.html#setup) for details.
+
+For project and data management, consult the **Documentation** tab on the Web-GUI, or [Flask CLI - Project and data management](https://dieterich-lab.github.io/scimodom/flask.html#project-and-data-management).
 
 ## Production setup
 
-The recommended way to run Sci-ModoM in production is to use podman compose to create, manage, and deploy the application and the database containers, see [Container Setup](docker/CONTAINER_SETUP.md) for details.
+The recommended way to run Sci-ModoM in production is to use Podman to create, manage, and deploy the application and the database containers, see [Container setup](docker/CONTAINER_SETUP.md) for details.
 
 ## Development setup
 
 ### Database setup
 
-Set up a MariaDB database. One way to do this is to run a MariaDB container image, see the _Development Setup_ section in [Container Setup](docker/CONTAINER_SETUP.md). The following steps are required:
-
-- Create a database
-- Create a database user
-- Grant access to the database to this user
+Set up a MariaDB database. One way to do this is to run a MariaDB container image, see the _General_ and _Development setup_ sections in [Container setup](docker/CONTAINER_SETUP.md).
 
 ### Server setup
 
-Create a Python3 virtual environment with your preferred method and activate it _e.g._:
+Create a Python3 virtual environment and activate it:
 
 ```bash
 python3 -m venv ~/.virtualenvs/scimodom
-. ~/.virtualenvs/scimodom/bin/activate
+source ~/.virtualenvs/scimodom/bin/activate
 ```
 
-Get the source code and install :
+Get the source code and install:
 
 ```bash
 git clone https://github.com/dieterich-lab/scimodom.git
-cd scimodom
+cd scimodom/server
 pip install --upgrade pip setuptools
-pip --verbose install 2>&1 | tee install.log
+pip --verbose install -e '.[dev,tests,docs]' 2>&1 | tee install.log
 ```
 
-**Note:** The package depends on [mysqlclient](https://pypi.org/project/mysqlclient/). You may have to install MySQL development headers and
-libraries before. You also need a working installation of [Bedtools](https://bedtools.readthedocs.io/en/latest/), _e.g._
-[pre-compiled binaries](https://bedtools.readthedocs.io/en/latest/content/installation.html#downloading-a-pre-compiled-binary).
+**Note:** The package depends on [mysqlclient](https://pypi.org/project/mysqlclient/). You may have to install MySQL development headers and libraries before. You also need a working installation of [Bedtools](https://bedtools.readthedocs.io/en/latest/), _e.g._ [pre-compiled binaries](https://bedtools.readthedocs.io/en/latest/content/installation.html#downloading-a-pre-compiled-binary).
 
-Set up your environment configuration in _server/.env_ like this:
+Set up your environment configuration in _server/.env_:
 
-```
-DATABASE_URI=mysql+mysqldb://scimodom:*some password*@127.0.0.1:3306/scimodom
-SECRET_KEY=*some secret*
+```bash
+DATABASE_URI=mysql+mysqldb://scimodom:PASSWORD@127.0.0.1:3307/scimodom
+SECRET_KEY=SECRET_KEY
 SESSION_COOKIE_SAMESITE=None
 SESSION_COOKIE_SECURE=True
+SMTP_SERVER=mail-server.my-site.org
+SMTP_FROM_ADDRESS=scimodom@my-site.org
+NOTIFICATION_ADDRESS=scimodom@my-site.org
+HTTP_PUBLIC_URL=http://localhost:5173/
 UPLOAD_PATH=/path/to/upload
 DATA_PATH=/path/to/data
-BEDTOOLS_TMP_PATH=path/to/bedtools_tmp
-SMTP_SERVER=outgoing-email-server.my-site.org
-SMTP_FROM_ADDRESS=sci-modom-admin@my-site.org
-NOTIFICATION_ADDRESS=notification-email@my-site.org
-HTTP_PUBLIC_URL=https://sci-modom.my-site.org
+BEDTOOLS_TMP_PATH=/path/to/tmp
 ```
+
+where `PASSWORD` is the password for the scimodom user for the MariaDB database in _docker/secrets/mariadb-scimodom_, `3307` is the `MARIADB_DEV_PORT` (we recommend to use a non-standard port _e.g._ 3307 to avoid clashes with a local MariaDB/MySQL installation), and `SECRET_KEY` is the key found in _docker/secrets/flask-secret_, see [Container setup](docker/CONTAINER_SETUP.md) for details. You need to adjust the paths, and make sure they are valid and exist.
 
 **Important:** If the host name _localhost_ is used in the `DATABASE_URI` the database driver will assume that the database is contacted using a named
 socket. That will not work if a container is used!
 
-In addition to _server/.env/_, a Flask-specific configuration in _server/.flaskenv_ can be used:
+You can also create a _server/.flaskenv_ file with Flask-only variables:
 
-```
+```bash
 FLASK_APP=src/scimodom/app
 FLASK_DEBUG=True
 ```
 
-Now the database container must be started under the _docker_ directory:
+#### Running the application
+
+Start the database container under the _docker_ directory, see [Container setup](docker/CONTAINER_SETUP.md) (Development setup).
+Under the _server_ directory, initialize the database schema:
 
 ```bash
-# under scimodom/docker
-docker compose -f docker-compose-db-only.yml up -d
-```
-
-The database schema can then be initialized by executing this command under the _server_ directory:
-
-```bash
-# under scimodom/server
 alembic upgrade head
 ```
 
-The API backend can be started with:
+and start the API backend:
 
 ```bash
-# under scimodom/server
 flask run
 ```
 
-Most Python IDEs can run this process in the integrated debugger.
+Most Python IDEs can run this process in the integrated debugger. You are now ready to add assemblies, annotations, projects, and data (General setup).
+
+##### Email functionality, local login and registration
+
+To register in development mode, use the _Sign up_ button. This requires a functional email server. You first need build the frontend (see Client setup below). Once you receive a link via email, click on this link, but change the frontend server address to that of the Flask development server URL, _e.g._ change http://localhost:5173/ to http://localhost:5000. This is only necessary if you run the database using a container and connect it with the local Flask application.
+
+Note that email functionality may be limited, as your mail server must be willing to relay emails for your `SMTP_FROM_ADDRESS`, _e.g._ Google or Gmail addresses will most likely not work. This may be problematic if you wish to register, as registration is done via a link sent by email. One way to avoid this problem is to patch the database. Open a python console under your environment and do the following
+
+```python
+from werkzeug.security import generate_password_hash
+generate_password_hash("mypassword", method="pbkdf2")
+# this will return e.g. 'pbkdf2:sha256:600000$vpYjirPAT8xBuPHo$1001474730f96085cdafbf0f159d12e20ec36342b4faddbf226d637c695ee642'
+```
+
+Then go to the database, see _e.g._ [Container setup - Manual database connection](docker/CONTAINER_SETUP.md) and do the following:
+
+```mysql
+INSERT INTO user (email, state, password_hash) VALUES ('test@uni-heidelberg', 'active', 'pbkdf2:sha256:600000$vpYjirPAT8xBuPHo$1001474730f96085cdafbf0f159d12e20ec36342b4faddbf226d637c695ee642');
+```
+
+A new user is now registered, and you can login using whatever email address you used _e.g._ "test@uni-heidelberg" with the chosen password _e.g._ "mypassword".
 
 ### Client setup
 
-To bring up the frontend, go to the _client_ directory and execute:
+The first time, you need to install the local packages that the project needs, go to the _client_ directory and execute:
 
 ```bash
-# under scimodom/client
-npm install # first time install
+npm install
+```
+
+This creates a _node_modules_ folder. You are now ready to bring up the frontend
+
+```bash
 npm run dev
 ```
 
-Now the application is available here:
+The application is now available at http://localhost:5173/, and any change you make _e.g._ to the HTML code will be reflected in the page you see in your browser.
 
-- http://localhost:5173/
-
-To test the bundled frontend, run under the _client_ directory:
+To test the bundled frontend, run:
 
 ```bash
 npm run build
 ```
 
-This will populate the folder _client/dist_ with the bundled static HTML/JavaScript code as it should be deployed in production.
-The server can now also serve this code. The complete application is now also available under the Flask development server URL:
-
-- http://127.0.0.1:5000
-
-#### Local login
-
-Registration is completed via email. These environment variables are required:
-
-```
-SMTP_SERVER=outgoing-email-server.my-site.org
-SMTP_FROM_ADDRESS=sci-modom-admin@my-site.org
-```
-
-**Important:** Make sure to build the frontend beforehand (see above). After receiving the registration link via email, click on the link, but change the default port `5173` to `5000` to point to the Flask development server URL.
-
-Alternatively, you can patch the database (add user).
+This will populate the folder _dist_ with the bundled static HTML/JavaScript code as it should be deployed in production.
+The server can now also serve this code. The complete application is now also available under the Flask development server URL _e.g._ at http://127.0.0.1:5000.
 
 ### Development hints
-
-For development:
-
-```bash
-pip --verbose install -e '.[dev,tests,docs]' 2>&1 | tee install.log
-```
 
 #### Pre-commit and static type checker
 
 Under the _server_ directory:
 
 ```bash
-# first time, you might have to
+# the first time, you might have to
 pre-commit install
 # the first time pre-commit runs on a file it will automatically download, install, and run the hook
 # runs on all file at commit or run manually
@@ -161,30 +152,23 @@ mypy -p scimodom
 
 #### Tests
 
-To execute the Python tests run under the _server_ directory:
+To execute the tests, run under the _server_ directory:
 
 ```bash
 pytest tests
-```
-
-To run pytest from command line, adjust the `PYTHONPATH` _e.g._
-
-```bash
-export PYTHONPATH="${PYTHONPATH}:/path/to/scimodom/server/tests/"
 ```
 
 #### Database schema updates
 
 The database schema is tracked using Alembic. Changes to the database must be coded at two locations:
 
-- An Alembic version must be defined in server/migrations/versions
+- An Alembic migration script under server/migrations/versions
 - The model must be updated in server/src/scimodom/database/models.py
 
 Any change to the schema is generally tracked with:
 
 ```bash
-# under client/server
-alembic revision --autogenerate [-m "message"]
+alembic revision [--autogenerate] -m "message"
 alembic upgrade head
 ```
 

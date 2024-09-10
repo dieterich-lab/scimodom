@@ -10,7 +10,7 @@ Flask CLI documentation.
 Setup
 -----
 
-At lauchtime, the app uses tables defined in ``SetupService.FILE_NAME_TO_DB_TABLE_MAP`` to perform an ``INSERT... ON DUPLICATE KEY UPDATE``
+At launch time, the app uses tables defined in ``SetupService.FILE_NAME_TO_DB_TABLE_MAP`` to perform an ``INSERT... ON DUPLICATE KEY UPDATE``
 
 .. code-block:: python
 
