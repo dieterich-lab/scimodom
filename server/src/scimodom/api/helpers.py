@@ -234,6 +234,40 @@ def get_valid_logo(motif: str) -> Path:
         raise ClientResponseException(404, "Unknown motif")
 
 
+def get_non_negative_int(field: str) -> int:
+    raw = request.args.get(field, type=int)
+    if raw is None or raw < 0:
+        raise ClientResponseException(400, f"Bad {field}")
+    return raw
+
+
+def get_optional_non_negative_int(field: str) -> int:
+    raw = request.args.get(field, type=int)
+    if raw is None:
+        return None
+    if raw < 0:
+        raise ClientResponseException(400, f"Bad {field}")
+    return raw
+
+
+def get_optional_positive_int(field: str) -> int | None:
+    raw = request.args.get(field, type=int)
+    if raw is None:
+        return None
+    if raw <= 0:
+        raise ClientResponseException(400, f"Bad {field}")
+    return raw
+
+
+def get_option_positive_int(field: str) -> int | None:
+    raw = request.args.get(field, type=int)
+    if raw is None:
+        return None
+    if raw <= 0:
+        raise ClientResponseException(400, f"Bad {field}")
+    return raw
+
+
 # Response
 
 

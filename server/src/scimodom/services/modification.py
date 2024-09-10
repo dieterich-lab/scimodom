@@ -1,5 +1,5 @@
 from functools import cache
-from tempfile import TemporaryDirectory
+from typing import Any
 
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
@@ -39,20 +39,26 @@ class ModificationService:
         taxa_id: int,
         gene_filter: list[str],
         chrom: str | None,
-        chrom_start: int,
-        chrom_end: int,
-        first_record: int,
-        max_records: int,
+        chrom_start: int | None,
+        chrom_end: int | None,
+        first_record: int | None,
+        max_records: int | None,
         multi_sort: list[str],
-    ):
+    ) -> dict[str, Any]:
         """Get Data records for conditional selection, add
         filters and sort.
 
         Note: For Search, modification ID is unique, but
         more than one technology IDs are allowed.
 
-        :param selection_ids: Selection IDs
-        :type selection_ids: list of int
+        :param annotation_source: Source of annotation
+        :type annotation_source: AnnotationSource
+        :param modification_id: Modification ID
+        :type modification_id: int
+        :param organism_id: Organism ID
+        :type organism_id: int
+        :param technology_ids: Technology IDs
+        :type technology_ids: list[int]
         :param taxa_id: Taxa ID
         :type taxa_id: int
         :param gene_filter: Filters (gene-related)
@@ -60,17 +66,17 @@ class ModificationService:
         :param chrom: Chromosome
         :type chrom: str
         :param chrom_start: Chromosome start
-        :type chrom_start: int
+        :type chrom_start: int | None
         :param chrom_end: Chromosome end
-        :type chrom_end: int
+        :type chrom_end: int | None
         :param first_record: first record
-        :type first_record: int
+        :type first_record: int | None
         :param max_records: number of records
-        :type max_records: int
+        :type max_records: int | None
         :param multi_sort: sorting criteria
         :type multi_sort: list of str
         :returns: query results
-        :rtype: list of dict
+        :rtype: dict[str, Any]
         """
 
         # TODO: so far annotation_service is only needed to get the id from taxa_id
@@ -192,10 +198,10 @@ class ModificationService:
         technology_ids: list[int],
         gene_filter: list[str],
         chrom: str | None,
-        chrom_start: int,
-        chrom_end: int,
-        first_record: int,
-        max_records: int,
+        chrom_start: int | None,
+        chrom_end: int | None,
+        first_record: int | None,
+        max_records: int | None,
         multi_sort: list[str],
     ):
         query = (
@@ -233,11 +239,11 @@ class ModificationService:
 
         # coordinate filters
         if chrom:
-            query = (
-                query.where(Data.chrom == chrom)
-                .where(Data.start >= chrom_start)
-                .where(Data.end <= chrom_end)
-            )
+            query = query.where(Data.chrom == chrom)
+            if chrom_start:
+                query = query.where(Data.start >= chrom_start)
+            if chrom_end:
+                query.where(Data.end <= chrom_end)
 
         # gene filters: matchMode unused (cf. PrimeVue), but keep it this way
         # e.g. to extend options or add table filters
@@ -278,7 +284,10 @@ class ModificationService:
                 query = query.order_by(eval(expr))
 
         # paginate
-        query = query.offset(first_record).limit(max_records)
+        if first_record is not None:
+            query = query.offset(first_record)
+        if max_records is not None:
+            query = query.limit(max_records)
 
         query = self._add_modomics_ref_to_data_query(query)
 

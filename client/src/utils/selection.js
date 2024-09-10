@@ -48,9 +48,9 @@ export const updTechnologyFromModAndOrg = (selection, slctMod, slctOrg) => {
   return tree
 }
 
-export const updSelectionFromAll = (selection, slctMod, slctOrg, slctTech) => {
+export const updSelectionFromAll = (all_selections, slctMod, slctOrg, slctTech) => {
   let idsTech = toIds(slctTech, [])
-  let opts = selection.filter(
+  let opts = all_selections.filter(
     (item) =>
       item.modification_id == slctMod.key &&
       item.organism_id == slctOrg.key &&

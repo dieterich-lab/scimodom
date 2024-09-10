@@ -8,7 +8,6 @@ import { loadProjects } from '@/services/project'
 const records = ref()
 
 onMounted(() => {
-  console.log('Loading ...')
   loadProjects(records, null, true)
 })
 </script>
