@@ -235,13 +235,6 @@ onMounted(() => {
                 />
               </template>
             </Column>
-            <Column :exportable="false" field="dataset_id" style="width: 5%">
-              <template #body="{ data }">
-                <a :href="getApiUrl(`transfer/dataset/${data.dataset_id}`)">
-                  <Button text severity="secondary" label="Download" />
-                </a>
-              </template>
-            </Column>
 
             <!-- export columns shown in dialog -->
             <Column field="sequencing_platform" header="Platform" style="display: none"></Column>
@@ -257,14 +250,24 @@ onMounted(() => {
             <Column field="pmid" header="PMID" style="display: none"></Column>
 
             <Column :exportable="false" style="width: 5%">
+              <template #header>
+                <span v-tooltip.top="'Click for dataset information'">Info</span>
+              </template>
               <template #body="slotProps">
                 <Button
-                  icon="pi pi-plus"
+                  icon="pi pi-info"
                   outlined
                   rounded
                   severity="secondary"
                   @click="onOverlay(slotProps.data)"
                 />
+              </template>
+            </Column>
+            <Column :exportable="false" field="dataset_id" style="width: 5%">
+              <template #body="{ data }">
+                <a :href="getApiUrl(`transfer/dataset/${data.dataset_id}`)">
+                  <Button text severity="secondary" label="Download" />
+                </a>
               </template>
             </Column>
           </DataTable>

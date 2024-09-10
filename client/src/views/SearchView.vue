@@ -518,9 +518,12 @@ onMounted(() => {
           <Column field="gene_name" header="Gene" exportHeader="Gene"></Column>
           <Column field="gene_biotype" header="Biotype" exportHeader="Biotype"></Column>
           <Column :exportable="false" style="width: 5%">
+            <template #header>
+              <span v-tooltip.top="'Click for site information'">Info</span>
+            </template>
             <template #body="slotProps">
               <Button
-                icon="pi pi-plus"
+                icon="pi pi-info"
                 outlined
                 rounded
                 severity="secondary"
