@@ -44,7 +44,7 @@ const records = ref()
 
 const router = useRouter()
 const disableExportLink = computed(() => props.disabled || loading.value)
-const exportLink = getExportLink()
+const exportLink = computed(() => getExportLink())
 
 onMounted(() => loadData())
 
@@ -118,7 +118,11 @@ function getExportLink() {
   const url = new URL(getApiUrl('modification/csv'))
   for (const [k, v] of Object.entries(rawParams)) {
     if (v != null) {
-      url.searchParams.append(k, v)
+      if (Array.isArray(v)) {
+        v.forEach((x) => url.searchParams.append(k, x))
+      } else {
+        url.searchParams.append(k, v)
+      }
     }
   }
   return url.toString()
