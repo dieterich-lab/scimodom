@@ -4,12 +4,23 @@ import re
 from enum import Enum
 from fcntl import flock, LOCK_SH, LOCK_EX, LOCK_UN
 from functools import cache
-from os import unlink, rename, makedirs, stat, close, umask
+from os import unlink, rename, makedirs, stat, close, umask, replace
 from os.path import join, exists, dirname, basename, isfile
 from pathlib import Path
 from shutil import rmtree
-from tempfile import mkstemp
-from typing import Optional, IO, List, Dict, TextIO, BinaryIO, Iterable, Any, ClassVar
+from tempfile import mkstemp, NamedTemporaryFile
+from typing import (
+    Optional,
+    IO,
+    List,
+    Dict,
+    TextIO,
+    BinaryIO,
+    Iterable,
+    Any,
+    ClassVar,
+    Generator,
+)
 from uuid import uuid4
 
 from sqlalchemy import select
@@ -59,6 +70,7 @@ class FileService:
     ANNOTATION_DEST: ClassVar[str] = "annotation"
     GENE_CACHE_DEST: ClassVar[Path] = Path("cache", "gene", "selection")
     MOTIF_CACHE_DEST: ClassVar[Path] = Path("cache", "motifs", "PWMs_logo")
+    SUNBURST_CACHE_DEST: ClassVar[Path] = Path("cache", "sunburst")
     ASSEMBLY_DEST: ClassVar[str] = "assembly"
     METADATA_DEST: ClassVar[str] = "metadata"
     REQUEST_DEST: ClassVar[str] = "project_requests"
@@ -89,6 +101,7 @@ class FileService:
             self._get_assembly_parent_dir(),
             self._get_gene_cache_dir(),
             self._get_motif_cache_dir(),
+            self._get_sunburst_cache_dir(),
             self._get_bam_files_parent_dir(),
         ]:
             self._create_folder(path)
@@ -224,6 +237,28 @@ class FileService:
 
     def _get_motif_cache_dir(self) -> Path:
         return Path(self._data_path, self.MOTIF_CACHE_DEST)
+
+    def _get_sunburst_cache_dir(self) -> Path:
+        return Path(self._data_path, self.SUNBURST_CACHE_DEST)
+
+    def open_sunburst_cache(self, name: str) -> TextIO:
+        file_path = Path(self._get_sunburst_cache_dir(), f"{name}.json")
+        return open(file_path)
+
+    def update_sunburst_cache(self, name: str, generator: Generator[str, None, None]):
+        final_file_path = Path(self._get_sunburst_cache_dir(), f"{name}.json")
+        try:
+            temporary_file_path = None
+            with NamedTemporaryFile(
+                mode="w", dir=self._get_sunburst_cache_dir(), delete=False
+            ) as fp:
+                for data in generator:
+                    fp.write(data)
+                temporary_file_path = fp.name
+            replace(temporary_file_path, final_file_path)
+        except IOError as e:
+            if temporary_file_path is not None and isfile(temporary_file_path):
+                unlink(temporary_file_path)
 
     # Project related
 

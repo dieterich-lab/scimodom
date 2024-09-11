@@ -22,6 +22,7 @@ from scimodom.services.assembly import AssemblyNotFoundError, get_assembly_servi
 from scimodom.services.dataset import get_dataset_service
 from scimodom.services.file import get_file_service
 from scimodom.services.project import get_project_service
+from scimodom.services.sunburst import get_sunburst_service
 from scimodom.utils.project_dto import (
     ProjectMetaDataDto,
     ProjectOrganismDto,
@@ -46,7 +47,7 @@ def add_dataset(
 
     :param file_source: Dataset file.
     :type file_source: str
-    :param smid: SMID (project must exists).
+    :param smid: SMID (project must exist).
     :type smid: str
     :param title: Dataset title
     :type title: str
@@ -81,6 +82,7 @@ def add_dataset(
         return
 
     try:
+        click.secho("Created or updated dataset ...", fg=colour)
         with open(file_source) as fp:
             eufid = dataset_service.import_dataset(
                 fp,
@@ -95,13 +97,25 @@ def add_dataset(
                 dry_run_flag=dry_run_flag,
                 eufid=eufid,
             )
+        click.secho(f"    ... done (EUFID '{eufid}').", fg=colour)
     except Exception as exc:
+        click.secho("    ... FAILED!", fg="red")
         click.secho(f"Failed to create or update dataset: {exc}... Aborting!", fg="red")
         return
-    click.secho(
-        f"Created or updated dataset with EUFID '{eufid}'... done!",
-        fg=colour,
-    )
+    try:
+        click.secho("Updating Sunburst chart data ...", fg=colour)
+        sunburst_service = get_sunburst_service()
+        sunburst_service.update_all()
+        click.secho("    ... done.", fg=colour)
+    except Exception as exc:
+        click.secho("    ... FAILED!", fg="red")
+        click.secho(f"Failed to update sunburst charts: {exc}... Aborting!", fg="red")
+        click.secho(
+            "After fixing the above issue you may want to delte the sunburst"
+            " cache data to force the recreation on the next access.",
+            fg="red",
+        )
+        click.secho("Dataset import itself worked!", fg="red")
 
 
 def add_all(
@@ -118,17 +132,17 @@ def add_all(
     files must be under 'input_directory'. All datasets must
     be annotated using the same annotation source.
 
-    :param directory: Directory where data files are located.
-    :type directory: Path
+    :param input_directory: Directory where data files are located.
+    :type input_directory: Path
     :param project_templates: A list of project templates - templates
     must be located under the application project_requests directory.
     :type project_templates: list of ProjectTemplate
     :param request_uuids: Original request UUIDs
-    :type request_uuis: list of str
+    :type request_uuids: list[str]
     :param annotation_source: Annotation source
     :type annotation_source: AnnotationSource
     """
-    regexp = re.compile(r"(file=)(.*)(?:,\s*)(title=)(.*)")
+    regexp = re.compile(r"(file=)(.*),\s*(title=)(.*)")
     project_service = get_project_service()
     dataset_service = get_dataset_service()
     assembly_service = get_assembly_service()

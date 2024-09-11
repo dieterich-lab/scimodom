@@ -1,4 +1,4 @@
-from flask import Blueprint, request
+from flask import Blueprint, request, Response
 from flask_cors import cross_origin
 from sqlalchemy.exc import NoResultFound
 
@@ -11,12 +11,14 @@ from scimodom.api.helpers import (
 from scimodom.services.annotation import get_annotation_service
 from scimodom.services.assembly import get_assembly_service
 from scimodom.services.file import get_file_service
+from scimodom.services.sunburst import get_sunburst_service, SunburstChartType
 from scimodom.services.utilities import get_utilities_service
 from scimodom.utils.specifications import BIOTYPES
 
 api = Blueprint("api", __name__)
 
 
+BUFFER_SIZE = 1024 * 1024
 MAPPED_BIOTYPES = sorted(list(set(BIOTYPES.values())))
 
 
@@ -124,10 +126,24 @@ def get_logo_file(motif):
 @api.route("/sunburst/<chart>", methods=["GET"])
 @cross_origin(supports_credentials=True)
 def get_sunburst_chart(chart):
-    if chart not in ["search", "browse"]:
+    try:
+        cooked_type = SunburstChartType(chart)
+    except:
         raise ClientResponseException(404, "Unrecognized chart type.")
-    utitlies_service = get_utilities_service()
-    return utitlies_service.get_chart_data(chart)
+    sunburst_service = get_sunburst_service()
+
+    def generate():
+        with sunburst_service.open_json(cooked_type) as fp:
+            while True:
+                buffer = fp.read(BUFFER_SIZE)
+                if len(buffer) == 0:
+                    break
+                yield buffer
+
+    return Response(
+        generate(),
+        mimetype="application/json",
+    )
 
 
 @api.route("/release", methods=["GET"])
