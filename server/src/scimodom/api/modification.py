@@ -134,7 +134,7 @@ def get_modifications_as_csv():
         return e.response_tupel
     records_as_csv = _get_csv_from_modifications_records(data["records"])
     now = datetime.now(timezone.utc)
-    file_name = now.strftime("scimodom_search_%Y%m%d_%H%M%S.csv")
+    file_name = now.strftime("scimodom_search_%Y-%m-%dT%H%M%S.csv")
     return Response(
         response=records_as_csv,
         mimetype="text/csv",
