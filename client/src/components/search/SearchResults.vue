@@ -66,7 +66,6 @@ function onOverlay(record) {
 }
 
 function loadData() {
-  console.log(`XXX ${JSON.stringify(props)}`)
   if (props.disabled) {
     return
   }
@@ -163,6 +162,7 @@ function getExportLink() {
             severity="secondary"
             raised
             label="Export"
+            v-tooltip.top="'Export full table'"
           />
         </a>
       </div>

@@ -1,7 +1,7 @@
 <script setup>
 const props = defineProps({
   name: { type: String },
-  referenceId: { type: String }
+  referenceId: { type: Number }
 })
 const link = `https://www.genesilico.pl/modomics/modifications/${props.referenceId}`
 </script>

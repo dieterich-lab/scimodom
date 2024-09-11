@@ -112,12 +112,12 @@ def _get_gene_filters():
     return raw
 
 
-def _get_multi_sort():
+def _get_multi_sort(url_split: str = "%2B"):
     raw = request.args.getlist("multiSort", type=str)
     if raw is None or (len(raw) == 1 and raw[0] == ""):
         return []
     for i in raw:
-        field, direction = i.split("+")
+        field, direction = i.split(url_split)
         if field not in ["chrom", "score", "start", "coverage", "frequency"]:
             raise ClientResponseException(400, "Bad multiSort field")
         if direction not in ["desc", "asc"]:
