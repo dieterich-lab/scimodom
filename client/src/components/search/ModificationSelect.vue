@@ -51,6 +51,22 @@ const clearAll = (value) => {
   rnaType.value = ''
 }
 
+const resetDefaults = () => {
+  selectedModification.value = undefined
+  selectedOrganism.value = undefined
+  selectedTechnology.value = []
+  selectionIds.value = []
+  taxaId.value = 0 // TODO
+  taxaName.value = undefined
+  rnaType.value = 'WTS' // TODO
+  selectedGene.value = undefined
+  selectedBiotypes.value = undefined
+  selectedFeatures.value = undefined
+  selectedChrom.value = undefined
+  selectedChromStart.value = undefined
+  selectedChromEnd.value = undefined
+}
+
 // search callbacks
 const updateOrganism = (value) => {
   // on first filter (selectedModification) change
@@ -82,7 +98,7 @@ const updateSelection = (value) => {
   rnaType.value = result.rna
 }
 
-// functions
+// lifecyle
 onMounted(() => {
   HTTP.get('/selections')
     .then(function (response) {
@@ -92,6 +108,7 @@ onMounted(() => {
     .catch((error) => {
       console.log(error)
     })
+  resetDefaults()
 })
 </script>
 

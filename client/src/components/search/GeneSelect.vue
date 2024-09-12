@@ -47,8 +47,6 @@ watch(
 )
 
 function searchGene(event) {
-  console.log('ASASAS', props.selectionIds)
-  console.log('genes', genes.value)
   setTimeout(() => {
     if (!event.query.trim().length) {
       filteredGenes.value = [...genes.value]
@@ -67,7 +65,7 @@ function searchGene(event) {
     @complete="searchGene"
     @change="$emit('change')"
     forceSelection
-    placeholder="4. Select gene (optional)"
+    :placeholder="placeholder"
     :disabled="disabled"
     :pt="{
       root: { class: 'w-full md:w-full' },
