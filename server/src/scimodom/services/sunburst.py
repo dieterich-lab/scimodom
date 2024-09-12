@@ -2,6 +2,7 @@ from collections import defaultdict
 from enum import Enum
 from functools import cache
 from json import dumps
+from subprocess import run
 from typing import TextIO
 
 from sqlalchemy import select, func
@@ -132,9 +133,16 @@ class SunburstService:
             Modomics.short_name, Taxa.short_name, Organism.cto, DetectionTechnology.tech
         )
 
-    def update_all(self):
-        for chart_type in SunburstChartType:
-            self.update_cache(chart_type)
+    @staticmethod
+    def trigger_background_update():
+        run(["flask", "sunburst-update"])
+
+    def do_background_update(self):
+        def update_all():
+            for chart_type in SunburstChartType:
+                self.update_cache(chart_type)
+
+        self._file_service.run_sunburst_update(update_all)
 
 
 @cache

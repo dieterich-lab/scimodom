@@ -21,6 +21,7 @@ from scimodom.services.annotation import RNA_TYPE_TO_ANNOTATION_SOURCE_MAP
 from scimodom.services.project import get_project_service
 from scimodom.services.mail import get_mail_service
 import scimodom.utils.utils as utils
+from scimodom.services.sunburst import get_sunburst_service
 from scimodom.utils.bed_importer import BedImportTooManyErrors, BedImportEmptyFile
 from scimodom.utils.project_dto import ProjectTemplate
 
@@ -131,4 +132,6 @@ def add_dataset():
         return {
             "message": "Failed to create dataset. Contact the system administrator."
         }, 500
+    sunburst_service = get_sunburst_service()
+    sunburst_service.trigger_background_update()
     return {"result": "Ok"}, 200

@@ -2,7 +2,7 @@ import logging
 import os
 import re
 from enum import Enum
-from fcntl import flock, LOCK_SH, LOCK_EX, LOCK_UN
+from fcntl import flock, LOCK_SH, LOCK_EX, LOCK_UN, LOCK_NB, lockf
 from functools import cache
 from os import unlink, rename, makedirs, stat, close, umask, replace
 from os.path import join, exists, dirname, basename, isfile
@@ -20,6 +20,7 @@ from typing import (
     Any,
     ClassVar,
     Generator,
+    Callable,
 )
 from uuid import uuid4
 
@@ -33,6 +34,10 @@ from scimodom.database.database import get_session
 from scimodom.database.models import Dataset, BamFile, Taxa, Assembly, AssemblyVersion
 
 logger = logging.getLogger(__name__)
+
+
+class SunburstUpdateAlreadyRunning(Exception):
+    pass
 
 
 DEFAULT_MODE = 0o660
@@ -259,6 +264,32 @@ class FileService:
         except IOError as e:
             if temporary_file_path is not None and isfile(temporary_file_path):
                 unlink(temporary_file_path)
+
+    def run_sunburst_update(self, do_it: Callable[[], None]) -> None:
+        """This function will run the routine passed as long as someone
+        requests it. If another processes is already executing this routine,
+        the duty is passed to that processes. This case is signalled
+        by raising a SunburstUpdateAlreadyRunning exception.
+
+        To communicate with other instances of itself this function uses
+        a lock file 'lock' in the cache/sunburst to ensure that only one
+        instance is active at any time. Another file 'update_marker' in the same
+        place is used to signal that another run is required. Everyone may
+        touch the marker. Only the instance holding the lock may remove it.
+        By removing it, the active instance promises to do another run.
+        """
+        lock_file = Path(self._get_sunburst_cache_dir(), "lock")
+        update_marker = Path(self._get_sunburst_cache_dir(), "update_marker")
+        update_marker.touch(exist_ok=True)
+        with open(lock_file, "w") as fh:
+            try:
+                lockf(fh, LOCK_EX | LOCK_NB)
+            except OSError:
+                raise SunburstUpdateAlreadyRunning()
+            while isfile(update_marker):
+                update_marker.unlink()
+                do_it()
+            lockf(fh, LOCK_UN)
 
     # Project related
 

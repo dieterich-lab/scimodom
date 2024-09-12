@@ -102,20 +102,13 @@ def add_dataset(
         click.secho("    ... FAILED!", fg="red")
         click.secho(f"Failed to create or update dataset: {exc}... Aborting!", fg="red")
         return
-    try:
-        click.secho("Updating Sunburst chart data ...", fg=colour)
-        sunburst_service = get_sunburst_service()
-        sunburst_service.update_all()
-        click.secho("    ... done.", fg=colour)
-    except Exception as exc:
-        click.secho("    ... FAILED!", fg="red")
-        click.secho(f"Failed to update sunburst charts: {exc}... Aborting!", fg="red")
-        click.secho(
-            "After fixing the above issue you may want to delte the sunburst"
-            " cache data to force the recreation on the next access.",
-            fg="red",
-        )
-        click.secho("Dataset import itself worked!", fg="red")
+    _so_sunburst_update()
+
+
+def _so_sunburst_update():
+    click.secho("Triggering sunburst update in the background ...", fg="green")
+    sunburst_service = get_sunburst_service()
+    sunburst_service.trigger_background_update()
 
 
 def add_all(
@@ -219,6 +212,7 @@ def add_all(
                     f"Failed to create dataset: {exc}... skipping {filename}!", fg="red"
                 )
                 continue
+    _so_sunburst_update()
     click.secho("... done!", fg="green")
 
 

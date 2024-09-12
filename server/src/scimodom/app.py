@@ -6,6 +6,7 @@ from flask_jwt_extended import JWTManager
 from sqlalchemy.orm import scoped_session
 
 from scimodom.app_singleton import create_app_singleton
+from scimodom.cli.sunburst import update_sunburst_chart
 from scimodom.config import set_config_from_environment, get_config
 from scimodom.database.database import make_session, init
 
@@ -473,6 +474,17 @@ def create_app():
         if not init:
             kwargs = {"table": table}
         upsert(init, **kwargs)
+
+    @app.cli.command(
+        "sunburst-update", epilog="Updates the cached data for the sunburst charts."
+    )
+    def sunburst_update_cli():
+        """Update the cached data for the sunburst charts.
+        This should be done after a dataset has been added.
+        Usually this is triggered automatically and executed
+        in the background.
+        """
+        update_sunburst_chart()
 
     @app.teardown_appcontext
     def cleanup(exception=None):
