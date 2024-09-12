@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import ModificationInfo from '@/components/modification/ModificationInfo.vue'
 import { getApiUrl, HTTP } from '@/services/API'
 import { fmtFilter, fmtOrder } from '@/utils'
-import ChromeRegionEnsembleLink from '@/components/search/ChromeRegionEnsembleLink.vue'
+import ChromRegionEnsemblLink from '@/components/search/ChromRegionEnsemblLink.vue'
 import GenesilicoModificationLink from '@/components/search/GenesilicoModificationLink.vue'
 
 const props = defineProps({
@@ -182,7 +182,7 @@ function getExportLink() {
     <Column field="chrom" header="Chrom" sortable></Column>
     <Column field="start" header="Start" sortable>
       <template #body="{ data }">
-        <ChromeRegionEnsembleLink
+        <ChromRegionEnsemblLink
           :taxa-name="taxaName"
           :chrom="data.chrom"
           :start="data.start"

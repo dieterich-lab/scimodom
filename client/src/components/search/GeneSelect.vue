@@ -31,6 +31,8 @@ watch(
   () => props.selectionIds,
   () => {
     if (props.selectionIds.length === 0) {
+      genes.value = null
+      filteredGenes.value = null
       return
     }
     handleRequestWithErrorReporting(
@@ -45,6 +47,8 @@ watch(
 )
 
 function searchGene(event) {
+  console.log('ASASAS', props.selectionIds)
+  console.log('genes', genes.value)
   setTimeout(() => {
     if (!event.query.trim().length) {
       filteredGenes.value = [...genes.value]
