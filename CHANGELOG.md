@@ -5,6 +5,15 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/), and this 
 
 ## [Release candidate] - started 2024-08-15
 
+### Added
+
+- Search table full export
+- Search query modalities
+
+### Fixed
+
+- Missing query for chromosome end
+
 ## [2.0.6] 2024-08-15
 
 First release.
