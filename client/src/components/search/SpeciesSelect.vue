@@ -45,6 +45,12 @@ const updateTaxa = (value) => {
   selectionIds.value = opts.map((item) => item.selection_id)
   taxaName.value = [...new Set(opts.map((item) => item.taxa_name))][0]
   taxaId.value = value.key
+  selectedGene.value = undefined
+  selectedBiotypes.value = undefined
+  selectedFeatures.value = undefined
+  selectedChrom.value = undefined
+  selectedChromStart.value = undefined
+  selectedChromEnd.value = undefined
 }
 
 // lifecyle

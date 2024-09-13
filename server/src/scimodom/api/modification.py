@@ -13,6 +13,7 @@ from scimodom.services.annotation import RNA_TYPE_TO_ANNOTATION_SOURCE_MAP
 from scimodom.services.modification import get_modification_service
 from scimodom.api.helpers import (
     ClientResponseException,
+    get_positive_int,
     get_valid_coords,
     get_valid_targets_type,
     get_valid_taxa_id,
@@ -21,12 +22,16 @@ from scimodom.api.helpers import (
     get_optional_positive_int,
     get_option_positive_int,
     get_optional_non_negative_int,
+    validate_rna_type,
 )
 from scimodom.services.bedtools import BedToolsService, get_bedtools_service
 from scimodom.utils.bedtools_dto import Bed6Record
 from scimodom.services.file import AssemblyFileType, get_file_service
 from scimodom.utils.common_dto import Strand
 
+logger = logging.getLogger(__name__)
+
+modification_api = Blueprint("modification_api", __name__)
 
 FIELDS_TO_CSV_HEADER_MAP = {
     "chrom": "chrom",
@@ -47,21 +52,25 @@ FIELDS_TO_CSV_HEADER_MAP = {
 }
 
 
-logger = logging.getLogger(__name__)
-
-modification_api = Blueprint("modification_api", __name__)
+@dataclass
+class GeneSearch:
+    gene_filter: list[str]
+    chrom_filter: str | None = None
+    chrom_start_filter: int | None = None
+    chrom_end_filter: int | None = None
 
 
 class IntersectResponse(BaseModel):
     records: list[Bed6Record]
 
 
-@modification_api.route("/", methods=["GET"])
+@modification_api.route("/query", defaults={"by_gene": None}, methods=["GET"])
+@modification_api.route("/query/<by_gene>")
 @cross_origin(supports_credentials=True)
-def get_modifications_as_json():
+def get_modifications_as_json(by_gene):
     """Search view API."""
     try:
-        result = _get_modifications_for_request()
+        result = _get_modifications_for_request(by_gene)
     except ClientResponseException as e:
         return e.response_tupel
     for r in result["records"]:
@@ -69,67 +78,12 @@ def get_modifications_as_json():
     return result
 
 
-def _get_modifications_for_request():
-    modification_service = get_modification_service()
-    return modification_service.get_modifications_by_source(
-        annotation_source=_get_annotation_source(),
-        modification_id=get_non_negative_int("modification"),
-        organism_id=get_non_negative_int("organism"),
-        technology_ids=_get_technology_ids(),
-        taxa_id=get_non_negative_int("taxaId"),
-        gene_filter=_get_gene_filters(),
-        chrom=request.args.get("chrom", type=str),
-        chrom_start=get_optional_non_negative_int("chromStart"),
-        chrom_end=get_optional_positive_int("chromEnd"),
-        first_record=get_optional_non_negative_int("firstRecord"),
-        max_records=get_option_positive_int("maxRecords"),
-        multi_sort=_get_multi_sort(),
-    )
-
-
-def _get_annotation_source():
-    rna_type = request.args.get("rnaType", type=str)
-    if rna_type is None or rna_type not in RNA_TYPE_TO_ANNOTATION_SOURCE_MAP:
-        raise ClientResponseException(400, "Bad rnaType")
-    else:
-        return RNA_TYPE_TO_ANNOTATION_SOURCE_MAP[rna_type]
-
-
-def _get_technology_ids():
-    raw = request.args.getlist("technology", type=int)
-    if raw is None:
-        return []
-    for i in raw:
-        if i < 0:
-            raise ClientResponseException(400, "Bad technology ID")
-    return raw
-
-
-def _get_gene_filters():
-    raw = request.args.getlist("geneFilter", type=str)
-    if raw is None:
-        return []
-    return raw
-
-
-def _get_multi_sort(url_split: str = "%2B"):
-    raw = request.args.getlist("multiSort", type=str)
-    if raw is None or (len(raw) == 1 and raw[0] == ""):
-        return []
-    for i in raw:
-        field, direction = i.split(url_split)
-        if field not in ["chrom", "score", "start", "coverage", "frequency"]:
-            raise ClientResponseException(400, "Bad multiSort field")
-        if direction not in ["desc", "asc"]:
-            raise ClientResponseException(400, "Bad multiSort direction")
-    return raw
-
-
-@modification_api.route("/csv", methods=["GET"])
+@modification_api.route("/csv", defaults={"by_gene": None}, methods=["GET"])
+@modification_api.route("/csv/<by_gene>")
 @cross_origin(supports_credentials=True)
-def get_modifications_as_csv():
+def get_modifications_as_csv(by_gene):
     try:
-        data = _get_modifications_for_request()
+        data = _get_modifications_for_request(by_gene)
     except ClientResponseException as e:
         return e.response_tupel
     records_as_csv = _get_csv_from_modifications_records(data["records"])
@@ -140,19 +94,6 @@ def get_modifications_as_csv():
         mimetype="text/csv",
         headers={"Content-Disposition": f'attachment; filename="{file_name}"'},
     )
-
-
-def _get_csv_from_modifications_records(records):
-    as_text = StringIO()
-    writer = DictWriter(
-        as_text, fieldnames=FIELDS_TO_CSV_HEADER_MAP.values(), dialect="excel"
-    )
-    writer.writeheader()
-    for raw in records:
-        cooked = {v: raw[k] for k, v in FIELDS_TO_CSV_HEADER_MAP.items()}
-        cooked["strand"] = cooked["strand"].value
-        writer.writerow(cooked)
-    return as_text.getvalue()
 
 
 @modification_api.route("/sitewise", methods=["GET"])
@@ -278,3 +219,104 @@ def _get_bed6_records_from_request(
             strand=coords[3],
         )
     ]
+
+
+def _get_modifications_for_request(by_gene):
+    modification_service = get_modification_service()
+    # TODO: chrom validation, cf. get_valid_coords
+    if by_gene:
+        gene_or_chrom = _get_gene_or_chrom_required()
+        return modification_service.get_modification_by_gene(
+            annotation_source=_get_annotation_source(),
+            taxa_id=get_valid_taxa_id(request.args.get("taxaId")),
+            gene_filter=gene_or_chrom.gene_filter,
+            chrom=gene_or_chrom.chrom_filter,
+            chrom_start=gene_or_chrom.chrom_start_filter,
+            chrom_end=gene_or_chrom.chrom_end_filter,
+            first_record=get_optional_non_negative_int("firstRecord"),
+            max_records=get_option_positive_int("maxRecords"),
+            multi_sort=_get_multi_sort(),
+        )
+    else:
+        return modification_service.get_modifications_by_source(
+            annotation_source=_get_annotation_source(),
+            modification_id=get_non_negative_int("modification"),
+            organism_id=get_non_negative_int("organism"),
+            technology_ids=_get_technology_ids(),
+            taxa_id=get_valid_taxa_id(request.args.get("taxaId")),
+            gene_filter=_get_gene_filters(),
+            chrom=request.args.get("chrom", type=str),
+            chrom_start=get_optional_non_negative_int("chromStart"),
+            chrom_end=get_optional_positive_int("chromEnd"),
+            first_record=get_optional_non_negative_int("firstRecord"),
+            max_records=get_option_positive_int("maxRecords"),
+            multi_sort=_get_multi_sort(),
+        )
+
+
+def _get_csv_from_modifications_records(records):
+    as_text = StringIO()
+    writer = DictWriter(
+        as_text, fieldnames=FIELDS_TO_CSV_HEADER_MAP.values(), dialect="excel"
+    )
+    writer.writeheader()
+    for raw in records:
+        cooked = {v: raw[k] for k, v in FIELDS_TO_CSV_HEADER_MAP.items()}
+        cooked["strand"] = cooked["strand"].value
+        writer.writerow(cooked)
+    return as_text.getvalue()
+
+
+def _get_annotation_source():
+    rna_type = request.args.get("rnaType", type=str)
+    validate_rna_type(rna_type)
+    return RNA_TYPE_TO_ANNOTATION_SOURCE_MAP[rna_type]
+
+
+# TODO: for mod, org, and tech, we should in fact check that they exists in the DB...
+def _get_technology_ids():
+    raw = request.args.getlist("technology", type=int)
+    if raw is None:
+        return []
+    for i in raw:
+        if i < 0:
+            raise ClientResponseException(400, "Invalid technology ID")
+    return raw
+
+
+def _get_gene_filters():
+    raw = request.args.getlist("geneFilter", type=str)
+    if raw is None:
+        return []
+    return raw
+
+
+def _get_gene_or_chrom_required() -> GeneSearch:
+    gene = request.args.getlist("geneFilter", type=str)
+    if gene:
+        return GeneSearch(gene_filter=gene)
+    else:
+        chrom = request.args.get("chrom", type=str)
+        if not chrom:
+            raise ClientResponseException(400, "Gene or chromosome is required")
+        return GeneSearch(
+            gene_filter=[],
+            chrom_filter=chrom,
+            chrom_start_filter=get_non_negative_int("chromStart"),
+            chrom_end_filter=get_positive_int("chromEnd"),
+        )
+
+
+def _get_multi_sort(url_split: str = "%2B"):
+    raw = request.args.getlist("multiSort", type=str)
+    if raw is None or (len(raw) == 1 and raw[0] == ""):
+        return []
+    for i in raw:
+        field, direction = i.split(url_split)
+        if field not in ["chrom", "score", "start", "coverage", "frequency"]:
+            raise ClientResponseException(400, "Invalid table sort (multiSort) field")
+        if direction not in ["desc", "asc"]:
+            raise ClientResponseException(
+                400, "Invalid table sort (multiSort) direction"
+            )
+    return raw

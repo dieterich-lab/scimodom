@@ -30,20 +30,18 @@ const taxaName = ref()
 const isConfirmed = ref(false)
 const updateCount = ref(0)
 
-const toggleValue = ref('Modification')
-const toggleOptions = ref(['Modification', 'Gene'])
+const searchByValue = ref('Modification')
+const searchByOptions = ref(['Modification', 'Gene/Chrom'])
 
-const optionsDisabled = computed(
-  () => selectionIds.value.length === 0 && toggleValue.value === 'Modification'
-)
+const optionsDisabled = computed(() => selectionIds.value.length === 0)
 const queryButtonDisabled = computed(
   () =>
     optionsDisabled.value ||
-    ((taxaName.value == null || needsConfirm.value) && toggleValue.value === 'Gene')
+    ((taxaName.value == null || needsConfirm.value) && searchByValue.value === 'Gene/Chrom')
 )
 const needsConfirm = computed(
   () =>
-    selectedGene.value == null &&
+    (selectedGene.value == null || selectedGene.value == '') &&
     (selectedChromStart.value == null || selectedChromEnd.value == null)
 )
 const resultsDisabled = computed(() => queryButtonDisabled.value || !isConfirmed.value)
@@ -91,7 +89,9 @@ const confirmSearch = () => {
         isConfirmed.value = true
         updateCount.value += 1
       },
-      reject: () => {} // do nothing
+      reject: () => {
+        isConfirmed.value = false
+      }
     })
   } else {
     isConfirmed.value = true
@@ -105,15 +105,15 @@ const confirmSearch = () => {
     <!-- SECTION -->
     <SectionLayout>
       <StyledHeadline text="Search RNA modifications" />
-      <SubTitle>Select filters and query the database</SubTitle>
+      <SubTitle>Query by modification, gene or genomic region</SubTitle>
       <!-- TOGGLE - SEARCH SELECTION BY MODIFICATION OR GENE -->
       <Divider />
       <div>
-        <SelectButton v-model="toggleValue" :options="toggleOptions" :allowEmpty="false" />
+        <SelectButton v-model="searchByValue" :options="searchByOptions" :allowEmpty="false" />
       </div>
       <Divider />
       <!-- FILTER 1 -->
-      <div v-if="toggleValue === 'Modification'">
+      <div v-if="searchByValue === 'Modification'">
         <ModificationSelect
           v-model:selected-modification="selectedModification"
           v-model:selected-organism="selectedOrganism"
@@ -147,21 +147,17 @@ const confirmSearch = () => {
           v-model:rna-type="rnaType"
         />
       </div>
-      "MOD:" {{ selectedModification }} "ORG:" {{ selectedOrganism }} "TECH:"
-      {{ selectedTechnology }} "SEL:" {{ selectionIds }} "TAXID:" {{ taxaId }} "NAME:"
-      {{ taxaName }} "RNA:" {{ rnaType }} "SELGENE:" {{ selectedGene }} "CONFIRMED:"
-      {{ isConfirmed }}, "QBD:" {{ queryButtonDisabled }}
       <!-- FILTER 2 -->
       <Divider />
       <div class="grid grid-cols-1 md:grid-cols-10 gap-6 mt-6">
         <div class="col-span-3">
           <GeneSelect
             :placeholder="
-              toggleValue === 'Modification' ? 'Select gene (optional)' : '2. Select gene'
+              searchByValue === 'Modification' ? 'Select gene (optional)' : '2. Select gene'
             "
             v-model="selectedGene"
             :selection-ids="selectionIds"
-            :disabled="optionsDisabled || selectionIds.length === 0"
+            :disabled="optionsDisabled"
             @change="clearChrom()"
           />
         </div>
@@ -188,13 +184,13 @@ const confirmSearch = () => {
         <div class="col-span-3">
           <ChromSelect
             :placeholder="
-              toggleValue === 'Modification'
+              searchByValue === 'Modification'
                 ? 'Select chromosome (optional)'
                 : '2. Select chromosome'
             "
             v-model="selectedChrom"
             :taxa-id="taxaId"
-            :disabled="optionsDisabled || !(selectedGene == null) || selectionIds.length === 0"
+            :disabled="optionsDisabled || !(selectedGene == null || selectedGene == '')"
             @change="clearCoords()"
           />
         </div>
@@ -204,7 +200,7 @@ const confirmSearch = () => {
             v-model="selectedChromStart"
             inputId="minmax"
             :placeholder="
-              toggleValue === 'Modification'
+              searchByValue === 'Modification'
                 ? 'Enter chromosome start (optional)'
                 : 'Enter chromosome start'
             "
@@ -223,7 +219,7 @@ const confirmSearch = () => {
             inputId="minmax"
             :disabled="selectedChromStart == null"
             :placeholder="
-              toggleValue === 'Modification'
+              searchByValue === 'Modification'
                 ? 'Enter chromosome end (optional)'
                 : 'Enter chromosome end'
             "
@@ -253,6 +249,7 @@ const confirmSearch = () => {
       <SearchResults
         :search-parameters="searchParameters"
         :taxa-name="taxaName"
+        :search-by-value="searchByValue"
         :disabled="resultsDisabled"
         :key="updateCount"
       />

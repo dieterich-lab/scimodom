@@ -67,6 +67,7 @@ function searchGene(event) {
     forceSelection
     :placeholder="placeholder"
     :disabled="disabled"
+    v-tooltip.top="'Gene or chromosome (mutually exclusive)'"
     :pt="{
       root: { class: 'w-full md:w-full' },
       input: { class: 'w-full md:w-full' }

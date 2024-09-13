@@ -50,6 +50,7 @@ watch(
     showClear
     :disabled="disabled"
     :placeholder="placeholder"
+    v-tooltip.top="'Chromosome or gene (mutually exclusive)'"
     :pt="{
       root: { class: 'w-full md:w-full' }
     }"
