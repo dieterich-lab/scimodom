@@ -9,9 +9,9 @@ const props = defineProps({
 
 const text = props.label || props.start
 const cookedTaxaName = props.taxaName.replace(/ /g, '_')
-const link = `https://www.ensembl.org/${cookedTaxaName}/Location/View?r=${props.chrom}:${
-  props.start
-}:${props.end + 1};db=core`
+const link = `https://jul2023.archive.ensembl.org/${cookedTaxaName}/Location/View?r=${
+  props.chrom
+}:${props.start}:${props.end + 1};db=core`
 </script>
 <template>
   <a

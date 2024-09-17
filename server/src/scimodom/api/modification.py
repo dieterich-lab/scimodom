@@ -70,12 +70,12 @@ class IntersectResponse(BaseModel):
 def get_modifications_as_json(by_gene):
     """Search view API."""
     try:
-        result = _get_modifications_for_request(by_gene)
+        data = _get_modifications_for_request(by_gene)
     except ClientResponseException as e:
         return e.response_tupel
-    for r in result["records"]:
+    for r in data["records"]:
         r["strand"] = r["strand"].value
-    return result
+    return data
 
 
 @modification_api.route("/csv", defaults={"by_gene": None}, methods=["GET"])
