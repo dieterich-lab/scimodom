@@ -1,15 +1,10 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useConfirm } from 'primevue/useconfirm'
-import {
-  updModification,
-  updOrganismFromMod,
-  updTechnologyFromModAndOrg,
-  updSelectionFromAll
-} from '@/utils/selection.js'
-import { HTTP } from '@/services/API.js'
 import StyledHeadline from '@/components/ui/StyledHeadline.vue'
 import SubTitle from '@/components/ui/SubTitle.vue'
+import ModificationSelect from '@/components/search/ModificationSelect.vue'
+import SpeciesSelect from '@/components/search/SpeciesSelect.vue'
 import GeneSelect from '@/components/search/GeneSelect.vue'
 import BiotypeSelect from '@/components/search/BiotypeSelect.vue'
 import FeatureSelect from '@/components/search/FeatureSelect.vue'
@@ -18,35 +13,37 @@ import SearchResults from '@/components/search/SearchResults.vue'
 
 const confirm = useConfirm()
 
-const all_selections = ref()
-const selectedBiotypes = ref()
-const selectedFeatures = ref()
-const rnaType = ref('')
-const modification = ref()
 const selectedModification = ref()
-const technology = ref()
-const selectedTechnology = ref()
-const selectedTechnologyIds = ref([])
-const organism = ref()
+const selectedTechnology = ref([])
 const selectedOrganism = ref()
 const selectionIds = ref([])
-const taxaId = ref(0)
-const taxaName = ref()
+const selectedBiotypes = ref()
+const selectedFeatures = ref()
 const selectedGene = ref()
 const selectedChrom = ref()
 const selectedChromStart = ref()
 const selectedChromEnd = ref()
+const rnaType = ref('')
+const taxaId = ref(0)
+const taxaName = ref()
 
 const isConfirmed = ref(false)
 const updateCount = ref(0)
 
+const searchByValue = ref('Modification')
+const searchByOptions = ref(['Modification', 'Gene/Chrom'])
+
+const optionsDisabled = computed(() => selectionIds.value.length === 0)
 const queryButtonDisabled = computed(
   () =>
-    selectedModification.value == null ||
-    selectedTechnology.value == null ||
-    selectedOrganism.value == null
+    optionsDisabled.value ||
+    ((taxaName.value == null || needsConfirm.value) && searchByValue.value === 'Gene/Chrom')
 )
-const needsConfirm = computed(() => selectedGene.value == null && selectedChrom.value == null)
+const needsConfirm = computed(
+  () =>
+    (selectedGene.value == null || selectedGene.value == '') &&
+    (selectedChromStart.value == null || selectedChromEnd.value == null)
+)
 const resultsDisabled = computed(() => queryButtonDisabled.value || !isConfirmed.value)
 const searchParameters = computed(() => getSearchParameters())
 
@@ -60,7 +57,7 @@ function getSearchParameters() {
   return {
     modification: selectedModification.value?.key,
     organism: selectedOrganism.value?.key,
-    technology: selectedTechnologyIds.value,
+    technology: selectedTechnology.value,
     rnaType: rnaType.value,
     taxaId: taxaId.value,
     chrom: selectedChrom.value == null ? null : selectedChrom.value.chrom,
@@ -81,98 +78,26 @@ const clearChrom = () => {
   selectedChrom.value = undefined
   clearCoords()
 }
-const clearSelected = (value) => {
-  if (value < 1) {
-    selectedOrganism.value = undefined
-  }
-  if (value < 2) {
-    selectedTechnology.value = undefined
-  }
-  selectedGene.value = undefined
-  selectedBiotypes.value = undefined
-  selectedFeatures.value = undefined
-  isConfirmed.value = false
-}
-const clearSelection = (value) => {
-  if (value < 1) {
-    technology.value = undefined
-  }
-  if (value < 2) {
-    selectionIds.value = []
-  }
-  rnaType.value = ''
-}
-const clearAll = (value) => {
-  clearSelected(value)
-  clearSelection(value)
-  clearChrom()
-}
-
-// search callbacks
-const updateOrganism = () => {
-  // on first filter (modification) change
-  clearAll(0)
-  organism.value = updOrganismFromMod(all_selections.value, selectedModification.value)
-}
-const updateTechnology = () => {
-  // on second filter (organism) change
-  clearAll(1)
-  technology.value = updTechnologyFromModAndOrg(
-    all_selections.value,
-    selectedModification.value,
-    selectedOrganism.value
-  )
-}
-const updateSelection = () => {
-  // on third filter (technology) change
-  clearAll(2)
-  let result = updSelectionFromAll(
-    all_selections.value,
-    selectedModification.value,
-    selectedOrganism.value,
-    selectedTechnology.value
-  )
-  selectedTechnologyIds.value = result.technology
-  selectionIds.value = result.selection
-  taxaId.value = result.taxaId
-  taxaName.value = result.taxaName
-  rnaType.value = result.rna
-  if (selectionIds.value.length === 0) {
-    // handle the case where all checkboxes are unticked
-    selectedTechnology.value = undefined
-  }
-}
 
 const confirmSearch = () => {
   if (needsConfirm.value) {
     confirm.require({
       message:
-        'You can narrow down your search by selecting a gene or a genomic region (chromosome). Are you sure you want to proceed?',
+        'You can narrow down your search by selecting a gene or a genomic region (chromosome start and end). Are you sure you want to proceed?',
       header: 'Broad search criteria may result in large, slow-running queries!',
       accept: () => {
         isConfirmed.value = true
         updateCount.value += 1
       },
-      reject: () => {} // do nothing
+      reject: () => {
+        isConfirmed.value = false
+      }
     })
   } else {
     isConfirmed.value = true
     updateCount.value += 1
   }
 }
-
-// functions
-
-onMounted(() => {
-  HTTP.get('/selections')
-    .then(function (response) {
-      all_selections.value = response.data
-      modification.value = updModification(all_selections.value)
-    })
-    .catch((error) => {
-      console.log(error)
-    })
-})
 </script>
 
 <template>
@@ -180,82 +105,76 @@ onMounted(() => {
     <!-- SECTION -->
     <SectionLayout>
       <StyledHeadline text="Search RNA modifications" />
-      <SubTitle>Select filters and query the database</SubTitle>
-      <!-- FILTER 1 -->
+      <SubTitle>Query by modification, gene or genomic region</SubTitle>
+      <!-- TOGGLE - SEARCH SELECTION BY MODIFICATION OR GENE -->
       <Divider />
-      <div class="grid grid-cols-1 md:grid-cols-10 gap-6">
-        <div class="col-span-3">
-          <Dropdown
-            @change="updateOrganism()"
-            v-model="selectedModification"
-            :options="modification"
-            optionLabel="label"
-            optionGroupLabel="label"
-            optionGroupChildren="children"
-            placeholder="1. Select RNA modification"
-            :pt="{
-              root: { class: 'w-full md:w-full' }
-            }"
-            :ptOptions="{ mergeProps: true }"
-          />
-        </div>
-        <div class="col-span-3">
-          <CascadeSelect
-            @change="updateTechnology()"
-            v-model="selectedOrganism"
-            :options="organism"
-            optionLabel="label"
-            optionGroupLabel="label"
-            :optionGroupChildren="['child1', 'child2']"
-            placeholder="2. Select organism"
-            :pt="{
-              root: { class: 'w-full md:w-full' }
-            }"
-            :ptOptions="{ mergeProps: true }"
-          />
-        </div>
-        <div class="col-span-3">
-          <TreeSelect
-            @change="updateSelection()"
-            v-model="selectedTechnology"
-            :options="technology"
-            selectionMode="checkbox"
-            :metaKeySelection="false"
-            placeholder="3. Select technology"
-            :pt="{
-              root: { class: 'w-full md:w-full' }
-            }"
-            :ptOptions="{ mergeProps: true }"
-          />
-        </div>
-        <div></div>
+      <div>
+        <SelectButton v-model="searchByValue" :options="searchByOptions" :allowEmpty="false" />
+      </div>
+      <Divider />
+      <!-- FILTER 1 -->
+      <div v-if="searchByValue === 'Modification'">
+        <ModificationSelect
+          v-model:selected-modification="selectedModification"
+          v-model:selected-organism="selectedOrganism"
+          v-model:selected-technology="selectedTechnology"
+          v-model:selection-ids="selectionIds"
+          v-model:selected-gene="selectedGene"
+          v-model:selected-biotypes="selectedBiotypes"
+          v-model:selected-features="selectedFeatures"
+          v-model:selected-chrom="selectedChrom"
+          v-model:selected-chrom-start="selectedChromStart"
+          v-model:selected-chrom-end="selectedChromEnd"
+          v-model:taxa-id="taxaId"
+          v-model:taxa-name="taxaName"
+          v-model:rna-type="rnaType"
+        />
+      </div>
+      <div v-else>
+        <SpeciesSelect
+          v-model:selected-modification="selectedModification"
+          v-model:selected-organism="selectedOrganism"
+          v-model:selected-technology="selectedTechnology"
+          v-model:selection-ids="selectionIds"
+          v-model:selected-gene="selectedGene"
+          v-model:selected-biotypes="selectedBiotypes"
+          v-model:selected-features="selectedFeatures"
+          v-model:selected-chrom="selectedChrom"
+          v-model:selected-chrom-start="selectedChromStart"
+          v-model:selected-chrom-end="selectedChromEnd"
+          v-model:taxa-id="taxaId"
+          v-model:taxa-name="taxaName"
+          v-model:rna-type="rnaType"
+        />
       </div>
       <!-- FILTER 2 -->
       <Divider />
       <div class="grid grid-cols-1 md:grid-cols-10 gap-6 mt-6">
         <div class="col-span-3">
           <GeneSelect
-            placeholder="4. Select gene (optional)"
+            :placeholder="
+              searchByValue === 'Modification' ? 'Select gene (optional)' : '2. Select gene'
+            "
             v-model="selectedGene"
             :selection-ids="selectionIds"
-            :disabled="queryButtonDisabled"
+            :disabled="optionsDisabled"
             @change="clearChrom()"
           />
         </div>
         <div class="col-span-3">
           <BiotypeSelect
-            placeholder="5. Select biotype (optional)"
+            placeholder="Select biotype (optional)"
             v-model="selectedBiotypes"
             :rna-type="rnaType"
-            :disabled="queryButtonDisabled"
+            :disabled="optionsDisabled"
           />
         </div>
         <div class="col-span-3">
           <FeatureSelect
-            placeholder="6. Select feature (optional)"
+            placeholder="Select feature (optional)"
             v-model="selectedFeatures"
             :rna-type="rnaType"
-            :disabled="queryButtonDisabled"
+            :disabled="optionsDisabled"
           />
         </div>
         <div></div>
@@ -264,10 +183,14 @@ onMounted(() => {
       <div class="grid grid-cols-1 md:grid-cols-10 gap-6 mt-6">
         <div class="col-span-3">
           <ChromSelect
-            placeholder="7. Select chromosome (optional)"
+            :placeholder="
+              searchByValue === 'Modification'
+                ? 'Select chromosome (optional)'
+                : '2. Select chromosome'
+            "
             v-model="selectedChrom"
             :taxa-id="taxaId"
-            :disabled="queryButtonDisabled || !(selectedGene == null)"
+            :disabled="optionsDisabled || !(selectedGene == null || selectedGene == '')"
             @change="clearCoords()"
           />
         </div>
@@ -276,7 +199,11 @@ onMounted(() => {
             @input="selectedChromEnd = null"
             v-model="selectedChromStart"
             inputId="minmax"
-            placeholder="8. Enter chromosome start (optional)"
+            :placeholder="
+              searchByValue === 'Modification'
+                ? 'Enter chromosome start (optional)'
+                : 'Enter chromosome start'
+            "
             :disabled="selectedChrom == null"
             :min="0"
             :max="selectedChrom == null ? 0 : selectedChrom.size - 1"
@@ -291,7 +218,11 @@ onMounted(() => {
             v-model="selectedChromEnd"
             inputId="minmax"
             :disabled="selectedChromStart == null"
-            placeholder="9. Enter chromosome end (optional)"
+            :placeholder="
+              searchByValue === 'Modification'
+                ? 'Enter chromosome end (optional)'
+                : 'Enter chromosome end'
+            "
             :min="selectedChromStart == null ? 0 : selectedChromStart + 1"
             :max="selectedChrom == null ? 0 : selectedChrom.size"
             :pt="{
@@ -318,11 +249,10 @@ onMounted(() => {
       <SearchResults
         :search-parameters="searchParameters"
         :taxa-name="taxaName"
+        :search-by-value="searchByValue"
         :disabled="resultsDisabled"
         :key="updateCount"
       />
     </SectionLayout>
   </DefaultLayout>
 </template>
-
-<style scoped></style>

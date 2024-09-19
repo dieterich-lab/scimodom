@@ -1,17 +1,19 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, watch, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import ModificationInfo from '@/components/modification/ModificationInfo.vue'
 import { getApiUrl, HTTP } from '@/services/API'
 import { fmtFilter, fmtOrder } from '@/utils'
-import ChromeRegionEnsembleLink from '@/components/search/ChromeRegionEnsembleLink.vue'
+import ChromRegionEnsemblLink from '@/components/search/ChromRegionEnsemblLink.vue'
 import GenesilicoModificationLink from '@/components/search/GenesilicoModificationLink.vue'
 
 const props = defineProps({
   searchParameters: { type: Object },
   taxaName: { type: String },
+  searchByValue: { type: String },
   disabled: { type: Boolean }
 })
+
 /*
   searchParameters look like this
 
@@ -45,6 +47,18 @@ const records = ref()
 const router = useRouter()
 const disableExportLink = computed(() => props.disabled || loading.value)
 const exportLink = computed(() => getExportLink())
+const endPoint = computed(() => (props.searchByValue === 'Modification' ? '' : '/gene'))
+
+watch(
+  () => props.disabled,
+  () => {
+    if (props.disabled) {
+      records.value = undefined
+      totalRecords.value = 0
+    }
+  },
+  { immediate: true }
+)
 
 onMounted(() => loadData())
 
@@ -66,23 +80,22 @@ function onOverlay(record) {
 }
 
 function loadData() {
-  if (props.disabled) {
-    return
+  if (!props.disabled) {
+    loading.value = true
+    const params = getQueryParams(firstRecord.value, maxRecords.value)
+    HTTP.get(`/modification/query${endPoint.value}`, {
+      params: params,
+      paramsSerializer: { indexes: null }
+    })
+      .then(function (response) {
+        records.value = response.data.records
+        totalRecords.value = response.data.totalRecords
+        loading.value = false
+      })
+      .catch((error) => {
+        console.log(error)
+      })
   }
-  loading.value = true
-  const params = getQueryParams(firstRecord.value, maxRecords.value)
-  HTTP.get('/modification/', {
-    params: params,
-    paramsSerializer: { indexes: null }
-  })
-    .then(function (response) {
-      records.value = response.data.records
-      totalRecords.value = response.data.totalRecords
-      loading.value = false
-    })
-    .catch((error) => {
-      console.log(error)
-    })
 }
 
 function getQueryParams(myFirstRecord = null, myMaxRecords = null) {
@@ -115,7 +128,7 @@ function getExportLink() {
     return ''
   }
   const rawParams = getQueryParams()
-  const url = new URL(getApiUrl('modification/csv'))
+  const url = new URL(getApiUrl(`modification/csv${endPoint.value}`))
   for (const [k, v] of Object.entries(rawParams)) {
     if (v != null) {
       if (Array.isArray(v)) {
@@ -128,6 +141,7 @@ function getExportLink() {
   return url.toString()
 }
 </script>
+
 <template>
   <DataTable
     :value="records"
@@ -182,7 +196,7 @@ function getExportLink() {
     <Column field="chrom" header="Chrom" sortable></Column>
     <Column field="start" header="Start" sortable>
       <template #body="{ data }">
-        <ChromeRegionEnsembleLink
+        <ChromRegionEnsemblLink
           :taxa-name="taxaName"
           :chrom="data.chrom"
           :start="data.start"

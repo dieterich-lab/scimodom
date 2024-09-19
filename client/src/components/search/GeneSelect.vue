@@ -31,6 +31,8 @@ watch(
   () => props.selectionIds,
   () => {
     if (props.selectionIds.length === 0) {
+      genes.value = null
+      filteredGenes.value = null
       return
     }
     handleRequestWithErrorReporting(
@@ -63,8 +65,9 @@ function searchGene(event) {
     @complete="searchGene"
     @change="$emit('change')"
     forceSelection
-    placeholder="4. Select gene (optional)"
+    :placeholder="placeholder"
     :disabled="disabled"
+    v-tooltip.top="'Gene or chromosome (mutually exclusive)'"
     :pt="{
       root: { class: 'w-full md:w-full' },
       input: { class: 'w-full md:w-full' }

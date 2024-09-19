@@ -34,6 +34,7 @@ import Panel from 'primevue/panel'
 import ProgressSpinner from 'primevue/progressspinner'
 import RadioButton from 'primevue/radiobutton'
 import Row from 'primevue/row'
+import SelectButton from 'primevue/selectbutton'
 import Stepper from 'primevue/stepper'
 import StepperPanel from 'primevue/stepperpanel'
 import TabPanel from 'primevue/tabpanel'
@@ -85,6 +86,7 @@ app.component('Panel', Panel)
 app.component('ProgressSpinner', ProgressSpinner)
 app.component('RadioButton', RadioButton)
 app.component('Row', Row)
+app.component('SelectButton', SelectButton)
 app.component('Stepper', Stepper)
 app.component('StepperPanel', StepperPanel)
 app.component('TabPanel', TabPanel)
