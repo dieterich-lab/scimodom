@@ -5,6 +5,7 @@ import ModificationInfo from '@/components/modification/ModificationInfo.vue'
 import { getApiUrl, HTTP } from '@/services/API'
 import { fmtFilter, fmtOrder } from '@/utils'
 import ChromRegionEnsemblLink from '@/components/search/ChromRegionEnsemblLink.vue'
+import GeneEnsemblLink from '@/components/search/GeneEnsemblLink.vue'
 import GenesilicoModificationLink from '@/components/search/GenesilicoModificationLink.vue'
 
 const props = defineProps({
@@ -246,7 +247,15 @@ function getExportLink() {
     </Column>
     <Column field="tech" header="Technology"></Column>
     <Column field="feature" header="Feature"></Column>
-    <Column field="gene_name" header="Gene"></Column>
+    <Column field="gene_anme" header="Gene">
+      <template #body="{ data }">
+        <GeneEnsemblLink
+          :taxa-name="taxaName"
+          :gene-name="data.gene_name"
+          :gene-id="data.gene_id"
+        />
+      </template>
+    </Column>
     <Column field="gene_biotype" header="Biotype"></Column>
     <Column :exportable="false" style="width: 5%">
       <template #header>

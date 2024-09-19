@@ -253,20 +253,8 @@ class ModificationService:
             select(func.count()).select_from(query.with_only_columns(model.id))
         )
 
-    def _return_ensembl_query(
-        self,
-        annotation: Annotation,
-        modification_id: int,
-        organism_id: int,
-        technology_ids: list[int],
-        gene_filter: list[str],
-        chrom: str | None,
-        chrom_start: int | None,
-        chrom_end: int | None,
-        first_record: int | None,
-        max_records: int | None,
-        multi_sort: list[str],
-    ):
+    @staticmethod
+    def _get_base_search_query():
         query = (
             select(
                 Data.id,
@@ -280,10 +268,19 @@ class ModificationService:
                 Data.frequency,
                 Data.dataset_id,
                 func.group_concat(DataAnnotation.feature.distinct()).label("feature"),
-                func.group_concat(GenomicAnnotation.biotype.distinct()).label(
-                    "gene_biotype"
-                ),
-                func.group_concat(GenomicAnnotation.name.distinct()).label("gene_name"),
+                func.group_concat(
+                    GenomicAnnotation.id.distinct().op("ORDER BY")(GenomicAnnotation.id)
+                ).label("gene_id"),
+                func.group_concat(
+                    GenomicAnnotation.name.distinct().op("ORDER BY")(
+                        GenomicAnnotation.id
+                    )
+                ).label("gene_name"),
+                func.group_concat(
+                    GenomicAnnotation.biotype.distinct().op("ORDER BY")(
+                        GenomicAnnotation.id
+                    )
+                ).label("gene_biotype"),
                 DetectionTechnology.tech,
                 Organism.taxa_id,
                 Organism.cto,
@@ -293,23 +290,22 @@ class ModificationService:
             .join_from(Data, Dataset, Data.inst_dataset)
             .join_from(Dataset, DetectionTechnology, Dataset.inst_technology)
             .join_from(Dataset, Organism, Dataset.inst_organism)
-            .where(
-                Data.modification_id == modification_id,
-                Dataset.organism_id == organism_id,
-                Dataset.technology_id.in_(technology_ids),
-            )
         )
+        return query
 
-        # coordinate filters
-        if chrom:
-            query = query.where(Data.chrom == chrom)
-            if chrom_start:
-                query = query.where(Data.start >= chrom_start)
-            if chrom_end:
-                query = query.where(Data.end <= chrom_end)
+    @staticmethod
+    def _add_chrom_filters(query, chrom, start, end):
+        query = query.where(Data.chrom == chrom)
+        if start:
+            query = query.where(Data.start >= start)
+        if end:
+            query = query.where(Data.end <= end)
+        return query
 
+    def _get_gene_filters(self, query, gene_filter, annotation):
         # gene filters: matchMode unused (cf. PrimeVue), but keep it this way
         # e.g. to extend options or add table filters
+        # TODO annotation
         # gene name
         name_flt = next((flt for flt in gene_filter if "gene_name" in flt), None)
         if name_flt:
@@ -329,12 +325,9 @@ class ModificationService:
             query = query.where(GenomicAnnotation.annotation_id == annotation.id).where(
                 GenomicAnnotation.biotype.in_(biotypes)
             )
+        return query
 
-        query = query.group_by(DataAnnotation.data_id)
-
-        # get length
-        length = self._get_length(query, Data)
-
+    def _get_sort_filters(self, query, multi_sort):
         # sort filters
         # index speed up for chrom + start
         if not multi_sort:
@@ -345,8 +338,38 @@ class ModificationService:
             for flt in multi_sort:
                 expr = self._get_arg_sort(flt)
                 query = query.order_by(eval(expr))
+        return query
 
-        # paginate
+    def _return_ensembl_query(
+        self,
+        annotation: Annotation,
+        modification_id: int,
+        organism_id: int,
+        technology_ids: list[int],
+        gene_filter: list[str],
+        chrom: str | None,
+        chrom_start: int | None,
+        chrom_end: int | None,
+        first_record: int | None,
+        max_records: int | None,
+        multi_sort: list[str],
+    ):
+        query = self._get_base_search_query()
+        query = query.where(
+            Data.modification_id == modification_id,
+            Dataset.organism_id == organism_id,
+            Dataset.technology_id.in_(technology_ids),
+        )
+        if chrom:
+            query = self._add_chrom_filters(query, chrom, chrom_start, chrom_end)
+        if gene_filter:
+            query = self._get_gene_filters(query, gene_filter, annotation)
+        query = query.group_by(DataAnnotation.data_id)
+
+        length = self._get_length(query, Data)
+
+        query = self._get_sort_filters(query, multi_sort)
+
         if first_record is not None:
             query = query.offset(first_record)
         if max_records is not None:
@@ -368,82 +391,18 @@ class ModificationService:
         max_records: int | None,
         multi_sort: list[str],
     ):
-        query = (
-            select(
-                Data.id,
-                Data.chrom,
-                Data.start,
-                Data.end,
-                Data.name,
-                Data.score,
-                Data.strand,
-                Data.coverage,
-                Data.frequency,
-                Data.dataset_id,
-                func.group_concat(DataAnnotation.feature.distinct()).label("feature"),
-                func.group_concat(GenomicAnnotation.biotype.distinct()).label(
-                    "gene_biotype"
-                ),
-                func.group_concat(GenomicAnnotation.name.distinct()).label("gene_name"),
-                DetectionTechnology.tech,
-                Organism.taxa_id,
-                Organism.cto,
-            )
-            .join_from(DataAnnotation, Data, DataAnnotation.inst_data)
-            .join_from(DataAnnotation, GenomicAnnotation, DataAnnotation.inst_genomic)
-            .join_from(Data, Dataset, Data.inst_dataset)
-            .join_from(Dataset, DetectionTechnology, Dataset.inst_technology)
-            .join_from(Dataset, Organism, Dataset.inst_organism)
-            .where(Organism.taxa_id == taxa_id)
-        )
-
-        # coordinate filters
+        query = self._get_base_search_query()
+        query = query.where(Organism.taxa_id == taxa_id)
         if chrom:
-            query = query.where(Data.chrom == chrom)
-            if chrom_start:
-                query = query.where(Data.start >= chrom_start)
-            if chrom_end:
-                query = query.where(Data.end <= chrom_end)
-
-        # gene filters: matchMode unused (cf. PrimeVue), but keep it this way
-        # e.g. to extend options or add table filters
-        # gene name
-        name_flt = next((flt for flt in gene_filter if "gene_name" in flt), None)
-        if name_flt:
-            _, name, _ = self._get_flt(name_flt)
-            query = query.where(GenomicAnnotation.name == name[0])
-        # annotation filter
-        feature_flt = next((flt for flt in gene_filter if "feature" in flt), None)
-        if feature_flt:
-            _, features, _ = self._get_flt(feature_flt)
-            query = query.where(DataAnnotation.feature.in_(features))
-        # biotypes
-        # index speed up on annotation_id + biotypes + name
-        biotype_flt = next((flt for flt in gene_filter if "gene_biotype" in flt), None)
-        if biotype_flt:
-            _, mapped_biotypes, _ = self._get_flt(biotype_flt)
-            biotypes = [k for k, v in BIOTYPES.items() if v in mapped_biotypes]
-            query = query.where(GenomicAnnotation.annotation_id == annotation.id).where(
-                GenomicAnnotation.biotype.in_(biotypes)
-            )
-
+            query = self._add_chrom_filters(query, chrom, chrom_start, chrom_end)
+        if gene_filter:
+            query = self._get_gene_filters(query, gene_filter, annotation)
         query = query.group_by(DataAnnotation.data_id)
 
-        # get length
         length = self._get_length(query, Data)
 
-        # sort filters
-        # index speed up for chrom + start
-        if not multi_sort:
-            chrom_expr = self._get_arg_sort("chrom%2Basc")
-            start_expr = self._get_arg_sort("start%2Basc")
-            query = query.order_by(eval(chrom_expr), eval(start_expr))
-        else:
-            for flt in multi_sort:
-                expr = self._get_arg_sort(flt)
-                query = query.order_by(eval(expr))
+        query = self._get_sort_filters(query, multi_sort)
 
-        # paginate
         if first_record is not None:
             query = query.offset(first_record)
         if max_records is not None:
