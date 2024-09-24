@@ -333,9 +333,14 @@ class BedToolsService:
         written to the parent directory of "annotation_file"
         using "features" as stem, and bed as extension.
 
-        NOTE: "extended features" are used to validate consistency
-        with the caller: "conventional features" are extracted
-        on the fly, but intron and intergenic require special treatment.
+        NOTE: To merge features "gene-wise", GTF is first formatted
+        into bed-like format with name in the first field, sorted,
+        merged, then fields are re-ordered into standard bed-like
+        order and sorted. The equivalent command would be e.g.
+        awk 'OFS="\t" {print $4, $2, $3, $1, $5, $6, $7, $8}' exon.tmp |
+        sort -k1,1 -k2,2n | bedtools merge -i - -s -c 4,5,6,7,8 -o distinct |
+        awk 'OFS="\t" {print $4, $2, $3, $1, $5, $6, $7, $8}' |
+        sort -k1,1 -k2,2n > exon.bed.
 
         :param annotation_file: Path to annotation file.
         The format is implicitely assumed to be GTF.
@@ -349,6 +354,39 @@ class BedToolsService:
         parent = annotation_file.parent
         annotation_bedtool = pybedtools.BedTool(annotation_file.as_posix()).sort()
 
+        def _get_gtf_attrs_by_name(feature):
+            line = [
+                feature.attrs["gene_name"]
+                if "gene_name" in feature.attrs
+                else feature.attrs["gene_id"],
+                feature.start,
+                feature.end,
+                feature.chrom,
+                feature.score,
+                feature.strand,
+                feature.attrs["gene_id"],
+                feature.attrs["gene_biotype"],
+            ]
+            return pybedtools.cbedtools.create_interval_from_list(line)
+
+        def _get_fields_by_name(feature):
+            line = [
+                feature.name,
+                feature.start,
+                feature.end,
+                feature.chrom,
+                feature.score,
+                feature.strand,
+                feature.fields[6],
+                feature.fields[7],
+            ]
+            return pybedtools.cbedtools.create_interval_from_list(line)
+
+        def _annotation_to_stream(feature, function=_get_gtf_attrs_by_name):
+            return annotation_bedtool.filter(lambda a: a.fields[2] == feature).each(
+                function
+            )
+
         logger.info(f"Preparing annotation and writing to {parent}...")
 
         for feature in features["conventional"]:
@@ -356,25 +394,31 @@ class BedToolsService:
 
             file_name = Path(parent, f"{feature}.bed").as_posix()
             _ = (
-                self._annotation_to_stream(annotation_bedtool, feature)
+                _annotation_to_stream(feature)
+                .sort()
                 .merge(s=True, c=[4, 5, 6, 7, 8], o="distinct")
+                .each(_get_fields_by_name)
+                .sort()
                 .moveto(file_name)
             )
 
         file_name = Path(parent, "exon.bed").as_posix()
-        exons = pybedtools.BedTool(file_name)
+        exons = pybedtools.BedTool(file_name).each(_get_fields_by_name).sort()
         file_name = self._check_feature("intron", features, parent)
-        # why is the sort order lost after subtract?
         _ = (
-            self._annotation_to_stream(annotation_bedtool, "gene")
+            _annotation_to_stream("gene")
+            .sort()
             .subtract(exons, s=True, sorted=True)
             .sort()
             .merge(s=True, c=[4, 5, 6, 7, 8], o="distinct")
-        ).moveto(file_name)
+            .each(_get_fields_by_name)
+            .sort()
+            .moveto(file_name)
+        )
 
         file_name = self._check_feature("intergenic", features, parent)
         _ = (
-            self._annotation_to_stream(annotation_bedtool, "gene")
+            _annotation_to_stream("gene", function=_get_gtf_attrs)
             .complement(g=chrom_file.as_posix())
             .moveto(file_name)
         )
@@ -558,12 +602,6 @@ class BedToolsService:
         bedtool = self._get_bed6_record_to_bedtool(records)
         sequence = bedtool.sequence(fi=fasta, s=is_strand)
         return sequence.seqfn
-
-    @staticmethod
-    def _annotation_to_stream(annotation_bedtool, feature):
-        return annotation_bedtool.filter(lambda a: a.fields[2] == feature).each(
-            _get_gtf_attrs
-        )
 
     @staticmethod
     def _check_feature(feature, features, parent):
