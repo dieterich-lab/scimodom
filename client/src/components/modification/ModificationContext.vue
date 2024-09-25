@@ -52,7 +52,7 @@ function splitContext(str, index = defaultContext.value) {
 
 <template>
   <span class="font-semibold"
-    >{{ sequence[0] }}<span class="text-red-500">{{ sequence[1] }}</span
+    >{{ sequence[0] }}<span class="text-primary-500">{{ sequence[1] }}</span
     >{{ sequence[2] }}</span
   >
 </template>
