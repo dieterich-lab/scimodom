@@ -285,8 +285,8 @@ class ModificationService:
                 Organism.taxa_id,
                 Organism.cto,
             )
-            .join_from(DataAnnotation, Data, DataAnnotation.inst_data)
-            .join_from(DataAnnotation, GenomicAnnotation, DataAnnotation.inst_genomic)
+            .join_from(Data, DataAnnotation, isouter=True)
+            .join_from(DataAnnotation, GenomicAnnotation, isouter=True)
             .join_from(Data, Dataset, Data.inst_dataset)
             .join_from(Dataset, DetectionTechnology, Dataset.inst_technology)
             .join_from(Dataset, Organism, Dataset.inst_organism)
@@ -364,7 +364,7 @@ class ModificationService:
             query = self._add_chrom_filters(query, chrom, chrom_start, chrom_end)
         if gene_filter:
             query = self._get_gene_filters(query, gene_filter, annotation)
-        query = query.group_by(DataAnnotation.data_id)
+        query = query.group_by(Data.id)
 
         length = self._get_length(query, Data)
 
@@ -397,7 +397,7 @@ class ModificationService:
             query = self._add_chrom_filters(query, chrom, chrom_start, chrom_end)
         if gene_filter:
             query = self._get_gene_filters(query, gene_filter, annotation)
-        query = query.group_by(DataAnnotation.data_id)
+        query = query.group_by(Data.id)
 
         length = self._get_length(query, Data)
 
