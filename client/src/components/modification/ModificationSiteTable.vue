@@ -2,7 +2,6 @@
 import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { HTTP } from '@/services/API.js'
-import { fmtOrder } from '@/utils/index.js'
 
 const props = defineProps({
   coords: {
@@ -14,20 +13,35 @@ const props = defineProps({
 const router = useRouter()
 
 const dt = ref()
-const first = ref(0)
-const rows = ref(10)
 const records = ref()
 const loading = ref(false)
-const totalRecords = ref(0)
-const lazyParams = ref({
-  first: first.value,
-  rows: rows.value
-})
 
 watch(
   () => props.coords,
   () => {
-    lazyLoad()
+    loading.value = true
+    HTTP.get('/modification/sitewise', {
+      params: {
+        taxaId: props.coords.taxa_id,
+        chrom: props.coords.chrom,
+        start: props.coords.start,
+        end: props.coords.end
+      },
+      paramsSerializer: {
+        indexes: null
+      }
+    })
+      .then(function (response) {
+        records.value = response.data.records.filter(
+          (record) =>
+            record.dataset_id != props.coords.dataset_id &&
+            record.modification_id != props.coords.modification_id
+        )
+        loading.value = false
+      })
+      .catch((error) => {
+        console.log(error)
+      })
   },
   { immediate: true }
 )
@@ -38,16 +52,6 @@ const getFileName = () => {
   return 'scimodom_per_site_' + stamp.toISOString().replaceAll(/:/g, '')
 }
 
-const onPage = (event) => {
-  lazyParams.value = event
-  lazyLoad(event)
-}
-
-const onSort = (event) => {
-  lazyParams.value = event
-  lazyLoad(event)
-}
-
 const onExport = () => {
   dt.value.exportCSV()
 }
@@ -55,37 +59,6 @@ const onExport = () => {
 const navigateTo = (eufid) => {
   const { href } = router.resolve({ name: 'browse', params: { eufid: eufid } })
   window.open(href, '_blank')
-}
-
-function lazyLoad(event) {
-  loading.value = true
-  lazyParams.value = { ...lazyParams.value, first: event?.first || first.value }
-  HTTP.get('/modification/sitewise', {
-    params: {
-      taxaId: props.coords.taxa_id,
-      chrom: props.coords.chrom,
-      start: props.coords.start,
-      end: props.coords.end,
-      firstRecord: lazyParams.value.first,
-      maxRecords: lazyParams.value.rows,
-      multiSort: fmtOrder(lazyParams.value.multiSortMeta)
-    },
-    paramsSerializer: {
-      indexes: null
-    }
-  })
-    .then(function (response) {
-      records.value = response.data.records.filter(
-        (record) =>
-          record.dataset_id != props.coords.dataset_id &&
-          record.modification_id != props.coords.modification_id
-      )
-      totalRecords.value = records.value.length
-      loading.value = false
-    })
-    .catch((error) => {
-      console.log(error)
-    })
 }
 </script>
 
@@ -95,17 +68,14 @@ function lazyLoad(event) {
     dataKey="id"
     ref="dt"
     :exportFilename="getFileName()"
-    lazy
     paginator
-    :totalRecords="totalRecords"
     :loading="loading"
-    :first="first"
-    :rows="rows"
-    @page="onPage($event)"
-    @sort="onSort($event)"
+    :rows="5"
     removableSort
     sortMode="multiple"
     stripedRows
+    paginatorTemplate="RowsPerPageDropdown FirstPageLink PrevPageLink CurrentPageReport NextPageLink LastPageLink"
+    currentPageReportTemplate="{first} to {last} of {totalRecords}"
   >
     <template #header>
       <div style="text-align: right">

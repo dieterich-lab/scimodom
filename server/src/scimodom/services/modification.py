@@ -177,9 +177,6 @@ class ModificationService:
         chrom: str,
         start: int,
         end: int,
-        first_record: int,
-        max_records: int,
-        multi_sort: list[str],
     ):
         """Retrieve information related to a modification site.
 
@@ -189,12 +186,6 @@ class ModificationService:
         :type chrom_start: int
         :param chrom_end: Chromosome end
         :type chrom_end: int
-        :param first_record: first record
-        :type first_record: int
-        :param max_records: number of records
-        :type max_records: int
-        :param multi_sort: sorting criteria
-        :type multi_sort: list of str
         :returns: query results
         :rtype: list of dict
         """
@@ -222,12 +213,6 @@ class ModificationService:
             .join_from(Organism, Taxa, Organism.inst_taxa)
             .where(Data.chrom == chrom, Data.start == start, Data.end == end)
         )
-
-        if multi_sort:
-            for flt in multi_sort:
-                expr = self._get_arg_sort(flt)
-                query = query.order_by(eval(expr))
-        query = query.offset(first_record).limit(max_records)
         query = self._add_modomics_ref_to_data_query(query)
 
         return {"records": [row._asdict() for row in self._session.execute(query)]}
@@ -254,7 +239,7 @@ class ModificationService:
         )
 
     @staticmethod
-    def _get_base_search_query():
+    def _get_base_search_query(isouter=False):
         query = (
             select(
                 Data.id,
@@ -285,8 +270,8 @@ class ModificationService:
                 Organism.taxa_id,
                 Organism.cto,
             )
-            .join_from(Data, DataAnnotation, isouter=True)
-            .join_from(DataAnnotation, GenomicAnnotation, isouter=True)
+            .join_from(Data, DataAnnotation, isouter=isouter)
+            .join_from(DataAnnotation, GenomicAnnotation, isouter=isouter)
             .join_from(Data, Dataset, Data.inst_dataset)
             .join_from(Dataset, DetectionTechnology, Dataset.inst_technology)
             .join_from(Dataset, Organism, Dataset.inst_organism)
@@ -354,7 +339,7 @@ class ModificationService:
         max_records: int | None,
         multi_sort: list[str],
     ):
-        query = self._get_base_search_query()
+        query = self._get_base_search_query(isouter=True)
         query = query.where(
             Data.modification_id == modification_id,
             Dataset.organism_id == organism_id,

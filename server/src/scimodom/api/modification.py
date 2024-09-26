@@ -103,16 +103,11 @@ def get_modification_sitewise():
     try:
         taxa_id = get_valid_taxa_id(request.args.get("taxaId"))
         chrom, start, end, _ = get_valid_coords(taxa_id)
-        first_record = request.args.get("firstRecord", type=int)
-        max_records = request.args.get("maxRecords", type=int)
-        multi_sort = request.args.getlist("multiSort", type=str)
     except ClientResponseException as e:
         return e.response_tupel
 
     modification_service = get_modification_service()
-    response = modification_service.get_modification_site(
-        chrom, start, end, first_record, max_records, multi_sort
-    )
+    response = modification_service.get_modification_site(chrom, start, end)
     response["records"] = [
         {**r, "strand": r["strand"].value} for r in response["records"]
     ]
