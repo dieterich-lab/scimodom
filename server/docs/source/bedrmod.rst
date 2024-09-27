@@ -71,7 +71,7 @@ As bedRMod contains data for only one organism, only one reference to organism, 
 
 
 While all tags are required, ``sequencing_platform``, ``basecalling``, ``bioinformatics_workflow``, ``experiment`` or ``external_source`` can be left
-empty *e.g.*
+empty, although it is strongly advised to provide as much information as possible, *e.g.*
 
 ::
 
@@ -89,8 +89,7 @@ empty *e.g.*
 
 .. attention::
 
-    For data upload to Sci-ModoM, ``fileformat``, ``organism``, and ``assembly`` are validated. Only the latest specifications are used, and only ``modification_type=RNA`` is allowed. The ``assembly`` tag entry must match exactly the chosen assembly and must follow the Ensembl nomenclature.
-    Additional user-defined tags or extra header lines starting with ``#`` are ignored during upload.
+    For data upload to Sci-ModoM, ``fileformat``, ``organism``, and ``assembly`` are validated. Only the latest specifications are used, and only ``modification_type=RNA`` is allowed. The ``assembly`` tag entry must match exactly the assembly chosen from the dropdown menu during upload, and it must follow the Ensembl nomenclature. Data does not have to be for a specific genome assembly, Sci-ModoM will take care of lifting over all records to the most recent assembly for each organism. Additional user-defined tags or extra header lines starting with ``#`` are ignored during upload.
 
 
 The data section

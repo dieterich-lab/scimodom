@@ -14,7 +14,7 @@
       </p>
     </div>
     <div class="flex justify-center mt-4 animate-pulse">
-      <a href="https://www.trr319-rmap.de" target="_blank" rel="noopener noreferrer">
+      <a href="https://humanrnomeproject.org" target="_blank" rel="noopener noreferrer">
         <Button icon="pi pi-arrow-right" label="Learn more" rounded />
       </a>
     </div>

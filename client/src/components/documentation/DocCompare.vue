@@ -17,8 +17,11 @@ import img4 from '@/assets/images/docs/compare4.png'
       Compare datasets to one another by finding modification sites common to multiple datasets
       (intersection) or those only found in a group of datasets (difference), or find modification
       sites in a given dataset that are close to, but not intersecting with sites in other datasets
-      (closest). Perform these operations strand-aware or unaware. Use available datasets, or upload
-      your own data to compare it against database records, without registration or login.
+      (closest). Perform these operations strand-aware or unaware.
+      <span class="font-semibold"
+        >Use available datasets, or upload your own data to compare it against database records,
+        without registration or login</span
+      >.
     </p>
     <p class="indent-4 text-lg leading-relaxed mt-2 mb-2">
       First select a given organism, then select up to 3 reference datasets. Use the search bar
@@ -33,7 +36,8 @@ import img4 from '@/assets/images/docs/compare4.png'
       to BED6.
       <Message severity="warn" :closable="false"
         >Data coming from a different assembly or an inconsistent choice of reference dataset will
-        lead to spurious comparison results</Message
+        lead to spurious comparison results. Liftover is not yet available for data
+        comparison!</Message
       >
       Finally, select the operation you want to perform on the datasets selected in previous steps:
       <img :src="img3" class="object-center mt-6 mb-6" alt="Compare: filter 3" />

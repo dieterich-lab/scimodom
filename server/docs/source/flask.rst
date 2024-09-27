@@ -98,3 +98,9 @@ If required, a project and all associated data can be removed with
 .. code-block:: bash
 
     flask delete [OPTIONS] SMID
+
+To force update the charts, run
+
+.. code-block:: bash
+
+    flask sunburst-update [OPTIONS]

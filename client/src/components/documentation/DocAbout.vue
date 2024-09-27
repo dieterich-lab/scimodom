@@ -50,7 +50,7 @@ import img2 from '@/assets/images/docs/about2.png'
       </a>
       short name. The classification of detection technologies is based on the underlying assay,
       <span class="italic">e.g.</span>
-      chemical- or enzyme/protein-assisted sequencing (NGS 2nd generation), and Native RNA or cDNA
+      chemical- or enzyme/protein-assisted sequencing (NGS 2nd generation), and native RNA or cDNA
       sequencing (NGS 3rd generation).
     </p>
     <p class="indent-4 text-lg underline underline-offset-8 decoration-gb-4/25 font-semibold">
@@ -70,8 +70,9 @@ import img2 from '@/assets/images/docs/about2.png'
     </p>
     <p class="indent-4 text-lg leading-relaxed mt-2 mb-2">
       Projects are identified using a <span class="font-semibold">SMID</span> or
-      <span class="font-semibold">Sci-ModoM identifier</span>. Click on the
-      <i class="pi pi-plus -ml-3 mr-1" /> button to access this information and more:
+      <span class="font-semibold">Sci-ModoM identifier</span>. Click on the info (<i
+        class="pi pi-info -ml-4"
+      />) button to access this information and more:
       <img :src="img2" class="object-center mt-6 mb-6" alt="About: project" />
     </p>
     <p class="indent-4 text-lg underline underline-offset-8 decoration-gb-4/25 font-semibold">
@@ -97,6 +98,9 @@ import img2 from '@/assets/images/docs/about2.png'
       Only one genome assembly version per species is used in Sci-ModoM. Dataset that do not match
       the database assembly version are lifted over. Only chromosome-level information is
       considered; unassigned contigs or scaffolds are discarded.
+      <Message severity="info" :closable="false"
+        >Sci-ModoM currently uses human GRCh38 and mouse GRCm39</Message
+      >
     </p>
     <p class="indent-4 text-xl leading-relaxed mt-12 mb-2">
       For detailed documentation and development notes, consult the

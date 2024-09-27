@@ -26,9 +26,10 @@ onMounted(() => {
         <h1 class="font-ham text-4xl font-semibold m-auto p-4 dark:text-white/80">
           <span>Release</span>
         </h1>
-        <p class="text-xl font-medium text-gray-600 pt-4 pb-2 dark:text-surface-400">
+        <p class="leading-loose text-xl font-medium text-gray-600 pt-4 pb-2 dark:text-surface-400">
           Sci-ModoM contains {{ sites }} reported sites with stoichiometric information across
-          {{ datasets }} datasets, annotated using Ensembl release 110.
+          {{ datasets }} datasets, for genome assemblies <br />
+          GRCh38 (human) and GRCm39 (mouse), annotated using Ensembl release 110.
         </p>
         <div class="flex flex-row pt-12">
           <div class="basis-1/2">

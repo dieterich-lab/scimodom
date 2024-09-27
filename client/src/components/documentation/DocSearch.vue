@@ -6,6 +6,7 @@ import img4 from '@/assets/images/docs/search4.png'
 import img5 from '@/assets/images/docs/search5.png'
 import img6 from '@/assets/images/docs/search6.png'
 import img7 from '@/assets/images/docs/search7.png'
+import img8 from '@/assets/images/docs/search8.png'
 </script>
 
 <template>
@@ -17,8 +18,9 @@ import img7 from '@/assets/images/docs/search7.png'
       Query and filters
     </p>
     <p class="indent-4 text-lg leading-relaxed mt-2 mb-2">
-      Search modifications site-wise across whole transcriptomes. To query the database, first
-      select a modification and species:
+      Search modifications site-wise across whole transcriptomes, by organism and technology, or by
+      gene or genomic region. To query the database for a given modification, first select a
+      modification and species:
       <img :src="img1" class="object-center mt-6 mb-6" alt="Search: filter species" />
       Available cell types, tissues, and/or organisms are shown for a given modification. A standard
       nomenclature is used to describe cell strains, faithful to published data
@@ -39,6 +41,9 @@ import img7 from '@/assets/images/docs/search7.png'
       <Message severity="info" :closable="false"
         >Gene and genomic (chromosome) selection are mutually exclusive</Message
       >
+      To query the database for all modifications in a particular gene or genomic region, use the
+      toggle button, and select a gene or a genomic region:
+      <img :src="img8" class="object-center mt-6 mb-6" alt="Search: gene or chrom" />
     </p>
     <p class="indent-4 text-lg underline underline-offset-8 decoration-gb-4/25 font-semibold">
       Results table
@@ -61,10 +66,14 @@ import img7 from '@/assets/images/docs/search7.png'
         format</Message
       >
       <Message severity="success" :closable="false"
-        >Click on <i class="pi pi-plus -ml-3 mr-1" /> to retrieve site-specific information</Message
+        >Click on "Gene" to access gene table information on Ensembl</Message
+      >
+      <Message severity="success" :closable="false"
+        >Click on <i class="pi pi-info -ml-3 mr-1" /> to retrieve site-specific information</Message
       >
       Query results are shown in tabular format where sites are recorded per dataset, allowing to
-      organize data and prioritize sites with high stoichiometry, coverage, and/or score.
+      organize data and prioritize sites with high stoichiometry, coverage, and/or score. Export all
+      results to a CSV file.
       <img :src="img5" class="object-center mt-6 mb-6" alt="Search: results table" />
       All columns with arrow signs can be sorted. Multiple columns can be sorted at once, this
       requires a metaKey (<span class="italic">e.g.</span> ⌘ or Ctrl) to be pressed when clicking a
@@ -76,7 +85,7 @@ import img7 from '@/assets/images/docs/search7.png'
       <img :src="img7" class="object-center mt-6 mb-6" alt="Search: plus bottom" />
     </p>
     <p class="indent-4 text-lg leading-relaxed mt-2 mb-2">
-      Selected records can be exported to CSV, including site-specific information. To download all
+      These tables can also be exported to CSV, including site-specific information. To download
       records for a given dataset, click on the EUFID; the <span class="italic">Browse</span> view
       allows to download bedRMod-formatted records.
     </p>
