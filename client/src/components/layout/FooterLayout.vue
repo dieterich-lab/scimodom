@@ -1,5 +1,6 @@
 <script setup>
 import Logo from '@/assets/images/rmap-logo.svg'
+import RNomeLogo from '@/assets/images/rnome-logo.svg'
 </script>
 
 <template>
@@ -7,9 +8,25 @@ import Logo from '@/assets/images/rmap-logo.svg'
     <div class="mx-auto w-full max-w-screen-2xl p-2 py-6 lg:py-8">
       <div class="md:flex md:justify-between">
         <div class="mb-6 md:mb-0">
-          <a href="https://www.trr319-rmap.de/" class="flex items-center">
+          <a
+            href="https://www.trr319-rmap.de/"
+            class="flex items-center"
+            rel="noopener noreferrer"
+            target="_blank"
+          >
             <Logo class="h-auto mr-6 dark:filter dark:grayscale dark:invert" alt="RMaP Logo" />
             <!-- <span class="self-center text-2xl font-medium whitespace-nowrap">TRR 319 RMaP</span> -->
+          </a>
+          <a
+            href="https://humanrnomeproject.org/"
+            class="flex items-center"
+            rel="noopener noreferrer"
+            target="_blank"
+          >
+            <RNomeLogo
+              class="h-auto mt-4 mr-6 -ml-2 dark:filter dark:grayscale dark:invert"
+              alt="RNome Logo"
+            />
           </a>
         </div>
         <div class="grid grid-cols-2 gap-8 sm:gap-6 sm:grid-cols-3">
@@ -17,8 +34,21 @@ import Logo from '@/assets/images/rmap-logo.svg'
             <h2 class="mb-6 text-base font-medium text-gray-900 dark:text-white/80">About</h2>
             <ul class="text-gray-600 font-medium">
               <li class="mb-4">
-                <a href="https://www.trr319-rmap.de/" class="hover:underline dark:text-surface-400"
+                <a
+                  href="https://www.trr319-rmap.de/"
+                  class="hover:underline dark:text-surface-400"
+                  rel="noopener noreferrer"
+                  target="_blank"
                   >TRR 319 RMaP</a
+                >
+              </li>
+              <li class="mb-4">
+                <a
+                  href="https://humanrnomeproject.org/"
+                  class="hover:underline dark:text-surface-400"
+                  rel="noopener noreferrer"
+                  target="_blank"
+                  >Human RNome</a
                 >
               </li>
               <!-- TODO: add contact form -->
@@ -37,6 +67,8 @@ import Logo from '@/assets/images/rmap-logo.svg'
                 <a
                   href="https://github.com/dieterich-lab/scimodom/releases"
                   class="hover:underline dark:text-surface-400"
+                  rel="noopener noreferrer"
+                  target="_blank"
                   >Releases</a
                 >
               </li>
@@ -49,6 +81,8 @@ import Logo from '@/assets/images/rmap-logo.svg'
                 <a
                   href="https://genesilico.pl/modomics/"
                   class="hover:underline dark:text-surface-400"
+                  rel="noopener noreferrer"
+                  target="_blank"
                   >Modomics</a
                 >
               </li>

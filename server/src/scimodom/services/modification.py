@@ -270,8 +270,13 @@ class ModificationService:
                 Organism.taxa_id,
                 Organism.cto,
             )
-            .join_from(Data, DataAnnotation, isouter=isouter)
-            .join_from(DataAnnotation, GenomicAnnotation, isouter=isouter)
+            .join_from(Data, DataAnnotation, Data.annotations, isouter=isouter)
+            .join_from(
+                DataAnnotation,
+                GenomicAnnotation,
+                DataAnnotation.inst_genomic,
+                isouter=isouter,
+            )
             .join_from(Data, Dataset, Data.inst_dataset)
             .join_from(Dataset, DetectionTechnology, Dataset.inst_technology)
             .join_from(Dataset, Organism, Dataset.inst_organism)
