@@ -1,11 +1,13 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed } from 'vue'
+import Button from 'primevue/button'
+import Menu from 'primevue/menu'
 import { DIALOG, useDialogState } from '@/stores/DialogState.js'
 import { useAccessToken } from '@/stores/AccessToken.js'
 import { useRouter } from 'vue-router'
-import { API_BASE_URL } from '/config.js?url'
 import ScimodomLogo from './ScimodomLogo.vue'
 import NavigationBar from './NavigationBar.vue'
+import { getApiBaseUrl } from '@/services/API'
 
 const router = useRouter()
 
@@ -14,7 +16,7 @@ const accessToken = useAccessToken()
 
 const isLoggedIn = computed(() => accessToken.token !== null)
 const userName = computed(getUserName)
-const isDev = computed(() => API_BASE_URL !== 'https://scimodom.dieterichlab.org/api/v0/')
+const isDev = computed(() => getApiBaseUrl() !== 'https://scimodom.dieterichlab.org/api/v0/')
 
 const menu = ref()
 const items = ref([
@@ -62,7 +64,7 @@ const items = ref([
   }
 ])
 
-const toggle = (event) => {
+function toggle(event: Event) {
   menu.value.toggle(event)
 }
 

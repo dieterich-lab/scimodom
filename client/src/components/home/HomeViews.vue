@@ -1,5 +1,6 @@
-<script setup>
+<script setup lang="ts">
 import CardLink from '@/components/ui/CardLink.vue'
+import SectionLayout from '@/components/layout/SectionLayout.vue'
 </script>
 
 <template>

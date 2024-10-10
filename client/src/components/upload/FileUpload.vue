@@ -1,49 +1,33 @@
-<script setup>
-import FileUpload from 'primevue/fileupload'
-import AbstractStyle from '@/ui_styles/AbstractStyle'
-import DefaultStyle from '@/ui_styles/DefaultStyle'
+<script setup lang="ts">
+import FileUpload, { type FileUploadUploaderEvent } from 'primevue/fileupload'
+import { type UiStyle, DEFAULT_STYLE } from '@/utils/ui_style'
 import LabeledItem from '@/components/ui/LabeledItem.vue'
 
-const props = defineProps({
-  accept: {
-    type: String,
-    required: false,
-    default: 'application/octet-stream,*'
-  },
-  label: {
-    type: String,
-    required: false,
-    default: 'Upload ...'
-  },
-  multiple: {
-    type: Boolean,
-    required: false,
-    default: false
-  },
-  uiStyle: {
-    type: AbstractStyle,
-    required: false,
-    default: DefaultStyle
-  },
-  disabled: {
-    type: Boolean,
-    required: false,
-    default: false
-  },
-  placeholder: {
-    type: String,
-    required: false,
-    default: 'Either choose or drag and drop ...'
-  },
-  handleFile: {
-    type: Function,
-    required: false,
-    default: (_file) => {}
+const props = withDefaults(
+  defineProps<{
+    accept?: string
+    label?: string
+    multiple?: boolean
+    uiStyle?: UiStyle
+    disabled?: boolean
+    placeholder?: string
+    handleFile?: (file: File) => void
+  }>(),
+  {
+    accept: 'application/octet-stream,*',
+    label: 'Upload ...',
+    multiple: false,
+    uiStyle: () => DEFAULT_STYLE,
+    disabled: false,
+    placeholder: 'Either choose or drag and drop ...',
+    handleFile: () => {}
   }
-})
+)
 
-async function uploader(event) {
-  return await event.files.forEach((file) => props.handleFile(file))
+async function uploader(event: FileUploadUploaderEvent): Promise<void> {
+  const rawFiles = event.files
+  const files: File[] = Array.isArray(rawFiles) ? rawFiles : [rawFiles]
+  return files.forEach((file) => props.handleFile(file))
 }
 </script>
 <template>

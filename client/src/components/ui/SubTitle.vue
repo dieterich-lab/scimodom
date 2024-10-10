@@ -1,16 +1,14 @@
-<script setup>
-const props = defineProps({
-  small: {
-    type: Boolean,
-    required: false,
-    default: false
-  },
-  padding: {
-    type: Boolean,
-    required: false,
-    default: false
+<script setup lang="ts">
+withDefaults(
+  defineProps<{
+    small?: boolean
+    padding?: boolean
+  }>(),
+  {
+    small: false,
+    padding: false
   }
-})
+)
 </script>
 
 <template>

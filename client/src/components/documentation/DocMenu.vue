@@ -1,3 +1,6 @@
+<script setup lang="ts">
+import SectionLayout from '@/components/layout/SectionLayout.vue'
+</script>
 <template>
   <SectionLayout>
     <router-link :to="{ name: 'about-docs' }">

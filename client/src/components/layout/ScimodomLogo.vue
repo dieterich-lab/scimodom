@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import Logo from '@/assets/images/scimodom-logo.svg'
 </script>
 

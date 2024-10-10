@@ -1,33 +1,19 @@
-<script setup>
+<script setup lang="ts">
+import Button from 'primevue/button'
 import { ScheduledUpload, UPLOAD_STATE } from '@/stores/UploadManager'
 
-const props = defineProps({
-  upload: {
-    type: ScheduledUpload,
-    required: true
-  }
-})
+interface Style {
+  icon: string
+  bg: string
+  text: string
+  cancelText: string
+}
 
-const STYLE_BY_STATE = new Map([
-  [
-    UPLOAD_STATE.WAITING,
-    { icon: 'pi-hourglass', bg: 'bg-transparent', text: 'Waiting ...', cancelText: 'Abort' }
-  ],
-  [
-    UPLOAD_STATE.RUNNING,
-    { icon: 'pi-cloud-upload', bg: 'bg-sky-500', text: 'Running ...', cancelText: 'Ignore' }
-  ],
-  [
-    UPLOAD_STATE.DONE,
-    { icon: 'pi-check', bg: 'bg-green-500', text: 'Done.', cancelText: 'Dismiss' }
-  ],
-  [
-    UPLOAD_STATE.FAILED,
-    { icon: 'pi-exclamation-triangle', bg: 'bg-red-500', text: '', cancelText: 'Dismiss' }
-  ]
-])
+const props = defineProps<{
+  upload: ScheduledUpload
+}>()
 
-const style = STYLE_BY_STATE.get(props.upload.state)
+const style = getStyle(props.upload.state)
 const icon = `pi ${style.icon}`
 const classes = `relative ${style.bg} p-3 rounded-lg shadow-xl dark:shadow-surface-800/50`
 const text =
@@ -35,6 +21,29 @@ const text =
 const text_color =
   props.upload.state === UPLOAD_STATE.FAILED ? 'text-white' : 'text-gray-500 dark:text-surface-400'
 const text_classes = `${text_color} font-normal `
+
+function getStyle(state: UPLOAD_STATE): Style {
+  switch (state) {
+    case UPLOAD_STATE.WAITING:
+      return {
+        icon: 'pi-hourglass',
+        bg: 'bg-transparent',
+        text: 'Waiting ...',
+        cancelText: 'Abort'
+      }
+    case UPLOAD_STATE.RUNNING:
+      return {
+        icon: 'pi-cloud-upload',
+        bg: 'bg-sky-500',
+        text: 'Running ...',
+        cancelText: 'Ignore'
+      }
+    case UPLOAD_STATE.DONE:
+      return { icon: 'pi-check', bg: 'bg-green-500', text: 'Done.', cancelText: 'Dismiss' }
+    case UPLOAD_STATE.FAILED:
+      return { icon: 'pi-exclamation-triangle', bg: 'bg-red-500', text: '', cancelText: 'Dismiss' }
+  }
+}
 </script>
 <template>
   <div :class="classes">

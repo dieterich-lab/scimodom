@@ -1,13 +1,19 @@
-<script setup>
+<script setup lang="ts">
 import { useForm } from 'vee-validate'
 import * as yup from 'yup'
 import { HTTP } from '@/services/API'
 import { DIALOG, useDialogState } from '@/stores/DialogState.js'
-import SecondaryStyle from '@/ui_styles/SecondaryDialogStyle.js'
-import FromBox from '@/components/ui/FormBox.vue'
+import { SECONDARY_STYLE } from '@/utils/ui_style'
+import DialogBox from '@/components/ui/DialogBox.vue'
 import FormTextInput from '@/components/ui/FormTextInput.vue'
-import FormButtonGroup from '@/components/ui/FormButtonGroup.vue'
-import FormButton from '@/components/ui/FormButton.vue'
+import DialogButtonGroup from '@/components/ui/DialogButtonGroup.vue'
+import DialogButton from '@/components/ui/DialogButton.vue'
+
+interface FormData {
+  email: string
+  password: string
+  passwordConfirm: string
+}
 
 const dialogState = useDialogState()
 
@@ -29,7 +35,7 @@ const validationSchema = yup.object({
     .required('Required field')
     .label('Password confirmation')
 })
-const { defineField, handleSubmit, resetForm, errors } = useForm({
+const { defineField, handleSubmit, errors } = useForm<FormData>({
   validationSchema: validationSchema
 })
 
@@ -37,7 +43,7 @@ const [email] = defineField('email')
 const [password] = defineField('password')
 const [passwordConfirm] = defineField('passwordConfirm')
 
-function register(values) {
+function register(values: FormData) {
   HTTP.post('/user/register_user', { email: values.email, password: values.password })
     .then((response) => {
       if (response.status == 200) {
@@ -65,15 +71,15 @@ const onSubmit = handleSubmit((values) => {
 
 <template>
   <form @submit="onSubmit">
-    <FromBox :ui-style="SecondaryStyle">
-      <FormTextInput v-model="email" :error="errors.email" :ui-style="SecondaryStyle">
+    <DialogBox :ui-style="SECONDARY_STYLE">
+      <FormTextInput v-model="email" :error="errors.email" :ui-style="SECONDARY_STYLE">
         Email
       </FormTextInput>
       <FormTextInput
         v-model="password"
         :error="errors.password"
         type="password"
-        :ui-style="SecondaryStyle"
+        :ui-style="SECONDARY_STYLE"
       >
         Password
       </FormTextInput>
@@ -81,14 +87,14 @@ const onSubmit = handleSubmit((values) => {
         v-model="passwordConfirm"
         :error="errors.passwordConfirm"
         type="password"
-        :ui-style="SecondaryStyle"
+        :ui-style="SECONDARY_STYLE"
       >
         Password Confirmation
       </FormTextInput>
-      <FormButtonGroup>
-        <FormButton type="submit" :ui-style="SecondaryStyle">Sign Up</FormButton>
-        <FormButton @on-click="cancel()" :ui-style="SecondaryStyle">Cancel</FormButton>
-      </FormButtonGroup>
-    </FromBox>
+      <DialogButtonGroup>
+        <DialogButton type="submit" :ui-style="SECONDARY_STYLE">Sign Up</DialogButton>
+        <DialogButton @on-click="cancel()" :ui-style="SECONDARY_STYLE">Cancel</DialogButton>
+      </DialogButtonGroup>
+    </DialogBox>
   </form>
 </template>

@@ -1,7 +1,8 @@
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import SunburstChart from '@/components/chart/SunburstChart.vue'
+import SunburstChart from '@/components/ui/SunburstChart.vue'
 import { HTTP } from '@/services/API.js'
+import SectionLayout from '@/components/layout/SectionLayout.vue'
 
 const sites = ref()
 const datasets = ref()
@@ -33,10 +34,10 @@ onMounted(() => {
         </p>
         <div class="flex flex-row pt-12">
           <div class="basis-1/2">
-            <SunburstChart view="search" />
+            <SunburstChart type="search" />
           </div>
           <div class="basis-1/2">
-            <SunburstChart view="browse" />
+            <SunburstChart type="browse" />
           </div>
         </div>
       </div>

@@ -1,9 +1,9 @@
-<script setup>
+<script setup lang="ts">
 import { DIALOG, useDialogState } from '@/stores/DialogState.js'
-import FromBox from '@/components/ui/FormBox.vue'
-import FormButtonGroup from '@/components/ui/FormButtonGroup.vue'
-import FormButton from '@/components/ui/FormButton.vue'
-import PrimaryDialogStyle from '@/ui_styles/PrimaryDialogStyle.js'
+import DialogBox from '@/components/ui/DialogBox.vue'
+import FormButtonGroup from '@/components/ui/DialogButtonGroup.vue'
+import DialogButton from '@/components/ui/DialogButton.vue'
+import { PRIMARY_DIALOG_STYLE } from '@/utils/ui_style'
 
 const dialogState = useDialogState()
 
@@ -14,10 +14,10 @@ function ok() {
 
 <template>
   <form @submit="ok">
-    <FromBox :ui-style="PrimaryDialogStyle">
+    <DialogBox :ui-style="PRIMARY_DIALOG_STYLE">
       <FormButtonGroup>
-        <FormButton type="submit" :ui-style="PrimaryDialogStyle">OK</FormButton>
+        <DialogButton type="submit" :ui-style="PRIMARY_DIALOG_STYLE">OK</DialogButton>
       </FormButtonGroup>
-    </FromBox>
+    </DialogBox>
   </form>
 </template>
