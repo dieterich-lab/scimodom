@@ -90,6 +90,3 @@ testpaths = ["tests"]
 log_cli = true
 log_cli_level = "INFO"
 addopts = "--basetemp /tmp/pytest-of-scimodom"
-env = [
-    "DATA_PATH=/tmp/pytest-of-scimodom/data0",
-]

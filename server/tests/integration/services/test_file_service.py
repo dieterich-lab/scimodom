@@ -1,4 +1,3 @@
-from os.path import join
 from pathlib import Path
 
 import pytest
@@ -9,10 +8,10 @@ from scimodom.services.file import FileService, AssemblyFileType
 def _get_file_service(Session, tmp_path):
     return FileService(
         session=Session(),
-        data_path=join(tmp_path, "t_data"),
-        temp_path=join(tmp_path, "t_temp"),
-        upload_path=join(tmp_path, "t_upload"),
-        import_path=join(tmp_path, "t_import"),
+        data_path=Path(tmp_path, "t_data"),
+        temp_path=Path(tmp_path, "t_temp"),
+        upload_path=Path(tmp_path, "t_upload"),
+        import_path=Path(tmp_path, "t_import"),
     )
 
 

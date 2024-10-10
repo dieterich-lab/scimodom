@@ -2,7 +2,7 @@ from datetime import datetime
 from io import StringIO
 
 import pytest
-from sqlalchemy import select, func
+from sqlalchemy import select
 
 from scimodom.database.models import (
     Data,
@@ -55,7 +55,7 @@ FEATURES = {
 }
 
 EUF_FILE = """
-#fileformat=bedRModv1.7
+#fileformat=bedRModv1.8
 #organism=9606
 #modification_type=RNA
 #assembly=GRCh38
@@ -75,13 +75,6 @@ EUF_FILE = """
 """
 
 
-def _write_chrom_file(data_path):
-    d = data_path.ASSEMBLY_PATH / "Homo_sapiens" / "GRCh38"
-    d.mkdir(parents=True, exist_ok=True)
-    with open(d / "chrom.sizes", "w") as fh:
-        fh.write("1\t248956422\n")
-
-
 def _add_genomic_annotation(session):
     annotation = GenomicAnnotation(
         id="ENSG00000000001", annotation_id=1, name="G", biotype="protein_coding"
@@ -90,22 +83,25 @@ def _add_genomic_annotation(session):
     session.commit()
 
 
-@pytest.fixture
-def annotation(Session, data_path):
-    _write_chrom_file(data_path)
-    _add_genomic_annotation(Session())
-    d = data_path.ANNOTATION_PATH / "Homo_sapiens" / "GRCh38" / "110"
+def _add_tmp_data(tmp_path):
+    # add required assembly files
+    d = tmp_path / FileService.ASSEMBLY_DEST / "Homo_sapiens" / "GRCh38"
+    d.mkdir(parents=True, exist_ok=True)
+    with open(d / "chrom.sizes", "w") as fh:
+        fh.write("1\t248956422\n")
+    # add required annotation files
+    d = tmp_path / FileService.ANNOTATION_DEST / "Homo_sapiens" / "GRCh38" / "110"
     d.mkdir(parents=True, exist_ok=True)
     for feature, string in FEATURES.items():
         with open(d / feature, "w") as fh:
             fh.write(string)
 
 
-def get_bedtools_service(tmp_path):
+def _get_bedtools_service(tmp_path):
     return BedToolsService(tmp_path=tmp_path)
 
 
-def get_assembly_service(session, external_service, web_service, file_service):
+def _get_assembly_service(session, external_service, web_service, file_service):
     return AssemblyService(
         session=session,
         external_service=external_service,
@@ -114,7 +110,7 @@ def get_assembly_service(session, external_service, web_service, file_service):
     )
 
 
-def get_annotation_service(
+def _get_annotation_service(
     session,
     data_service,
     bedtools_service,
@@ -145,38 +141,38 @@ def get_annotation_service(
     )
 
 
-def get_file_service(session, tmp_path, data_path):
+def _get_file_service(session, tmp_path):
     return FileService(
         session=session,
         temp_path=tmp_path,
         upload_path=tmp_path,
-        data_path=data_path,
+        data_path=tmp_path,
         import_path=tmp_path,
     )
 
 
-def get_data_service(session):
+def _get_data_service(session):
     return DataService(session=session)
 
 
-def get_external_service(file_service):
+def _get_external_service(file_service):
     return ExternalService(file_service=file_service)
 
 
-def get_web_service():
+def _get_web_service():
     return WebService()
 
 
-def get_dataset_service(session, tmp_path, data_path):
-    bedtools_service = get_bedtools_service(tmp_path)
-    file_service = get_file_service(session, tmp_path, data_path)
-    data_service = get_data_service(session)
-    external_service = get_external_service(file_service)
-    web_service = get_web_service()
-    assembly_service = get_assembly_service(
+def _get_dataset_service(session, tmp_path):
+    bedtools_service = _get_bedtools_service(tmp_path)
+    file_service = _get_file_service(session, tmp_path)
+    data_service = _get_data_service(session)
+    external_service = _get_external_service(file_service)
+    web_service = _get_web_service()
+    assembly_service = _get_assembly_service(
         session, external_service, web_service, file_service
     )
-    annotation_service = get_annotation_service(
+    annotation_service = _get_annotation_service(
         session,
         data_service,
         bedtools_service,
@@ -193,14 +189,16 @@ def get_dataset_service(session, tmp_path, data_path):
     )
 
 
-def test_import_simple(
-    Session, selection, project, annotation, tmp_path, data_path, freezer
-):
-    service = get_dataset_service(Session(), tmp_path, data_path[0])
-    file = StringIO(EUF_FILE)
+def test_import_simple(Session, selection, project, tmp_path, freezer):
+    service = _get_dataset_service(Session(), tmp_path)
+
+    _add_tmp_data(tmp_path)
+    _add_genomic_annotation(Session())
+
+    file_handle = StringIO(EUF_FILE)
     freezer.move_to("2024-06-20 12:00:00")
     eufid = service.import_dataset(
-        file,
+        file_handle,
         source="test",
         smid=project.id,
         title="Dataset title",
@@ -250,3 +248,5 @@ def test_import_simple(
             (r.data_id, r.gene_id, r.feature) for r in annotation_records
         )
         assert annotated_records == set(expected_annotated_records)
+        with open(tmp_path / FileService.GENE_CACHE_DEST / "1", "r") as fh:
+            assert fh.read().strip() == "G"
