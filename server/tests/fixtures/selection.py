@@ -23,7 +23,7 @@ def selection(Session, setup):  # noqa
         [modification1, modification2, organism1, organism2, technology1, technology2]
     )
     session.flush()
-    # selection == (1, 1, 1), (2, 1, 1), (1, 2, 2)
+    # selection == (1, 1, 1), (2, 1, 1), (1, 2, 2), (1, 1, 2)
     selection1 = Selection(
         modification_id=modification1.id,
         organism_id=organism1.id,
@@ -39,6 +39,11 @@ def selection(Session, setup):  # noqa
         organism_id=organism2.id,
         technology_id=technology2.id,
     )
+    selection4 = Selection(
+        modification_id=modification1.id,
+        organism_id=organism1.id,
+        technology_id=technology2.id,
+    )
 
-    session.add_all([selection1, selection2, selection3])
+    session.add_all([selection1, selection2, selection3, selection4])
     session.commit()

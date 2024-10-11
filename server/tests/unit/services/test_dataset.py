@@ -512,14 +512,17 @@ def test_bad_import(
 
 def test_delete_dataset(Session, dataset, bam_file):
     service = _get_dataset_service(Session())
+    # delete d1, d3, keep d2
     service.delete_dataset(dataset[0])
+    service.delete_dataset(dataset[2])
 
     with Session() as session:
         assert session.scalar(select(func.count()).select_from(Dataset)) == 1
         eufid0 = dataset[0].id
         eufid1 = dataset[1].id
+        eufid2 = dataset[2].id
         remaining_dataset = session.get_one(Dataset, eufid1)  # noqa
-        for eufid, expected_length in zip([eufid0, eufid1], [0, 1]):
+        for eufid, expected_length in zip([eufid0, eufid1, eufid2], [0, 1, 0]):
             data = (
                 session.execute(select(Data).where(Data.dataset_id == eufid))
                 .scalars()

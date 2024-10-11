@@ -10,6 +10,7 @@ pytest_plugins = [
     "tests.fixtures.project",
     "tests.fixtures.dataset",
     "tests.fixtures.bam_file",
+    "tests.fixtures.annotation",
 ]
 
 
