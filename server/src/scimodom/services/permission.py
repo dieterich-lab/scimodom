@@ -1,5 +1,4 @@
 from functools import cache
-from typing import Optional
 
 from sqlalchemy import select, and_
 from sqlalchemy.orm import Session
@@ -17,6 +16,15 @@ class PermissionService:
         self._session = session
 
     def may_change_dataset(self, user: User, dataset: Dataset) -> bool:
+        """Check if user has permission to manage dataset.
+
+        :param User: User
+        :type User: User
+        :param dataset: Dataset
+        :type dataset: Dataset
+        :returns: True if User has permission, else False
+        :rtype: bool
+        """
         query = select(UserProjectAssociation).where(
             and_(
                 UserProjectAssociation.user_id == user.id,
@@ -31,9 +39,8 @@ class PermissionService:
 
         :param user: User
         :type user: User
-        :param project_id: SMID. There is no check
-        on the validity of this value, this must be done
-        before calling this function.
+        :param project_id: SMID. There is no type or value check,
+        this must be done before calling this function.
         :type project_id: str
         """
         permission = UserProjectAssociation(user_id=user.id, project_id=project_id)

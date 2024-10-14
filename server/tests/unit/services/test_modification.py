@@ -316,6 +316,28 @@ def test_get_modifications_by_source(
     assert response["records"] == expected_records
 
 
+def test_get_modifications_by_gene(Session, mocker, annotation):  # noqa
+    modification_service = _get_modification_service(Session())
+    # patch base query, cf. #154
+    mocker.patch.object(
+        modification_service, "_get_base_search_query", _mock_get_base_search_query
+    )
+
+    response = modification_service.get_modifications_by_gene(
+        annotation_source=AnnotationSource.ENSEMBL,
+        taxa_id=9606,
+        gene_filter=["gene_name%2BGENE1%2BstartsWith"],
+        chrom=None,
+        chrom_start=0,
+        chrom_end=None,
+        first_record=0,
+        max_records=10,
+        multi_sort=[],
+    )
+    assert response["totalRecords"] == 1
+    assert response["records"] == [RECORDS[0]]
+
+
 def test_get_modification_site(Session, dataset):  # noqa
     modification_service = _get_modification_service(Session())
     response = modification_service.get_modification_site("17", 100001, 100002)

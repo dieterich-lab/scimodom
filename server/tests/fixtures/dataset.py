@@ -9,6 +9,8 @@ from scimodom.utils.common_dto import Strand
 @pytest.fixture
 def dataset(Session, selection, project):  # noqa
     stamp = datetime.now(timezone.utc).replace(microsecond=0)
+    project1_id = project[0].id
+    project2_id = project[1].id
     dataset1 = Dataset(
         id="d1",
         title="dataset title",
@@ -17,7 +19,7 @@ def dataset(Session, selection, project):  # noqa
         modification_type="RNA",
         basecalling="bc1",
         bioinformatics_workflow="wf1",
-        project_id=project.id,
+        project_id=project1_id,
         sequencing_platform="sp1",
         experiment="experiment 1",
         external_source="ext. source 1",
@@ -63,7 +65,7 @@ def dataset(Session, selection, project):  # noqa
         modification_type="RNA",
         basecalling="bc2",
         bioinformatics_workflow="wf2",
-        project_id=project.id,
+        project_id=project1_id,
         sequencing_platform="sp2",
         experiment="experiment 2",
         external_source="ext. source 2",
@@ -93,7 +95,7 @@ def dataset(Session, selection, project):  # noqa
         modification_type="RNA",
         basecalling="",
         bioinformatics_workflow="wf3",
-        project_id=project.id,
+        project_id=project1_id,
         sequencing_platform="sp3",
         experiment="experiment 3",
         external_source="ext. source 3",
@@ -163,16 +165,32 @@ def dataset(Session, selection, project):  # noqa
         coverage=19,
         frequency=47,
     )
+    dataset4 = Dataset(
+        id="d4",
+        title="Dataset title 4",
+        organism_id=2,
+        technology_id=2,
+        modification_type="RNA",
+        basecalling="",
+        bioinformatics_workflow="",
+        project_id=project2_id,
+        sequencing_platform="",
+        experiment="",
+        external_source="",
+        date_added=stamp,
+    )
     association1 = DatasetModificationAssociation(dataset_id="d1", modification_id=1)
     association2 = DatasetModificationAssociation(dataset_id="d1", modification_id=2)
     association3 = DatasetModificationAssociation(dataset_id="d2", modification_id=1)
     association4 = DatasetModificationAssociation(dataset_id="d3", modification_id=1)
+    association5 = DatasetModificationAssociation(dataset_id="d4", modification_id=2)
     session = Session()
     session.add_all(
         [
             dataset1,
             dataset2,
             dataset3,
+            dataset4,
             data1,
             data2,
             data3,
@@ -184,7 +202,8 @@ def dataset(Session, selection, project):  # noqa
             association2,
             association3,
             association4,
+            association5,
         ]
     )
     session.commit()
-    yield (dataset1, dataset2, dataset3)
+    yield (dataset1, dataset2, dataset3, dataset4)

@@ -1,3 +1,4 @@
+from collections import namedtuple
 from datetime import datetime
 from io import StringIO
 from typing import Any
@@ -19,9 +20,16 @@ from scimodom.services.dataset import (
     SpecsError,
     DatasetHeaderError,
     DatasetUpdateError,
+    DatasetImportError,
+    SelectionNotFoundError,
+    DatasetExistsError,
 )
 from scimodom.utils.bed_importer import BedImportEmptyFile, BedImportTooManyErrors
 from scimodom.utils.common_dto import Strand
+
+InputSelection = namedtuple(
+    "InputSelection", "smid modification organism technology assembly"
+)
 
 
 class MockFileService:
@@ -164,17 +172,18 @@ GOOD_EUF_FILE = """#fileformat=bedRModv1.7
         (r"\Z", "# Extra comment\n# In the end"),
     ],
 )
-def test_import_simple(
+def test_import_dataset(
     regexp, replacement, Session, selection, project, freezer
 ):  # noqa
     euf_file = GOOD_EUF_FILE.replace(regexp, replacement)
     service = _get_dataset_service(Session())
     file = StringIO(euf_file)
+    project_id = project[0].id
     freezer.move_to("2017-05-20 11:00:23")
     eufid = service.import_dataset(
         file,
         source="test",
-        smid=project.id,
+        smid=project_id,
         title="title",
         assembly_id=1,
         modification_ids=[1],
@@ -186,7 +195,7 @@ def test_import_simple(
     with Session() as session:
         dataset = session.get_one(Dataset, eufid)
         assert dataset.title == "title"
-        assert dataset.project_id == project.id
+        assert dataset.project_id == project_id
         assert dataset.technology_id == 1
         assert dataset.organism_id == 1
         assert dataset.date_added == datetime(2017, 5, 20, 11, 0, 23)
@@ -210,14 +219,14 @@ def test_import_simple(
         assert data[0].score == 1000
 
 
-def test_import_dry_run(Session, selection, project, freezer):  # noqa
+def test_import_dataset_dry_run(Session, selection, project, freezer):  # noqa
     service = _get_dataset_service(Session())
     file = StringIO(GOOD_EUF_FILE)
     freezer.move_to("2017-05-20 11:00:23")
     eufid = service.import_dataset(
         file,
         source="test",
-        smid=project.id,
+        smid=project[0].id,
         title="title",
         assembly_id=1,
         modification_ids=[1],
@@ -236,10 +245,10 @@ def test_import_dry_run(Session, selection, project, freezer):  # noqa
         assert len(data) == 0
 
 
-def test_import_update_no_change(Session, selection, project, freezer):  # noqa
+def test_import_dataset_update_no_change(Session, selection, project, freezer):  # noqa
     service = _get_dataset_service(Session())
     freezer.move_to("2017-05-20 11:00:23")
-    project_id = project.id
+    project_id = project[0].id
     eufid = service.import_dataset(
         StringIO(GOOD_EUF_FILE),
         source="test",
@@ -290,10 +299,12 @@ def test_import_update_no_change(Session, selection, project, freezer):  # noqa
         assert data[0].score == 1000
 
 
-def test_import_update_with_change(Session, selection, project, freezer):  # noqa
+def test_import_dataset_update_with_change(
+    Session, selection, project, freezer
+):  # noqa
     service = _get_dataset_service(Session())
     freezer.move_to("2017-05-20 11:00:23")
-    project_id = project.id
+    project_id = project[0].id
     eufid = service.import_dataset(
         StringIO(GOOD_EUF_FILE),
         source="test",
@@ -344,23 +355,59 @@ def test_import_update_with_change(Session, selection, project, freezer):  # noq
         assert data[0].score == 555
 
 
-def test_import_update_fail(Session, selection, project, freezer):  # noqa
+@pytest.mark.parametrize(
+    "eufid,message",
+    [
+        (
+            "XXXXXXXXXXXX",
+            "No such dataset: 'XXXXXXXXXXXX'.",
+        ),
+        (
+            "d2",
+            "Provided dataset 'd2', but found 'd1' with title 'dataset title' (SMID '12345678').",
+        ),
+    ],
+)
+def test_import_dataset_update_fail(
+    eufid, message, Session, selection, dataset, project
+):  # noqa
     service = _get_dataset_service(Session())
     with pytest.raises(DatasetUpdateError) as exc:
         service.import_dataset(
             StringIO(GOOD_EUF_FILE),
             source="test",
-            smid=project.id,
-            title="title",
+            smid=project[0].id,
+            title="dataset title",
             assembly_id=1,
             modification_ids=[1],
             technology_id=1,
             organism_id=1,
             annotation_source=AnnotationSource.ENSEMBL,
-            eufid="XXXXXXXXXXXX",
+            eufid=eufid,
         )
-    assert str(exc.value) == "No such dataset: 'XXXXXXXXXXXX'."
+    assert str(exc.value) == message
     assert exc.type == DatasetUpdateError
+
+
+def test_import_dataset_exists(Session, selection, dataset, project):  # noqa
+    service = _get_dataset_service(Session())
+    with pytest.raises(DatasetExistsError) as exc:
+        service.import_dataset(
+            StringIO(GOOD_EUF_FILE),
+            source="test",
+            smid=project[0].id,
+            title="dataset title",
+            assembly_id=1,
+            modification_ids=[1],
+            technology_id=1,
+            organism_id=1,
+            annotation_source=AnnotationSource.ENSEMBL,
+        )
+    assert (
+        str(exc.value)
+        == "Suspected duplicate dataset 'd1' (SMID '12345678'), and title 'dataset title'."
+    )
+    assert exc.type == DatasetExistsError
 
 
 @pytest.mark.parametrize(
@@ -478,7 +525,7 @@ def test_import_update_fail(Session, selection, project, freezer):  # noqa
         ),
     ],
 )
-def test_bad_import(
+def test_import_dataset_bad_import(
     regexp,
     replacement,
     exception,
@@ -498,7 +545,7 @@ def test_bad_import(
         service.import_dataset(
             file,
             source="test",
-            smid=project.id,
+            smid=project[0].id,
             title="title",
             assembly_id=1,
             modification_ids=[1],
@@ -510,19 +557,97 @@ def test_bad_import(
     assert caplog.record_tuples == record_tuples
 
 
+@pytest.mark.parametrize(
+    "input_selection,exception,message",
+    [
+        (
+            InputSelection("XXXXXXXX", [1], 1, 1, 1),
+            DatasetImportError,
+            "No such SMID: XXXXXXXX.",
+        ),
+        (
+            InputSelection("12345678", [1, 99], 1, 1, 1),
+            DatasetImportError,
+            "No such modification ID: 99.",
+        ),
+        (
+            InputSelection("12345678", [1], 99, 1, 1),
+            DatasetImportError,
+            "No such organism ID: 99.",
+        ),
+        (
+            InputSelection("12345678", [1], 1, 99, 1),
+            DatasetImportError,
+            "No such technology ID: 99.",
+        ),
+        (
+            InputSelection("12345678", [1, 1], 1, 1, 1),
+            DatasetImportError,
+            "Repeated modification IDs.",
+        ),
+        (
+            InputSelection("12345678", [1], 1, 1, 2),
+            DatasetImportError,
+            "No such assembly GRCm38 for organism 9606.",
+        ),
+    ],
+)
+def test_import_dataset_import_error(
+    input_selection, exception, message, Session, selection, project
+):  # noqa
+    service = _get_dataset_service(Session())
+    with pytest.raises(exception) as exc:
+        service.import_dataset(
+            StringIO(GOOD_EUF_FILE),
+            source="test",
+            smid=input_selection.smid,
+            title="title",
+            assembly_id=input_selection.assembly,
+            modification_ids=input_selection.modification,
+            technology_id=input_selection.technology,
+            organism_id=input_selection.organism,
+            annotation_source=AnnotationSource.ENSEMBL,
+        )
+    assert str(exc.value) == message
+
+
+def test_import_dataset_selection_not_found(Session, selection, project):
+    service = _get_dataset_service(Session())
+    with pytest.raises(SelectionNotFoundError) as exc:
+        service.import_dataset(
+            StringIO(GOOD_EUF_FILE),
+            source="test",
+            smid=project[0].id,
+            title="title",
+            assembly_id=1,
+            modification_ids=[1],
+            technology_id=1,
+            organism_id=2,
+            annotation_source=AnnotationSource.ENSEMBL,
+        )
+    assert (
+        str(exc.value)
+        == "No such selection with m6A, Technology 1, and Cell type 2 (9606)."
+    )
+
+
 def test_delete_dataset(Session, dataset, bam_file):
     service = _get_dataset_service(Session())
-    # delete d1, d3, keep d2
+    # delete d1, d3, d4, keep d2
     service.delete_dataset(dataset[0])
     service.delete_dataset(dataset[2])
+    service.delete_dataset(dataset[3])
 
     with Session() as session:
         assert session.scalar(select(func.count()).select_from(Dataset)) == 1
         eufid0 = dataset[0].id
         eufid1 = dataset[1].id
         eufid2 = dataset[2].id
+        eufid3 = dataset[3].id
         remaining_dataset = session.get_one(Dataset, eufid1)  # noqa
-        for eufid, expected_length in zip([eufid0, eufid1, eufid2], [0, 1, 0]):
+        for eufid, expected_length in zip(
+            [eufid0, eufid1, eufid2, eufid3], [0, 1, 0, 0]
+        ):
             data = (
                 session.execute(select(Data).where(Data.dataset_id == eufid))
                 .scalars()

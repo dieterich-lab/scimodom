@@ -110,7 +110,7 @@ class ModificationService:
             "records": [row._asdict() for row in self._session.execute(query)],
         }
 
-    def get_modification_by_gene(
+    def get_modifications_by_gene(
         self,
         annotation_source: AnnotationSource,
         taxa_id: int,

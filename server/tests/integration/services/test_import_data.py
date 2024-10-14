@@ -189,6 +189,9 @@ def _get_dataset_service(session, tmp_path):
     )
 
 
+# tests
+
+
 def test_import_simple(Session, selection, project, tmp_path, freezer):
     service = _get_dataset_service(Session(), tmp_path)
 
@@ -200,7 +203,7 @@ def test_import_simple(Session, selection, project, tmp_path, freezer):
     eufid = service.import_dataset(
         file_handle,
         source="test",
-        smid=project.id,
+        smid=project[0].id,
         title="Dataset title",
         assembly_id=1,
         modification_ids=[1],

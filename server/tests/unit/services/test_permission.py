@@ -1,47 +1,39 @@
-from datetime import datetime, timezone
-
 import pytest
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 from scimodom.services.permission import PermissionService
 from scimodom.database.models import (
     User,
     UserState,
-    Project,
-    ProjectContact,
     UserProjectAssociation,
 )
 
 
-def test_insert_user_project_association(Session):
-    stamp = datetime.now(timezone.utc).replace(microsecond=0)
+def test_insert_user_project_association(Session, project):
     with Session() as session, session.begin():
-        contact = ProjectContact(
-            contact_name="contact_name",
-            contact_institution="contact_institution",
-            contact_email="contact@email",
-        )
-        user = User(email="contact@email", state=UserState.active, password_hash="xxx")
-        session.add_all([contact, user])
+        project_id = project[1].id
+        user = User(email="contact2@email", state=UserState.active, password_hash="xxx")
+        session.add(user)
         session.flush()
-        contact_id = contact.id
-        project = Project(
-            id="12345678",
-            title="title",
-            summary="summary",
-            contact_id=contact_id,
-            date_published=datetime.fromisoformat("2024-01-01"),
-            date_added=stamp,
-        )
-        session.add(project)
-        session.flush()
-        smid = project.id
         user_id = user.id
 
         service = PermissionService(session)
-        service.insert_into_user_project_association(user, smid)
+        service.insert_into_user_project_association(user, project_id)
 
     with Session() as session, session.begin():
-        records = session.execute(select(UserProjectAssociation)).scalar()
+        assert (
+            session.scalar(select(func.count()).select_from(UserProjectAssociation))
+            == 2
+        )
+        records = session.execute(
+            select(UserProjectAssociation).filter_by(project_id=project_id)
+        ).scalar()
         assert records.user_id == user_id
-        assert records.project_id == smid
+
+
+def test_may_change_dataset(Session, dataset, project):  # noqa
+    service = PermissionService(Session())
+    with Session() as session, session.begin():
+        user = session.get_one(User, 1)
+        assert service.may_change_dataset(user, dataset[0]) is True
+        assert service.may_change_dataset(user, dataset[3]) is False

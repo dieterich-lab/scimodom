@@ -221,7 +221,7 @@ def _get_modifications_for_request(by_gene):
     # TODO: chrom validation, cf. get_valid_coords
     if by_gene:
         gene_or_chrom = _get_gene_or_chrom_required()
-        return modification_service.get_modification_by_gene(
+        return modification_service.get_modifications_by_gene(
             annotation_source=_get_annotation_source(),
             taxa_id=get_valid_taxa_id(request.args.get("taxaId")),
             gene_filter=gene_or_chrom.gene_filter,

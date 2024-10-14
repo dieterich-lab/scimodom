@@ -374,7 +374,8 @@ def test_query_projects(Session, file_service, setup):
 
 def test_delete_project(Session, project, file_service):
     service = _get_project_service(Session, file_service)
-    service.delete_project(project)
+    service.delete_project(project[0])
+    service.delete_project(project[1])
 
     with Session() as session:
         assert session.scalar(select(func.count()).select_from(Project)) == 0
@@ -384,4 +385,7 @@ def test_delete_project(Session, project, file_service):
             session.scalar(select(func.count()).select_from(UserProjectAssociation))
             == 0
         )
-    assert file_service.deleted_projects == ["/data/metadata/12345678.json"]
+    assert file_service.deleted_projects == [
+        "/data/metadata/12345678.json",
+        "/data/metadata/ABCDEFGH.json",
+    ]
