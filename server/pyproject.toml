@@ -53,7 +53,7 @@ Documentation = "https://dieterich-lab.github.io/scimodom"
 
 [project.optional-dependencies]
 dev = ["pre-commit", "SQLAlchemy[mypy]"]
-tests = ["pytest", "pytest-cov", "pytest-depends", "pytest-env", "pytest-mock", "pytest-freezegun"]
+tests = ["pytest", "pytest-cov", "pytest-depends", "pytest-env", "pytest-mock", "pytest-freezegun", "pytest-datafiles"]
 docs = [
   "ipykernel",
   "matplotlib",

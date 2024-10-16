@@ -33,64 +33,6 @@ class AnnotationFormatError(Exception):
     pass
 
 
-def _get_gtf_attrs(feature):
-    """This function is to be passed
-    as argument to BedTool.each(), to
-    generate a BED-like Interval. The
-    format is BED6+2, where 2 additional
-    fields are "gene_id", "gene_biotype".
-
-    Note: The value in 'Interval.start' will
-    always contain the 0-based start position,
-    even if it came from a GFF or other 1-based
-    feature. The contents of 'Interval.fields'
-    will always be strings, which in turn always
-    represent the original line in the file.
-
-    :param feature: A feature from a GTF file.
-    :type feature: pybedtools.Interval
-    """
-    line = [
-        feature.chrom,
-        feature.start,
-        feature.end,
-        feature.name,
-        feature.score,
-        feature.strand,
-        feature.attrs["gene_id"],
-        feature.attrs["gene_biotype"],
-    ]
-    return pybedtools.cbedtools.create_interval_from_list(line)
-
-
-def _remove_filno(feature, n_fields: int = 9, is_closest: bool = False):
-    """This function is to be passed
-    as argument to BedTool.each(), to
-    generate a BED-like Interval. This is used
-    to "strip" the returned interval from the
-    "additional column describing the file number"
-    when calling intersect or closest (with -wa and
-    -wb). The default format is BED6+3, where
-    3 additional fields are "dataset_id", "coverage",
-    and "frequency". For closest, distance is appended
-    at the end.
-
-    :param feature: A feature from a BED file.
-    :type feature: pybedtools.Interval
-    :param n_fields: BED format
-    :type n_fields: int
-    :param is_closest: Add distance field
-    :type is_closest: bool
-    :return: New interval
-    :rtype: pybedtools interval
-    """
-    target = 2 * n_fields + int(is_closest)
-    line = [f for f in feature.fields]
-    if len(feature.fields) != target:
-        line.pop(n_fields)
-    return pybedtools.cbedtools.create_interval_from_list(line)
-
-
 class BedToolsService:
     def __init__(self, tmp_path):
         makedirs(tmp_path, exist_ok=True)
@@ -709,6 +651,64 @@ class BedToolsService:
             coverage=s[7],
             frequency=s[8],
         )
+
+
+def _get_gtf_attrs(feature):
+    """This function is to be passed
+    as argument to BedTool.each(), to
+    generate a BED-like Interval. The
+    format is BED6+2, where 2 additional
+    fields are "gene_id", "gene_biotype".
+
+    Note: The value in 'Interval.start' will
+    always contain the 0-based start position,
+    even if it came from a GFF or other 1-based
+    feature. The contents of 'Interval.fields'
+    will always be strings, which in turn always
+    represent the original line in the file.
+
+    :param feature: A feature from a GTF file.
+    :type feature: pybedtools.Interval
+    """
+    line = [
+        feature.chrom,
+        feature.start,
+        feature.end,
+        feature.name,
+        feature.score,
+        feature.strand,
+        feature.attrs["gene_id"],
+        feature.attrs["gene_biotype"],
+    ]
+    return pybedtools.cbedtools.create_interval_from_list(line)
+
+
+def _remove_filno(feature, n_fields: int = 9, is_closest: bool = False):
+    """This function is to be passed
+    as argument to BedTool.each(), to
+    generate a BED-like Interval. This is used
+    to "strip" the returned interval from the
+    "additional column describing the file number"
+    when calling intersect or closest (with -wa and
+    -wb). The default format is BED6+3, where
+    3 additional fields are "dataset_id", "coverage",
+    and "frequency". For closest, distance is appended
+    at the end.
+
+    :param feature: A feature from a BED file.
+    :type feature: pybedtools.Interval
+    :param n_fields: BED format
+    :type n_fields: int
+    :param is_closest: Add distance field
+    :type is_closest: bool
+    :return: New interval
+    :rtype: pybedtools interval
+    """
+    target = 2 * n_fields + int(is_closest)
+    line = [f for f in feature.fields]
+    if len(feature.fields) != target:
+        line.pop(n_fields)
+    return pybedtools.cbedtools.create_interval_from_list(line)
 
 
 @cache

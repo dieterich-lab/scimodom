@@ -636,33 +636,6 @@ EXPECTED_RESULT_INTERSECT_BED6_A_WITH_B = [
 # tests
 
 
-def test_intersect_comparison_records(bedtools_service):
-    result = list(
-        bedtools_service.intersect_comparison_records(
-            DATASET_A, [DATASET_B, DATASET_C], is_strand=True
-        )
-    )
-    assert result == EXPECTED_RESULT_INTERSECT_A_WITH_BC
-
-
-def test_closest_comparison_records(bedtools_service):
-    result = list(
-        bedtools_service.closest_comparison_records(
-            DATASET_A, [DATASET_B, DATASET_C], is_strand=True
-        )
-    )
-    assert result == EXPECTED_RESULT_CLOSEST_A_WITH_BC
-
-
-def test_subtract_comparison_records(bedtools_service):
-    result = list(
-        bedtools_service.subtract_comparison_records(
-            DATASET_A, [DATASET_B, DATASET_C], is_strand=True
-        )
-    )
-    assert result == EXPECTED_RESULT_SUBTRACT_A_WITH_BC
-
-
 def test_intersect_comparison_records_simple(bedtools_service):
     result = list(
         bedtools_service.intersect_comparison_records(
@@ -688,6 +661,33 @@ def test_subtract_comparison_records_simple(bedtools_service):
         )
     )
     assert result == EXPECTED_RESULT_SUBTRACT_A_WITH_B
+
+
+def test_intersect_comparison_records(bedtools_service):
+    result = list(
+        bedtools_service.intersect_comparison_records(
+            DATASET_A, [DATASET_B, DATASET_C], is_strand=True
+        )
+    )
+    assert result == EXPECTED_RESULT_INTERSECT_A_WITH_BC
+
+
+def test_closest_comparison_records(bedtools_service):
+    result = list(
+        bedtools_service.closest_comparison_records(
+            DATASET_A, [DATASET_B, DATASET_C], is_strand=True
+        )
+    )
+    assert result == EXPECTED_RESULT_CLOSEST_A_WITH_BC
+
+
+def test_subtract_comparison_records(bedtools_service):
+    result = list(
+        bedtools_service.subtract_comparison_records(
+            DATASET_A, [DATASET_B, DATASET_C], is_strand=True
+        )
+    )
+    assert result == EXPECTED_RESULT_SUBTRACT_A_WITH_BC
 
 
 def test_intersect_bed6_records(bedtools_service):

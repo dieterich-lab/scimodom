@@ -2,6 +2,7 @@ import pytest
 
 from pybedtools import BedTool
 
+from scimodom.services.annotation.ensembl import EnsemblAnnotationService
 from scimodom.services.bedtools import BedToolsService
 from scimodom.utils.bedtools_dto import (
     EufRecord,
@@ -9,6 +10,8 @@ from scimodom.utils.bedtools_dto import (
     Bed6Record,
 )
 from scimodom.utils.common_dto import Strand
+
+FEATURES = EnsemblAnnotationService.FEATURES
 
 
 @pytest.fixture
@@ -174,3 +177,15 @@ def test_create_temp_euf_file(bedtools_service):
     )
     with open(path) as fp:
         assert fp.read() == EXPECTED_EUF_FILE
+
+
+@pytest.mark.parametrize(
+    "feature",
+    ["intron", "intergenic"],
+)
+def test_check_features(feature, bedtools_service):
+    features = {k: list(v.keys()) for k, v in FEATURES.items()}
+    assert (
+        bedtools_service._check_feature(feature, features, "parent")
+        == f"parent/{feature}.bed"
+    )
