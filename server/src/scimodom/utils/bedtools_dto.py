@@ -11,11 +11,11 @@ DatasetId = Annotated[str, Field(min_length=12, max_length=12)]
 
 
 class Bed6Record(BaseModel):
-    chrom: str = Annotated[str, Field(min_length=1, max_length=128)]
-    start: int = NonNegativInt
-    end: int = NonNegativInt
-    name: str = Annotated[str, Field(min_length=1, max_length=32)]
-    score: int = Score
+    chrom: Annotated[str, Field(min_length=1, max_length=128)]
+    start: NonNegativInt
+    end: NonNegativInt
+    name: Annotated[str, Field(min_length=1, max_length=32)]
+    score: Score
     strand: Strand
 
     @model_validator(mode="after")
@@ -65,13 +65,13 @@ class ClosestRecord(BaseModel):
 
 
 class GenomicAnnotationRecord(BaseModel):
-    id: str = Annotated[str, Field(min_length=1, max_length=128)]
-    annotation_id: int = NonNegativInt
+    id: Annotated[str, Field(min_length=1, max_length=128)]
+    annotation_id: NonNegativInt
     name: Optional[Annotated[str, Field(min_length=1, max_length=128)]] = None
     biotype: Optional[Annotated[str, Field(min_length=1, max_length=255)]] = None
 
 
 class DataAnnotationRecord(BaseModel):
-    gene_id: str = Annotated[str, Field(min_length=1, max_length=128)]
-    data_id: int = NonNegativInt
-    feature: str = Annotated[str, Field(min_length=1, max_length=32)]
+    gene_id: Annotated[str, Field(min_length=1, max_length=128)]
+    data_id: NonNegativInt
+    feature: Annotated[str, Field(min_length=1, max_length=32)]

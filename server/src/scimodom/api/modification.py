@@ -209,7 +209,7 @@ def _get_bed6_records_from_request(
             chrom=coords[0],
             start=coords[1],
             end=coords[2],
-            name="",
+            name="-",
             score=0,
             strand=coords[3],
         )

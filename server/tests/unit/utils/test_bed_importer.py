@@ -11,17 +11,17 @@ from scimodom.utils.bed_importer import (
 )
 from scimodom.utils.common_dto import Strand
 
-EUF_FILE = """#fileformat=bedRModv1.7
+EUF_FILE = """#fileformat=bedRModv1.8
 #organism=10090
 #modification_type=RNA
 #assembly=GRCm39
 #annotation_source=Ensembl
 #annotation_version=110
 #sequencing_platform=HiSeq X Ten
-#basecalling=None
-#bioinformatics_workflow=https://github.com/liucongcas/GLORI-toolsw
-#experiment=https://doi.org/10.1038/s41587-022-01487-9
-#external_source=GEO;GSE210563
+#basecalling=
+#bioinformatics_workflow=
+#experiment=
+#external_source=GEO;GSE123456
 #chrom\tchromStart\tchromEnd\tname\tscore\tstrand\tthickStart\tthickEnd\titemRgb\tcoverage\tfrequency
 1\t3528091\t3528092\tm6A\t1000\t+\t3457868\t3457869\t0,205,0\t31\t78
 1\t3528096\t3528097\tm6A\t1000\t+\t3457873\t3457874\t0,205,0\t6\t16
@@ -100,17 +100,17 @@ def test_euf_error_without_error_rate(caplog):
     ]
 
 
-EMPTY_EUF_FILE = """#fileformat=bedRModv1.7
+EMPTY_EUF_FILE = """#fileformat=bedRModv1.8
 #organism=10090
 #modification_type=RNA
 #assembly=GRCm39
 #annotation_source=Ensembl
 #annotation_version=110
 #sequencing_platform=HiSeq X Ten
-#basecalling=None
-#bioinformatics_workflow=https://github.com/liucongcas/GLORI-toolsw
-#experiment=https://doi.org/10.1038/s41587-022-01487-9
-#external_source=GEO;GSE210563
+#basecalling=
+#bioinformatics_workflow=
+#experiment=
+#external_source=GEO;GSE123456
 #chrom\tchromStart\tchromEnd\tname\tscore\tstrand\tthickStart\tthickEnd\titemRgb\tcoverage\tfrequency
 
 # More blank lines
