@@ -17,7 +17,7 @@ pipeline {
                 sh '''
                     if [ ! -f bin/bedtools ]
                     then
-                        wget https://github.com/arq5x/bedtools2/releases/download/v2.31.0/bedtools.static
+                        wget -q https://github.com/arq5x/bedtools2/releases/download/v2.31.0/bedtools.static
                         mkdir -p bin
                         mv bedtools.static bin/bedtools
                         chmod 755 bin/bedtools
@@ -28,7 +28,7 @@ pipeline {
         stage('Python Testing') {
             steps {
                 sh '''
-                    export PATH="${pwd}/bin:$PATH"
+                    export PATH="$(pwd)/bin:$PATH"
                     . ./venv/bin/activate
                     export PYTHONPATH=$(pwd)/server/src:$(pwd)/server/tests
                     cd server
