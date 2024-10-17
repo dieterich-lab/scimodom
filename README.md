@@ -8,9 +8,21 @@ The application consists of the following components:
 
 ## General setup
 
-At launch time, the app uses tables defined in `SetupService` to populate the database. These tables **must** exist and be located under `IMPORT_PATH`. By default, this path is located under _server/import_, and can be specified in the environment file. Once setup is complete, assembly and annotation files must be added. See [Flask CLI - Setup](https://dieterich-lab.github.io/scimodom/flask.html#setup) for details.
+### Data import
 
-For project and data management, consult the **Documentation** tab on the Web-GUI, or [Flask CLI - Project and data management](https://dieterich-lab.github.io/scimodom/flask.html#project-and-data-management).
+At launch time, the app uses files defined in `SetupService` to populate the database. These files **must** exist and be located under `IMPORT_PATH` (development) or `HOST_IMPORT_DIR` (production). By default, this path is located under _server/import_, and can be specified in the environment file. See [Flask CLI - Setup](https://dieterich-lab.github.io/scimodom/flask.html#setup) for details.
+
+### Assembly and annotation
+
+Assembly and annotation files must be added before any modification data can be uploaded to the database. See [Flask CLI - Setup](https://dieterich-lab.github.io/scimodom/flask.html#setup) for details.
+
+### Project and data management
+
+Modification data is organised into projects and datasets, and must be formatted according to the [bedRMod specifications](https://dieterich-lab.github.io/scimodom/bedrmod.html). Consult the **Documentation** tab on the Web-GUI, or [Flask CLI - Project and data management](https://dieterich-lab.github.io/scimodom/flask.html#project-and-data-management) for details.
+
+### Dependencies
+
+Sci-ModoM depends on [Bedtools](https://bedtools.readthedocs.io/en/latest/) v2.31.0. There is nothing to do for production. The version is specified in the [Dockerfile](docker/app_container/Dockerfile). For development, it is recommended to use [pre-compiled binaries](https://bedtools.readthedocs.io/en/latest/content/installation.html#downloading-a-pre-compiled-binary) with the correct version number.
 
 ## Production setup
 
@@ -40,7 +52,7 @@ pip install --upgrade pip setuptools
 pip --verbose install -e '.[dev,tests,docs]' 2>&1 | tee install.log
 ```
 
-**Note:** The package depends on [mysqlclient](https://pypi.org/project/mysqlclient/). You may have to install MySQL development headers and libraries before. You also need a working installation of [Bedtools](https://bedtools.readthedocs.io/en/latest/), _e.g._ [pre-compiled binaries](https://bedtools.readthedocs.io/en/latest/content/installation.html#downloading-a-pre-compiled-binary).
+**Note:** The package depends on [mysqlclient](https://pypi.org/project/mysqlclient/). You may have to install MySQL development headers and libraries!
 
 Set up your environment configuration in _server/.env_:
 
@@ -157,6 +169,10 @@ To execute the tests, run under the _server_ directory:
 ```bash
 pytest tests
 ```
+
+#### Test automation
+
+The Bedtools version is specified in the [Jenkinsfile](Jenkinsfile).
 
 #### Database schema updates
 
