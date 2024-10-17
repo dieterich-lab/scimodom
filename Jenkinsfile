@@ -15,7 +15,7 @@ pipeline {
         stage('Setup bedtools') {
             steps {
                 sh '''
-                    if [[ ! -f bin/bedtools ]]
+                    if [ ! -f bin/bedtools ]
                     then
                         wget https://github.com/arq5x/bedtools2/releases/download/v2.31.0/bedtools.static
                         mkdir -p bin
