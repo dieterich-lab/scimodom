@@ -3,7 +3,7 @@ from collections import namedtuple
 import pytest
 from pydantic import ValidationError
 
-from scimodom.utils.bedtools_dto import (
+from scimodom.utils.dtos.bedtools import (
     Bed6Record,
     EufRecord,
     ComparisonRecord,
@@ -11,7 +11,7 @@ from scimodom.utils.bedtools_dto import (
     GenomicAnnotationRecord,
     DataAnnotationRecord,
 )
-from scimodom.utils.common_dto import Strand
+from scimodom.utils.specs.enums import Strand
 
 Bed6Fields = namedtuple("Bed6Fields", "chrom start end name score strand")
 EufFields = namedtuple("EufFields", "start end coverage frequency")

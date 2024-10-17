@@ -25,9 +25,9 @@ from scimodom.api.helpers import (
     validate_rna_type,
 )
 from scimodom.services.bedtools import BedToolsService, get_bedtools_service
-from scimodom.utils.bedtools_dto import Bed6Record
-from scimodom.services.file import AssemblyFileType, get_file_service
-from scimodom.utils.common_dto import Strand
+from scimodom.utils.dtos.bedtools import Bed6Record
+from scimodom.services.file import get_file_service
+from scimodom.utils.specs.enums import Strand, AssemblyFileType
 
 logger = logging.getLogger(__name__)
 

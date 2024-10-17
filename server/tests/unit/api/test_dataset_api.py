@@ -11,7 +11,7 @@ from scimodom.api.dataset import (
     SubtractResponse,
 )
 from scimodom.database.models import Data
-from scimodom.utils.bedtools_dto import (
+from scimodom.utils.dtos.bedtools import (
     ComparisonRecord,
     IntersectRecord,
     ClosestRecord,
@@ -19,7 +19,7 @@ from scimodom.utils.bedtools_dto import (
     EufRecord,
     Bed6Record,
 )
-from scimodom.utils.common_dto import Strand
+from scimodom.utils.specs.enums import Strand
 
 
 @pytest.fixture

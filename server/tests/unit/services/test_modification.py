@@ -14,8 +14,7 @@ from scimodom.database.models import (
     Organism,
 )
 from scimodom.services.modification import ModificationService
-from scimodom.services.annotation import AnnotationSource
-from scimodom.utils.common_dto import Strand
+from scimodom.utils.specs.enums import Strand, AnnotationSource
 
 Coord = namedtuple("Coord", "chrom start end")
 

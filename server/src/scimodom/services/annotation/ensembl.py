@@ -8,7 +8,7 @@ from scimodom.database.buffer import InsertBuffer
 from scimodom.database.models import Annotation, DataAnnotation, GenomicAnnotation
 from scimodom.services.annotation.generic import GenericAnnotationService
 import scimodom.utils.specifications as specs
-from scimodom.services.file import AssemblyFileType
+from scimodom.utils.specs.enums import AssemblyFileType
 
 logger = logging.getLogger(__name__)
 

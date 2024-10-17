@@ -16,7 +16,7 @@ from scimodom.services.dataset import get_dataset_service
 from scimodom.services.permission import get_permission_service
 from scimodom.services.project import get_project_service
 from scimodom.services.user import get_user_service, NoSuchUser
-from scimodom.utils.project_dto import (
+from scimodom.utils.dtos.project import (
     ProjectMetaDataDto,
     ProjectOrganismDto,
     ProjectSourceDto,

@@ -27,11 +27,7 @@ from scimodom.database.models import (
     Data,
     DataAnnotation,
 )
-from scimodom.services.annotation import (
-    get_annotation_service,
-    AnnotationService,
-    AnnotationSource,
-)
+from scimodom.services.annotation import get_annotation_service, AnnotationService
 from scimodom.services.assembly import (
     get_assembly_service,
     AssemblyService,
@@ -39,9 +35,10 @@ from scimodom.services.assembly import (
 from scimodom.services.bedtools import get_bedtools_service, BedToolsService
 from scimodom.services.file import FileService, get_file_service
 from scimodom.utils import utils
-from scimodom.utils.bed_importer import EufImporter
-from scimodom.utils.bedtools_dto import EufRecord
+from scimodom.utils.importer.bed_importer import EufImporter
+from scimodom.utils.dtos.bedtools import EufRecord
 from scimodom.utils.specifications import SPECS_EUF, EUFID_LENGTH
+from scimodom.utils.specs.enums import AnnotationSource
 
 logger = logging.getLogger(__name__)
 

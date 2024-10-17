@@ -4,7 +4,8 @@ from typing import List
 import pytest
 
 from scimodom.services.user import UserService, WrongUserOrPassword
-from scimodom.database.models import User, UserState
+from scimodom.database.models import User
+from scimodom.utils.specs.enums import UserState
 
 HistoryItem = namedtuple("HistoryItem", "operation email token")
 

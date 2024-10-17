@@ -1,7 +1,7 @@
 import pytest
 
 from scimodom.services.data import DataService, NoDataRecords
-from scimodom.utils.common_dto import Strand
+from scimodom.utils.specs.enums import Strand
 
 
 def test_get_by_dataset(dataset, Session):  # noqa

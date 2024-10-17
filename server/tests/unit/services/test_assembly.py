@@ -14,7 +14,7 @@ from scimodom.services.assembly import (
     AssemblyVersionError,
     LiftOverError,
 )
-from scimodom.services.file import AssemblyFileType
+from scimodom.utils.specs.enums import AssemblyFileType
 
 
 class MockExternalService:

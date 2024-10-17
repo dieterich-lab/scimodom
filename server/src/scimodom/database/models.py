@@ -1,7 +1,5 @@
-import enum
 from datetime import datetime
 from typing import List, Optional
-from scimodom.utils.common_dto import Strand
 
 from sqlalchemy import (
     String,
@@ -16,6 +14,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from scimodom.database.database import Base
+from scimodom.utils.specs.enums import Strand, UserState
 
 
 class RNAType(Base):
@@ -453,11 +452,6 @@ class Sprinzl(Base):
     position: Mapped[str] = mapped_column(String(32), nullable=False)
 
     __table_args__ = (UniqueConstraint(data_id, position),)
-
-
-class UserState(enum.Enum):
-    wait_for_confirmation = 0
-    active = 1
 
 
 class User(Base):

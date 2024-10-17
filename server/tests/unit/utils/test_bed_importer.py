@@ -3,13 +3,13 @@ from io import StringIO
 
 import pytest
 
-from scimodom.utils.bed_importer import (
+from scimodom.utils.importer.bed_importer import (
     Bed6Importer,
     BedImportTooManyErrors,
     BedImportEmptyFile,
     EufImporter,
 )
-from scimodom.utils.common_dto import Strand
+from scimodom.utils.specs.enums import Strand
 
 EUF_FILE = """#fileformat=bedRModv1.8
 #organism=10090
@@ -56,17 +56,17 @@ def test_euf_error(caplog):
         _ = list(importer.parse())
     assert caplog.record_tuples == [
         (
-            "scimodom.utils.bed_importer",
+            "scimodom.utils.importer.bed_importer",
             logging.WARNING,
             "test, line 2: Expected 11 fields, but got 10",
         ),
         (
-            "scimodom.utils.bed_importer",
+            "scimodom.utils.importer.bed_importer",
             logging.WARNING,
             "test, line 3: '*' is not a valid Strand",
         ),
         (
-            "scimodom.utils.bed_importer",
+            "scimodom.utils.importer.bed_importer",
             logging.ERROR,
             "Found too many errors in test (valid: 1, errors: 2)",
         ),
@@ -88,12 +88,12 @@ def test_euf_error_without_error_rate(caplog):
     assert len(result) == 1
     assert caplog.record_tuples == [
         (
-            "scimodom.utils.bed_importer",
+            "scimodom.utils.importer.bed_importer",
             logging.WARNING,
             "test, line 2: Expected 11 fields, but got 10",
         ),
         (
-            "scimodom.utils.bed_importer",
+            "scimodom.utils.importer.bed_importer",
             logging.WARNING,
             "test, line 3: '*' is not a valid Strand",
         ),

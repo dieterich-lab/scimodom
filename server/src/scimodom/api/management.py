@@ -22,8 +22,11 @@ from scimodom.services.project import get_project_service
 from scimodom.services.mail import get_mail_service
 import scimodom.utils.utils as utils
 from scimodom.services.sunburst import get_sunburst_service
-from scimodom.utils.bed_importer import BedImportTooManyErrors, BedImportEmptyFile
-from scimodom.utils.project_dto import ProjectTemplate
+from scimodom.utils.importer.bed_importer import (
+    BedImportTooManyErrors,
+    BedImportEmptyFile,
+)
+from scimodom.utils.dtos.project import ProjectTemplate
 
 logger = logging.getLogger(__name__)
 

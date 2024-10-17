@@ -14,7 +14,6 @@ from scimodom.database.models import (
     Assembly,
     Data,
 )
-from scimodom.services.annotation import AnnotationSource
 from scimodom.services.dataset import (
     DatasetService,
     SpecsError,
@@ -24,8 +23,11 @@ from scimodom.services.dataset import (
     SelectionNotFoundError,
     DatasetExistsError,
 )
-from scimodom.utils.bed_importer import BedImportEmptyFile, BedImportTooManyErrors
-from scimodom.utils.common_dto import Strand
+from scimodom.utils.importer.bed_importer import (
+    BedImportEmptyFile,
+    BedImportTooManyErrors,
+)
+from scimodom.utils.specs.enums import Strand, AnnotationSource
 
 InputSelection = namedtuple(
     "InputSelection", "smid modification organism technology assembly"
@@ -469,12 +471,12 @@ def test_import_dataset_exists(Session, selection, dataset, project):  # noqa
             "Found too many errors in test (valid: 0, errors: 1)",
             [
                 (
-                    "scimodom.utils.bed_importer",
+                    "scimodom.utils.importer.bed_importer",
                     30,
                     "test, line 13: Expected 11 fields, but got 10",
                 ),
                 (
-                    "scimodom.utils.bed_importer",
+                    "scimodom.utils.importer.bed_importer",
                     40,
                     "Found too many errors in test (valid: 0, errors: 1)",
                 ),
@@ -485,7 +487,13 @@ def test_import_dataset_exists(Session, selection, dataset, project):  # noqa
             "",
             BedImportEmptyFile,
             "Did not find any records in 'test'",
-            [("scimodom.utils.bed_importer", 40, "Did not find any records in 'test'")],
+            [
+                (
+                    "scimodom.utils.importer.bed_importer",
+                    40,
+                    "Did not find any records in 'test'",
+                )
+            ],
         ),
         (
             "1\t0\t10\tm6A\t1000\t+\t0\t10\t0,0,0\t10\t1",
@@ -494,12 +502,12 @@ def test_import_dataset_exists(Session, selection, dataset, project):  # noqa
             "Found too many errors in test (valid: 0, errors: 1)",
             [
                 (
-                    "scimodom.utils.bed_importer",
+                    "scimodom.utils.importer.bed_importer",
                     30,
                     "test, line 13: Unrecognized name: m6.",
                 ),
                 (
-                    "scimodom.utils.bed_importer",
+                    "scimodom.utils.importer.bed_importer",
                     40,
                     "Found too many errors in test (valid: 0, errors: 1)",
                 ),
@@ -512,12 +520,12 @@ def test_import_dataset_exists(Session, selection, dataset, project):  # noqa
             "Found too many errors in test (valid: 0, errors: 1)",
             [
                 (
-                    "scimodom.utils.bed_importer",
+                    "scimodom.utils.importer.bed_importer",
                     30,
                     "test, line 13: Unrecognized chrom: 2. Ignore this warning for scaffolds and contigs, otherwise this could be due to misformatting!",
                 ),
                 (
-                    "scimodom.utils.bed_importer",
+                    "scimodom.utils.importer.bed_importer",
                     40,
                     "Found too many errors in test (valid: 0, errors: 1)",
                 ),

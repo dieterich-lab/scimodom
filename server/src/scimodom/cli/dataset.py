@@ -17,17 +17,17 @@ from scimodom.database.models import (
     Selection,
 )
 from scimodom.cli.utilities import add_assembly_to_template_if_none, get_modomics_id
-from scimodom.services.annotation import AnnotationSource
 from scimodom.services.assembly import AssemblyNotFoundError, get_assembly_service
 from scimodom.services.dataset import get_dataset_service
 from scimodom.services.file import get_file_service
 from scimodom.services.project import get_project_service
 from scimodom.services.sunburst import get_sunburst_service
-from scimodom.utils.project_dto import (
+from scimodom.utils.dtos.project import (
     ProjectMetaDataDto,
     ProjectOrganismDto,
     ProjectTemplate,
 )
+from scimodom.utils.specs.enums import AnnotationSource
 
 
 def add_dataset(

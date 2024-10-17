@@ -10,7 +10,7 @@ from pybedtools import BedTool, create_interval_from_list
 import scimodom.utils.utils as utils
 from scimodom.config import get_config
 from scimodom.database.models import Data
-from scimodom.utils.bedtools_dto import (
+from scimodom.utils.dtos.bedtools import (
     Bed6Record,
     EufRecord,
     DataAnnotationRecord,
@@ -20,7 +20,7 @@ from scimodom.utils.bedtools_dto import (
     SubtractRecord,
     ComparisonRecord,
 )
-from scimodom.utils.common_dto import Strand
+from scimodom.utils.specs.enums import Strand
 
 logger = logging.getLogger(__name__)
 

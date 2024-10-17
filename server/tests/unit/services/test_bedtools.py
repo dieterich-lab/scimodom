@@ -4,12 +4,12 @@ from pybedtools import BedTool
 
 from scimodom.services.annotation.ensembl import EnsemblAnnotationService
 from scimodom.services.bedtools import BedToolsService
-from scimodom.utils.bedtools_dto import (
+from scimodom.utils.dtos.bedtools import (
     EufRecord,
     ComparisonRecord,
     Bed6Record,
 )
-from scimodom.utils.common_dto import Strand
+from scimodom.utils.specs.enums import Strand
 
 FEATURES = EnsemblAnnotationService.FEATURES
 

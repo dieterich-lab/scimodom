@@ -2,7 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from scimodom.services.file import FileService, AssemblyFileType
+from scimodom.services.file import FileService
+from scimodom.utils.specs.enums import AssemblyFileType
 
 
 def _get_file_service(Session, tmp_path):

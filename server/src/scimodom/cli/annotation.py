@@ -1,6 +1,7 @@
 import click
 
-from scimodom.services.annotation import AnnotationSource, get_annotation_service
+from scimodom.services.annotation import get_annotation_service
+from scimodom.utils.specs.enums import AnnotationSource
 
 
 def add_annotation(taxa_id: int, source: AnnotationSource, **kwargs) -> None:

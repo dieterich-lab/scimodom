@@ -8,8 +8,8 @@ from scimodom.database.models import (
     Project,
     User,
     UserProjectAssociation,
-    UserState,
 )
+from scimodom.utils.specs.enums import UserState
 
 
 @pytest.fixture

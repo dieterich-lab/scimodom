@@ -5,12 +5,12 @@ from abc import ABC, abstractmethod
 
 from pydantic import ValidationError
 
-from scimodom.utils.bedtools_dto import (
+from scimodom.utils.dtos.bedtools import (
     EufRecord,
     Bed6Record,
 )
-from scimodom.utils.common_dto import Strand
-from scimodom.utils.text_file_reader import TextFileReader, TextFileReaderError
+from scimodom.utils.specs.enums import Strand
+from scimodom.utils.importer.text_file_reader import TextFileReader, TextFileReaderError
 
 logger = logging.getLogger(__name__)
 

@@ -1,4 +1,3 @@
-import fcntl
 import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -13,7 +12,6 @@ from scimodom.database.models import (
     Data,
     DataAnnotation,
     GenomicAnnotation,
-    Taxa,
     Selection,
 )
 from scimodom.services.bedtools import BedToolsService

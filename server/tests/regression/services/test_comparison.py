@@ -2,14 +2,14 @@ from io import StringIO
 import pytest
 
 from scimodom.services.bedtools import BedToolsService
-from scimodom.utils.bedtools_dto import (
+from scimodom.utils.dtos.bedtools import (
     IntersectRecord,
     ClosestRecord,
     SubtractRecord,
     ComparisonRecord,
     Bed6Record,
 )
-from scimodom.utils.common_dto import Strand
+from scimodom.utils.specs.enums import Strand
 
 
 @pytest.fixture

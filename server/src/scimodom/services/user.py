@@ -8,9 +8,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.security import generate_password_hash, check_password_hash
 
-from scimodom.database.models import User, UserState
+from scimodom.database.models import User
 from scimodom.services.mail import MailService, get_mail_service
 from scimodom.database.database import get_session
+from scimodom.utils.specs.enums import UserState
 
 logger = logging.getLogger(__name__)
 

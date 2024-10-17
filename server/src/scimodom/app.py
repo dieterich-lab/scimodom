@@ -20,7 +20,6 @@ from scimodom.cli.project import (
 )
 from scimodom.cli.dataset import add_dataset, add_all, add_selection
 from scimodom.cli.utilities import validate_dataset_title, upsert
-from scimodom.services.annotation import AnnotationSource
 from scimodom.services.file import get_file_service
 from scimodom.services.setup import get_setup_service
 from scimodom.services.url import (
@@ -33,7 +32,8 @@ from scimodom.services.url import (
     TRANSFER_API_ROUTE,
     USER_API_ROUTE,
 )
-from scimodom.utils.project_dto import ProjectTemplate
+from scimodom.utils.dtos.project import ProjectTemplate
+from scimodom.utils.specs.enums import AnnotationSource
 
 
 def create_app():

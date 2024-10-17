@@ -1,8 +1,6 @@
 from datetime import datetime, timezone
 import logging
 from functools import cache
-from os import makedirs
-from pathlib import Path
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -21,7 +19,7 @@ from scimodom.database.models import (
     UserProjectAssociation,
 )
 from scimodom.services.file import FileService, get_file_service
-from scimodom.utils.project_dto import ProjectTemplate, ProjectMetaDataDto
+from scimodom.utils.dtos.project import ProjectTemplate, ProjectMetaDataDto
 from scimodom.utils.specifications import SMID_LENGTH
 from scimodom.utils.utils import gen_short_uuid
 

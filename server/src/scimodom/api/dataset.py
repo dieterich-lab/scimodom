@@ -20,13 +20,13 @@ from scimodom.services.dataset import get_dataset_service
 from scimodom.services.file import get_file_service
 from scimodom.services.data import get_data_service
 from scimodom.services.user import get_user_service
-from scimodom.utils.bed_importer import (
+from scimodom.utils.importer.bed_importer import (
     Bed6Importer,
     EufImporter,
     BedImportTooManyErrors,
     BedImportEmptyFile,
 )
-from scimodom.utils.bedtools_dto import (
+from scimodom.utils.dtos.bedtools import (
     IntersectRecord,
     ClosestRecord,
     SubtractRecord,

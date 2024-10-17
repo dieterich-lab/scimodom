@@ -14,16 +14,16 @@ from scimodom.database.models import (
     ProjectContact,
     Selection,
     User,
-    UserState,
     UserProjectAssociation,
 )
 from scimodom.services.project import ProjectService, DuplicateProjectError
-from scimodom.utils.project_dto import (
+from scimodom.utils.dtos.project import (
     ProjectTemplate,
     ProjectMetaDataDto,
     ProjectOrganismDto,
     ProjectSourceDto,
 )
+from scimodom.utils.specs.enums import UserState
 
 
 class MockFileService:

@@ -6,12 +6,12 @@ import pytest
 from scimodom.database.models import Data
 from scimodom.services.bedtools import BedToolsService
 from scimodom.services.annotation.ensembl import EnsemblAnnotationService
-from scimodom.utils.bedtools_dto import (
+from scimodom.utils.dtos.bedtools import (
     GenomicAnnotationRecord,
     DataAnnotationRecord,
     Bed6Record,
 )
-from scimodom.utils.common_dto import Strand
+from scimodom.utils.specs.enums import Strand
 
 # NOTE: subject to change cf. #119
 

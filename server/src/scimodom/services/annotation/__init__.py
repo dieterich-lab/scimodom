@@ -1,7 +1,5 @@
 import logging
-from enum import Enum
 from functools import cache
-from pathlib import Path
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -18,18 +16,14 @@ from scimodom.services.annotation.generic import (
     AnnotationNotFoundError,
 )
 from scimodom.services.annotation.gtrnadb import GtRNAdbAnnotationService
-from scimodom.services.bedtools import get_bedtools_service, BedToolsService
-from scimodom.services.data import get_data_service, DataService
-from scimodom.services.external import get_external_service, ExternalService
+from scimodom.services.bedtools import get_bedtools_service
+from scimodom.services.data import get_data_service
+from scimodom.services.external import get_external_service
 from scimodom.services.file import get_file_service
 from scimodom.services.web import get_web_service
+from scimodom.utils.specs.enums import AnnotationSource
 
 logger = logging.getLogger(__name__)
-
-
-class AnnotationSource(Enum):
-    ENSEMBL = "ensembl"
-    GTRNADB = "gtrnadb"
 
 
 RNA_TYPE_TO_ANNOTATION_SOURCE_MAP = {

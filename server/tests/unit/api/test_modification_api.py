@@ -8,9 +8,8 @@ from scimodom.api.modification import (
     modification_api,
     IntersectResponse,
 )
-from scimodom.utils.bedtools_dto import Bed6Record
-from scimodom.utils.common_dto import Strand
-from scimodom.services.file import TargetsFileType
+from scimodom.utils.dtos.bedtools import Bed6Record
+from scimodom.utils.specs.enums import Strand, TargetsFileType
 
 
 @pytest.fixture

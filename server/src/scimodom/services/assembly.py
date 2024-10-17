@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from scimodom.database.database import get_session
 from scimodom.database.models import Assembly, AssemblyVersion, Taxa
 from scimodom.services.external import get_external_service, ExternalService
-from scimodom.services.file import FileService, get_file_service, AssemblyFileType
+from scimodom.services.file import FileService, get_file_service
 from scimodom.services.web import WebService, get_web_service
 from scimodom.utils.specifications import (
     ASSEMBLY_NUM_LENGTH,
@@ -23,6 +23,7 @@ from scimodom.utils.specifications import (
     ENSEMBL_ASM_MAPPING,
 )
 from scimodom.utils.utils import gen_short_uuid
+from scimodom.utils.specs.enums import AssemblyFileType
 
 logger = logging.getLogger(__name__)
 

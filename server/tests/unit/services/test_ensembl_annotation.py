@@ -16,7 +16,7 @@ from scimodom.services.annotation import (
     EnsemblAnnotationService,
     AnnotationNotFoundError,
 )
-from scimodom.services.file import AssemblyFileType
+from scimodom.utils.specs.enums import AssemblyFileType
 
 
 class MockDataService:

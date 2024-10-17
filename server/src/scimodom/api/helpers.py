@@ -9,12 +9,12 @@ from pydantic import BaseModel
 
 from scimodom.database.models import Dataset, User, BamFile
 from scimodom.services.dataset import get_dataset_service
-from scimodom.services.file import TargetsFileType, get_file_service
+from scimodom.services.file import get_file_service
 from scimodom.services.permission import get_permission_service
 from scimodom.services.user import get_user_service, NoSuchUser
 from scimodom.services.utilities import get_utilities_service
 from scimodom.services.assembly import get_assembly_service
-from scimodom.utils.common_dto import Strand
+from scimodom.utils.specs.enums import Strand, TargetsFileType
 
 """
 This module supplies a number of helper functions to be used in various

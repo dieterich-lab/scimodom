@@ -2,7 +2,7 @@ from typing import Annotated, Optional, Self
 
 from pydantic import BaseModel, Field, model_validator
 
-from scimodom.utils.common_dto import Strand
+from scimodom.utils.specs.enums import Strand
 
 NonNegativInt = Annotated[int, Field(ge=0)]
 Score = Annotated[int, Field(ge=0, le=1000)]

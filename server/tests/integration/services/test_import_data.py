@@ -12,7 +12,7 @@ from scimodom.database.models import (
 )
 from scimodom.services.dataset import DatasetService
 from scimodom.services.assembly import AssemblyService
-from scimodom.services.annotation import AnnotationService, AnnotationSource
+from scimodom.services.annotation import AnnotationService
 from scimodom.services.annotation.ensembl import EnsemblAnnotationService
 from scimodom.services.annotation.gtrnadb import GtRNAdbAnnotationService
 from scimodom.services.bedtools import BedToolsService
@@ -20,6 +20,7 @@ from scimodom.services.data import DataService
 from scimodom.services.external import ExternalService
 from scimodom.services.web import WebService
 from scimodom.services.file import FileService
+from scimodom.utils.specs.enums import AnnotationSource
 
 
 EXON = """1\t65418\t65433\tG\t.\t+\tENSG00000000001\tprotein_coding

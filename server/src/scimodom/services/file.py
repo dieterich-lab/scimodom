@@ -1,7 +1,6 @@
 import logging
 import os
 import re
-from enum import Enum
 from fcntl import flock, LOCK_SH, LOCK_EX, LOCK_UN, LOCK_NB, lockf
 from functools import cache
 from os import unlink, rename, makedirs, stat, close, umask, replace
@@ -32,12 +31,9 @@ from sqlalchemy.sql.operators import and_
 from scimodom.config import get_config
 from scimodom.database.database import get_session
 from scimodom.database.models import Dataset, BamFile, Taxa, Assembly, AssemblyVersion
+from scimodom.utils.specs.enums import AssemblyFileType, TargetsFileType
 
 logger = logging.getLogger(__name__)
-
-
-class SunburstUpdateAlreadyRunning(Exception):
-    pass
 
 
 DEFAULT_MODE = 0o660
@@ -51,21 +47,12 @@ def write_opener(path, flags):
         umask(old_umask)
 
 
-class FileTooLarge(Exception):
+class SunburstUpdateAlreadyRunning(Exception):
     pass
 
 
-class AssemblyFileType(Enum):
-    CHROM = "chrom.sizes"
-    INFO = "info.json"
-    RELEASE = "release.json"
-    CHAIN = "__CHAIN__"
-    DNA = "{organism}.{assembly}.dna.chromosome.{chrom}.fa.gz".format
-
-
-class TargetsFileType(Enum):
-    MIRNA = "mirna.bed".format
-    RBP = "rbp_{chrom}.bed".format
+class FileTooLarge(Exception):
+    pass
 
 
 class FileService:

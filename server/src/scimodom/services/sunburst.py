@@ -1,5 +1,4 @@
 from collections import defaultdict
-from enum import Enum
 from functools import cache
 from json import dumps
 from subprocess import run
@@ -20,11 +19,7 @@ from scimodom.database.models import (
     DatasetModificationAssociation,
 )
 from scimodom.services.file import FileService, get_file_service
-
-
-class SunburstChartType(Enum):
-    search = "search"
-    browse = "browse"
+from scimodom.utils.specs.enums import SunburstChartType
 
 
 class SunburstService:

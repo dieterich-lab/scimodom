@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 import pytest
 
 from scimodom.database.models import Dataset, Data, DatasetModificationAssociation
-from scimodom.utils.common_dto import Strand
+from scimodom.utils.specs.enums import Strand
 
 
 @pytest.fixture

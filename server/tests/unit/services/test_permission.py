@@ -4,9 +4,9 @@ from sqlalchemy import select, func
 from scimodom.services.permission import PermissionService
 from scimodom.database.models import (
     User,
-    UserState,
     UserProjectAssociation,
 )
+from scimodom.utils.specs.enums import UserState
 
 
 def test_insert_user_project_association(Session, project):
