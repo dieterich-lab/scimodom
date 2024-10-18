@@ -17,8 +17,6 @@ def _get_file_service(Session, tmp_path):
 
 
 def test_get_assembly_file_path_for_chrom(Session, tmp_path, setup):
-    with Session() as session, session.begin():
-        session.add_all(setup)
     service = _get_file_service(Session, tmp_path)
     assert service.get_assembly_file_path(9606, AssemblyFileType.CHROM) == Path(
         tmp_path, "t_data", "assembly", "Homo_sapiens", "GRCh38", "chrom.sizes"
@@ -26,8 +24,6 @@ def test_get_assembly_file_path_for_chrom(Session, tmp_path, setup):
 
 
 def test_get_assembly_file_path_for_chain(Session, tmp_path, setup):
-    with Session() as session, session.begin():
-        session.add_all(setup)
     service = _get_file_service(Session, tmp_path)
     assert service.get_assembly_file_path(
         9606,
@@ -38,8 +34,6 @@ def test_get_assembly_file_path_for_chain(Session, tmp_path, setup):
 
 
 def test_get_assembly_file_path_for_chain_fail(Session, tmp_path, setup):
-    with Session() as session, session.begin():
-        session.add_all(setup)
     service = _get_file_service(Session, tmp_path)
     with pytest.raises(ValueError) as exc:
         assert service.get_assembly_file_path(
@@ -49,8 +43,6 @@ def test_get_assembly_file_path_for_chain_fail(Session, tmp_path, setup):
 
 
 def test_create_chain_file(Session, tmp_path, setup):
-    with Session() as session, session.begin():
-        session.add_all(setup)
     service = _get_file_service(Session, tmp_path)
     with service.create_chain_file(9606, "chain", "GRCh37") as fh:
         fh.write(b"bla")
@@ -67,8 +59,6 @@ def test_count_lines(Session, tmp_path):
 
 
 def test_get_annotation_path(Session, tmp_path, setup):
-    with Session() as session, session.begin():
-        session.add_all(setup)
     service = _get_file_service(Session, tmp_path)
     assert service.get_annotation_dir(9606) == Path(
         tmp_path, "t_data", "annotation", "Homo_sapiens", "GRCh38"

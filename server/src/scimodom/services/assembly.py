@@ -1,7 +1,6 @@
 import json
 import logging
 from functools import cache
-from pathlib import Path
 from posixpath import join as urljoin
 from typing import Any
 
@@ -14,16 +13,8 @@ from scimodom.database.models import Assembly, AssemblyVersion, Taxa
 from scimodom.services.external import get_external_service, ExternalService
 from scimodom.services.file import FileService, get_file_service
 from scimodom.services.web import WebService, get_web_service
-from scimodom.utils.specifications import (
-    ASSEMBLY_NUM_LENGTH,
-    ENSEMBL_FTP,
-    ENSEMBL_SERVER,
-    ENSEMBL_DATA,
-    ENSEMBL_ASM,
-    ENSEMBL_ASM_MAPPING,
-)
 from scimodom.utils.utils import gen_short_uuid
-from scimodom.utils.specs.enums import AssemblyFileType
+from scimodom.utils.specs.enums import AssemblyFileType, Identifiers, Ensembl
 
 logger = logging.getLogger(__name__)
 
@@ -254,7 +245,7 @@ class AssemblyService:
                 .scalars()
                 .all()
             )
-            version_num = gen_short_uuid(ASSEMBLY_NUM_LENGTH, version_nums)
+            version_num = gen_short_uuid(Identifiers.ASSEMBLY.length, version_nums)
             assembly = Assembly(
                 name=assembly_name, taxa_id=taxa_id, version=version_num
             )
@@ -302,8 +293,8 @@ class AssemblyService:
 
     def _get_ensembl_chain_file_url(self, taxa_id: int, chain_file_name):
         return urljoin(
-            ENSEMBL_FTP,
-            ENSEMBL_ASM_MAPPING,
+            Ensembl.FTP.value,
+            Ensembl.ASM_MAPPING.value,
             self._get_organism_for_ensembl_url(taxa_id),
             chain_file_name,
         )
@@ -314,8 +305,8 @@ class AssemblyService:
 
     def _get_ensembl_gene_build_url(self, taxa_id: int):
         return urljoin(
-            ENSEMBL_SERVER,
-            ENSEMBL_ASM,
+            Ensembl.REST.value,
+            Ensembl.ASM.value,
             self._get_organism_for_ensembl_url(taxa_id),
         )
 
@@ -327,8 +318,8 @@ class AssemblyService:
 
     def _handle_release(self, assembly):
         url = urljoin(
-            ENSEMBL_SERVER,
-            ENSEMBL_DATA,
+            Ensembl.REST.value,
+            Ensembl.DATA.value,
         )
         release = self._web_service.request_as_json(url)
         with self._file_service.create_assembly_file(

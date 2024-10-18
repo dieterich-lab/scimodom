@@ -37,8 +37,8 @@ from scimodom.services.file import FileService, get_file_service
 from scimodom.utils import utils
 from scimodom.utils.importer.bed_importer import EufImporter
 from scimodom.utils.dtos.bedtools import EufRecord
-from scimodom.utils.specifications import SPECS_EUF, EUFID_LENGTH
-from scimodom.utils.specs.enums import AnnotationSource
+from scimodom.utils.specs.euf import EUF
+from scimodom.utils.specs.enums import AnnotationSource, Identifiers
 
 logger = logging.getLogger(__name__)
 
@@ -389,7 +389,7 @@ class DatasetService:
 
     def _generate_eufid(self) -> str:
         eufids = self._session.execute(select(Dataset.id)).scalars().all()
-        return utils.gen_short_uuid(EUFID_LENGTH, eufids)
+        return utils.gen_short_uuid(Identifiers.EUFID.length, eufids)
 
     def _modification_id_to_name(self, idx: int) -> str:
         return self._session.execute(
@@ -474,19 +474,19 @@ class DatasetService:
         if match is None:
             raise SpecsError("Failed to parse version from header (2).")
         version = match.group(1)
-        if version not in SPECS_EUF["versions"]:
+        if version not in EUF["versions"]:
             raise SpecsError(f"Unknown or outdated version {version}.")
-        spec = SPECS_EUF[version]
+        specs = EUF[version]
 
         result = {}
-        for header, internal_name in spec["headers"].items():
+        for header, internal_name in specs["headers"].items():
             value = importer.get_header(header)
             if value is None:
                 raise SpecsError(f"Required header '{header}' is missing.")
             result[internal_name] = value
 
         assembly = self._assembly_service.get_assembly_by_id(context.assembly_id)
-        for header in spec["required"]:
+        for header in specs["required"]:
             value = importer.get_header(header)
             if value is None or value == "":
                 raise SpecsError(f"Required header '{header}' is empty.")

@@ -5,8 +5,6 @@ from typing import TextIO, BinaryIO
 import pytest
 from sqlalchemy import exists
 
-from tests.mocks.io_mocks import MockStringIO, MockBytesIO
-from tests.mocks.web_service import MockWebService, MockHTTPError
 from scimodom.database.models import Assembly, AssemblyVersion
 from scimodom.services.assembly import (
     AssemblyService,
@@ -15,6 +13,9 @@ from scimodom.services.assembly import (
     LiftOverError,
 )
 from scimodom.utils.specs.enums import AssemblyFileType
+from tests.mocks.enums import MockEnsembl
+from tests.mocks.io import MockStringIO, MockBytesIO
+from tests.mocks.web import MockWebService, MockHTTPError
 
 
 class MockExternalService:
@@ -109,8 +110,6 @@ def test_init(Session, file_service):
 
 
 def test_get_assembly_by_id(Session, file_service, setup):
-    with Session() as session, session.begin():
-        session.add_all(setup)
     service = _get_assembly_service(Session, file_service)
     assembly = service.get_assembly_by_id(3)
     assert assembly.name == "GRCh37"
@@ -131,8 +130,6 @@ def test_get_assembly_by_id_fail(Session):
 
 
 def test_get_assemblies_by_taxa(Session, file_service, setup):
-    with Session() as session, session.begin():
-        session.add_all(setup)
     service = _get_assembly_service(Session, file_service)
     assemblies = service.get_assemblies_by_taxa(9606)
 
@@ -147,16 +144,12 @@ def test_get_assemblies_by_taxa(Session, file_service, setup):
 
 @pytest.mark.parametrize("assembly_id,is_latest", [(1, True), (3, False)])
 def test_is_latest_assembly(assembly_id, is_latest, Session, file_service, setup):
-    with Session() as session, session.begin():
-        session.add_all(setup)
     service = _get_assembly_service(Session, file_service)
     assembly = service.get_assembly_by_id(assembly_id)
     assert service.is_latest_assembly(assembly) == is_latest
 
 
 def test_get_name_for_version(Session, file_service, setup):
-    with Session() as session, session.begin():
-        session.add_all(setup)
     service = _get_assembly_service(Session, file_service)
     assembly_name = service.get_name_for_version(9606)
     assert assembly_name == "GRCh38"
@@ -166,8 +159,6 @@ def test_get_seqids(Session, file_service, setup):
     file_service.files_by_name["/data/assembly/9606/chrom.sizes"] = StringIO(
         "1\t12345\n2\t123456"
     )
-    with Session() as session, session.begin():
-        session.add_all(setup)
     service = _get_assembly_service(Session, file_service)
     seqids = service.get_seqids(9606)
     assert set(seqids) == {"1", "2"}
@@ -177,8 +168,6 @@ def test_get_chroms(Session, file_service, setup):
     file_service.files_by_name["/data/assembly/9606/chrom.sizes"] = StringIO(
         "1\t12345\n2\t123456"
     )
-    with Session() as session, session.begin():
-        session.add_all(setup)
     service = _get_assembly_service(Session, file_service)
     chroms = service.get_chroms(9606)
     expected_chroms = [{"chrom": "1", "size": 12345}, {"chrom": "2", "size": 123456}]
@@ -190,8 +179,6 @@ def test_liftover(Session, file_service, setup):
     file_service.files_by_name[
         "/data/assembly/9606/GRCh37/GRCh37_to_GRCh38.chain.gz"
     ] = BytesIO()
-    with Session() as session, session.begin():
-        session.add_all(setup)
     file_service.lines_by_name["unmapped.bed"] = 0
     file_service.lines_by_name["to_be_lifted.bed"] = 3
     file_service.lines_by_name["lifted.bed"] = 3
@@ -204,8 +191,6 @@ def test_liftover_fail_count(Session, file_service, setup):
     file_service.files_by_name[
         "/data/assembly/9606/GRCh37/GRCh37_to_GRCh38.chain.gz"
     ] = BytesIO()
-    with Session() as session, session.begin():
-        session.add_all(setup)
     file_service.lines_by_name["unmapped.bed"] = 1
     file_service.lines_by_name["to_be_lifted.bed"] = 3
     file_service.lines_by_name["lifted.bed"] = 2
@@ -223,8 +208,6 @@ def test_liftover_warning(Session, file_service, setup, caplog):
     file_service.files_by_name[
         "/data/assembly/9606/GRCh37/GRCh37_to_GRCh38.chain.gz"
     ] = BytesIO()
-    with Session() as session, session.begin():
-        session.add_all(setup)
     file_service.lines_by_name["unmapped.bed"] = 1
     file_service.lines_by_name["to_be_lifted.bed"] = 4
     file_service.lines_by_name["lifted.bed"] = 3
@@ -237,8 +220,6 @@ def test_liftover_warning(Session, file_service, setup, caplog):
 
 
 def test_liftover_fail_version(Session, file_service, setup):
-    with Session() as session, session.begin():
-        session.add_all(setup)
     service = _get_assembly_service(Session, file_service)
     assembly = service.get_assembly_by_id(1)
     with pytest.raises(AssemblyVersionError) as exc:
@@ -252,9 +233,8 @@ def test_liftover_fail_version(Session, file_service, setup):
 #       on scimodom.utils.specifications e.g. _get_ensembl_gene_build_url and _get_ensembl_chain_file_url.
 
 
-def test_add_assembly(Session, file_service, setup):
-    with Session() as session, session.begin():
-        session.add_all(setup)
+def test_add_assembly(Session, file_service, setup, mocker):
+    mocker.patch("scimodom.services.assembly.Ensembl", MockEnsembl)
     service = _get_assembly_service(
         Session,
         file_service,
@@ -275,8 +255,6 @@ def test_add_assembly(Session, file_service, setup):
 
 
 def test_add_assembly_exists(Session, file_service, setup):
-    with Session() as session, session.begin():
-        session.add_all(setup)
     service = _get_assembly_service(Session, file_service)
     assert service.add_assembly(9606, "GRCh37") == 3
 
@@ -293,8 +271,6 @@ def test_add_assembly_directory_exists(Session, file_service):
 
 
 def test_add_assembly_wrong_url(Session, file_service, setup):
-    with Session() as session, session.begin():
-        session.add_all(setup)
     service = _get_assembly_service(Session, file_service)
     with pytest.raises(MockHTTPError):
         service.add_assembly(9606, "GRCH37")
@@ -344,9 +320,8 @@ EXPECTED_RELEASE_JSON = """{
 }"""
 
 
-def test_prepare_assembly_for_version(Session, file_service, setup):
-    with Session() as session, session.begin():
-        session.add_all(setup)
+def test_prepare_assembly_for_version(Session, file_service, setup, mocker):
+    mocker.patch("scimodom.services.assembly.Ensembl", MockEnsembl)
     service = _get_assembly_service(
         Session,
         file_service,
@@ -371,8 +346,6 @@ def test_prepare_assembly_for_version(Session, file_service, setup):
 
 
 def test_prepare_assembly_for_version_wrong_version(Session, file_service, setup):
-    with Session() as session, session.begin():
-        session.add_all(setup)
     service = _get_assembly_service(
         Session,
         file_service,
@@ -387,8 +360,6 @@ def test_prepare_assembly_for_version_wrong_version(Session, file_service, setup
 
 
 def test_prepare_assembly_for_version_directory_exists(Session, file_service, setup):
-    with Session() as session, session.begin():
-        session.add_all(setup)
     file_service.existing_assemblies = [(9606, "GRCh38")]
     service = _get_assembly_service(Session, file_service)
     with pytest.raises(FileExistsError) as exc:
@@ -396,9 +367,8 @@ def test_prepare_assembly_for_version_directory_exists(Session, file_service, se
     assert (str(exc.value)) == "Assembly 'GRCh38' already exists (Taxa ID 9606)."
 
 
-def test_prepare_assembly_for_version_build_error(Session, file_service, setup):
-    with Session() as session, session.begin():
-        session.add_all(setup)
+def test_prepare_assembly_for_version_build_error(Session, file_service, setup, mocker):
+    mocker.patch("scimodom.services.assembly.Ensembl", MockEnsembl)
     service = _get_assembly_service(
         Session,
         file_service,
@@ -424,14 +394,10 @@ def test_get_chain_file_name():
 
 
 def test_get_organism(Session, file_service, setup):
-    with Session() as session, session.begin():
-        session.add_all(setup)
     service = _get_assembly_service(Session, file_service)
     assert service._get_organism(10090) == "Mus musculus"
 
 
 def test_get_organism_for_ensembl_url(Session, file_service, setup):
-    with Session() as session, session.begin():
-        session.add_all(setup)
     service = _get_assembly_service(Session, file_service)
     assert service._get_organism_for_ensembl_url(10090) == "mus_musculus"

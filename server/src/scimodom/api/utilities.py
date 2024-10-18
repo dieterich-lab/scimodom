@@ -8,12 +8,11 @@ from scimodom.api.helpers import (
     ClientResponseException,
     validate_rna_type,
 )
-from scimodom.services.annotation import get_annotation_service
+from scimodom.services.annotation import get_annotation_service, BIOTYPES
 from scimodom.services.assembly import get_assembly_service
 from scimodom.services.file import get_file_service
 from scimodom.services.sunburst import get_sunburst_service
 from scimodom.services.utilities import get_utilities_service
-from scimodom.utils.specifications import BIOTYPES
 from scimodom.utils.specs.enums import SunburstChartType
 
 api = Blueprint("api", __name__)

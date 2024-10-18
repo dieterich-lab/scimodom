@@ -21,6 +21,7 @@ from scimodom.services.external import ExternalService
 from scimodom.services.web import WebService
 from scimodom.services.file import FileService
 from scimodom.utils.specs.enums import AnnotationSource
+from tests.mocks.enums import MockEnsembl
 
 
 EXON = """1\t65418\t65433\tG\t.\t+\tENSG00000000001\tprotein_coding
@@ -193,7 +194,8 @@ def _get_dataset_service(session, tmp_path):
 # tests
 
 
-def test_import_simple(Session, selection, project, tmp_path, freezer):
+def test_import_simple(Session, selection, project, tmp_path, freezer, mocker):
+    mocker.patch("scimodom.services.annotation.ensembl.Ensembl", MockEnsembl)
     service = _get_dataset_service(Session(), tmp_path)
 
     _add_tmp_data(tmp_path)

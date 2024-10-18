@@ -13,7 +13,7 @@ from scimodom.utils.specs.enums import UserState
 
 
 @pytest.fixture
-def project(Session, setup):  # noqa
+def project(Session):  # noqa
     session = Session()
     contact1 = ProjectContact(
         contact_name="Contact Name",

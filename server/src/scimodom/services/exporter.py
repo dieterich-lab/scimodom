@@ -4,7 +4,7 @@
 import logging
 import re
 from functools import cache
-from typing import Optional, Generator
+from typing import Generator
 
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
@@ -19,8 +19,7 @@ from scimodom.database.models import (
     Annotation,
     AnnotationVersion,
 )
-from scimodom.utils.specifications import SPECS_EUF
-
+from scimodom.utils.specs.euf import EUF
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +34,7 @@ class NoSuchDataset(Exception):
 
 class Exporter:
     BAD_FILE_NAME_CHARACTERS_REGEXP = re.compile(r"[^a-zA-Z0-9(),._-]")
-    VERSION = SPECS_EUF["versions"][-1]
+    VERSION = EUF["versions"][-1]
 
     def __init__(self, session: Session):
         self._session = session

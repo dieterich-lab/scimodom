@@ -11,8 +11,6 @@ from scimodom.database.models import (
 @pytest.fixture
 def selection(Session, setup):  # noqa
     session = Session()
-    session.add_all(setup)
-
     modification1 = Modification(rna="WTS", modomics_id="2000000006A")
     modification2 = Modification(rna="WTS", modomics_id="2000000005C")
     technology1 = DetectionTechnology(tech="Technology 1", method_id="91b145ea")

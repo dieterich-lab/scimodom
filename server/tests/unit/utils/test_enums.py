@@ -1,6 +1,8 @@
 from scimodom.utils.specs.enums import (
     UserState,
     Strand,
+    Identifiers,
+    Ensembl,
     AnnotationSource,
     AssemblyFileType,
     TargetsFileType,
@@ -19,6 +21,24 @@ def test_strand():
     assert Strand.REVERSE == Strand("-")
     assert Strand.UNDEFINED == Strand(".")
     assert len(Strand) == 3
+
+
+def test_identifiers():
+    assert Identifiers.SMID.length == 8
+    assert Identifiers.EUFID.length == 12
+    assert Identifiers.ASSEMBLY.length == 12
+    assert len(Identifiers) == 3
+
+
+def test_ensembl():
+    CURRENT_RELEASE = 110
+    assert Ensembl.RELEASE == Ensembl(CURRENT_RELEASE)
+    assert Ensembl.FTP.value == "https://ftp.ensembl.org/pub"
+    assert Ensembl.REST.value == "http://jul2023.rest.ensembl.org"
+    assert Ensembl.ARCHIVE.value == "https://jul2023.archive.ensembl.org"
+    assert Ensembl.DATA.value == "info/data"
+    assert Ensembl.ASM.value == "info/assembly"
+    assert Ensembl.ASM_MAPPING.value == f"release-{CURRENT_RELEASE}/assembly_chain"
 
 
 def test_annotation_source():

@@ -3,27 +3,26 @@ from posixpath import join as urljoin
 
 import pytest
 
-import scimodom.utils.specifications as specs
-from tests.mocks.web_service import MockWebService
 from scimodom.database.models import (
     Annotation,
     AnnotationVersion,
     GenomicAnnotation,
-    Taxa,
-    Taxonomy,
 )
 from scimodom.services.annotation import (
     EnsemblAnnotationService,
     AnnotationNotFoundError,
+    AnnotationVersionError,
 )
 from scimodom.utils.specs.enums import AssemblyFileType
+from tests.mocks.web import MockWebService
+from tests.mocks.enums import MockEnsembl
 
 
 class MockDataService:
     def __init__(self):
         pass
 
-    def get_modification_by_dataset(self, datasets):
+    def get_modification_by_dataset(self, datasets):  # noqa
         pass
 
 
@@ -31,15 +30,15 @@ class MockBedToolsService:
     def __init__(self):  # noqa
         pass
 
-    def ensembl_to_bed_features(self, annotation_path, chrom_file, features):
+    def ensembl_to_bed_features(self, annotation_path, chrom_file, features):  # noqa
         pass
 
-    def annotate_data_using_ensembl(self, annotation_path, features, records):
+    def annotate_data_using_ensembl(self, annotation_path, features, records):  # noqa
         pass
 
     def get_ensembl_annotation_records(
         self, annotation_path, annotation_id, intergenic_feature
-    ):
+    ):  # noqa
         pass
 
 
@@ -97,28 +96,33 @@ def test_init(Session):
     assert service._version == "EyRBnPeVwbzW"
 
 
-def test_get_annotation(Session):
-    with Session() as session, session.begin():
-        version = AnnotationVersion(version_num="EyRBnPeVwbzW")
-        taxonomy = Taxonomy(
-            id="a1b240af", domain="Eukarya", kingdom="Animalia", phylum="Chordata"
-        )
-        taxa = Taxa(
-            id=9606,
-            name="Homo sapiens",
-            short_name="H. sapiens",
-            taxonomy_id="a1b240af",
-        )
-        annotation = Annotation(
-            release=110, taxa_id=9606, source="ensembl", version="EyRBnPeVwbzW"
-        )
-        session.add_all([version, taxonomy, taxa, annotation])
+def test_get_annotation(Session, setup, mocker):
+    mocker.patch("scimodom.services.annotation.ensembl.Ensembl", MockEnsembl)
     service = _get_ensembl_annotation_service(Session)
     annotation = service.get_annotation(9606)
     assert annotation.release == 110
     assert annotation.taxa_id == 9606
     assert annotation.source == "ensembl"
     assert annotation.version == "EyRBnPeVwbzW"
+
+
+def test_get_annotation_wrong_specs(Session, mocker):
+    mocker.patch("scimodom.services.annotation.ensembl.Ensembl", MockEnsembl)
+    with Session() as session, session.begin():
+        session.add(AnnotationVersion(version_num="EyRBnPeVwbzW"))
+        session.add(
+            Annotation(
+                release=111, taxa_id=9606, source="ensembl", version="EyRBnPeVwbzW"
+            )
+        )
+    service = _get_ensembl_annotation_service(Session)
+    with pytest.raises(AnnotationVersionError) as exc:
+        service.get_annotation(9606)
+    assert (
+        (str(exc.value))
+        == "Mismatch between annotation release '111' and current database Ensembl release '110'."
+    )
+    assert exc.type == AnnotationVersionError
 
 
 def test_get_annotation_fail(Session):
@@ -131,22 +135,8 @@ def test_get_annotation_fail(Session):
     assert exc.type == AnnotationNotFoundError
 
 
-def test_get_release_path(Session):
-    with Session() as session, session.begin():
-        version = AnnotationVersion(version_num="EyRBnPeVwbzW")
-        taxonomy = Taxonomy(
-            id="a1b240af", domain="Eukarya", kingdom="Animalia", phylum="Chordata"
-        )
-        taxa = Taxa(
-            id=9606,
-            name="Homo sapiens",
-            short_name="H. sapiens",
-            taxonomy_id="a1b240af",
-        )
-        annotation = Annotation(
-            release=110, taxa_id=9606, source="ensembl", version="EyRBnPeVwbzW"
-        )
-        session.add_all([version, taxonomy, taxa, annotation])
+def test_get_release_path(Session, setup, mocker):
+    mocker.patch("scimodom.services.annotation.ensembl.Ensembl", MockEnsembl)
     service = _get_ensembl_annotation_service(Session)
     annotation = service.get_annotation(9606)
     release_path = service.get_release_path(annotation)
@@ -154,46 +144,20 @@ def test_get_release_path(Session):
     assert release_path == expected_release_path
 
 
-def test_release_exists(Session):
+def test_release_exists(Session, setup, mocker):
+    mocker.patch("scimodom.services.annotation.ensembl.Ensembl", MockEnsembl)
     with Session() as session, session.begin():
-        version = AnnotationVersion(version_num="EyRBnPeVwbzW")
-        taxonomy = Taxonomy(
-            id="a1b240af", domain="Eukarya", kingdom="Animalia", phylum="Chordata"
-        )
-        taxa = Taxa(
-            id=9606,
-            name="Homo sapiens",
-            short_name="H. sapiens",
-            taxonomy_id="a1b240af",
-        )
-        annotation = Annotation(
-            release=110, taxa_id=9606, source="ensembl", version="EyRBnPeVwbzW"
-        )
         genomic_annotation = GenomicAnnotation(
             id="ENSG00000000001", annotation_id=1, name="A", biotype="protein_coding"
         )
-        session.add_all([version, taxonomy, taxa, annotation, genomic_annotation])
+        session.add(genomic_annotation)
     service = _get_ensembl_annotation_service(Session)
     annotation = service.get_annotation(9606)
     assert service._release_exists(annotation.id)
 
 
-def test_ensembl_annotation_paths(Session):
-    with Session() as session, session.begin():
-        version = AnnotationVersion(version_num="EyRBnPeVwbzW")
-        taxonomy = Taxonomy(
-            id="a1b240af", domain="Eukarya", kingdom="Animalia", phylum="Chordata"
-        )
-        taxa = Taxa(
-            id=9606,
-            name="Homo sapiens",
-            short_name="H. sapiens",
-            taxonomy_id="a1b240af",
-        )
-        annotation = Annotation(
-            release=110, taxa_id=9606, source="ensembl", version="EyRBnPeVwbzW"
-        )
-        session.add_all([version, taxonomy, taxa, annotation])
+def test_ensembl_annotation_paths(Session, setup, mocker):
+    mocker.patch("scimodom.services.annotation.ensembl.Ensembl", MockEnsembl)
     service = _get_ensembl_annotation_service(Session)
     annotation = service.get_annotation(9606)
     release_path = service.get_release_path(annotation)
@@ -210,7 +174,7 @@ def test_ensembl_annotation_paths(Session):
         expected_annotation_file,
     )
     expected_url = urljoin(
-        specs.ENSEMBL_FTP,
+        MockEnsembl.FTP.value,
         "release-110",
         "gtf",
         "homo_sapiens",

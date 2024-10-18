@@ -7,10 +7,15 @@ from posixpath import join as urljoin
 from scimodom.database.buffer import InsertBuffer
 from scimodom.database.models import Annotation, DataAnnotation, GenomicAnnotation
 from scimodom.services.annotation.generic import GenericAnnotationService
-import scimodom.utils.specifications as specs
-from scimodom.utils.specs.enums import AssemblyFileType
+from scimodom.utils.specs.enums import AssemblyFileType, Ensembl
 
 logger = logging.getLogger(__name__)
+
+
+class AnnotationVersionError(Exception):
+    """Exception handling for Annotation version mismatch."""
+
+    pass
 
 
 class EnsemblAnnotationService(GenericAnnotationService):
@@ -48,7 +53,13 @@ class EnsemblAnnotationService(GenericAnnotationService):
 
         :raises: AnnotationNotFoundError
         """
-        return self.get_annotation_from_taxid_and_source(taxa_id, "ensembl")
+        annotation = self.get_annotation_from_taxid_and_source(taxa_id, "ensembl")
+        if not annotation.release == Ensembl.RELEASE.value:
+            raise AnnotationVersionError(
+                f"Mismatch between annotation release '{annotation.release}' and "
+                f"current database Ensembl release '{Ensembl.RELEASE.value}'."
+            )
+        return annotation
 
     def create_annotation(self, taxa_id: int, **kwargs) -> None:
         """This method automates the creation of Ensembl
@@ -140,7 +151,7 @@ class EnsemblAnnotationService(GenericAnnotationService):
         if annotation.taxa_id in [4932, 6239]:
             filen = filen.replace(".chr", "")
         url = urljoin(
-            specs.ENSEMBL_FTP,
+            Ensembl.FTP.value,
             f"release-{annotation.release}",
             self.FMT,
             release_path.parent.parent.name.lower(),

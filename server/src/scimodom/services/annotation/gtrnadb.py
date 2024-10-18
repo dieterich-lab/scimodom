@@ -9,10 +9,12 @@ from sqlalchemy import select
 from scimodom.database.buffer import InsertBuffer
 from scimodom.database.models import Annotation, Assembly, GenomicAnnotation
 from scimodom.services.annotation.generic import GenericAnnotationService
-import scimodom.utils.specifications as specs
 from posixpath import join as urljoin
 
 logger = logging.getLogger(__name__)
+
+# GtRNAdb annotation
+GTRNADB_URL = "http://gtrnadb.ucsc.edu/genomes/"
 
 
 class GtRNAdbAnnotationService(GenericAnnotationService):
@@ -123,7 +125,7 @@ class GtRNAdbAnnotationService(GenericAnnotationService):
                 fmt=fmt,
             )
             url = urljoin(
-                specs.GTRNADB_URL,
+                GTRNADB_URL,
                 domain,
                 name,
                 filen,

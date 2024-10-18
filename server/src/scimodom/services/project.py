@@ -20,7 +20,7 @@ from scimodom.database.models import (
 )
 from scimodom.services.file import FileService, get_file_service
 from scimodom.utils.dtos.project import ProjectTemplate, ProjectMetaDataDto
-from scimodom.utils.specifications import SMID_LENGTH
+from scimodom.utils.specs.enums import Identifiers
 from scimodom.utils.utils import gen_short_uuid
 
 logger = logging.getLogger(__name__)
@@ -283,7 +283,7 @@ class ProjectService:
 
     def _add_project(self, project_template: ProjectTemplate) -> str:
         smids = self._session.execute(select(Project.id)).scalars().all()
-        smid = gen_short_uuid(SMID_LENGTH, smids)
+        smid = gen_short_uuid(Identifiers.SMID.length, smids)
         contact_id = self._add_contact_if_none(project_template)
         stamp = datetime.now(timezone.utc)  # .isoformat()
         project = Project(

@@ -210,13 +210,19 @@ def test_annotate_data_using_ensembl(tmp_path):
     Path(DATA_DIR, "test.fa.gz.gzi"),
     Path(DATA_DIR, "test.fa.gz.fai"),
 )
-def test_get_fasta(datafiles, tmp_path):
+# what happend with Strand.UNDEFINE ?
+@pytest.mark.parametrize(
+    "strand,base",
+    [
+        (Strand.FORWARD, "C"),
+        (Strand.REVERSE, "G"),
+    ],
+)
+def test_get_fasta(datafiles, strand, base, tmp_path):
     record = [
-        Bed6Record(
-            chrom="1", start=386, end=387, name="m5C", score=0, strand=Strand.FORWARD
-        )
+        Bed6Record(chrom="1", start=386, end=387, name="m5C", score=0, strand=strand)
     ]
-    expected_fasta_lines = [">1:386-387(+)", "C"]
+    expected_fasta_lines = [f">1:386-387({strand.value})", base]
     bedtools_service = _get_bedtools_service(tmp_path)
     seq_file = bedtools_service.getfasta(
         record, Path(datafiles, "test.fa.gz"), is_strand=True

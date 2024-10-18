@@ -14,7 +14,7 @@ from scimodom.database.models import (
 
 
 @pytest.fixture()
-def setup():
+def setup(Session):
     add = []
     rna_types = [RNAType(id="WTS", name="whole transcriptome")]
     add.extend(rna_types)
@@ -108,4 +108,6 @@ def setup():
         ),
     ]
     add.extend(method)
-    return add
+    session = Session()
+    session.add_all(add)
+    session.commit()

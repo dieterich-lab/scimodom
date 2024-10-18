@@ -5,7 +5,6 @@ from typing import TextIO
 import pytest
 from sqlalchemy import func, select
 
-from tests.mocks.io_mocks import MockStringIO, MockBytesIO
 from scimodom.database.models import (
     Modification,
     DetectionTechnology,
@@ -24,6 +23,7 @@ from scimodom.utils.dtos.project import (
     ProjectSourceDto,
 )
 from scimodom.utils.specs.enums import UserState
+from tests.mocks.io import MockStringIO, MockBytesIO
 
 
 class MockFileService:
@@ -169,10 +169,9 @@ def test_project_validate_entry(Session, file_service):
     assert service._validate_entry(PROJECT) is None
 
 
-def test_project_validate_existing_entry(Session, file_service, setup):
+def test_project_validate_existing_entry(Session, file_service):
     smid = "12345678"
     with Session() as session, session.begin():
-        session.add_all(setup)
         contact = ProjectContact(
             contact_name="Contact Name",
             contact_institution="Contact Institution",
@@ -201,9 +200,28 @@ def test_project_validate_existing_entry(Session, file_service, setup):
     )
 
 
-def test_project_add_selection(Session, file_service, setup):
+def test_project_add_selection(Session, file_service, setup):  # noqa
+    expected_records = [(1, 1, 1, 1), (2, 2, 2, 1)]
     with Session() as session, session.begin():
-        session.add_all(setup)
+        service = _get_project_service(Session, file_service)
+        service._add_selection_if_none(PROJECT)
+        records = session.execute(select(Selection)).scalars().all()
+        records = [
+            (r.id, r.modification_id, r.organism_id, r.technology_id) for r in records
+        ]
+        assert records == expected_records
+
+
+def test_project_add_selection_exists(Session, file_service, setup):
+    with Session() as session, session.begin():
+        technology = DetectionTechnology(method_id="0ee048bc", tech="Tech-seq")
+        session.add(technology)
+        session.flush()
+        selection = Selection(
+            modification_id=1, organism_id=1, technology_id=technology.id
+        )
+        session.add(selection)
+        session.flush()
 
         service = _get_project_service(Session, file_service)
         service._add_selection_if_none(PROJECT)
@@ -217,33 +235,8 @@ def test_project_add_selection(Session, file_service, setup):
         assert records == expected_records
 
 
-def test_project_add_selection_exists(Session, file_service, setup):
-    with Session() as session, session.begin():
-        session.add_all(setup)
-        technology = DetectionTechnology(method_id="0ee048bc", tech="Tech-seq")
-        session.add(technology)
-        session.flush()
-        selection = Selection(
-            modification_id=1, organism_id=3, technology_id=technology.id
-        )
-        session.add(selection)
-        session.flush()
-
-        service = _get_project_service(Session, file_service)
-        service._add_selection_if_none(PROJECT)
-
-    expected_records = [(1, 1, 3, 1), (2, 1, 1, 1), (3, 2, 2, 1)]
-    with Session() as session, session.begin():
-        records = session.execute(select(Selection)).scalars().all()
-        records = [
-            (r.id, r.modification_id, r.organism_id, r.technology_id) for r in records
-        ]
-        assert records == expected_records
-
-
 def test_project_add_modification(Session, file_service, setup):
     with Session() as session, session.begin():
-        session.add_all(setup)
         modification = Modification(modomics_id="2000000006A", rna="WTS")
         session.add(modification)
         session.commit()
@@ -281,8 +274,6 @@ def test_project_add_contact(Session, file_service):
 
 def test_project_add_project(Session, file_service, setup, freezer):
     with Session() as session, session.begin():
-        session.add_all(setup)
-
         freezer.move_to("2024-06-20 12:00:00")
         service = _get_project_service(Session, file_service)
         smid = service._add_project(PROJECT)
@@ -305,9 +296,6 @@ def test_project_add_project(Session, file_service, setup, freezer):
 
 
 def test_create_project(Session, file_service, setup):
-    with Session() as session, session.begin():
-        session.add_all(setup)
-
     service = _get_project_service(Session, file_service)
     smid = service.create_project(PROJECT, "abcdef123456")
     assert (
@@ -320,9 +308,6 @@ def test_create_project(Session, file_service, setup):
 
 
 def test_project_get_by_id(Session, file_service, setup):
-    with Session() as session, session.begin():
-        session.add_all(setup)
-
     service = _get_project_service(Session, file_service)
     smid = service._add_project(PROJECT)
     project = service.get_by_id(smid)
@@ -331,44 +316,14 @@ def test_project_get_by_id(Session, file_service, setup):
     assert project.summary == "Summary"
 
 
-def test_query_projects(Session, file_service, setup):
-    with Session() as session, session.begin():
-        session.add_all(setup)
-        for name, email, smid, title, summary in zip(
-            ["Name 1", "Name 2"],
-            ["email1@example.com", "email2@example.com"],
-            ["12345678", "12345679"],
-            ["Title 1", "Title 2"],
-            ["Summary 1", "Summary 2"],
-        ):
-            contact = ProjectContact(
-                contact_name=name,
-                contact_institution="Contact Institution",
-                contact_email=email,
-            )
-            session.add(contact)
-            session.flush()
-            project = Project(
-                id=smid,
-                title=title,
-                summary=summary,
-                contact_id=contact.id,
-                date_added=datetime(2024, 6, 20, 12, 0, 0),
-            )
-            session.add(project)
-        user = User(
-            email="email1@example.com", state=UserState.active, password_hash="xxx"
-        )
-        session.add(user)
-        session.flush()
-        user_permission = UserProjectAssociation(user_id=user.id, project_id="12345678")
-        session.add(user_permission)
-        session.commit()
-
+def test_query_projects(Session, file_service, setup, project):
     service = _get_project_service(Session, file_service)
     with Session() as session, session.begin():
         user = session.get_one(User, 1)
-        assert len(service.get_projects(user=user)) == 1
+        user_project = service.get_projects(user=user)
+        assert len(user_project) == 1
+        assert user_project[0]["project_id"] == "12345678"
+        assert user_project[0]["contact_name"] == "Contact Name"
         assert len(service.get_projects()) == 2
 
 

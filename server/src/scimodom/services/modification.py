@@ -20,8 +20,8 @@ from scimodom.database.models import (
 from scimodom.services.annotation import (
     get_annotation_service,
     AnnotationService,
+    BIOTYPES,
 )
-from scimodom.utils.specifications import BIOTYPES
 from scimodom.utils.specs.enums import AnnotationSource
 
 
