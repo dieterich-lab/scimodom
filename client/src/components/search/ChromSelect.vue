@@ -1,28 +1,32 @@
-<script setup>
+<script setup lang="ts">
 import { useDialogState } from '@/stores/DialogState'
 import { ref, watch } from 'vue'
-import { handleRequestWithErrorReporting } from '@/utils/request'
-import { HTTP } from '@/services/API'
+import { type Chrom, getChromsByTaxaId } from '@/services/chrom'
+import type { DropdownChangeEvent } from 'primevue/dropdown'
 
-const props = defineProps({
-  taxaId: {
-    type: Number,
-    required: false
-  },
-  placeholder: {
-    type: String,
-    default: 'Select chromosome'
-  },
-  disabled: {
-    type: Boolean,
-    default: false
+const props = withDefaults(
+  defineProps<{
+    taxaId?: number
+    placeholder: string
+    disabled: boolean
+  }>(),
+  {
+    placeholder: 'Select chromosome',
+    disabled: false
   }
-})
-defineEmits(['change'])
+)
+
+const emit = defineEmits<{
+  (e: 'change', value: Chrom): void
+}>()
 
 const dialogState = useDialogState()
 const model = defineModel()
 const chroms = ref()
+
+function change(e: DropdownChangeEvent) {
+  emit('change', e.value)
+}
 
 watch(
   () => props.taxaId,
@@ -30,20 +34,14 @@ watch(
     if (!props.taxaId) {
       return
     }
-    handleRequestWithErrorReporting(
-      HTTP.get(`/chroms/${props.taxaId}`),
-      'Failed to load chromes',
-      dialogState
-    ).then(function (data) {
-      chroms.value = data
-    })
+    chroms.value = getChromsByTaxaId(props.taxaId, dialogState)
   },
   { immediate: true }
 )
 </script>
 <template>
   <Dropdown
-    @change="$emit('change')"
+    @change="change"
     v-model="model"
     :options="chroms"
     optionLabel="chrom"

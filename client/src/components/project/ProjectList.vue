@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref, inject, onMounted } from 'vue'
 import { splitStr } from '@/utils/index.js'
 import { loadProjects } from '@/services/project'

@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import AbstractStyle from '@/ui_styles/AbstractStyle.js'
 import DefaultStyle from '@/ui_styles/DefaultStyle.js'
 const model = defineModel()

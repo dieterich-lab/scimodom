@@ -1,32 +1,32 @@
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { FilterMatchMode, FilterOperator } from 'primevue/api'
 import { getApiUrl } from '@/services/API.js'
-import { loadDatasets } from '@/services/dataset'
+import { allDatasetsCache, type Dataset } from '@/services/dataset'
 import StyledHeadline from '@/components/ui/StyledHeadline.vue'
 import SubTitle from '@/components/ui/SubTitle.vue'
 import DatasetInfo from '@/components/dataset/DatasetInfo.vue'
+import DefaultLayout from '@/components/layout/DefaultLayout.vue'
+import SectionLayout from '@/components/layout/SectionLayout.vue'
+import type { DataTableFilterMeta, DataTableFilterMetaData } from 'primevue/datatable'
 
-const props = defineProps({
-  eufid: {
-    type: String,
-    required: false,
-    default: null
-  }
-})
+const props = defineProps<{
+  initial_search_string?: string
+}>()
 
-const records = ref()
+const records = ref<Dataset[]>([])
 const showDetails = ref(false)
 const selectedDataset = ref({})
 const dt = ref()
 
 // todo
-const status = ref(['public', 'restricted'])
+// const status = ref(['public', 'restricted'])
 
-const filters = ref()
-const initFilters = (defaultGlobal) => {
-  filters.value = {
-    global: { value: defaultGlobal, matchMode: FilterMatchMode.CONTAINS },
+type MyFilters = DataTableFilterMeta & { global: DataTableFilterMetaData }
+
+function get_filters(search_string: string = ''): MyFilters {
+  return {
+    global: { value: search_string, matchMode: FilterMatchMode.CONTAINS },
     rna: {
       operator: FilterOperator.AND,
       constraints: [{ value: null, matchMode: FilterMatchMode.EQUALS }]
@@ -49,24 +49,29 @@ const initFilters = (defaultGlobal) => {
     }
   }
 }
-initFilters(props.eufid)
+
+const filters = ref<MyFilters>(get_filters(props.initial_search_string))
+
+function reset_filters() {
+  filters.value = get_filters()
+}
 
 const getFileName = () => {
   let stamp = new Date()
-  return 'scimodom_browse_' + stamp.toISOString().replaceAll(/:/g, '')
+  return 'scimodom_browse_' + stamp.toISOString().replace(/:/g, '')
 }
 
 const onExport = () => {
   dt.value.exportCSV()
 }
 
-const onOverlay = (record) => {
+const onOverlay = (record: Dataset) => {
   selectedDataset.value = { ...record }
   showDetails.value = true
 }
 
-onMounted(() => {
-  loadDatasets(records, null, false)
+onMounted(async () => {
+  records.value = [...(await allDatasetsCache.getData())]
 })
 </script>
 
@@ -140,7 +145,7 @@ onMounted(() => {
                     severity="secondary"
                     outlined
                     raised
-                    @click="initFilters(null)"
+                    @click="reset_filters()"
                   />
                 </div>
                 <div class="text-right">
@@ -150,7 +155,7 @@ onMounted(() => {
                     label="Export"
                     severity="secondary"
                     raised
-                    @click="onExport($event)"
+                    @click="onExport()"
                   />
                 </div>
               </div>

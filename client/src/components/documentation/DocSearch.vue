@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import img1 from '@/assets/images/docs/search1.png'
 import img2 from '@/assets/images/docs/search2.png'
 import img3 from '@/assets/images/docs/search3.png'

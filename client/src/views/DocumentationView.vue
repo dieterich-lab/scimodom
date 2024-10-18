@@ -1,6 +1,8 @@
-<script setup>
+<script setup lang="ts">
 import StyledHeadline from '@/components/ui/StyledHeadline.vue'
 import SubTitle from '@/components/ui/SubTitle.vue'
+import DefaultLayout from '@/components/layout/DefaultLayout.vue'
+import SectionLayout from '@/components/layout/SectionLayout.vue'
 </script>
 <template>
   <DefaultLayout>

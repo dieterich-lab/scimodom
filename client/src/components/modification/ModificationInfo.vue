@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import Dialog from 'primevue/dialog'
 
 import SubTitle from '@/components/ui/SubTitle.vue'

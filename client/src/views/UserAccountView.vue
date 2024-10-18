@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { useAccessToken } from '@/stores/AccessToken.js'
 import { DIALOG, useDialogState } from '@/stores/DialogState.js'
 
@@ -7,6 +7,8 @@ import SubTitle from '@/components/ui/SubTitle.vue'
 import LabeledItem from '@/components/ui/LabeledItem.vue'
 import ItemBox from '@/components/ui/ItemBox.vue'
 import UserProjects from '@/components/user/UserProjects.vue'
+import DefaultLayout from '@/components/layout/DefaultLayout.vue'
+import SectionLayout from '@/components/layout/SectionLayout.vue'
 
 const accessToken = useAccessToken()
 const dialogState = useDialogState()

@@ -2,12 +2,12 @@ import { defineStore } from 'pinia'
 import { HTTPSecure } from '@/services/API'
 import { getErrorMessageFromException, getErrorMessageFromResponse } from '@/utils/request'
 
-const UPLOAD_STATE = Object.freeze({
-  WAITING: Symbol('WAITING'),
-  RUNNING: Symbol('RUNNING'),
-  DONE: Symbol('DONE'),
-  FAILED: Symbol('FAILED')
-})
+enum UPLOAD_STATE {
+  WAITING = 'WAITING',
+  RUNNING = 'RUNNING',
+  DONE = 'DONE',
+  FAILED = 'FAILED'
+}
 
 const MAX_PARALLEL_UPLOADS = 1
 const WAIT_UNTIL_EXPIRING_SUCCESSFUL_JOB_MS = 10 * 60 * 1000
@@ -15,13 +15,21 @@ const WAIT_UNTIL_EXPIRING_SUCCESSFUL_JOB_MS = 10 * 60 * 1000
 const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024
 const MAX_FILE_SIZE_ERROR = `File to large (max ${MAX_FILE_SIZE} bytes)`
 
-function sleep(ms) {
+function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms))
 }
 
 class ScheduledUpload {
-  constructor(file, url, info, removeCallback) {
-    let randomNumber = new Uint32Array(1)
+  public readonly id: number
+  public state: UPLOAD_STATE
+  public readonly file: File
+  public readonly url: string
+  public info: string
+  public errorMessage: string
+  public readonly removeCallback: (x: ScheduledUpload) => void
+
+  constructor(file: File, url: string, info: string, removeCallback: (x: ScheduledUpload) => void) {
+    const randomNumber = new Uint32Array(1)
     crypto.getRandomValues(randomNumber)
     this.id = randomNumber[0]
     this.file = file
@@ -58,21 +66,18 @@ class ScheduledUpload {
 
 const useUploadManager = defineStore('uploadManager', {
   state: () => {
-    return {
-      uploads: [],
-      callback: null
-    }
+    return { uploads: [] as ScheduledUpload[] }
   },
   actions: {
-    schedule(file, post_request, info) {
-      const removeCallback = (x) => {
+    schedule(file: File, post_request: string, info: string) {
+      const removeCallback = (x: ScheduledUpload) => {
         this.remove(x)
       }
       const newUpload = new ScheduledUpload(file, post_request, info, removeCallback)
       this.uploads = [...this.uploads, newUpload]
       this.tryToStartUpload()
     },
-    remove(upload) {
+    remove(upload: ScheduledUpload) {
       this.uploads = this.uploads.filter((x) => x.id !== upload.id)
     },
     tryToStartUpload() {
@@ -82,10 +87,11 @@ const useUploadManager = defineStore('uploadManager', {
       }
       const waiting_uploads = this.uploads.filter((x) => x.state === UPLOAD_STATE.WAITING)
       if (waiting_uploads.length > 0) {
-        void this.doUpload(waiting_uploads[0])
+        const next_upload = waiting_uploads[0]
+        void this.doUpload(next_upload)
       }
     },
-    async doUpload(upload) {
+    async doUpload(upload: ScheduledUpload) {
       try {
         await upload.run()
       } finally {

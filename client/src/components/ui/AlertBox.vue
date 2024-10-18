@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { DIALOG, useDialogState } from '@/stores/DialogState.js'
 import FromBox from '@/components/ui/FormBox.vue'
 import FormButtonGroup from '@/components/ui/FormButtonGroup.vue'

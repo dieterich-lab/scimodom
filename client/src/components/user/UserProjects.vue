@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /* Use this component with :key="accessToken.email" to make sure that it is mounted freshly on login/logouts */
 
 import { onMounted, ref } from 'vue'

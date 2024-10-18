@@ -1,39 +1,35 @@
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import DatasetSelectionMulti from '@/components/ui/DatasetSelectionMulti.vue'
-import { loadDatasets } from '@/services/dataset'
-import { HTTP } from '@/services/API'
-import { nestedSort, toCascade, toTree } from '@/utils'
+import { type Dataset, allDatasetsCache } from '@/services/dataset'
+import { getOptionsForPrimvueCascadeSelect } from '@/utils/primevue'
+import { selectionsCache } from '@/services/selection'
 
-const emit = defineEmits(['datasetUpdated'])
+const emit = defineEmits<{
+  datasetsUpdated: [value: Dataset[]]
+}>()
 const selectedDatasets = defineModel()
 
 const selectedTaxid = ref()
-const datasets = ref()
-const filteredDatasets = ref([])
-const taxid = ref()
+const datasets = ref<Dataset[]>([])
+const filteredDatasets = ref<Dataset[]>([])
+const taxidOptions = ref()
 
-const updateFilteredDatasets = (value) => {
+const updateFilteredDatasets = (value: number) => {
   selectedDatasets.value = []
-  filteredDatasets.value = datasets.value.filter((item) => item.taxa_id === value)
-  emit('datasetUpdated', filteredDatasets.value)
+  filteredDatasets.value = [...datasets.value.filter((item) => item.taxa_id === value)]
+  emit('datasetsUpdated', filteredDatasets.value)
 }
-onMounted(() => {
-  loadDatasets(datasets, null, false)
-
-  HTTP.get('/selections')
-    .then(function (response) {
-      let opts = response.data
-      opts = opts.map((item) => {
-        const kingdom = Object.is(item.kingdom, null) ? item.domain : item.kingdom
-        return { ...item, kingdom }
-      })
-      taxid.value = toCascade(toTree(opts, ['kingdom', 'taxa_sname'], 'taxa_id'))
-      nestedSort(taxid.value, ['child1'])
-    })
-    .catch((error) => {
-      console.log(error)
-    })
+onMounted(async () => {
+  datasets.value = [...(await allDatasetsCache.getData())]
+  const rawSelections = await selectionsCache.getData()
+  const cookedSelections = rawSelections.map((x) => {
+    return { ...x, kingdom: x.kingdom ? x.kingdom : x.domain }
+  })
+  taxidOptions.value = getOptionsForPrimvueCascadeSelect(cookedSelections, [
+    'kingdom',
+    'taxa_sname'
+  ])
 })
 </script>
 
@@ -42,11 +38,11 @@ onMounted(() => {
     <CascadeSelect
       @change="updateFilteredDatasets($event.value)"
       v-model="selectedTaxid"
-      :options="taxid"
-      optionValue="key"
+      :options="taxidOptions"
+      optionValue="taxa_id"
       optionLabel="label"
       optionGroupLabel="label"
-      :optionGroupChildren="['child1']"
+      :optionGroupChildren="['cChildren']"
       placeholder="1. Select one organism"
       :pt="{
         root: { class: 'w-full md:w-full' }

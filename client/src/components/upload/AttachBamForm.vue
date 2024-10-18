@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { storeToRefs } from 'pinia'
 import SubTitle from '@/components/ui/SubTitle.vue'
 import Instructions from '@/components/ui/Instructions.vue'

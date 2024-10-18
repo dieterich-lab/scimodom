@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import DatasetItem from '@/components/ui/DatasetItem.vue'
 import { loadDatasets } from '@/services/dataset'

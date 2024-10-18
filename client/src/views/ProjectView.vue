@@ -1,11 +1,15 @@
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue'
+import Stepper from 'primevue/stepper'
+import StepperPanel from 'primevue/stepperpanel'
 import ProjectForm from '@/components/project/ProjectForm.vue'
 import ProjectMetaData from '@/components/project/ProjectMetaData.vue'
 import ProjectSubmission from '@/components/project/ProjectSubmission.vue'
 import StyledHeadline from '@/components/ui/StyledHeadline.vue'
 import SubTitle from '@/components/ui/SubTitle.vue'
 import { useAccessToken } from '@/stores/AccessToken'
+import DefaultLayout from '@/components/layout/DefaultLayout.vue'
+import SectionLayout from '@/components/layout/SectionLayout.vue'
 
 const projectInfo = ref()
 const projectData = ref()
@@ -36,7 +40,7 @@ const accessToken = useAccessToken()
         <Stepper v-model:activeStep="active">
           <!-- ProjectForm  -->
           <StepperPanel>
-            <template #header="{ index, clickCallback }">
+            <template #header="{ index }">
               <span
                 :class="[
                   'rounded-md border-2 w-[3rem] h-[3rem] inline-flex items-center justify-center',
@@ -56,7 +60,7 @@ const accessToken = useAccessToken()
           </StepperPanel>
           <!-- ProjectMetadata  -->
           <StepperPanel>
-            <template #header="{ index, clickCallback }">
+            <template #header="{ index }">
               <span
                 :class="[
                   'rounded-md border-2 w-[3rem] h-[3rem] inline-flex items-center justify-center',
@@ -80,7 +84,7 @@ const accessToken = useAccessToken()
           </StepperPanel>
           <!-- Submission  -->
           <StepperPanel>
-            <template #header="{ index, clickCallback }">
+            <template #header="{ index }">
               <span
                 :class="[
                   'rounded-md border-2 w-[3rem] h-[3rem] inline-flex items-center justify-center',
@@ -94,7 +98,7 @@ const accessToken = useAccessToken()
                 <i class="pi pi-file-export" />
               </span>
             </template>
-            <template #content="{ prevCallback }">
+            <template>
               <ProjectSubmission :projectForm="{ ...projectInfo, ...projectData }" />
             </template>
           </StepperPanel>

@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ScheduledUpload, UPLOAD_STATE } from '@/stores/UploadManager'
 
 const props = defineProps({

@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import FileUpload from 'primevue/fileupload'
 import AbstractStyle from '@/ui_styles/AbstractStyle'
 import DefaultStyle from '@/ui_styles/DefaultStyle'

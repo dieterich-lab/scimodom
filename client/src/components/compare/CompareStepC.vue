@@ -1,12 +1,22 @@
-<script setup>
-const model = defineModel()
+<script setup lang="ts">
+import { ComparisonOperation } from '@/utils/comparison'
+
+const model = defineModel<{
+  operation: ComparisonOperation
+  strandAware: boolean
+}>()
 </script>
 
 <template>
   <div class="flex flex-col gap-4">
     <div class="flex flex-row">
       <div class="w-1/2">
-        <RadioButton v-model="model" inputId="criteria1" name="step3" value="intersect-true" />
+        <RadioButton
+          v-model="model"
+          inputId="criteria1"
+          name="step3"
+          :value="{ operation: ComparisonOperation.intersect, strandAware: true }"
+        />
         <label for="criteria1" class="ml-2">
           <span class="inline font-bold">Intersection</span>
         </label>
@@ -16,7 +26,12 @@ const model = defineModel()
         </p>
       </div>
       <div class="w-1/2">
-        <RadioButton v-model="model" inputId="criteria2" name="step3" value="intersect-false" />
+        <RadioButton
+          v-model="model"
+          inputId="criteria2"
+          name="step3"
+          :value="{ operation: ComparisonOperation.intersect, strandAware: false }"
+        />
         <label for="criteria3" class="ml-2">
           <span class="inline font-bold">Intersection (strand-unaware)</span>
         </label>
@@ -28,7 +43,12 @@ const model = defineModel()
     </div>
     <div class="flex flex-row">
       <div class="w-1/2">
-        <RadioButton v-model="model" inputId="criteria3" name="step3" value="closest-true" />
+        <RadioButton
+          v-model="model"
+          inputId="criteria3"
+          name="step3"
+          :value="{ operation: ComparisonOperation.closest, strandAware: true }"
+        />
         <label for="criteria3" class="ml-2">
           <span class="inline font-bold">Closest</span>
         </label>
@@ -38,7 +58,12 @@ const model = defineModel()
         </p>
       </div>
       <div class="w-1/2">
-        <RadioButton v-model="model" inputId="criteria4" name="step3" value="closest-false" />
+        <RadioButton
+          v-model="model"
+          inputId="criteria4"
+          name="step3"
+          :value="{ operation: ComparisonOperation.closest, strandAware: false }"
+        />
         <label for="criteria3" class="ml-2">
           <span class="inline font-bold">Closest (strand-unaware)</span>
         </label>
@@ -50,7 +75,12 @@ const model = defineModel()
     </div>
     <div class="flex flex-row">
       <div class="w-1/2">
-        <RadioButton v-model="model" inputId="criteria5" name="step3" value="subtract-true" />
+        <RadioButton
+          v-model="model"
+          inputId="criteria5"
+          name="step3"
+          :value="{ operation: ComparisonOperation.subtract, strandAware: true }"
+        />
         <label for="criteria5" class="ml-2">
           <span class="inline font-bold">Difference</span>
         </label>
@@ -61,7 +91,12 @@ const model = defineModel()
         </p>
       </div>
       <div class="w-1/2">
-        <RadioButton v-model="model" inputId="criteria6" name="step3" value="subtract-false" />
+        <RadioButton
+          v-model="model"
+          inputId="criteria6"
+          name="step3"
+          :value="{ operation: ComparisonOperation.subtract, strandAware: false }"
+        />
         <label for="criteria6" class="ml-2">
           <span class="inline font-bold">Difference (strand-unaware)</span>
         </label>

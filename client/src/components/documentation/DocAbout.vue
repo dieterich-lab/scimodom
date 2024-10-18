@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import img1 from '@/assets/images/docs/about1.png'
 import img2 from '@/assets/images/docs/about2.png'
 </script>

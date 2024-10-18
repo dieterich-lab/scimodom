@@ -1,15 +1,20 @@
-import { DIALOG } from '@/stores/DialogState'
+import { DIALOG, type DialogStateStore } from '@/stores/DialogState'
+import type { AxiosResponse } from 'axios'
 
-async function handleRequestWithErrorReporting(request, failureMessage, dialogState) {
+async function handleRequestWithErrorReporting<T>(
+  request: Promise<AxiosResponse>,
+  failureMessage: string,
+  dialogState: DialogStateStore
+): Promise<T> {
   let extraInfo = ''
   try {
     const response = await request
     if (response.status === 200) {
-      return response.data
+      return response.data as T
     }
     extraInfo = getErrorMessageFromResponse(response)
   } catch (err) {
-    extraInfo = getErrorMessageFromException(err)
+    extraInfo = getErrorMessageFromException(err as object)
   }
   const finalError = `${failureMessage}: ${extraInfo}`
   console.log(finalError)
@@ -18,9 +23,9 @@ async function handleRequestWithErrorReporting(request, failureMessage, dialogSt
   throw new Error(finalError)
 }
 
-function getErrorMessageFromResponse(response) {
+function getErrorMessageFromResponse(response: AxiosResponse) {
   let message = `HTTP status ${response.status}`
-  for (let field of ['message', 'msg']) {
+  for (const field of ['message', 'msg']) {
     if (field in response.data) {
       message = `${message} - ${response.data[field]}`
     }
@@ -28,10 +33,10 @@ function getErrorMessageFromResponse(response) {
   return message
 }
 
-function getErrorMessageFromException(err) {
-  try {
-    return getErrorMessageFromResponse(err.response)
-  } catch (e) {
+function getErrorMessageFromException(err: object): string {
+  if ('response' in err) {
+    return getErrorMessageFromResponse(err.response as AxiosResponse)
+  } else {
     return err.toString()
   }
 }

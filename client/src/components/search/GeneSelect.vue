@@ -1,58 +1,49 @@
-<script setup>
+<script setup lang="ts">
 import { useDialogState } from '@/stores/DialogState'
 import { ref, watch } from 'vue'
-import { handleRequestWithErrorReporting } from '@/utils/request'
-import { HTTP } from '@/services/API'
+import { getGenesForSelectionIds } from '@/services/gene'
+import type { AutoCompleteCompleteEvent } from 'primevue/autocomplete'
 
-const props = defineProps({
-  selectionIds: {
-    type: Object,
-    default() {
-      return []
-    }
-  },
-  placeholder: {
-    type: String,
-    default: 'Select gene'
-  },
-  disabled: {
-    type: Boolean,
-    default: false
+const props = withDefaults(
+  defineProps<{
+    selectionIds: number[]
+    placeholder: string
+    disabled: boolean
+  }>(),
+  {
+    selectionIds: () => [],
+    placeholder: 'Select gene',
+    disabled: false
   }
-})
+)
+
 defineEmits(['change'])
 
 const dialogState = useDialogState()
 const model = defineModel()
-const filteredGenes = ref()
-const genes = ref()
+const filteredGenes = ref<string[]>([])
+const genes = ref<string[]>([])
 
 watch(
   () => props.selectionIds,
   () => {
     if (props.selectionIds.length === 0) {
-      genes.value = null
-      filteredGenes.value = null
+      genes.value = []
+      filteredGenes.value = []
       return
     }
-    handleRequestWithErrorReporting(
-      HTTP.get('/genes', { params: { selection: props.selectionIds } }),
-      'Failed to load genes',
-      dialogState
-    ).then((data) => {
-      genes.value = data.sort()
-    })
+    getGenesForSelectionIds(props.selectionIds, dialogState)
   },
   { immediate: true }
 )
 
-function searchGene(event) {
+function searchGene(e: AutoCompleteCompleteEvent) {
   setTimeout(() => {
-    if (!event.query.trim().length) {
+    if (!e.query.trim().length) {
       filteredGenes.value = [...genes.value]
     } else {
       filteredGenes.value = genes.value.filter((g) => {
-        return g.toLowerCase().startsWith(event.query.toLowerCase())
+        return g.toLowerCase().startsWith(e.query.toLowerCase())
       })
     }
   }, 250)

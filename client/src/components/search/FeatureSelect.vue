@@ -1,23 +1,22 @@
-<script setup>
+<script setup lang="ts">
 import { useDialogState } from '@/stores/DialogState'
 import { ref, watch } from 'vue'
 import { handleRequestWithErrorReporting } from '@/utils/request'
 import { HTTP } from '@/services/API'
+import { getFeaturesByRnaType } from '@/services/feature'
 
-const props = defineProps({
-  rnaType: {
-    type: String,
-    default: ''
-  },
-  placeholder: {
-    type: String,
-    default: 'Select feature'
-  },
-  disabled: {
-    type: Boolean,
-    default: false
+const props = withDefaults(
+  defineProps<{
+    rnaType: string
+    placeholder: string
+    disabled: boolean
+  }>(),
+  {
+    rnaType: '',
+    placeholder: 'Select feature',
+    disabled: false
   }
-})
+)
 
 const dialogState = useDialogState()
 const model = defineModel()
@@ -29,12 +28,8 @@ watch(
     if (!props.rnaType) {
       return
     }
-    handleRequestWithErrorReporting(
-      HTTP.get(`/features/${props.rnaType}`),
-      'Failed to load features',
-      dialogState
-    ).then(function (data) {
-      features.value = data.features
+    getFeaturesByRnaType(props.rnaType, dialogState).then((data) => {
+      features.value = data
     })
   },
   { immediate: true }

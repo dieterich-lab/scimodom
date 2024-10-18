@@ -1,18 +1,45 @@
-import { getCurrentInstance, reactive } from 'vue'
 import { defineStore } from 'pinia'
+import { VueCookieNext } from 'vue-cookie-next'
+import { string } from 'yup'
 
-const DIALOG = Object.freeze({
-  NONE: Symbol('NONE'),
-  LOGIN: Symbol('LOGIN'),
-  ALERT: Symbol('ALERT'),
-  REGISTER_ENTER_DATA: Symbol('REGISTER_ENTER_DATA'),
-  RESET_PASSWORD_REQUEST: Symbol('RESET_PASSWORD_REQUEST'),
-  CHANGE_PASSWORD: Symbol('CHANGE_PASSWORD'),
-  CONFIRM: Symbol('CONFIRM')
-})
+enum DIALOG {
+  NONE = 'NONE',
+  LOGIN = 'LOGIN',
+  ALERT = 'ALERT',
+  REGISTER_ENTER_DATA = 'REGISTER_ENTER_DATA',
+  RESET_PASSWORD_REQUEST = 'RESET_PASSWORD_REQUEST',
+  CHANGE_PASSWORD = 'CHANGE_PASSWORD',
+  CONFIRM = 'CONFIRM'
+}
+
+interface DialogState {
+  state: DIALOG
+  email: string | null
+  token: string | null
+  newPassword: string | null
+  message: string | null
+  confirmCallback: (() => void) | null
+}
+
+interface AxiosErrorResponse {
+  response: {
+    data: {
+      result: string
+    }
+  }
+}
+
+function isAxiosErrorResponse(x: any): x is AxiosErrorResponse {
+  return (
+    'response' in x &&
+    'data' in x.response &&
+    'result' in x.response.data &&
+    x.response.data.result instanceof string
+  )
+}
 
 const useDialogState = defineStore('dialogState', {
-  state: () => {
+  state: (): DialogState => {
     return {
       state: DIALOG.NONE,
       email: null,
@@ -24,8 +51,7 @@ const useDialogState = defineStore('dialogState', {
   },
   actions: {
     load_cookie_if_needed() {
-      const cookie_jar = getCurrentInstance().appContext.app.$cookies
-      const workflow_status = cookie_jar.get('workflow_status')
+      const workflow_status = VueCookieNext.getCookie('workflow_status')
       if (workflow_status) {
         if (workflow_status['operation'] == 'user_registration') {
           this.email = workflow_status['email']
@@ -41,20 +67,15 @@ const useDialogState = defineStore('dialogState', {
           this.token = workflow_status['token']
           this.state = DIALOG.CHANGE_PASSWORD
         } else {
-          console.log(`Got unexpected operation in workflow_status cookie: ${workflow_status_raw}`)
+          console.log(`Got unexpected operation in workflow_status cookie: ${workflow_status}`)
         }
-        cookie_jar.remove('workflow_status')
+        VueCookieNext.removeCookie('workflow_status')
       }
     },
-    handle_error(axios_error, context, new_state_template) {
-      let error_message = `${axios_error}`
-      try {
-        const result = axios_error.response.data.result
-        if (result) {
-          error_message = result
-        }
-      } catch (e) {}
-
+    handle_error(axios_error: unknown, context: string, new_state_template: object) {
+      const error_message = isAxiosErrorResponse(axios_error)
+        ? axios_error.response.data.result
+        : `${axios_error}`
       const full_message = `${context}: ${error_message}`
       console.log(full_message)
       const new_state = { ...new_state_template, message: full_message }
@@ -71,4 +92,6 @@ const useDialogState = defineStore('dialogState', {
   }
 })
 
-export { DIALOG, useDialogState }
+type DialogStateStore = ReturnType<typeof useDialogState>
+
+export { DIALOG, useDialogState, type DialogStateStore }

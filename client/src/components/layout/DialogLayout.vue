@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { DIALOG, useDialogState } from '@/stores/DialogState.js'
 import AlertBox from '@/components/ui/AlertBox.vue'
 import ConfirmBox from '@/components/ui/ConfirmBox.vue'

@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useForm, useFieldArray } from 'vee-validate'
 import { object, array, string, number } from 'yup'

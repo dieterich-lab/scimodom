@@ -2,14 +2,6 @@ import { toTree, toCascade, nestedSort, toIds } from '@/utils/index.js'
 
 // selection utilities for Search
 
-export const updModification = (selection) => {
-  // update modification
-  // grouped Dropdown works with one child tree
-  let tree = toTree(selection, ['rna_name', 'modomics_sname'], 'modification_id')
-  nestedSort(tree, ['children'])
-  return tree
-}
-
 export const updOrganismFromMod = (selection, slctMod) => {
   // update organism from modification
   let opts = selection.map((item) => {

@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import HeaderLayout from './HeaderLayout.vue'
 import FooterLayout from './FooterLayout.vue'
 import DialogLayout from './DialogLayout.vue'

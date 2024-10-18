@@ -1,41 +1,31 @@
-<script setup>
+<script setup lang="ts">
 import { ref, watch } from 'vue'
-import { HTTP } from '@/services/API'
 
-import { handleRequestWithErrorReporting } from '@/utils/request'
 import { useDialogState } from '@/stores/DialogState'
+import { getBioTypes } from '@/services/biotype'
 
-const props = defineProps({
-  rnaType: {
-    type: String,
-    default: ''
-  },
-  placeholder: {
-    type: String,
-    default: 'Select biotype'
-  },
-  disabled: {
-    type: Boolean,
-    default: false
+const props = withDefaults(
+  defineProps<{
+    rnaType: string
+    placeholder: string
+    disabled: boolean
+  }>(),
+  {
+    rnaType: '',
+    placeholder: 'Select biotype',
+    disabled: false
   }
-})
+)
 
 const dialogState = useDialogState()
 const model = defineModel()
-const biotypes = ref([])
+const biotypes = ref<string[]>([])
 
 watch(
   () => props.rnaType,
   () => {
-    if (!props.rnaType) {
-      return
-    }
-    handleRequestWithErrorReporting(
-      HTTP.get(`/biotypes/${props.rnaType}`),
-      'Failed to load biotypes',
-      dialogState
-    ).then(function (data) {
-      biotypes.value = data.biotypes
+    getBioTypes(props.rnaType, dialogState).then((data) => {
+      biotypes.value = data
     })
   },
   { immediate: true }

@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import DataTable from 'primevue/datatable'
 import { ref, onMounted } from 'vue'
 import { splitStr } from '@/utils/index.js'

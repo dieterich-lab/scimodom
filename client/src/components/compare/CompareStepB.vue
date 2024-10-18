@@ -1,72 +1,56 @@
-<script setup>
+<script setup lang="ts">
 import { ref, watch } from 'vue'
-import { HTTPSecure } from '@/services/API.js'
+import ToggleButton from 'primevue/togglebutton'
 import DatasetSelectionMulti from '@/components/ui/DatasetSelectionMulti.vue'
-import { handleRequestWithErrorReporting } from '@/utils/request'
-import { DIALOG, useDialogState } from '@/stores/DialogState'
+import { useDialogState } from '@/stores/DialogState'
+import type { Dataset } from '@/services/dataset'
+import type { FileUploadUploaderEvent } from 'primevue/fileupload'
+import { uploadTemporaryDataset, type UploadedFile } from '@/services/dataset_upload'
 
-const emit = defineEmits(['datasetUploaded'])
+const emit = defineEmits<{
+  datasetUploaded: [file: UploadedFile | null]
+}>()
 const model = defineModel()
-const isEUF = defineModel('isEUF')
-const props = defineProps({
-  selectedDatasets: {
-    type: Array,
-    required: true
-  },
-  datasets: {
-    type: Array,
-    required: true
-  }
-})
+const isEUF = defineModel<boolean>('isEUF')
+const props = defineProps<{
+  selectedDatasets: Dataset[]
+  datasets: Dataset[]
+}>()
 
-const MAX_UPLOAD_SIZE = 50 * 1024 * 1024
 const dialogState = useDialogState()
-const remainingDatasets = ref()
-const disabled = ref(false)
+const remainingDatasets = ref<Dataset[]>([])
+const disabled = ref<boolean>(false)
 const uploadedFile = ref()
 
 watch(
   () => props.selectedDatasets,
   () => {
     model.value = []
+    const selectedDatasetIds = props.selectedDatasets.map((x) => x.dataset_id)
     remainingDatasets.value = props.datasets.filter(
-      (item) => !props.selectedDatasets.includes(item.dataset_id)
+      (d) => !selectedDatasetIds.includes(d.dataset_id)
     )
   },
   { immediate: true }
 )
 
-function uploader(event) {
-  const file = event.files[0]
-  const file_size = file.size
-  if (file_size > MAX_UPLOAD_SIZE) {
-    clear()
-    dialogState.message = `This file is to large (${file_size} bytes, max ${MAX_UPLOAD_SIZE})`
-    dialogState.state = DIALOG.ALERT
-    return
-  }
-  handleRequestWithErrorReporting(
-    HTTPSecure.post('transfer/tmp_upload', file),
-    `Failed to upload '${file.name}'`,
-    dialogState
-  )
-    .then((data) => {
+function uploader(event: FileUploadUploaderEvent) {
+  const file = Array.isArray(event.files) ? event.files[0] : event.files
+  uploadTemporaryDataset(file, dialogState)
+    .then((result) => {
       disabled.value = true
       model.value = []
       uploadedFile.value = file.name
-      let ext = file.name.split('.').pop()
-      isEUF.value = ext.toLowerCase() === 'bedrmod'
-      emit('datasetUploaded', { id: data.file_id, name: file.name })
+      isEUF.value = file.name.toLowerCase().endsWith('.bedrmod')
+      emit('datasetUploaded', result)
     })
-    .catch((e) => {
-      clear()
-    })
+    .catch(() => clear())
 }
 
 function clear() {
   disabled.value = false
   uploadedFile.value = undefined
-  emit('datasetUploaded', undefined)
+  emit('datasetUploaded', null)
 }
 </script>
 

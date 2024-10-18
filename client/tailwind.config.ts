@@ -1,4 +1,6 @@
 /** @type {import('tailwindcss').Config} */
+import tailwindcssPrimeui from 'tailwindcss-primeui'
+
 module.exports = {
   content: [
     'index.html',
@@ -64,5 +66,5 @@ module.exports = {
       }
     }
   },
-  plugins: []
+  plugins: [tailwindcssPrimeui]
 }

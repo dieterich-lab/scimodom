@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 // provides a custom wrapper for the PrimeVue Cascade component
 // to be used in a form
 import { ref, computed } from 'vue'

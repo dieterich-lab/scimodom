@@ -1,40 +1,24 @@
-<script setup>
+<script setup lang="ts">
 import DatasetItem from '@/components/ui/DatasetItem.vue'
+import type { Dataset } from '@/services/dataset'
 
-const props = defineProps({
-  datasets: {
-    type: Object,
-    required: true
-  },
-  myDatasetsOnly: {
-    type: Boolean,
-    required: false,
-    default: false
-  },
-  refresh: {
-    type: Boolean,
-    required: false,
-    default: true
-  },
-  selectLimit: {
-    type: Number,
-    required: false
-  },
-  maxSelectedLabels: {
-    type: Number,
-    required: false
-  },
-  placeholder: {
-    type: String,
-    required: false,
-    default: 'Select a dataset'
-  },
-  disabled: {
-    type: Boolean,
-    required: false,
-    default: false
+const props = withDefaults(
+  defineProps<{
+    datasets: Dataset[]
+    myDatasetsOnly?: boolean
+    refresh?: boolean
+    selectLimit?: number
+    maxSelectedLabels?: number
+    placeholder?: string
+    disabled?: boolean
+  }>(),
+  {
+    myDatasetsOnly: false,
+    refresh: true,
+    placeholder: 'Select a dataset',
+    disabled: false
   }
-})
+)
 
 const model = defineModel()
 

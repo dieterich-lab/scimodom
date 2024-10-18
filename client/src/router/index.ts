@@ -5,7 +5,6 @@ import BrowseView from '@/views/BrowseView.vue'
 import CompareView from '@/views/CompareView.vue'
 import DownloadView from '@/views/DownloadView.vue'
 import DocumentationView from '@/views/TestDoc.vue'
-// import DocumentationView from '@/views/DocumentationView.vue'
 import DocAbout from '@/components/documentation/DocAbout.vue'
 import DocSearch from '@/components/documentation/DocSearch.vue'
 import DocBrowse from '@/components/documentation/DocBrowse.vue'
@@ -133,6 +132,7 @@ const router = createRouter({
     // },
   ],
   linkActiveClass: 'text-primary-500',
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   scrollBehavior(to, from, savedPosition) {
     // always scroll to top
     return { top: 0 }

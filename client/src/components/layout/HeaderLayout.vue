@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed } from 'vue'
 import { DIALOG, useDialogState } from '@/stores/DialogState.js'
 import { useAccessToken } from '@/stores/AccessToken.js'
