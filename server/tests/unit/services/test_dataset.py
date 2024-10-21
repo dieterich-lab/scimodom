@@ -13,6 +13,7 @@ from scimodom.database.models import (
     DatasetModificationAssociation,
     Assembly,
     Data,
+    User,
 )
 from scimodom.services.dataset import (
     DatasetService,
@@ -163,6 +164,37 @@ GOOD_EUF_FILE = """#fileformat=bedRModv1.7
 #chrom\tchromstart\tchromEnd\tname\tscore\tstrand\tthickstart\tthickEnd\titermRgb\tcoverage\tfrequency
 1\t0\t10\tm6A\t1000\t+\t0\t10\t0,0,0\t10\t1
 """
+
+
+# tests
+
+
+def test_dataset_get_by_id(Session, dataset):
+    service = _get_dataset_service(Session())
+    d1 = service.get_by_id("d1")
+    assert d1.title == "dataset title"
+    assert d1.organism_id == 1
+    assert d1.external_source == "ext. source 1"
+    assert d1.date_added == datetime(2024, 10, 21, 8, 10, 27)
+
+
+def test_get_datasets(Session, project, dataset):
+    service = _get_dataset_service(Session())
+    datasets = service.get_datasets()
+    assert len(datasets) == 4
+    assert datasets[3]["project_id"] == "ABCDEFGH"
+    assert datasets[3]["dataset_id"] == "d4"
+    assert datasets[3]["modomics_sname"] == "m5C"
+    assert datasets[3]["taxa_sname"] == "H. sapiens"
+    assert datasets[3]["cto"] == "Cell type 2"
+
+
+def test_get_datasets_for_user(Session, project, dataset):
+    with Session() as session:
+        user = session.get_one(User, 1)
+    service = _get_dataset_service(Session())
+    datasets = service.get_datasets(user)
+    assert len(datasets) == 3
 
 
 @pytest.mark.parametrize(

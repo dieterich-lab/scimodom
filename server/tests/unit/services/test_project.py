@@ -22,7 +22,6 @@ from scimodom.utils.dtos.project import (
     ProjectOrganismDto,
     ProjectSourceDto,
 )
-from scimodom.utils.specs.enums import UserState
 from tests.mocks.io import MockStringIO, MockBytesIO
 
 
@@ -316,15 +315,16 @@ def test_project_get_by_id(Session, file_service, setup):
     assert project.summary == "Summary"
 
 
-def test_query_projects(Session, file_service, setup, project):
-    service = _get_project_service(Session, file_service)
-    with Session() as session, session.begin():
+def test_query_projects(Session, file_service, project):
+    with Session() as session:
         user = session.get_one(User, 1)
-        user_project = service.get_projects(user=user)
-        assert len(user_project) == 1
-        assert user_project[0]["project_id"] == "12345678"
-        assert user_project[0]["contact_name"] == "Contact Name"
-        assert len(service.get_projects()) == 2
+    service = _get_project_service(Session, file_service)
+    user_project = service.get_projects(user=user)
+    assert len(user_project) == 1
+    assert user_project[0]["project_id"] == "12345678"
+    assert user_project[0]["contact_name"] == "Contact Name"
+    # all projects
+    assert len(service.get_projects()) == 2
 
 
 def test_delete_project(Session, project, file_service):

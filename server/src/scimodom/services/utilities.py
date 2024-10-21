@@ -18,12 +18,7 @@ from scimodom.database.models import (
     Taxa,
     Selection,
 )
-from scimodom.services.annotation import (
-    get_annotation_service,
-    AnnotationService,
-)
 from scimodom.services.assembly import get_assembly_service, AssemblyService
-from scimodom.services.file import FileService, get_file_service
 
 
 class UtilitiesService:
@@ -34,13 +29,9 @@ class UtilitiesService:
         self,
         session: Session,
         assembly_service: AssemblyService,
-        annotation_service: AnnotationService,
-        file_service: FileService,
     ) -> None:
         self._session = session
         self._assembly_service = assembly_service
-        self._annotation_service = annotation_service
-        self._file_service = file_service
 
     def get_rna_types(self) -> list[dict[str, Any]]:
         """Get all RA types.
@@ -186,6 +177,4 @@ def get_utilities_service() -> UtilitiesService:
     return UtilitiesService(
         session=get_session(),
         assembly_service=get_assembly_service(),
-        annotation_service=get_annotation_service(),
-        file_service=get_file_service(),
     )

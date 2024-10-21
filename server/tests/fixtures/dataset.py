@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime
 
 import pytest
 
@@ -8,7 +8,7 @@ from scimodom.utils.specs.enums import Strand
 
 @pytest.fixture
 def dataset(Session, selection, project):  # noqa
-    stamp = datetime.now(timezone.utc).replace(microsecond=0)
+    stamp = datetime(2024, 10, 21, 8, 10, 27)
     project1_id = project[0].id
     project2_id = project[1].id
     dataset1 = Dataset(

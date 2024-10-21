@@ -3,7 +3,7 @@ from typing import List
 
 import pytest
 
-from scimodom.services.user import UserService, WrongUserOrPassword
+from scimodom.services.user import UserService, WrongUserOrPassword, UserExists
 from scimodom.database.models import User
 from scimodom.utils.specs.enums import UserState
 
@@ -31,21 +31,43 @@ def user_service(Session, mail_service):
     yield UserService(session=Session(), mail_service=mail_service)
 
 
-def test_registration_good(user_service: UserService, mail_service: FakeMailService):
+def test_register_user(
+    Session, user_service: UserService, mail_service: FakeMailService
+):
     user_service.register_user(email="x@example.com", password="abc")
     assert len(mail_service.history) == 1
     assert mail_service.history[0].operation == "register"
     assert mail_service.history[0].email == "x@example.com"
 
     user_service.confirm_user("x@example.com", mail_service.history[0].token)
-
     assert user_service.check_password("x@example.com", "abc")
+    with Session() as session:
+        user = session.get_one(User, 1)
+        assert user.email == "x@example.com"
+        assert user.confirmation_token is None
+        assert user.state == UserState.active
+
+    # failed login check
     assert not user_service.check_password("x@example.com", "xyz")
 
 
-def test_registration_bad(user_service: UserService):
-    user_service.register_user(email="x@example.com", password="abc")
+def test_register_user_exists(
+    Session, user_service: UserService, mail_service: FakeMailService
+):
+    with Session() as session, session.begin():
+        session.add(User(email="x@example.com", state=UserState.active))
+    with pytest.raises(UserExists) as exc:
+        user_service.register_user(email="x@example.com", password="abc")
+    assert str(exc.value) == "User with address 'x@example.com' already exists"
 
+
+def test_confirm_user_bad_token(user_service: UserService):
+    user_service.register_user(email="x@example.com", password="abc")
+    with pytest.raises(WrongUserOrPassword):
+        user_service.confirm_user("x@example.com", "xxx")
+
+
+def test_confirm_user_no_user(user_service: UserService):
     with pytest.raises(WrongUserOrPassword):
         user_service.confirm_user("x@example.com", "xxx")
 
