@@ -20,7 +20,6 @@ from scimodom.api.helpers import (
     get_response_from_pydantic_object,
     get_non_negative_int,
     get_optional_positive_int,
-    get_option_positive_int,
     get_optional_non_negative_int,
     validate_rna_type,
 )
@@ -229,7 +228,7 @@ def _get_modifications_for_request(by_gene):
             chrom_start=gene_or_chrom.chrom_start_filter,
             chrom_end=gene_or_chrom.chrom_end_filter,
             first_record=get_optional_non_negative_int("firstRecord"),
-            max_records=get_option_positive_int("maxRecords"),
+            max_records=get_optional_positive_int("maxRecords"),
             multi_sort=_get_multi_sort(),
         )
     else:
@@ -244,7 +243,7 @@ def _get_modifications_for_request(by_gene):
             chrom_start=get_optional_non_negative_int("chromStart"),
             chrom_end=get_optional_positive_int("chromEnd"),
             first_record=get_optional_non_negative_int("firstRecord"),
-            max_records=get_option_positive_int("maxRecords"),
+            max_records=get_optional_positive_int("maxRecords"),
             multi_sort=_get_multi_sort(),
         )
 

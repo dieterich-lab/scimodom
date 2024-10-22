@@ -39,7 +39,7 @@ def test_config_missing_variable(mocker):
         set_config_from_environment()
 
 
-def test_config(mocker, capsys):
+def test_config(mocker):
     mocker.patch.dict(os.environ, clear=True)
     os.environ["ENV_FILE"] = "tests/.env.tests"
     # this is missing from the test config

@@ -14,7 +14,7 @@ from scimodom.services.permission import get_permission_service
 from scimodom.services.user import get_user_service, NoSuchUser
 from scimodom.services.utilities import get_utilities_service
 from scimodom.services.assembly import get_assembly_service
-from scimodom.utils.specs.enums import Strand, TargetsFileType
+from scimodom.utils.specs.enums import Strand, TargetsFileType, Identifiers
 
 """
 This module supplies a number of helper functions to be used in various
@@ -42,6 +42,7 @@ Function to generate a response object, e.g. from a DTO.
 
 """
 
+# EUFID length is validated separately
 VALID_DATASET_ID_REGEXP = re.compile(r"\A[a-zA-Z0-9]{1,256}\Z")
 VALID_FILENAME_REGEXP = re.compile(r"\A[a-zA-Z0-9.,_-]{1,256}\Z")
 INVALID_CHARS_REGEXP = re.compile(r"[^a-zA-Z0-9.,_-]")
@@ -60,7 +61,7 @@ class ClientResponseException(Exception):
 
 
 def get_valid_dataset(dataset_id: str) -> Dataset:
-    if not VALID_DATASET_ID_REGEXP.match(dataset_id):
+    if not _is_valid_identifier(dataset_id, Identifiers.EUFID.length):
         raise ClientResponseException(400, "Invalid dataset ID")
     dataset_service = get_dataset_service()
     try:
@@ -99,13 +100,16 @@ def get_valid_dataset_id_list_from_request_parameter(parameter: str) -> list[str
     if len(as_list) > MAX_DATASET_IDS_IN_LIST:
         raise ClientResponseException(
             400,
-            f"Parameter '{parameter} contained too many dataset IDs (max. {MAX_DATASET_IDS_IN_LIST})",
+            f"'{parameter}' contained too many dataset IDs (max. {MAX_DATASET_IDS_IN_LIST})",
         )
+    dataset_service = get_dataset_service()
     for dataset_id in as_list:
-        if not VALID_DATASET_ID_REGEXP.match(dataset_id):
-            raise ClientResponseException(
-                400, f"Invalid dataset ID in parameter {parameter}"
-            )
+        if not _is_valid_identifier(dataset_id, Identifiers.EUFID.length):
+            raise ClientResponseException(400, f"Invalid dataset ID for '{parameter}'")
+        try:
+            dataset_service.get_by_id(dataset_id)
+        except NoResultFound:
+            raise ClientResponseException(404, f"Unknown dataset for '{parameter}'")
     return as_list
 
 
@@ -116,9 +120,9 @@ def get_valid_tmp_file_id_from_request_parameter(
     if raw_id is None or raw_id == "":
         if is_optional:
             return None
-        raise ClientResponseException(400, f"Missing required parameter {parameter}")
+        raise ClientResponseException(400, f"Missing required parameter '{parameter}'")
     if not VALID_FILENAME_REGEXP.match(raw_id):
-        raise ClientResponseException(400, f"Invalid file ID in parameter {parameter}")
+        raise ClientResponseException(400, f"Invalid file ID in '{parameter}'")
     file_service = get_file_service()
     if not file_service.check_tmp_upload_file_id(raw_id):
         raise ClientResponseException(
@@ -144,7 +148,7 @@ def get_valid_boolean_from_request_parameter(
     if raw_value is None:
         if default is None:
             raise ClientResponseException(
-                400, f"Required parameter '{parameter} missing ('true' or 'false')"
+                400, f"Required parameter '{parameter}' missing ('true' or 'false')"
             )
         else:
             return default
@@ -154,7 +158,7 @@ def get_valid_boolean_from_request_parameter(
     if lower_case_value == "true":
         return True
     raise ClientResponseException(
-        400, f"Got bad value for parameter '{parameter}' (allowed: 'true', 'false')"
+        400, f"Invalid value for '{parameter}' (allowed: 'true', 'false')"
     )
 
 
@@ -237,23 +241,23 @@ def get_valid_logo(motif: str) -> Path:
 def get_non_negative_int(field: str) -> int:
     raw = request.args.get(field, type=int)
     if raw is None or raw < 0:
-        raise ClientResponseException(400, f"Bad {field}")
+        raise ClientResponseException(400, f"Invalid {field}")
     return raw
 
 
 def get_positive_int(field: str) -> int:
     raw = request.args.get(field, type=int)
     if raw is None or raw <= 0:
-        raise ClientResponseException(400, f"Bad {field}")
+        raise ClientResponseException(400, f"Invalid {field}")
     return raw
 
 
-def get_optional_non_negative_int(field: str) -> int:
+def get_optional_non_negative_int(field: str) -> int | None:
     raw = request.args.get(field, type=int)
     if raw is None:
         return None
     if raw < 0:
-        raise ClientResponseException(400, f"Bad {field}")
+        raise ClientResponseException(400, f"Invalid {field}")
     return raw
 
 
@@ -262,16 +266,7 @@ def get_optional_positive_int(field: str) -> int | None:
     if raw is None:
         return None
     if raw <= 0:
-        raise ClientResponseException(400, f"Bad {field}")
-    return raw
-
-
-def get_option_positive_int(field: str) -> int | None:
-    raw = request.args.get(field, type=int)
-    if raw is None:
-        return None
-    if raw <= 0:
-        raise ClientResponseException(400, f"Bad {field}")
+        raise ClientResponseException(400, f"Invalid {field}")
     return raw
 
 
@@ -280,3 +275,11 @@ def get_option_positive_int(field: str) -> int | None:
 
 def get_response_from_pydantic_object(obj: BaseModel):
     return Response(response=obj.json(), status=200, mimetype="application/json")
+
+
+def _is_valid_identifier(identifier, length):
+    if not VALID_DATASET_ID_REGEXP.match(identifier):
+        return False
+    elif len(identifier) != length:
+        return False
+    return True

@@ -3,6 +3,7 @@ from typing import Iterable
 
 import pytest
 from flask import Flask
+from sqlalchemy.exc import NoResultFound
 
 from scimodom.api.dataset import (
     dataset_api,
@@ -30,12 +31,15 @@ def test_client():
 
 
 @pytest.fixture
-def comparison_services(mocker):
+def mock_services(mocker):
     mocker.patch(
         "scimodom.api.dataset.get_file_service", return_value=MockFileService()
     )
     mocker.patch(
         "scimodom.api.helpers.get_file_service", return_value=MockFileService()
+    )
+    mocker.patch(
+        "scimodom.api.helpers.get_dataset_service", return_value=MockDatasetService()
     )
     mocker.patch(
         "scimodom.api.dataset.get_data_service", return_value=MockDataService()
@@ -87,6 +91,15 @@ class MockFileService:
             return StringIO(MockFileService.FILE_CONTENT)
         else:
             raise FileNotFoundError("That is no valid file ID")
+
+
+class MockDatasetService:
+    @staticmethod
+    def get_by_id(dataset_id):
+        if dataset_id in DATA_BY_DATASET_ID.keys():
+            return dataset_id
+        else:
+            raise NoResultFound
 
 
 class MockDataService:
@@ -224,7 +237,7 @@ class MockEufImporter:
     ],
 )
 def test_intersect(
-    test_client, comparison_services, reference, comparison, upload, euf, strand
+    test_client, mock_services, reference, comparison, upload, euf, strand
 ):
     result = test_client.get(
         get_compare_url_parameters(
@@ -250,7 +263,7 @@ def test_intersect(
     ],
 )
 def test_closest(
-    test_client, comparison_services, reference, comparison, upload, euf, strand
+    test_client, mock_services, reference, comparison, upload, euf, strand
 ):
     result = test_client.get(
         get_compare_url_parameters(
@@ -276,7 +289,7 @@ def test_closest(
     ],
 )
 def test_subtract(
-    test_client, comparison_services, reference, comparison, upload, euf, strand
+    test_client, mock_services, reference, comparison, upload, euf, strand
 ):
     result = test_client.get(
         get_compare_url_parameters(
@@ -297,19 +310,39 @@ def test_subtract(
         (
             "/intersect?reference=datasetidAxx&strand=true",
             400,
-            "Need either a upload_id or a comparison_ids",
+            "Need at least one: upload_id or comparison_ids are not defined",
+        ),
+        (
+            "/intersect?reference=datasetidAxx&comparison=datasetidBxx&upload=im_the_only_valid_temp_file_id&strand=true",
+            400,
+            "Can only handle one of upload_id or comparison_ids, but not both",
         ),
         (
             "/subtract?reference=datasetidAxx"
             "&comparison=datasetidBxx&comparison=datasetidCxx&comparison=datasetidDxx&comparison=datasetidExx"
             "&strand=true",
             400,
-            "Parameter 'comparison contained too many dataset IDs (max. 3)",
+            "'comparison' contained too many dataset IDs (max. 3)",
+        ),
+        (
+            "/intersect?reference=datasetidAxx&comparison=datasetidZxxxx&strand=true",
+            400,
+            "Invalid dataset ID for 'comparison'",
+        ),
+        (
+            "/intersect?reference=datasetidAxx&comparison=datasetidZxx&strand=true",
+            404,
+            "Unknown dataset for 'comparison'",
         ),
         (
             "/closest?reference=datasetidAxx&comparison=datasetidBxx&strand=strand_aware",
             400,
-            "Got bad value for parameter 'strand' (allowed: 'true', 'false')",
+            "Invalid value for 'strand' (allowed: 'true', 'false')",
+        ),
+        (
+            "/subtract?reference=datasetidAxx&upload=bl+ubber&strand=strand_aware",
+            400,
+            "Invalid file ID in 'upload'",
         ),
         (
             "/subtract?reference=datasetidAxx&upload=blubber&strand=strand_aware",
@@ -318,7 +351,7 @@ def test_subtract(
         ),
     ],
 )
-def test_bad_url(test_client, comparison_services, url, http_status, message):
+def test_bad_url(test_client, mock_services, url, http_status, message):
     result = test_client.get(url)
     assert result.status_code == http_status
     assert result.json["message"] == message

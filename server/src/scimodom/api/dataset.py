@@ -134,11 +134,11 @@ class _CompareContext:
 
         if self._upload_id is None and len(self._comparison_ids) == 0:
             raise ClientResponseException(
-                400, "Need either a upload_id or a comparison_ids"
+                400, "Need at least one: upload_id or comparison_ids are not defined"
             )
         if self._upload_id is not None and len(self._comparison_ids) > 0:
             raise ClientResponseException(
-                400, "Can only handle upload_id or comparison_ids, but not both"
+                400, "Can only handle one of upload_id or comparison_ids, but not both"
             )
         self._data_service = get_data_service()
 

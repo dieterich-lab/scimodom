@@ -20,7 +20,7 @@ def test_client():
 
 
 @pytest.fixture
-def comparison_services(mocker):
+def mock_services(mocker):
     mocker.patch(
         "scimodom.api.modification.get_file_service", return_value=MockFileService()
     )
@@ -182,7 +182,7 @@ class MockBedtoolsService:
     ],
 )
 def test_get_modification_targets_bad_url(
-    test_client, comparison_services, url, http_status, message
+    test_client, mock_services, url, http_status, message
 ):
     result = test_client.get(url)
     assert result.status_code == http_status
@@ -196,7 +196,7 @@ def test_get_modification_targets_bad_url(
         "/target/RBP?taxaId=9606&chrom=1&start=2403131&end=2403132&strand=%2B",
     ],
 )
-def test_get_modification_targets(test_client, comparison_services, url):
+def test_get_modification_targets(test_client, mock_services, url):
     result = test_client.get(url)
     assert result.status == "200 OK"
     assert (
@@ -205,7 +205,7 @@ def test_get_modification_targets(test_client, comparison_services, url):
     )
 
 
-def test_get_modification_targets_empty(test_client, comparison_services, caplog):
+def test_get_modification_targets_empty(test_client, mock_services, caplog):
     url = "/target/MIRNA?taxaId=7227&chrom=1&start=3284723&end=3284724&strand=%2B"
     result = test_client.get(url)
     assert result.status == "200 OK"
