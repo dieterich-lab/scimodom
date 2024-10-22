@@ -92,7 +92,9 @@ def get_valid_bam_file(dataset, name) -> BamFile:
     try:
         return file_service.get_bam_file(dataset, name)
     except NoResultFound:
-        raise ClientResponseException(404, "Unknown file name")
+        raise ClientResponseException(
+            404, "Unknown file name and/or unknown/invalid dataset ID"
+        )
 
 
 def get_valid_dataset_id_list_from_request_parameter(parameter: str) -> list[str]:

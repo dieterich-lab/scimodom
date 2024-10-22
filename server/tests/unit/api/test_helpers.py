@@ -9,6 +9,8 @@ from scimodom.api.helpers import (
     get_positive_int,
     get_optional_non_negative_int,
     get_optional_positive_int,
+    get_valid_bam_file,
+    validate_request_size,
 )
 
 
@@ -19,9 +21,12 @@ def test_client():
 
 
 @pytest.fixture
-def helpers_services(mocker):
+def mock_services(mocker):
     mocker.patch(
         "scimodom.api.helpers.get_dataset_service", return_value=MockDatasetService()
+    )
+    mocker.patch(
+        "scimodom.api.helpers.get_file_service", return_value=MockFileService()
     )
 
 
@@ -32,24 +37,28 @@ class MockDatasetService:
             raise NoResultFound
 
 
+class MockFileService:
+    @staticmethod
+    def get_bam_file(dataset, name):
+        raise NoResultFound
+
+
 # tests
 
 
-# implicitely tested in api/test_bam_file.py:
+# not tested:
 # - get_user_with_write_permission_on_dataset
-# - get_valid_bam_file
-# - validate_request_size
 
 # implicitely tested in api/test_dataset_api.py:
 # - get_valid_dataset_id_list_from_request_parameter
 # - get_valid_tmp_file_id_from_request_parameter
 # - get_valid_boolean_from_request_parameter
 
-# implicitely tested in api/test+modification_api.py
+# implicitely tested in api/test_modification_api.py
 # - get_valid_taxa_id
 # - get_valid_targets_type
 # - validate_rna_type
-# - get_valid_coords(
+# - get_valid_coords
 
 
 @pytest.mark.parametrize(
@@ -61,7 +70,7 @@ class MockDatasetService:
         ("aBCDEFGHIJKL", 404, "Unknown dataset"),
     ],
 )
-def test_get_valid_dataset(eufid, expected_status, expected_message, helpers_services):
+def test_get_valid_dataset(eufid, expected_status, expected_message, mock_services):
     with pytest.raises(ClientResponseException) as exc:
         get_valid_dataset(eufid)
     returned_message, returned_status = exc.value.response_tupel
@@ -115,3 +124,28 @@ def test_get_positive_int(test_client, value):
             returned_message, returned_status = exc.value.response_tupel
             assert returned_message["message"] == "Invalid value"
             assert returned_status == 400
+
+
+@pytest.mark.parametrize(
+    "bam_file,expected_status,expected_message",
+    [
+        ("wrong file name.bam", 400, "Invalid file name"),
+        ("file_name.bam", 404, "Unknown file name and/or unknown/invalid dataset ID"),
+    ],
+)
+def test_get_valid_bam_file(bam_file, expected_status, expected_message, mock_services):
+    with pytest.raises(ClientResponseException) as exc:
+        get_valid_bam_file("EUFID_IS_NOT_TESTED", bam_file)
+    returned_message, returned_status = exc.value.response_tupel
+    assert returned_message["message"] == expected_message
+    assert returned_status == expected_status
+
+
+def test_validate_request_size(test_client):
+    with test_client as client:
+        response = client.post("/", data="Content-Length")
+        with pytest.raises(ClientResponseException) as exc:
+            validate_request_size(10)
+        returned_message, returned_status = exc.value.response_tupel
+        assert returned_message["message"] == "File too large (max. 10 bytes)"
+        assert returned_status == 413
