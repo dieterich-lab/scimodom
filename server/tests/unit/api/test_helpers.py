@@ -73,7 +73,7 @@ class MockFileService:
 def test_get_valid_dataset(eufid, expected_status, expected_message, mock_services):
     with pytest.raises(ClientResponseException) as exc:
         get_valid_dataset(eufid)
-    returned_message, returned_status = exc.value.response_tupel
+    returned_message, returned_status = exc.value.response_tuple
     assert returned_message["message"] == expected_message
     assert returned_status == expected_status
 
@@ -88,7 +88,7 @@ def test_get_non_negative_int(test_client, value):
         # required
         with pytest.raises(ClientResponseException) as exc:
             get_non_negative_int("value")
-        returned_message, returned_status = exc.value.response_tupel
+        returned_message, returned_status = exc.value.response_tuple
         assert returned_message["message"] == "Invalid value"
         assert returned_status == 400
         # optional
@@ -97,7 +97,7 @@ def test_get_non_negative_int(test_client, value):
         else:
             with pytest.raises(ClientResponseException) as exc:
                 get_optional_non_negative_int("value")
-            returned_message, returned_status = exc.value.response_tupel
+            returned_message, returned_status = exc.value.response_tuple
             assert returned_message["message"] == "Invalid value"
             assert returned_status == 400
 
@@ -112,7 +112,7 @@ def test_get_positive_int(test_client, value):
         # required
         with pytest.raises(ClientResponseException) as exc:
             get_positive_int("value")
-        returned_message, returned_status = exc.value.response_tupel
+        returned_message, returned_status = exc.value.response_tuple
         assert returned_message["message"] == "Invalid value"
         assert returned_status == 400
         # optional
@@ -121,7 +121,7 @@ def test_get_positive_int(test_client, value):
         else:
             with pytest.raises(ClientResponseException) as exc:
                 get_optional_positive_int("value")
-            returned_message, returned_status = exc.value.response_tupel
+            returned_message, returned_status = exc.value.response_tuple
             assert returned_message["message"] == "Invalid value"
             assert returned_status == 400
 
@@ -136,7 +136,7 @@ def test_get_positive_int(test_client, value):
 def test_get_valid_bam_file(bam_file, expected_status, expected_message, mock_services):
     with pytest.raises(ClientResponseException) as exc:
         get_valid_bam_file("EUFID_IS_NOT_TESTED", bam_file)
-    returned_message, returned_status = exc.value.response_tupel
+    returned_message, returned_status = exc.value.response_tuple
     assert returned_message["message"] == expected_message
     assert returned_status == expected_status
 
@@ -146,6 +146,6 @@ def test_validate_request_size(test_client):
         response = client.post("/", data="Content-Length")
         with pytest.raises(ClientResponseException) as exc:
             validate_request_size(10)
-        returned_message, returned_status = exc.value.response_tupel
+        returned_message, returned_status = exc.value.response_tuple
         assert returned_message["message"] == "File too large (max. 10 bytes)"
         assert returned_status == 413

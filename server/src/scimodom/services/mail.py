@@ -1,6 +1,6 @@
 from email.mime.text import MIMEText
 from functools import cache
-from smtplib import SMTP
+import smtplib
 
 from scimodom.config import get_config
 from scimodom.services.url import UrlService, get_url_service
@@ -40,7 +40,7 @@ class MailService:
         :param text: Content
         :type text: str
         """
-        connection = SMTP(self._smtp_server)
+        connection = smtplib.SMTP(self._smtp_server)
         m = MIMEText(text, "plain")
         m["Subject"] = subject
         m["From"] = self._from_address

@@ -83,7 +83,7 @@ def get_features(rna_type):
         validate_rna_type(rna_type)
         return {"features": annotation_service.get_features_by_rna_type(rna_type)}
     except ClientResponseException as e:
-        return e.response_tupel
+        return e.response_tuple
     except NotImplementedError:
         return {"message": f"RNA type '{rna_type}' not implemented."}, 501
 
@@ -96,7 +96,7 @@ def get_chroms(taxa_id: str):
         taxa_id_as_int = get_valid_taxa_id(taxa_id)
         return assembly_service.get_chroms(taxa_id_as_int)
     except ClientResponseException as e:
-        return e.response_tupel
+        return e.response_tuple
     except NoResultFound:
         return {"message": "No chrom data available for this taxa (1)."}, 404
     except FileNotFoundError:
@@ -111,7 +111,7 @@ def get_assemblies(taxa_id):
         taxa_id_as_int = get_valid_taxa_id(taxa_id)
         return utilities_service.get_assemblies(taxa_id_as_int)
     except ClientResponseException as e:
-        return e.response_tupel
+        return e.response_tuple
 
 
 @api.route("/logos/<motif>", methods=["GET"])
@@ -120,7 +120,7 @@ def get_logo_file(motif):
     try:
         return {"image": get_valid_logo(motif).as_posix()}
     except ClientResponseException as e:
-        return e.response_tupel
+        return e.response_tuple
 
 
 @api.route("/sunburst/<chart>", methods=["GET"])

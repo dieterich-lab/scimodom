@@ -76,7 +76,7 @@ def intersect():
             )
             return get_response_from_pydantic_object(IntersectResponse(records=records))
     except ClientResponseException as e:
-        return e.response_tupel
+        return e.response_tuple
 
 
 @dataset_api.route("/closest", methods=["GET"])
@@ -89,7 +89,7 @@ def closest():
             )
             return get_response_from_pydantic_object(ClosestResponse(records=records))
     except ClientResponseException as e:
-        return e.response_tupel
+        return e.response_tuple
 
 
 @dataset_api.route("/subtract", methods=["GET"])
@@ -102,7 +102,7 @@ def subtract():
             )
             return get_response_from_pydantic_object(SubtractResponse(records=records))
     except ClientResponseException as e:
-        return e.response_tupel
+        return e.response_tuple
 
 
 class _CompareContext:

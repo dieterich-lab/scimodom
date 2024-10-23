@@ -26,7 +26,7 @@ Each function gets a piece of unsafe data and returns an entity fetched
 from the database or a cleaned, validated version of the input data.
 
 A ClientResponseException is raised, which contains a data field
-response_tupel, meant to be returned by a function handling a flask route.
+response_tuple, meant to be returned by a function handling a flask route.
 This tuple will usually contain a dict, which will be turned by Flask
 into a JSON document to form the body of the response and a HTTP status
 code - usually a 4xx.
@@ -54,7 +54,7 @@ class ClientResponseException(Exception):
         super(ClientResponseException, self).__init__(
             f"HTTP status {http_status} {message}"
         )
-        self.response_tupel = {"message": message}, http_status
+        self.response_tuple = {"message": message}, http_status
 
 
 # Incoming parameter validation

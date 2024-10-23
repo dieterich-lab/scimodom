@@ -23,7 +23,7 @@ def list_bam_files(dataset_id: str):
     try:
         dataset = get_valid_dataset(dataset_id)
     except ClientResponseException as e:
-        return e.response_tupel
+        return e.response_tuple
 
     file_service = get_file_service()
     return file_service.get_bam_file_list(dataset)
@@ -38,7 +38,7 @@ def post_bam_file(dataset_id: str, name: str):
         _ = get_user_with_write_permission_on_dataset(dataset)
         validate_request_size(MAX_BAM_FILE_SIZE)
     except ClientResponseException as e:
-        return e.response_tupel
+        return e.response_tuple
 
     file_service = get_file_service()
     try:
@@ -57,7 +57,7 @@ def get_bam_file(dataset_id: str, name: str):
         dataset = get_valid_dataset(dataset_id)
         bam_file = get_valid_bam_file(dataset, name)
     except ClientResponseException as e:
-        return e.response_tupel
+        return e.response_tuple
 
     file_service = get_file_service()
 
@@ -87,7 +87,7 @@ def delete_bam_file(dataset_id: str, name: str):
         _ = get_user_with_write_permission_on_dataset(dataset)
         bam_file = get_valid_bam_file(dataset, name)
     except ClientResponseException as e:
-        return e.response_tupel
+        return e.response_tuple
 
     file_service = get_file_service()
     file_service.remove_bam_file(bam_file)

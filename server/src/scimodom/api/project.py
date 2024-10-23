@@ -1,5 +1,4 @@
-from flask import Blueprint, request
-from flask_cors import cross_origin
+from flask import Blueprint
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
 from scimodom.services.project import get_project_service

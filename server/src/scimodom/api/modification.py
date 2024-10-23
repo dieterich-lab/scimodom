@@ -71,7 +71,7 @@ def get_modifications_as_json(by_gene):
     try:
         data = _get_modifications_for_request(by_gene)
     except ClientResponseException as e:
-        return e.response_tupel
+        return e.response_tuple
     for r in data["records"]:
         r["strand"] = r["strand"].value
     return data
@@ -84,7 +84,7 @@ def get_modifications_as_csv(by_gene):
     try:
         data = _get_modifications_for_request(by_gene)
     except ClientResponseException as e:
-        return e.response_tupel
+        return e.response_tuple
     records_as_csv = _get_csv_from_modifications_records(data["records"])
     now = datetime.now(timezone.utc)
     file_name = now.strftime("scimodom_search_%Y-%m-%dT%H%M%S.csv")
@@ -103,7 +103,7 @@ def get_modification_sitewise():
         taxa_id = get_valid_taxa_id(request.args.get("taxaId"))
         chrom, start, end, _ = get_valid_coords(taxa_id)
     except ClientResponseException as e:
-        return e.response_tupel
+        return e.response_tuple
 
     modification_service = get_modification_service()
     response = modification_service.get_modification_site(chrom, start, end)
@@ -121,7 +121,7 @@ def get_genomic_sequence_context(context):
         taxa_id = get_valid_taxa_id(request.args.get("taxaId"))
         coords = get_valid_coords(taxa_id, context=int(context))
     except ClientResponseException as e:
-        return e.response_tupel
+        return e.response_tuple
 
     bedtools_service = get_bedtools_service()
     file_service = get_file_service()
@@ -154,7 +154,7 @@ def get_modification_targets(target_type):
             )
             return get_response_from_pydantic_object(IntersectResponse(records=records))
     except ClientResponseException as e:
-        return e.response_tupel
+        return e.response_tuple
 
 
 class _ModificationContext:
