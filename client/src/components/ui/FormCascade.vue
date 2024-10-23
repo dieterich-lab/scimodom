@@ -1,11 +1,52 @@
 <script setup lang="ts">
+
+
+
+// Should we inline this? It is only used twice, and it heavily depends on the context.
+
+
 // provides a custom wrapper for the PrimeVue Cascade component
 // to be used in a form
-import { ref, computed } from 'vue'
 
-const emit = defineEmits(['change'])
+import type {CascadeSelectChangeEvent} from "primevue/cascadeselect";
+
+defineEmits<{
+  (e: 'change', event: CascadeSelectChangeEvent): void,
+}>()
 const model = defineModel()
-const props = defineProps({
+const props = defineProps<{
+  error: string,
+  options: Array,
+  optionLabel?: string,
+  optionValue?: string,
+  optionGroupLabel: string,
+  optionGroupChildren?: Array,
+  placeholder?: string,
+    required: false,
+    default: ''
+  },
+  labelCls: {
+    type: String,
+    required: false,
+    default: 'text-primary-500 font-semibold'
+  },
+  errMsgCls: {
+    type: String,
+    required: false,
+    default: 'text-red-700'
+  },
+  errIconCls: {
+    type: String,
+    required: false,
+    default: 'pi pi-times-circle place-self-center text-red-700'
+  },
+  // overwrites component style in case of error
+  errCls: {
+    type: String,
+    required: false,
+    default: '!ring-red-700'
+  }
+}>({
   error: {
     required: true
   },

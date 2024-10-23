@@ -1,13 +1,16 @@
-import axios from 'axios'
-import { API_BASE_URL } from '/config.js?url'
-import { useAccessToken } from '@/stores/AccessToken.js'
+import axios, { type InternalAxiosRequestConfig } from 'axios'
+import { type AccessTokenStore, useAccessToken } from '@/stores/AccessToken.js'
 import { DIALOG, useDialogState } from '@/stores/DialogState.js'
 
 // TODO: refactor HTTP as HTTPPublic either export service, or
 // rename exported functions
 
+function getApiBaseUrl(): string {
+  return import.meta.env?.VITE_API_BASE_URL ? import.meta.env.VITE_API_BASE_URL : '/api/v0/'
+}
+
 const HTTPSecure = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: getApiBaseUrl(),
   withCredentials: false
   // default xsrfCookieName: 'XSRF-TOKEN'
 })
@@ -33,7 +36,7 @@ HTTPSecure.interceptors.response.use(
 )
 
 const HTTP = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: getApiBaseUrl(),
   withCredentials: false,
   headers: {
     Accept: 'application/json',
@@ -41,9 +44,9 @@ const HTTP = axios.create({
   }
 })
 
-let cachedAccessToken = null
+let cachedAccessToken: string | null = null
 
-function prepareAPI(isAuthRequired) {
+function prepareAPI(isAuthRequired: boolean) {
   const accessToken = useAccessToken()
   const currentToken = accessToken.token
   if (currentToken !== cachedAccessToken) {
@@ -61,14 +64,18 @@ function prepareAPI(isAuthRequired) {
   accessToken.considerToRefresh()
 }
 
-function handleHTTPSecureRequest(config, accessToken) {
+function handleHTTPSecureRequest(
+  config: InternalAxiosRequestConfig,
+  accessToken: AccessTokenStore
+): InternalAxiosRequestConfig {
   const token = accessToken.token
   config.headers.Authorization = token ? `Bearer ${token}` : ''
   return config
 }
 
-function getApiUrl(endpoint) {
-  return `${API_BASE_URL}${endpoint}`
+function getApiUrl(endpoint: string): string {
+  const base = getApiBaseUrl()
+  return `${base}${endpoint}`
 }
 
-export { HTTP, HTTPSecure, getApiUrl, prepareAPI }
+export { HTTP, HTTPSecure, getApiBaseUrl, getApiUrl, prepareAPI }

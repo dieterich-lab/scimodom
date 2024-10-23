@@ -1,20 +1,19 @@
 <script setup lang="ts">
-import { ref, inject, onMounted } from 'vue'
-import { splitStr } from '@/utils/index.js'
-import { loadProjects } from '@/services/project'
+import { onMounted, ref } from 'vue'
+import { type Project, myProjectsCache } from '@/services/project'
 import LocalTime from '@/components/ui/LocalTime.vue'
+import ReferenceLinks from '@/components/ui/ReferenceLinks.vue'
 
-const dialogRef = inject('dialogRef')
-const records = ref()
+defineEmits<{
+  (e: 'change', value: Project): void
+}>()
+const records = ref<Project[]>([])
 
 onMounted(() => {
-  // only list my projects
-  loadProjects(records, null, true)
+  myProjectsCache.getData().then((data) => {
+    records.value = [...data]
+  })
 })
-
-function selectProject(data) {
-  dialogRef.value.close(data)
-}
 </script>
 
 <template>
@@ -26,37 +25,28 @@ function selectProject(data) {
           outlined
           rounded
           severity="secondary"
-          @click="selectProject(slotProps.data)"
+          @click="$emit('change', slotProps.data)"
         ></Button>
       </template>
     </Column>
     <Column field="project_id" header="SMID"></Column>
     <Column field="project_title" header="Title"></Column>
     <Column field="project_summary" header="Summary"></Column>
-    <Column header="Added" #body="{ data }">
-      <LocalTime :epoch="data.date_added" />
+    <Column header="Added">
+      <template #body="{ data }">
+        <LocalTime :epoch="data.date_added" />
+      </template>
     </Column>
     <Column field="contact_name" header="Contact"></Column>
     <Column field="contact_institution" header="Institution"></Column>
     <Column field="doi" header="DOI">
       <template #body="{ data }">
-        <ul class="list-none" v-for="doi in splitStr(data.doi)">
-          <a class="text-secondary-500 pr-12" target="_blank" :href="`https://doi.org/${doi}`">{{
-            doi
-          }}</a>
-        </ul>
+        <ReferenceLinks type="DOI" :data="data.doi" />
       </template>
     </Column>
     <Column field="pmid" header="PMID">
       <template #body="{ data }">
-        <ul class="list-none" v-for="pmid in splitStr(data.pmid)">
-          <a
-            class="text-secondary-500"
-            target="_blank"
-            :href="`http://www.ncbi.nlm.nih.gov/pubmed/${pmid}`"
-            >{{ pmid }}</a
-          >
-        </ul>
+        <ReferenceLinks type="PMID" :data="data.pmid" />
       </template>
     </Column>
   </DataTable>

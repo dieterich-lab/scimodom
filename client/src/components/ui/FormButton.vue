@@ -1,25 +1,19 @@
 <script setup lang="ts">
-import AbstractStyle from '@/ui_styles/AbstractStyle'
-import DefaultStyle from '@/ui_styles/DefaultStyle'
+import { type UiStyle, DEFAULT_STYLE } from '@/utils/UiStyle'
 
-const props = defineProps({
-  type: {
-    required: false,
-    default: 'button'
-  },
-  onClick: {
-    type: Function,
-    required: false,
-    default: () => null
-  },
-  uiStyle: {
-    type: AbstractStyle,
-    required: false,
-    default: DefaultStyle
+const props = withDefaults(
+  defineProps<{
+    type: 'button' | 'submit'
+    onClick?: () => void
+    uiStyle: UiStyle
+  }>(),
+  {
+    type: 'button',
+    uiStyle: () => DEFAULT_STYLE
   }
-})
-const classes = props.uiStyle.buttonClasses()
-const severity = props.uiStyle.severity()
+)
+const classes = props.uiStyle.buttonClasses
+const severity = props.uiStyle.severity
 </script>
 <template>
   <Button @click="$emit('onClick')" :type="type" :class="classes" :severity="severity">

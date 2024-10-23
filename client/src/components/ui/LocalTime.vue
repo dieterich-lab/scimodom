@@ -1,15 +1,13 @@
 <script setup lang="ts">
-const props = defineProps({
-  epoch: {
-    type: Number,
-    required: false
-  },
-  showTime: {
-    type: Boolean,
-    required: false,
-    default: true
+const props = withDefaults(
+  defineProps<{
+    epoch?: number
+    showTime: boolean
+  }>(),
+  {
+    showTime: true
   }
-})
+)
 
 function pad(x) {
   if (x < 10) {

@@ -3,7 +3,7 @@ import { DIALOG, useDialogState } from '@/stores/DialogState.js'
 import FromBox from '@/components/ui/FormBox.vue'
 import FormButtonGroup from '@/components/ui/FormButtonGroup.vue'
 import FormButton from '@/components/ui/FormButton.vue'
-import PrimaryDialogStyle from '@/ui_styles/PrimaryDialogStyle.js'
+import { PRIMARY_DIALOG_STYLE } from '@/utils/UiStyle'
 
 const dialogState = useDialogState()
 
@@ -18,10 +18,10 @@ function cancel() {
 
 <template>
   <form @submit="ok">
-    <FromBox :ui-style="PrimaryDialogStyle">
+    <FromBox :ui-style="PRIMARY_DIALOG_STYLE">
       <FormButtonGroup>
-        <FormButton type="submit" :ui-style="PrimaryDialogStyle">Confirm</FormButton>
-        <FormButton @on-click="cancel()" :ui-style="PrimaryDialogStyle">Cancel</FormButton>
+        <FormButton type="submit" :ui-style="PRIMARY_DIALOG_STYLE">Confirm</FormButton>
+        <FormButton @on-click="cancel()" :ui-style="PRIMARY_DIALOG_STYLE">Cancel</FormButton>
       </FormButtonGroup>
     </FromBox>
   </form>

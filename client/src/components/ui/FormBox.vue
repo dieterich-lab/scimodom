@@ -1,20 +1,20 @@
 <script setup lang="ts">
 import { useDialogState } from '@/stores/DialogState.js'
-import AbstractStyle from '@/ui_styles/AbstractStyle.js'
-import DefaultStyle from '@/ui_styles/DefaultStyle.js'
+import { type UiStyle, DEFAULT_STYLE } from '@/utils/UiStyle'
 import FormErrorMessage from '@/components/ui/FormErrorMessage.vue'
 
-const props = defineProps({
-  uiStyle: {
-    type: AbstractStyle,
-    required: false,
-    default: DefaultStyle
+const props = withDefaults(
+  defineProps<{
+    uiStyle: UiStyle
+  }>(),
+  {
+    uiStyle: () => DEFAULT_STYLE
   }
-})
+)
 
 const dialogState = useDialogState()
 
-const style = props.uiStyle.backgroundStyle()
+const style = props.uiStyle.backgroundStyle
 </script>
 <template>
   <div class="flex flex-col px-8 py-8 gap-4 min-w-[30em]" :style="style">

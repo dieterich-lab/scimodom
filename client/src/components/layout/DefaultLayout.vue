@@ -2,12 +2,14 @@
 import HeaderLayout from './HeaderLayout.vue'
 import FooterLayout from './FooterLayout.vue'
 import DialogLayout from './DialogLayout.vue'
-defineProps({
-  footer: {
-    type: Boolean,
-    default: true
+withDefaults(
+  defineProps<{
+    footer: boolean
+  }>(),
+  {
+    footer: true
   }
-})
+)
 </script>
 
 <template>

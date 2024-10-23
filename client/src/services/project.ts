@@ -1,6 +1,5 @@
 import { HTTP, HTTPSecure } from '@/services/API'
 import { ByKeyCache, Cache } from '@/utils/cache'
-import type { Ref } from 'vue'
 
 interface Project {
   pmid: string
@@ -42,4 +41,10 @@ const allProjectsByIdCache = new ByKeyCache(allProjectsCache, (p) => p.project_i
 const myProjectsCache = new MyProjectsCache()
 const myProjectsByIdCache = new ByKeyCache(myProjectsCache, (p) => p.project_id)
 
-export { allProjectsCache, allProjectsByIdCache, myProjectsCache, myProjectsByIdCache }
+export {
+  type Project,
+  allProjectsCache,
+  allProjectsByIdCache,
+  myProjectsCache,
+  myProjectsByIdCache
+}

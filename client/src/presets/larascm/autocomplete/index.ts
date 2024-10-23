@@ -1,4 +1,6 @@
-export default {
+import { type AutoCompletePassThroughOptions } from 'primevue/autocomplete'
+
+const autoCompletePresets: AutoCompletePassThroughOptions = {
   root: ({ props }) => ({
     class: [
       'relative',
@@ -261,3 +263,5 @@ export default {
     leaveToClass: 'opacity-0'
   }
 }
+
+export default autoCompletePresets

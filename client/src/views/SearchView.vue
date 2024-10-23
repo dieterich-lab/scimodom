@@ -31,6 +31,7 @@ const primarySearchParameters = ref<PrimarySearchParameters | null>(null)
 const searchParameters = ref<SearchParameters | DummySearchParameters>(DUMMY_SEARCH_PARAMETERS)
 const confirmedSearchParameters = ref<SearchParameters | null>(null)
 const isConfirmed = ref(false)
+const revision = ref<number>(0)
 
 const queryButtonDisabled = computed(
   () =>
@@ -48,6 +49,7 @@ function updatePrimaryParameters(params: PrimarySearchParameters | null) {
   if (params === null) {
     resetSearchParameters()
   } else {
+    revision.value += 1
     searchParameters.value = {
       ...params,
       searchBy: searchByValue.value,
@@ -126,9 +128,8 @@ function confirmSearch() {
         />
       </div>
     </SectionLayout>
-    <!-- SECTION -->
     <SectionLayout>
-      <SearchResults v-model="confirmedSearchParameters" />
+      <SearchResults :search-parameters="confirmedSearchParameters" :key="revision" />
     </SectionLayout>
   </DefaultLayout>
 </template>

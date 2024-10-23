@@ -1,10 +1,9 @@
 <script setup lang="ts">
-const props = defineProps({
-  dataset: {
-    type: Object,
-    required: true
-  }
-})
+import type { Dataset } from '@/services/dataset'
+
+const props = defineProps<{
+  dataset: Dataset
+}>()
 const info = `(${props.dataset.rna},  ${props.dataset.modomics_sname} ${props.dataset.cto}, ${props.dataset.tech})`
 </script>
 <template>

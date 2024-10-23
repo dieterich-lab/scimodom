@@ -1,11 +1,27 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { onMounted } from 'vue'
 import { useForm, useFieldArray } from 'vee-validate'
 import { object, array, string, number, date } from 'yup'
 import { HTTPSecure } from '@/services/API'
-
 import FormTextInput from '@/components/ui/FormTextInput.vue'
 import FormTextArea from '@/components/ui/FormTextArea.vue'
+import SectionLayout from '@/components/layout/SectionLayout.vue'
+
+interface ExternalSource {
+  doi?: string
+  pmid?: number
+}
+
+interface FormData {
+  forename: string
+  surname: string
+  contact_institution: string
+  contact_email: string
+  title: string
+  summary: string
+  date_published: string
+  external_sources: ExternalSource[]
+}
 
 const props = defineProps(['nextCallback'])
 const model = defineModel()
@@ -43,18 +59,18 @@ const getInitialValues = () => {
   }
 }
 
-const { defineField, handleSubmit, errors } = useForm({
+const { defineField, handleSubmit, errors } = useForm<FormData>({
   validationSchema: validationSchema,
   initialValues: getInitialValues()
 })
-const [forename, forenameProps] = defineField('forename')
-const [surname, surnameProps] = defineField('surname')
-const [contact_institution, institutionProps] = defineField('contact_institution')
-const [contact_email, emailProps] = defineField('contact_email')
-const [title, titleProps] = defineField('title')
-const [summary, summaryProps] = defineField('summary')
-const [date_published, publishedProps] = defineField('date_published')
-const { remove, push, fields } = useFieldArray('external_sources')
+const [forename] = defineField('forename')
+const [surname] = defineField('surname')
+const [contact_institution] = defineField('contact_institution')
+const [contact_email] = defineField('contact_email')
+const [title] = defineField('title')
+const [summary] = defineField('summary')
+const [date_published] = defineField('date_published')
+const { remove, push, fields } = useFieldArray<ExternalSource>('external_sources')
 
 const onSubmit = handleSubmit((values) => {
   model.value = values
@@ -125,17 +141,21 @@ onMounted(() => {
           Click <span class="inline font-semibold">"Add source"</span> to add DOI and/or PubMed-ID.
           Add as many as required. DOI or PubMed-ID can be empty.
         </h3>
-        <Button @click="push({ doi: '', pmid: '' })" label="Add source" class="mt-2 mb-4" />
+        <Button
+          @click="push({ doi: undefined, pmid: undefined })"
+          label="Add source"
+          class="mt-2 mb-4"
+        />
         <div class="grid grid-cols-3 gap-4 mt-2" v-for="(field, idx) in fields" :key="field.key">
           <FormTextInput
             v-model="field.value.doi"
-            :error="errors[`external_sources[${idx}].doi`]"
+            :error="errors[`external_sources.${idx}.doi`]"
             placeholder="10.XXXX/..."
             >DOI</FormTextInput
           >
           <FormTextInput
             v-model="field.value.pmid"
-            :error="errors[`external_sources[${idx}].pmid`]"
+            :error="errors[`external_sources.${idx}.pmid`]"
             placeholder="PubMed-ID"
             >PMID</FormTextInput
           >

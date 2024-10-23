@@ -35,7 +35,7 @@ const show = true
       }
     }"
   >
-    <template #container="{ closeCallback }">
+    <template>
       <component :is="DIALOGS_BY_STATE.get(dialogState.state)"></component>
     </template>
   </Dialog>

@@ -1,7 +1,7 @@
-import { type Strand } from '@/utils/common'
 import { handleRequestWithErrorReporting } from '@/utils/request'
 import { HTTP } from '@/services/API'
-import type { DialogStateStore } from '@/stores/DialogState'
+import { type DialogStateStore } from '@/stores/DialogState'
+import { type EufRecord } from '@/utils/bed6'
 
 interface ComparisonParams {
   reference: string[]
@@ -12,28 +12,16 @@ interface ComparisonParams {
   euf: boolean
 }
 
-interface ComparisonRecord {
-  chrom: string
-  start: number
-  end: number
-  name: string
-  score: number
-  strand: Strand
-  coverage: number
-  frequency: number
-  eufid: string
-}
-
-interface SubtractRecord extends ComparisonRecord {}
+interface SubtractRecord extends EufRecord {}
 
 interface IntersectRecord {
-  a: ComparisonRecord
-  b: ComparisonRecord
+  a: EufRecord
+  b: EufRecord
 }
 
 interface ClosestRecord {
-  a: ComparisonRecord
-  b: ComparisonRecord
+  a: EufRecord
+  b: EufRecord
   distance: number
 }
 
@@ -76,7 +64,6 @@ async function closest(
 }
 
 export {
-  type ComparisonRecord,
   type ComparisonParams,
   type SubtractRecord,
   type IntersectRecord,

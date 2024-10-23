@@ -8,7 +8,12 @@ import FormTextInput from '@/components/ui/FormTextInput.vue'
 import FormButtonGroup from '@/components/ui/FormButtonGroup.vue'
 import FormButton from '@/components/ui/FormButton.vue'
 import FormText from '@/components/ui/FormText.vue'
-import PrimaryDialogStyle from '@/ui_styles/PrimaryDialogStyle.js'
+import { PRIMARY_DIALOG_STYLE } from '@/utils/UiStyle'
+
+interface FormData {
+  password: string
+  passwordConfirm: string
+}
 
 const dialogState = useDialogState()
 
@@ -20,14 +25,14 @@ const validationSchema = yup.object({
     .required('required field')
     .label('Password confirmation')
 })
-const { defineField, handleSubmit, resetForm, errors } = useForm({
+const { defineField, handleSubmit, errors } = useForm<FormData>({
   validationSchema: validationSchema
 })
 
 const [password] = defineField('password')
 const [passwordConfirm] = defineField('passwordConfirm')
 
-function changePassword(values) {
+function changePassword(values: FormData) {
   let request
   if (dialogState.token) {
     request = HTTP.post('/user/do_password_reset', {
@@ -59,20 +64,20 @@ function cancel() {
   dialogState.state = DIALOG.NONE
 }
 
-const onSubmit = handleSubmit((values) => {
+const onSubmit = handleSubmit((values: FormData) => {
   changePassword(values)
 })
 </script>
 
 <template>
   <form @submit="onSubmit">
-    <FormBox :ui-style="PrimaryDialogStyle">
+    <FormBox :ui-style="PRIMARY_DIALOG_STYLE">
       <FormText>Change password for {{ dialogState.email }}:</FormText>
       <FormTextInput
         v-model="password"
         :error="errors.password"
         type="password"
-        :ui-style="PrimaryDialogStyle"
+        :ui-style="PRIMARY_DIALOG_STYLE"
       >
         Password
       </FormTextInput>
@@ -80,13 +85,13 @@ const onSubmit = handleSubmit((values) => {
         v-model="passwordConfirm"
         :error="errors.passwordConfirm"
         type="password"
-        :ui-style="PrimaryDialogStyle"
+        :ui-style="PRIMARY_DIALOG_STYLE"
       >
         Password Confirmation
       </FormTextInput>
       <FormButtonGroup>
-        <FormButton type="submit" :ui-style="PrimaryDialogStyle">Change</FormButton>
-        <FormButton @on-click="cancel()" :ui-style="PrimaryDialogStyle">Cancel</FormButton>
+        <FormButton type="submit" :ui-style="PRIMARY_DIALOG_STYLE">Change</FormButton>
+        <FormButton @on-click="cancel()" :ui-style="PRIMARY_DIALOG_STYLE">Cancel</FormButton>
       </FormButtonGroup>
     </FormBox>
   </form>

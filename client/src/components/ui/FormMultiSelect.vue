@@ -1,9 +1,9 @@
 <script setup lang="ts">
+// Should we inline this? It is only used twice, and it heavily depends on the context.
+
 // provides a custom wrapper for the PrimeVue MultiSelect component
 // to be used in a form
-import { ref, computed } from 'vue'
-
-const emit = defineEmits(['change'])
+defineEmits(['change'])
 const model = defineModel()
 const props = defineProps({
   error: {

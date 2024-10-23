@@ -97,4 +97,6 @@ const useAccessToken = defineStore('access_token', {
   }
 })
 
-export { useAccessToken }
+type AccessTokenStore = ReturnType<typeof useAccessToken>
+
+export { useAccessToken, type AccessTokenStore }

@@ -10,7 +10,12 @@ import FormButtonGroup from '@/components/ui/FormButtonGroup.vue'
 import FormButton from '@/components/ui/FormButton.vue'
 import FormText from '@/components/ui/FormText.vue'
 import FormLink from '@/components/ui/FormLink.vue'
-import PrimaryDialogStyle from '@/ui_styles/PrimaryDialogStyle.js'
+import { PRIMARY_DIALOG_STYLE } from '@/utils/UiStyle'
+
+interface FormData {
+  email: string
+  password: string
+}
 
 const accessToken = useAccessToken()
 const dialogState = useDialogState()
@@ -24,7 +29,7 @@ const validationSchema = yup.object({
     .label('Email address'),
   password: yup.string().required('Password is required!').label('Password')
 })
-const { defineField, handleSubmit, errors } = useForm({
+const { defineField, handleSubmit, errors } = useForm<FormData>({
   validationSchema: validationSchema
 })
 
@@ -35,11 +40,11 @@ if (dialogState.email != null) {
   email.value = dialogState.email
 }
 
-function login(values) {
+function login(values: FormData) {
   HTTP.post('/user/login', { email: values.email, password: values.password })
     .then((response) => {
       if (response.status == 200) {
-        accessToken.set(email, response.data.access_token)
+        accessToken.set(values.email, response.data.access_token)
         dialogState.state = DIALOG.NONE
         prepareAPI(false)
       }
@@ -69,21 +74,21 @@ const onSubmit = handleSubmit((values) => {
 
 <template>
   <form @submit="onSubmit">
-    <FormBox :ui-style="PrimaryDialogStyle">
-      <FormTextInput v-model="email" :error="errors.email" :ui-style="PrimaryDialogStyle">
+    <FormBox :ui-style="PRIMARY_DIALOG_STYLE">
+      <FormTextInput v-model="email" :error="errors.email" :ui-style="PRIMARY_DIALOG_STYLE">
         Email
       </FormTextInput>
       <FormTextInput
         v-model="password"
         :error="errors.password"
         type="password"
-        :ui-style="PrimaryDialogStyle"
+        :ui-style="PRIMARY_DIALOG_STYLE"
       >
         Password
       </FormTextInput>
       <FormButtonGroup>
-        <FormButton type="submit" :ui-style="PrimaryDialogStyle">Login</FormButton>
-        <FormButton @on-click="cancel()" :ui-style="PrimaryDialogStyle">Cancel</FormButton>
+        <FormButton type="submit" :ui-style="PRIMARY_DIALOG_STYLE">Login</FormButton>
+        <FormButton @on-click="cancel()" :ui-style="PRIMARY_DIALOG_STYLE">Cancel</FormButton>
       </FormButtonGroup>
       <div class="flex items-center gap-4">
         <FormText>Forgot your password?</FormText>

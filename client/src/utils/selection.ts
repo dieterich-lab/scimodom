@@ -35,29 +35,7 @@ export const updTechnologyFromModAndOrg = (selection, slctMod, slctOrg) => {
       (item) => item.modification_id == slctMod.key && item.organism_id == slctOrg.key
     )
   }
-  let tree = toTree(opts, ['meth', 'tech'], 'technology_id')
+  const tree = toTree(opts, ['meth', 'tech'], 'technology_id')
   nestedSort(tree, ['children'])
   return tree
-}
-
-export const updSelectionFromAll = (all_selections, slctMod, slctOrg, slctTech) => {
-  let idsTech = toIds(slctTech, [])
-  let opts = all_selections.filter(
-    (item) =>
-      item.modification_id == slctMod.key &&
-      item.organism_id == slctOrg.key &&
-      idsTech.includes(item.technology_id)
-  )
-  let selection_id = opts.map((item) => item.selection_id)
-  let taxaId = [...new Set(opts.map((item) => item.taxa_id))]
-  let taxaName = [...new Set(opts.map((item) => item.taxa_name))]
-  // there should be only one, but we don't check...
-  let rna = [...new Set(opts.map((item) => item.rna))]
-  return {
-    selection: selection_id,
-    technology: idsTech,
-    taxaId: taxaId[0],
-    taxaName: taxaName[0],
-    rna: rna[0]
-  }
 }

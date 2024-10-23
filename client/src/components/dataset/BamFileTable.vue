@@ -63,23 +63,29 @@ refreshData()
 <template>
   <DataTable :value="bamFiles" tableStyle="min-width: 50rem">
     <Column field="original_file_name" header="Name" />
-    <Column header="Last changed" #body="{ data }">
-      <LocalTime :epoch="data.mtime_epoch" />
+    <Column header="Last changed">
+      <template #body="{ data }">
+        <LocalTime :epoch="data.mtime_epoch" />
+      </template>
     </Column>
     <Column field="size_in_bytes" header="Bytes" />
-    <Column #body="{ data }" key="download">
-      <a :href="getDownLoadURL(data)">
-        <Button text severity="secondary" label="Download" />
-      </a>
+    <Column key="download">
+      <template #body="{ data }">
+        <a :href="getDownLoadURL(data)">
+          <Button text severity="secondary" label="Download" />
+        </a>
+      </template>
     </Column>
-    <Column v-if="mayChange" #body="{ data }" key="actions">
-      <Button
-        icon="pi pi-trash"
-        outlined
-        rounded
-        severity="danger"
-        @click="askToDelete(data.original_file_name)"
-      />
+    <Column v-if="mayChange" key="actions">
+      <template #body="{ data }">
+        <Button
+          icon="pi pi-trash"
+          outlined
+          rounded
+          severity="danger"
+          @click="askToDelete(data.original_file_name)"
+        />
+      </template>
     </Column>
   </DataTable>
 </template>

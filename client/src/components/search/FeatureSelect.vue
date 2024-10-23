@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { useDialogState } from '@/stores/DialogState'
 import { ref, watch } from 'vue'
-import { handleRequestWithErrorReporting } from '@/utils/request'
-import { HTTP } from '@/services/API'
 import { getFeaturesByRnaType } from '@/services/feature'
 
 const props = withDefaults(

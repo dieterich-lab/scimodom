@@ -1,10 +1,10 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory, type RouteLocationNormalized } from 'vue-router'
 import HomeView from '@/views/HomeView.vue'
 import SearchView from '@/views/SearchView.vue'
 import BrowseView from '@/views/BrowseView.vue'
 import CompareView from '@/views/CompareView.vue'
 import DownloadView from '@/views/DownloadView.vue'
-import DocumentationView from '@/views/TestDoc.vue'
+import DocumentationView from '@/views/DocumentationView.vue'
 import DocAbout from '@/components/documentation/DocAbout.vue'
 import DocSearch from '@/components/documentation/DocSearch.vue'
 import DocBrowse from '@/components/documentation/DocBrowse.vue'
@@ -24,6 +24,9 @@ import UploadView from '@/views/UploadView.vue'
 import { prepareAPI } from '@/services/API'
 
 const router = createRouter({
+  end: undefined,
+  sensitive: undefined,
+  strict: undefined,
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
@@ -51,6 +54,7 @@ const router = createRouter({
       path: '/download',
       name: 'download',
       component: DownloadView,
+      children: [],
       redirect: { name: 'PageNotFound' }
     },
     {
@@ -133,14 +137,14 @@ const router = createRouter({
   ],
   linkActiveClass: 'text-primary-500',
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  scrollBehavior(to, from, savedPosition) {
+  scrollBehavior() {
     // always scroll to top
     return { top: 0 }
   }
 })
 
-router.beforeEach((to, from) => {
-  prepareAPI(to.meta.requiresAuth)
+router.beforeEach((to: RouteLocationNormalized) => {
+  prepareAPI(to.meta.requiresAuth as boolean)
 })
 
 export default router

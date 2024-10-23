@@ -1,4 +1,6 @@
 <script setup lang="ts">
+// Should we inline this? It is only used twice, and it heavily depends on the context.
+
 // provides a custom wrapper for the PrimeVue Dropdown component
 // to be used in a form
 import { ref, computed } from 'vue'

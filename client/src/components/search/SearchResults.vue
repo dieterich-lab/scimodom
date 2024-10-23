@@ -2,24 +2,27 @@
 import { computed, watch, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import ModificationInfo from '@/components/modification/ModificationInfo.vue'
-import { getApiUrl } from '@/services/API'
 import ChromRegionEnsemblLink from '@/components/search/ChromRegionEnsemblLink.vue'
 import GeneEnsemblLink from '@/components/search/GeneEnsemblLink.vue'
 import GenesilicoModificationLink from '@/components/search/GenesilicoModificationLink.vue'
 import type { SearchParameters } from '@/utils/search'
 import type { DataTablePageEvent, DataTableSortEvent, DataTableSortMeta } from 'primevue/datatable'
-import { getModifications, type Modification } from '@/services/modification'
+import {
+  getModificationExportLink,
+  getModifications,
+  type Modification
+} from '@/services/modification'
 import { useDialogState } from '@/stores/DialogState'
 
 const props = defineProps<{
   searchParameters: SearchParameters | null
 }>()
 
-const diaglogState = useDialogState()
+const dialogState = useDialogState()
 
 const dt = ref()
 const showDetails = ref(false)
-const selectedSite = ref({})
+const selectedSite = ref<Modification>()
 const totalRecords = ref(0)
 const loading = ref(false)
 const firstRecord = ref(0)
@@ -29,9 +32,8 @@ const records = ref()
 
 const router = useRouter()
 const disableExportLink = computed(() => !props.searchParameters || loading.value)
-const exportLink = computed(() => getExportLink())
-const endPoint = computed(() =>
-  props.searchParameters?.searchBy === 'Modification' ? '' : '/gene'
+const exportLink = computed(() =>
+  props.searchParameters ? getModificationExportLink(props.searchParameters, sortMetas.value) : ''
 )
 
 watch(
@@ -45,14 +47,14 @@ function loadData() {
     loading.value = true
     getModifications(
       props.searchParameters,
-      diaglogState,
+      dialogState,
       firstRecord.value,
       maxRecords.value,
       sortMetas.value
     )
       .then((data) => {
         records.value = data.records
-        totalRecords.value = data.totalReccords
+        totalRecords.value = data.totalRecords
       })
       .finally(() => {
         loading.value = false
@@ -78,24 +80,6 @@ function navigateTo(eufid: string) {
 function onOverlay(record: Modification) {
   selectedSite.value = { ...record }
   showDetails.value = true
-}
-
-function getExportLink() {
-  if (disableExportLink.value) {
-    return ''
-  }
-  const rawParams = getQueryParams()
-  const url = new URL(getApiUrl(`modification/csv${endPoint.value}`))
-  for (const [k, v] of Object.entries(rawParams)) {
-    if (v != null) {
-      if (Array.isArray(v)) {
-        v.forEach((x) => url.searchParams.append(k, x))
-      } else {
-        url.searchParams.append(k, v)
-      }
-    }
-  }
-  return url.toString()
 }
 </script>
 
@@ -154,7 +138,7 @@ function getExportLink() {
     <Column field="start" header="Start" :sortable="true">
       <template #body="{ data }">
         <ChromRegionEnsemblLink
-          :taxa-name="searchParameters?.organism.taxaName"
+          :taxa-name="searchParameters?.organism.taxa_name || ''"
           :chrom="data.chrom"
           :start="data.start"
           :end="data.end"
@@ -203,10 +187,10 @@ function getExportLink() {
     </Column>
     <Column field="tech" header="Technology"></Column>
     <Column field="feature" header="Feature"></Column>
-    <Column field="gene_anme" header="Gene">
+    <Column field="gene_name" header="Gene">
       <template #body="{ data }">
         <GeneEnsemblLink
-          :taxa-name="searchParameters.organism.taxa_name"
+          :taxa-name="searchParameters?.organism.taxa_name || ''"
           :gene-name="data.gene_name"
           :gene-id="data.gene_id"
         />
@@ -228,5 +212,5 @@ function getExportLink() {
       </template>
     </Column>
   </DataTable>
-  <ModificationInfo v-model:visible="showDetails" :site="selectedSite" />
+  <ModificationInfo :modification="selectedSite" :key="selectedSite?.id" />
 </template>

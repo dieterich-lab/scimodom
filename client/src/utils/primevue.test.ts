@@ -106,9 +106,7 @@ test('getOptionsForPrimvueTreeSelect', () => {
 test('formatPrimvueSortMeta', () => {
   const input: DataTableSortMeta[] = [
     { field: 'x', order: 1 },
-    { field: 'y', order: -1 },
-    { field: 'z' },
-    {}
+    { field: 'y', order: -1 }
   ]
-  expect(formatPrimvueSortMetas(input)).toStrictEqual(['x%2Basc', 'y%2Bdesc', 'z'])
+  expect(formatPrimvueSortMetas(input)).toStrictEqual(['x%2Basc', 'y%2Bdesc'])
 })

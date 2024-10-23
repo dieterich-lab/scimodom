@@ -54,7 +54,7 @@ class ScheduledUpload {
       }
       this.errorMessage = getErrorMessageFromResponse(response)
     } catch (err) {
-      this.errorMessage = getErrorMessageFromException(err)
+      this.errorMessage = getErrorMessageFromException(err as object)
     }
     this.state = UPLOAD_STATE.FAILED
   }

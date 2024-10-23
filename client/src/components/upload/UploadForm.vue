@@ -1,19 +1,20 @@
 <script setup lang="ts">
-import { ref, onMounted, defineAsyncComponent } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useDialog } from 'primevue/usedialog'
 import { useForm } from 'vee-validate'
 import { object, array, string, number } from 'yup'
 import { HTTP, HTTPSecure } from '@/services/API'
 import { handleRequestWithErrorReporting } from '@/utils/request'
 import { useDialogState } from '@/stores/DialogState'
-import Instructions from '@/components/ui/Instructions.vue'
+import InstructionsText from '@/components/ui/InstructionsText.vue'
 import { updOrganismFromMod, updTechnologyFromModAndOrg } from '@/utils/selection.js'
 
+import SelectProject from '@/components/project/SelectProject.vue'
 import FormDropdown from '@/components/ui/FormDropdown.vue'
 import FormMultiSelect from '@/components/ui/FormMultiSelect.vue'
 import FormCascade from '@/components/ui/FormCascade.vue'
 import FormTextInput from '@/components/ui/FormTextInput.vue'
+import type { Project } from '@/services/project'
 
 const MAX_UPLOAD_SIZE = 50 * 1024 * 1024
 const dialogState = useDialogState()
@@ -28,36 +29,6 @@ const assembly = ref([])
 const message = ref()
 const filename = ref()
 const loading = ref(false)
-
-const ProjectList = defineAsyncComponent(() => import('@/components/project/ProjectList.vue'))
-const dialog = useDialog()
-const showProjects = () => {
-  const dialogRef = dialog.open(ProjectList, {
-    props: {
-      header: 'Available projects',
-      breakpoints: {
-        '960px': '75vw',
-        '640px': '90vw'
-      },
-      pt: {
-        root: { class: 'w-fit' },
-        closeButton: { class: 'focus:ring-secondary-400 dark:focus:ring-secondary-300' }
-      },
-      ptOptions: { mergeProps: true },
-      modal: true
-    },
-    onClose: (options) => {
-      const data = options.data
-      if (data) {
-        const buttonType = data.buttonType
-        const summary_and_detail = buttonType
-          ? { summary: 'No Product Selected', detail: `Pressed '${buttonType}' button` }
-          : { summary: 'Product Selected', detail: data.name }
-        smid.value = data.project_id
-      }
-    }
-  })
-}
 
 const validationSchema = object({
   smid: string()
@@ -97,14 +68,14 @@ const { defineField, handleSubmit, errors } = useForm({
   validationSchema: validationSchema
 })
 
-const [smid, smidProps] = defineField('smid')
-const [file_id, fileProps] = defineField('file_id')
-const [rna_type, rnaProps] = defineField('rna_type')
-const [modification_id, modificationProps] = defineField('modification_id')
-const [organism_id, organismProps] = defineField('organism_id')
-const [assembly_id, assemblyProps] = defineField('assembly_id')
-const [technology_id, technologyProps] = defineField('technology_id')
-const [title, titleProps] = defineField('title')
+const [smid] = defineField('smid')
+const [file_id] = defineField('file_id')
+const [rna_type] = defineField('rna_type')
+const [modification_id] = defineField('modification_id')
+const [organism_id] = defineField('organism_id')
+const [assembly_id] = defineField('assembly_id')
+const [technology_id] = defineField('technology_id')
+const [title] = defineField('title')
 
 const onSubmit = handleSubmit((values) => {
   message.value = undefined
@@ -122,6 +93,10 @@ const onSubmit = handleSubmit((values) => {
       loading.value = false
     })
 })
+
+function selectProject(project: Project) {
+  smid.value = project.project_id
+}
 
 function uploader(event) {
   const file = event.files[0]
@@ -215,7 +190,7 @@ onMounted(() => {
 <template>
   <div>
     <form @submit.prevent="onSubmit">
-      <Instructions>
+      <InstructionsText>
         Fill the upload form for each dataset (bedRMod file) that belongs to this project. For more
         information on the bedRMod format, consult the
         <RouterLink
@@ -227,19 +202,10 @@ onMounted(() => {
         Click <span class="inline font-semibold">"Upload"</span> to upload. You cannot go back after
         this step. Click <span class="inline font-semibold">"Cancel"</span> to drop the request. In
         the latter case, all information that you entered will be lost.
-      </Instructions>
+      </InstructionsText>
       <div class="grid grid-cols-2 gap-y-2 gap-x-8">
         <div class="flex flex-row">
-          <FormTextInput v-model="smid" :error="errors.smid" :disabled="true" placeholder="XXXXXXXX"
-            >Sci-ModoM ID (SMID)
-          </FormTextInput>
-          <Button
-            class="ml-4 self-center"
-            label="Select a project"
-            icon="pi pi-search-plus"
-            @click="showProjects"
-          />
-          <DynamicDialog />
+          <SelectProject @change="selectProject" />
         </div>
         <div />
         <div class="flex flex-row">

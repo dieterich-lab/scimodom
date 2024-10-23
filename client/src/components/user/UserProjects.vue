@@ -3,20 +3,24 @@
 
 import { onMounted, ref } from 'vue'
 import LocalTime from '@/components/ui/LocalTime.vue'
-import { loadProjects } from '@/services/project'
+import { type Project, myProjectsCache } from '@/services/project'
 
-const records = ref()
+const records = ref<Project[]>([])
 
 onMounted(() => {
-  loadProjects(records, null, true)
+  myProjectsCache.getData().then((data) => {
+    records.value = [...data]
+  })
 })
 </script>
 <template>
   <DataTable :value="records" tableStyle="min-width: 50rem">
     <Column field="project_id" header="SMID" />
     <Column field="project_title" header="Title" />
-    <Column header="Added" #body="{ data }">
-      <LocalTime :epoch="data.date_added" />
+    <Column header="Added">
+      <template #body="{ data }">
+        <LocalTime :epoch="data.date_added" />
+      </template>
     </Column>
   </DataTable>
 </template>
