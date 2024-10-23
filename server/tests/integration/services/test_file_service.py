@@ -1,8 +1,10 @@
-from io import StringIO, BytesIO
+from io import BytesIO
 from pathlib import Path
 
 import pytest
+from sqlalchemy import select, func
 
+from scimodom.database.models import BamFile
 from scimodom.services.file import FileService
 from scimodom.utils.specs.enums import AssemblyFileType
 
@@ -173,15 +175,50 @@ def test_delete_assembly(Session, tmp_path, setup):
 
 
 def test_upload(Session, tmp_path):
-    stream = BytesIO(b"some bedrmod data")
+    stream = BytesIO(b"Some bedrmod data")
     service = _get_file_service(Session, tmp_path)
     file_id = service.upload_tmp_file(stream, 1024)
     assert service.check_tmp_upload_file_id(file_id) is True
     with service.open_tmp_upload_file_by_id(file_id) as fh:
-        assert fh.read() == "some bedrmod data"
+        assert fh.read() == "Some bedrmod data"
 
 
 # BAM
+
+
+def test_create_bam_file(Session, tmp_path, dataset):
+    dataset2 = dataset[1]
+    stream = BytesIO(b"\x53\x6F\x6D\x65\x20\x62\x61\x6D\x20\x64\x61\x74\x61")
+
+    service = _get_file_service(Session, tmp_path)
+    service.create_or_update_bam_file(dataset2, "test.bam", stream, 1024)
+
+    bam_list = service.get_bam_file_list(dataset2)
+    assert len(bam_list) == 1
+    assert bam_list[0]["original_file_name"] == "test.bam"
+    assert bam_list[0]["size_in_bytes"] == 13
+
+    bam = service.get_bam_file(dataset2, "test.bam")
+    with service.open_bam_file(bam) as fh:
+        assert fh.read() == b"Some bam data"
+    with Session() as session:
+        assert session.scalar(select(func.count()).select_from(BamFile)) == 1
+
+    service.remove_bam_file(bam)
+    with Session() as session:
+        assert session.scalar(select(func.count()).select_from(BamFile)) == 0
+
+
+def test_update_bam_file(Session, tmp_path, dataset, bam_file):
+    dataset2 = dataset[1]
+    stream = BytesIO(b"\x53\x6F\x6D\x65\x20\x62\x61\x6D\x20\x64\x61\x74\x61")
+    service = _get_file_service(Session, tmp_path)
+    service.create_or_update_bam_file(dataset2, "d2.bam", stream, 1024)
+    bam = service.get_bam_file(dataset2, "d2.bam")
+    with service.open_bam_file(bam) as fh:
+        assert fh.read() == b"Some bam data"
+    with Session() as session:
+        assert session.scalar(select(func.count()).select_from(BamFile)) == 3
 
 
 # vars
