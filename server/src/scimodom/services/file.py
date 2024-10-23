@@ -168,7 +168,7 @@ class FileService:
     def _get_annotation_parent_dir(self) -> Path:
         return Path(self._data_path, self.ANNOTATION_DEST)
 
-    # cache
+    # Cache
 
     def get_gene_cache(self, selection_ids: Iterable[int]) -> list[str]:
         """Retrieve gene list for a given selection.
@@ -394,7 +394,7 @@ class FileService:
         :param file_type: Type of assembly file (CHROM, INFO, RELEASE, CHAIN)
         :type file_type: AssemblyFileType
         """
-        if file_type == AssemblyFileType.CHAIN:
+        if file_type in [AssemblyFileType.CHAIN, AssemblyFileType.DNA]:
             raise NotImplementedError()
         path = self.get_assembly_file_path(taxa_id, file_type)
         return open(path)
@@ -409,7 +409,7 @@ class FileService:
         :param file_type: Type of assembly file (CHROM, INFO, RELEASE, CHAIN)
         :type file_type: AssemblyFileType
         """
-        if file_type == AssemblyFileType.CHAIN:
+        if file_type in [AssemblyFileType.CHAIN, AssemblyFileType.DNA]:
             raise NotImplementedError()
         path = self.get_assembly_file_path(taxa_id, file_type)
         self._create_folder(path.parent)

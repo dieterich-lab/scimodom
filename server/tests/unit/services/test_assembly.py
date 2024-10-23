@@ -228,9 +228,8 @@ def test_liftover_fail_version(Session, file_service, setup):
     assert exc.type == AssemblyVersionError
 
 
-# NOTE: test_add_assembly*, and test_prepare_assembly_for_version* all implicitely
-#       test protected methods e.g. _handle_gene_build and _handle_release, that rely
-#       on scimodom.utils.specifications e.g. _get_ensembl_gene_build_url and _get_ensembl_chain_file_url.
+# test_add_assembly and test_prepare_assembly_for_version all implicitely
+# test protected methods e.g. _handle_gene_build and _handle_release
 
 
 def test_add_assembly(Session, file_service, setup, mocker):
@@ -384,6 +383,7 @@ def test_prepare_assembly_for_version_build_error(Session, file_service, setup, 
         == "Mismatch between assembly GRCh38 and coord system version GRCh39. Upgrade your database!"
     )
     assert exc.type == AssemblyVersionError
+    assert file_service.deleted_assemblies == [(9606, "GRCh38")]
 
 
 def test_get_chain_file_name():
