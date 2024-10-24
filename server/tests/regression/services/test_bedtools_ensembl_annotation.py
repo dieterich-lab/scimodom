@@ -210,7 +210,7 @@ def test_annotate_data_using_ensembl(tmp_path):
     Path(DATA_DIR, "test.fa.gz.gzi"),
     Path(DATA_DIR, "test.fa.gz.fai"),
 )
-# what happend with Strand.UNDEFINE ?
+# what happend with Strand.UNDEFINED ?
 @pytest.mark.parametrize(
     "strand,base",
     [

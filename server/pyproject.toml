@@ -87,6 +87,7 @@ exclude = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# norecursedirs =  "tests/cli"
 log_cli = true
 log_cli_level = "INFO"
 addopts = "--basetemp /tmp/pytest-of-scimodom"

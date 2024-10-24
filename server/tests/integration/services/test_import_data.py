@@ -10,42 +10,49 @@ from scimodom.database.models import (
     GenomicAnnotation,
     DataAnnotation,
 )
-from scimodom.services.dataset import DatasetService
-from scimodom.services.assembly import AssemblyService
 from scimodom.services.annotation import AnnotationService
 from scimodom.services.annotation.ensembl import EnsemblAnnotationService
 from scimodom.services.annotation.gtrnadb import GtRNAdbAnnotationService
+from scimodom.services.assembly import AssemblyService
 from scimodom.services.bedtools import BedToolsService
 from scimodom.services.data import DataService
+from scimodom.services.dataset import DatasetService
 from scimodom.services.external import ExternalService
-from scimodom.services.web import WebService
 from scimodom.services.file import FileService
-from scimodom.utils.specs.enums import AnnotationSource
+from scimodom.services.sunburst import SunburstService
+from scimodom.services.web import WebService
+from scimodom.utils.specs.enums import AnnotationSource, SunburstChartType
 from tests.mocks.enums import MockEnsembl
 
 
-EXON = """1\t65418\t65433\tG\t.\t+\tENSG00000000001\tprotein_coding
-1\t65418\t65500\tF\t.\t-\tENSG00000000002\tunprocessed_pseudogene
-1\t65519\t65573\tG\t.\t+\tENSG00000000001\tprotein_coding
-1\t69036\t71585\tG\t.\t+\tENSG00000000001\tprotein_coding
+EXON = """1\t65000\t65300\tGENE1\t.\t+\tENSG00000000001\tprotein_coding
+1\t65418\t65433\tGENE2\t.\t+\tENSG00000000002\tprotein_coding
+1\t65418\t65500\tGENE3\t.\t-\tENSG00000000003\tunprocessed_pseudogene
+1\t65425\t65500\tGENE1\t.\t+\tENSG00000000001\tprotein_coding
+1\t65519\t65573\tGENE2\t.\t+\tENSG00000000002\tprotein_coding
+1\t69036\t71585\tGENE2\t.\t+\tENSG00000000002\tprotein_coding
 """
 
-CDS = """1\t65564\t65573\tG\t.\t+\tENSG00000000001\tprotein_coding
-1\t69036\t70005\tG \t.\t+\tENSG00000000001\tprotein_coding
+CDS = """1\t65000\t65300\tGENE1\t.\t+\tENSG00000000001\tprotein_coding
+1\t65425\t65450\tGENE1\t.\t+\tENSG00000000001\tprotein_coding
+1\t65564\t65573\tGENE2\t.\t+\tENSG00000000002\tprotein_coding
+1\t69036\t70005\tGENE2\t.\t+\tENSG00000000002\tprotein_coding
 """
 
-UTR5 = """1\t65418\t65433\tG\t.\t+\tENSG00000000001\tprotein_coding
-1\t65519\t65564\tG\t.\t+\tENSG00000000001\tprotein_coding
+UTR5 = """1\t65418\t65433\tGENE2\t.\t+\tENSG00000000002\tprotein_coding
+1\t65519\t65564\tGENE2\t.\t+\tENSG00000000002\tprotein_coding
 """
 
-UTR3 = """1\t70008\t71585\tG\t.\t+\tENSG00000000001\tprotein_coding
+UTR3 = """1\t65450\t65500\tGENE1\t.\t+\tENSG00000000001\tprotein_coding
+1\t70005\t71585\tGENE2\t.\t+\tENSG00000000002\tprotein_coding
 """
 
-INTRON = """1\t65433\t65519\tG\t.\t+\tENSG00000000001\tprotein_coding
-1\t65573\t69036\tG\t.\t+\tENSG00000000001\tprotein_coding
+INTRON = """1\t65300\t65425\tGENE1\t.\t+\tENSG00000000001\tprotein_coding
+1\t65433\t65519\tGENE2\t.\t+\tENSG00000000002\tprotein_coding
+1\t65573\t69036\tGENE2\t.\t+\tENSG00000000002\tprotein_coding
 """
 
-INTERGENIC = """1\t0\t11868"""
+INTERGENIC = """1\t0\t65000"""
 
 FEATURES = {
     "exon.bed": EXON,
@@ -65,8 +72,8 @@ EUF_FILE = """
 #annotation_version=Version
 #sequencing_platform=Sequencing platform
 #basecalling=
-#bioinformatics_workflow=Workflow
-#experiment=Description of experiment.
+#bioinformatics_workflow=Workflow for integration test
+#experiment=Description of experiment for integration test.
 #external_source=
 #chrom\tchromstart\tchromEnd\tname\tscore\tstrand\tthickstart\tthickEnd\titermRgb\tcoverage\tfrequency
 1\t65420\t65421\tm6A\t1\t+\t65420\t65421\t0,0,0\t1\t1
@@ -77,15 +84,57 @@ EUF_FILE = """
 """
 
 
-def _add_genomic_annotation(session):
-    annotation = GenomicAnnotation(
-        id="ENSG00000000001", annotation_id=1, name="G", biotype="protein_coding"
+EXPECTED_ANNOTATED_RECORDS = [
+    (1, "ENSG00000000002", "Exonic"),
+    (1, "ENSG00000000002", "5'UTR"),
+    (1, "ENSG00000000001", "Intronic"),
+    (2, "ENSG00000000002", "Exonic"),
+    (2, "ENSG00000000002", "CDS"),
+    (3, "ENSG00000000002", "Exonic"),
+    (3, "ENSG00000000002", "3'UTR"),
+    (4, "ENSG00000000002", "Intronic"),
+    (5, "ENSIntergenic", "Intergenic"),
+]
+
+
+EXPECTED_RECORDS = [
+    ("1", 65420, 1),
+    ("1", 65565, 2),
+    ("1", 71500, 3),
+    ("1", 65580, 4),
+    ("1", 0, 5),
+]
+
+
+EXPECTED_SEARCH_CHART = """[{"name": "Search", "children": [{"name": "m6A", "children": [{"name": "H. sapiens", "children": [{"name": "Cell type 1", "children": [{"name": "Technology 1", "size": 5}]}]}]}]}]"""
+EXPECTED_BROWSE_CHART = """[{"name": "Browse", "children": [{"name": "m6A", "children": [{"name": "H. sapiens", "children": [{"name": "Cell type 1", "children": [{"name": "Technology 1", "size": 1}]}]}]}]}]"""
+EXPECTED_CHARTS = {
+    "search": EXPECTED_SEARCH_CHART,
+    "browse": EXPECTED_BROWSE_CHART,
+}
+
+
+@pytest.fixture
+def genomic_annotation(Session):
+    annotation1 = GenomicAnnotation(
+        id="ENSG00000000001", annotation_id=1, name="GENE1", biotype="protein_coding"
     )
-    session.add(annotation)
+    annotation2 = GenomicAnnotation(
+        id="ENSG00000000002", annotation_id=1, name="GENE2", biotype="protein_coding"
+    )
+    annotation3 = GenomicAnnotation(
+        id="ENSG00000000003",
+        annotation_id=1,
+        name="GENE3",
+        biotype="unprocessed_pseudogene",
+    )
+    session = Session()
+    session.add_all([annotation1, annotation2, annotation3])
     session.commit()
 
 
-def _add_tmp_data(tmp_path):
+@pytest.fixture
+def test_data(tmp_path, genomic_annotation):
     # add required assembly files
     d = tmp_path / FileService.ASSEMBLY_DEST / "Homo_sapiens" / "GRCh38"
     d.mkdir(parents=True, exist_ok=True)
@@ -161,6 +210,13 @@ def _get_external_service(file_service):
     return ExternalService(file_service=file_service)
 
 
+def _get_sunburst_service(session, tmp_path):
+    return SunburstService(
+        session=session,
+        file_service=_get_file_service(session, tmp_path),
+    )
+
+
 def _get_web_service():
     return WebService()
 
@@ -194,13 +250,9 @@ def _get_dataset_service(session, tmp_path):
 # tests
 
 
-def test_import_simple(Session, selection, project, tmp_path, freezer, mocker):
+def test_import_data(Session, selection, project, test_data, tmp_path, freezer, mocker):
     mocker.patch("scimodom.services.annotation.ensembl.Ensembl", MockEnsembl)
     service = _get_dataset_service(Session(), tmp_path)
-
-    _add_tmp_data(tmp_path)
-    _add_genomic_annotation(Session())
-
     file_handle = StringIO(EUF_FILE)
     freezer.move_to("2024-06-20 12:00:00")
     eufid = service.import_dataset(
@@ -214,24 +266,10 @@ def test_import_simple(Session, selection, project, tmp_path, freezer, mocker):
         organism_id=1,
         annotation_source=AnnotationSource.ENSEMBL,
     )
+    # manually trigger sunburst creation
+    sunburst_service = _get_sunburst_service(Session(), tmp_path)
+    sunburst_service.do_background_update()
 
-    expected_annotated_records = [
-        (1, "ENSG00000000001", "Exonic"),
-        (2, "ENSG00000000001", "Exonic"),
-        (3, "ENSG00000000001", "Exonic"),
-        (1, "ENSG00000000001", "5'UTR"),
-        (2, "ENSG00000000001", "CDS"),
-        (3, "ENSG00000000001", "3'UTR"),
-        (4, "ENSG00000000001", "Intronic"),
-        (5, "ENSIntergenic", "Intergenic"),
-    ]
-    expected_records = [
-        ("1", 65420, 1),
-        ("1", 65565, 2),
-        ("1", 71500, 3),
-        ("1", 65580, 4),
-        ("1", 0, 5),
-    ]
     with Session() as session:
         dataset = session.get_one(Dataset, eufid)
         assert dataset.title == "Dataset title"
@@ -242,17 +280,22 @@ def test_import_simple(Session, selection, project, tmp_path, freezer, mocker):
         assert dataset.modification_type == "RNA"
         assert dataset.sequencing_platform == "Sequencing platform"
         assert dataset.basecalling is None
-        assert dataset.bioinformatics_workflow == "Workflow"
-        assert dataset.experiment == "Description of experiment."
+        assert dataset.bioinformatics_workflow == "Workflow for integration test"
+        assert dataset.experiment == "Description of experiment for integration test."
         assert dataset.external_source is None
 
         records = session.execute(select(Data)).scalars().all()
         records = set((r.chrom, r.start, r.score) for r in records)
-        assert records == set(expected_records)
+        assert records == set(EXPECTED_RECORDS)
         annotation_records = session.scalars(select(DataAnnotation)).all()
         annotated_records = set(
             (r.data_id, r.gene_id, r.feature) for r in annotation_records
         )
-        assert annotated_records == set(expected_annotated_records)
-        with open(tmp_path / FileService.GENE_CACHE_DEST / "1", "r") as fh:
-            assert fh.read().strip() == "G"
+        assert annotated_records == set(EXPECTED_ANNOTATED_RECORDS)
+        # tmp_path / FileService.GENE_CACHE_DEST / "1"
+        gene_set = set(service._file_service.get_gene_cache(["1"]))
+        assert gene_set == {"GENE1", "GENE2"}
+        for chart_type in SunburstChartType:
+            # tmp_path / FileService.SUNBURST_CACHE_DEST / chart_type.value
+            with service._file_service.open_sunburst_cache(chart_type.value) as fh:
+                assert fh.read() == EXPECTED_CHARTS[chart_type.value]
