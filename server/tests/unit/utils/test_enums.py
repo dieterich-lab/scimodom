@@ -7,6 +7,7 @@ from scimodom.utils.specs.enums import (
     AssemblyFileType,
     TargetsFileType,
     SunburstChartType,
+    ImportLimits,
 )
 
 
@@ -28,6 +29,12 @@ def test_identifiers():
     assert Identifiers.EUFID.length == 12
     assert Identifiers.ASSEMBLY.length == 12
     assert len(Identifiers) == 3
+
+
+def test_import_limits():
+    assert ImportLimits.BED.max == 0.05
+    assert ImportLimits.LIFTOVER.max == 0.3
+    assert len(ImportLimits) == 2
 
 
 def test_ensembl():

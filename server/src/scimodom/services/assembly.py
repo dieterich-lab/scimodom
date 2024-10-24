@@ -14,7 +14,12 @@ from scimodom.services.external import get_external_service, ExternalService
 from scimodom.services.file import FileService, get_file_service
 from scimodom.services.web import WebService, get_web_service
 from scimodom.utils.utils import gen_short_uuid
-from scimodom.utils.specs.enums import AssemblyFileType, Identifiers, Ensembl
+from scimodom.utils.specs.enums import (
+    AssemblyFileType,
+    Identifiers,
+    Ensembl,
+    ImportLimits,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -158,7 +163,7 @@ class AssemblyService:
         assembly: Assembly,
         raw_file: str,
         unmapped_file: str | None = None,
-        threshold: float = 0.3,
+        threshold: float = ImportLimits.LIFTOVER.max,
     ) -> str:
         """Liftover records to current assembly.
 

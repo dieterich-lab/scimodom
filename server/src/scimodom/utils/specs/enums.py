@@ -23,20 +23,36 @@ class Strand(Enum):
 # Specifications
 
 
-class Value:
+class IntValue:
     def __init__(self, value: int):
+        self.value = value
+
+
+class FloatValue:
+    def __init__(self, value: float):
         self.value = value
 
 
 class Identifiers(Enum):
     """Define properties for identifiers."""
 
-    SMID = Value(8)
-    EUFID = Value(12)
-    ASSEMBLY = Value(12)
+    SMID = IntValue(8)
+    EUFID = IntValue(12)
+    ASSEMBLY = IntValue(12)
 
     @property
     def length(self):
+        return self.value.value
+
+
+class ImportLimits(Enum):
+    """Define error thresholds for data import."""
+
+    BED = FloatValue(0.05)
+    LIFTOVER = FloatValue(0.3)
+
+    @property
+    def max(self):
         return self.value.value
 
 

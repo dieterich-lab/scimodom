@@ -9,7 +9,7 @@ from scimodom.utils.dtos.bedtools import (
     EufRecord,
     Bed6Record,
 )
-from scimodom.utils.specs.enums import Strand
+from scimodom.utils.specs.enums import Strand, ImportLimits
 from scimodom.utils.importer.text_file_reader import TextFileReader, TextFileReaderError
 
 logger = logging.getLogger(__name__)
@@ -34,7 +34,7 @@ class AbstractBedImporter(Generic[RECORD_TYPE], ABC):
         self,
         stream: TextIO,
         source: str = "input stream",
-        max_error_rate: Optional[float] = 0.05,
+        max_error_rate: Optional[float] = ImportLimits.BED.max,
     ):
         self._headers = {}
         self._error_count = 0

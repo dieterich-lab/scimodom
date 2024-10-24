@@ -28,7 +28,7 @@ from scimodom.utils.importer.bed_importer import (
     BedImportEmptyFile,
     BedImportTooManyErrors,
 )
-from scimodom.utils.specs.enums import Strand, AnnotationSource
+from scimodom.utils.specs.enums import Strand, AnnotationSource, ImportLimits
 
 InputSelection = namedtuple(
     "InputSelection", "smid modification organism technology assembly"
@@ -98,7 +98,7 @@ class MockAssemblyService:
         assembly: Assembly,
         raw_file: str,
         unmapped_file: str | None = None,
-        threshold: float = 0.3,
+        threshold: float = ImportLimits.LIFTOVER.max,
     ) -> str:
         pass
 
