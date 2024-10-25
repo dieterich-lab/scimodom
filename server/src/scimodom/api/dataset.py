@@ -1,6 +1,6 @@
 import logging
 from dataclasses import dataclass
-from typing import Iterable
+from typing import Generator, Iterable, Sequence
 
 from flask import Blueprint
 from flask_cors import cross_origin
@@ -110,7 +110,7 @@ class _CompareContext:
     class Ctx:
         bedtools_service: BedToolsService
         a_records: Iterable[ComparisonRecord]
-        b_records_list: list[Iterable[ComparisonRecord]]
+        b_records_list: Sequence[Iterable[ComparisonRecord]]
         is_strand: bool
 
     def __init__(self):
@@ -170,7 +170,9 @@ class _CompareContext:
             is_strand=self._is_strand,
         )
 
-    def _get_comparison_records_from_db(self, dataset_ids):
+    def _get_comparison_records_from_db(
+        self, dataset_ids
+    ) -> Generator[ComparisonRecord, None, None]:
         for dataset_id in dataset_ids:
             for data in self._data_service.get_by_dataset(dataset_id):
                 yield ComparisonRecord(
@@ -185,8 +187,10 @@ class _CompareContext:
                     frequency=data.frequency,
                 )
 
-    def _get_comparison_records_from_file(self):
-        dummy_values = {"eufid": "upload      "}
+    def _get_comparison_records_from_file(
+        self,
+    ) -> Generator[ComparisonRecord, None, None]:
+        dummy_values: dict[str, str | int] = {"eufid": "upload      "}
         if self._is_euf:
             importer = EufImporter(
                 stream=self._tmp_file_handle, source=self._upload_name

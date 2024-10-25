@@ -113,7 +113,7 @@ class FileService:
         return open(path, "r")
 
     @staticmethod
-    def count_lines(path: str | Path):
+    def count_lines(path: str | Path) -> int:
         count = 0
         with open(path) as fp:
             while True:
@@ -124,7 +124,7 @@ class FileService:
 
     # Import
 
-    def check_import_file(self, name: str):
+    def check_import_file(self, name: str) -> bool:
         return Path(self._import_path, name).is_file()
 
     def open_import_file(self, name: str):
@@ -182,7 +182,7 @@ class FileService:
         :returns: The genes of the selection
         :rtype: list[str]
         """
-        result = set()
+        result: set = set()
         for selection_id in selection_ids:
             path = Path(self._get_gene_cache_dir(), str(selection_id))
             with open(path) as fh:
@@ -237,7 +237,9 @@ class FileService:
         file_path = Path(self._get_sunburst_cache_dir(), f"{name}.json")
         return open(file_path)
 
-    def update_sunburst_cache(self, name: str, generator: Generator[str, None, None]):
+    def update_sunburst_cache(
+        self, name: str, generator: Generator[str, None, None]
+    ) -> None:
         final_file_path = Path(self._get_sunburst_cache_dir(), f"{name}.json")
         try:
             temporary_file_path = None
@@ -335,10 +337,10 @@ class FileService:
     def _get_project_metadata_dir(self) -> Path:
         return Path(self._data_path, self.METADATA_DEST)
 
-    def _get_project_request_file_path(self, request_uuid):
+    def _get_project_request_file_path(self, request_uuid) -> Path:
         return Path(self._get_project_request_dir(), f"{request_uuid}.json")
 
-    def _get_project_request_dir(self):
+    def _get_project_request_dir(self) -> Path:
         return Path(self._get_project_metadata_dir(), self.REQUEST_DEST)
 
     # Assembly
@@ -488,7 +490,7 @@ class FileService:
 
     # uploaded files
 
-    def upload_tmp_file(self, stream, max_file_size):
+    def upload_tmp_file(self, stream, max_file_size) -> str:
         fp, path = mkstemp(dir=self._upload_path)
         close(fp)
         file_id = basename(path)
@@ -509,7 +511,9 @@ class FileService:
         path = join(self._upload_path, file_id)
         return isfile(path)
 
-    def _stream_to_file(self, data_stream, path, max_size, overwrite_is_ok=False):
+    def _stream_to_file(
+        self, data_stream, path, max_size, overwrite_is_ok=False
+    ) -> None:
         if exists(path) and not overwrite_is_ok:
             raise Exception(
                 f"FileService._stream_to_file(): Refusing to overwrite existing file: '{path}'!"
@@ -555,7 +559,7 @@ class FileService:
         name: str,
         data_stream: IO[bytes],
         max_size: Optional[int],
-    ):
+    ) -> None:
         try:
             bam_file = self.get_bam_file(dataset, name)
             self._update_bam_file(bam_file, data_stream, max_size)
@@ -581,7 +585,7 @@ class FileService:
         ).all()
         return [self._get_bam_file_info(i) for i in items]
 
-    def remove_bam_file(self, bam_file: BamFile):
+    def remove_bam_file(self, bam_file: BamFile) -> None:
         path = self._get_bam_file_path(bam_file)
         try:
             unlink(path)
@@ -591,7 +595,7 @@ class FileService:
         self._session.commit()
 
     @staticmethod
-    def _handle_upload_error(exception, path):
+    def _handle_upload_error(exception, path) -> None:
         logger.warning(
             f"Failed to create file '{path}': {str(exception)} - discarding file."
         )
@@ -601,10 +605,10 @@ class FileService:
             logger.warning(f"Failed to delete '{path}': {str(unlink_e)}.")
         raise exception
 
-    def _get_bam_files_parent_dir(self):
+    def _get_bam_files_parent_dir(self) -> Path:
         return Path(self._data_path, self.BAM_DEST)
 
-    def _update_bam_file(self, bam_file, data_stream, max_size):
+    def _update_bam_file(self, bam_file, data_stream, max_size) -> None:
         tmp_path = self._get_bam_file_tmp_path(bam_file)
         path = self._get_bam_file_path(bam_file)
         self._stream_to_file(data_stream, tmp_path, max_size)
@@ -621,18 +625,18 @@ class FileService:
             self._session.delete(bam_file)
             raise exc
 
-    def _get_bam_file_tmp_path(self, bam_file):
+    def _get_bam_file_tmp_path(self, bam_file) -> str:
         return join(
             self._get_bam_files_parent_dir().as_posix(),
             f"tmp.{bam_file.storage_file_name}",
         )
 
-    def _get_bam_file_path(self, bam_file):
+    def _get_bam_file_path(self, bam_file) -> str:
         return join(
             self._get_bam_files_parent_dir().as_posix(), bam_file.storage_file_name
         )
 
-    def _create_bam_file(self, dataset, name, data_stream, max_size):
+    def _create_bam_file(self, dataset, name, data_stream, max_size) -> None:
         bam_file = BamFile(
             dataset_id=dataset.id,
             original_file_name=name,
@@ -643,7 +647,7 @@ class FileService:
         self._session.add(bam_file)
         self._session.commit()
 
-    def _get_bam_file_info(self, bam_file):
+    def _get_bam_file_info(self, bam_file) -> dict[str, Any]:
         path = self._get_bam_file_path(bam_file)
         stat_info = stat(path)
         return {

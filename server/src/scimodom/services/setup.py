@@ -5,7 +5,7 @@ import pandas as pd  # type: ignore # import-untyped
 from sqlalchemy.dialects.mysql import insert
 from sqlalchemy.orm import Session
 
-from scimodom.database.database import Base, get_session
+from scimodom.database.database import get_session
 from scimodom.database.models import (
     RNAType,
     Modomics,
@@ -72,7 +72,7 @@ class SetupService:
         return df
 
     @staticmethod
-    def _validate_table(model: Base, table: pd.DataFrame) -> None:
+    def _validate_table(model, table: pd.DataFrame) -> None:
         """Validate data table.
 
         :param model: SQLAlchemy model

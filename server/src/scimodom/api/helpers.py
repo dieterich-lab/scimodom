@@ -169,13 +169,18 @@ def validate_request_size(max_size) -> None:
         raise ClientResponseException(413, f"File too large (max. {max_size} bytes)")
 
 
-def get_valid_taxa_id(raw: str) -> int:
-    utilities_service = get_utilities_service()
-    taxa_ids = [d["id"] for d in utilities_service.get_taxa()]
+def get_valid_taxa_id() -> int:
+    taxa_id = request.args.get("taxaId", type=int)
+    if taxa_id is None:
+        raise ClientResponseException(400, "Invalid Taxa ID")
+    _validate_taxa_id(taxa_id)
+    return taxa_id
+
+
+def get_valid_taxa_id_from_string(raw: str) -> int:
     try:
         taxa_id = int(raw)
-        if taxa_id not in taxa_ids:
-            raise ClientResponseException(404, "Unrecognized Taxa ID")
+        _validate_taxa_id(taxa_id)
         return taxa_id
     except ValueError:
         raise ClientResponseException(400, "Invalid Taxa ID")
@@ -197,8 +202,14 @@ def get_valid_targets_type(raw: str) -> TargetsFileType:
 
 def get_valid_coords(taxa_id: int, context: int = 0) -> tuple[str, int, int, Strand]:
     chrom = request.args.get("chrom", type=str)
+    if chrom is None:
+        raise ClientResponseException(400, "Invalid chrom")
     start = request.args.get("start", type=int)
+    if start is None:
+        raise ClientResponseException(400, "Invalid start")
     end = request.args.get("end", type=int)
+    if end is None:
+        raise ClientResponseException(400, "Invalid end")
     strand = request.args.get("strand", default=".", type=str)
 
     assembly_service = get_assembly_service()
@@ -285,3 +296,10 @@ def _is_valid_identifier(identifier, length):
     elif len(identifier) != length:
         return False
     return True
+
+
+def _validate_taxa_id(taxa_id: int) -> None:
+    utilities_service = get_utilities_service()
+    taxa_ids = [d["id"] for d in utilities_service.get_taxa()]
+    if taxa_id not in taxa_ids:
+        raise ClientResponseException(404, "Unrecognized Taxa ID")

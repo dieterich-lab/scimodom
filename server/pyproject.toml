@@ -77,13 +77,22 @@ where = ["src"]
 
 [tool.mypy]
 plugins = [
-  "sqlalchemy.ext.mypy.plugin"
+  "sqlalchemy.ext.mypy.plugin",
+  "pydantic.mypy"
 ]
 show_error_codes = "True"
+# follow_imports = "silent"
+# warn_redundant_casts = true
+# warn_unused_ignores = true
+# disallow_any_generics = true
+# check_untyped_defs = true
+# no_implicit_reexport = true
 #strict = "True"
-exclude = [
-    "scimodom.utils.models.py"
-]
+
+# [tool.pydantic-mypy]
+# init_forbid_extra = true
+# init_typed = true
+# warn_required_dynamic_aliases = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

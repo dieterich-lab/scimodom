@@ -36,7 +36,7 @@ class AbstractBedImporter(Generic[RECORD_TYPE], ABC):
         source: str = "input stream",
         max_error_rate: Optional[float] = ImportLimits.BED.max,
     ):
-        self._headers = {}
+        self._headers: dict[str, str] = {}
         self._error_count = 0
         self._record_count = 0
         self._error_text = ""

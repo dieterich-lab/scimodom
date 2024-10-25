@@ -162,10 +162,14 @@ def create_project_template(
         sources = []
         for dv, pv in zip(doi, pmid):
             if dv == "null":
-                dv = None
+                dv_dto = None
+            else:
+                dv_dto = dv
             if pv == 0:
-                pv = None
-            source = ProjectSourceDto(doi=dv, pmid=pv)
+                pv_dto = None
+            else:
+                pv_dto = pv
+            source = ProjectSourceDto(doi=dv_dto, pmid=pv_dto)
             sources.append(source)
 
         project_template = ProjectTemplate(

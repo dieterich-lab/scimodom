@@ -295,8 +295,10 @@ class ProjectService:
             date_added=stamp,
         )
         sources = []
-        for source in project_template.external_sources:
-            source = ProjectSource(project_id=smid, doi=source.doi, pmid=source.pmid)
+        for source_dto in project_template.external_sources:
+            source = ProjectSource(
+                project_id=smid, doi=source_dto.doi, pmid=source_dto.pmid
+            )
             sources.append(source)
 
         logger.info(f"Adding project_template {smid}...")

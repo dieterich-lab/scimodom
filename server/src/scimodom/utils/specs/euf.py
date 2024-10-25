@@ -1,5 +1,8 @@
 # cf. DatasetService, Exporter
-EUF = {
+from typing import Union
+
+EUF_VERSION = "1.8"
+EUF: dict[str, Union[list[str], dict[str, Union[dict[str, str], list[str]]]]] = {
     "versions": ["1.6", "1.7", "1.8"],
     "1.6": {
         "headers": {

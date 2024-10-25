@@ -4,7 +4,7 @@ from sqlalchemy.exc import NoResultFound
 
 from scimodom.api.helpers import (
     get_valid_logo,
-    get_valid_taxa_id,
+    get_valid_taxa_id_from_string,
     ClientResponseException,
     validate_rna_type,
 )
@@ -93,7 +93,7 @@ def get_features(rna_type):
 def get_chroms(taxa_id: str):
     assembly_service = get_assembly_service()
     try:
-        taxa_id_as_int = get_valid_taxa_id(taxa_id)
+        taxa_id_as_int = get_valid_taxa_id_from_string(taxa_id)
         return assembly_service.get_chroms(taxa_id_as_int)
     except ClientResponseException as e:
         return e.response_tuple
@@ -108,7 +108,7 @@ def get_chroms(taxa_id: str):
 def get_assemblies(taxa_id):
     utilities_service = get_utilities_service()
     try:
-        taxa_id_as_int = get_valid_taxa_id(taxa_id)
+        taxa_id_as_int = get_valid_taxa_id_from_string(taxa_id)
         return utilities_service.get_assemblies(taxa_id_as_int)
     except ClientResponseException as e:
         return e.response_tuple

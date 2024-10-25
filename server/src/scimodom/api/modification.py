@@ -100,7 +100,7 @@ def get_modifications_as_csv(by_gene):
 def get_modification_sitewise():
     """Get information related to a modification site."""
     try:
-        taxa_id = get_valid_taxa_id(request.args.get("taxaId"))
+        taxa_id = get_valid_taxa_id()
         chrom, start, end, _ = get_valid_coords(taxa_id)
     except ClientResponseException as e:
         return e.response_tuple
@@ -118,7 +118,7 @@ def get_modification_sitewise():
 def get_genomic_sequence_context(context):
     """Get sequence context for a modification site."""
     try:
-        taxa_id = get_valid_taxa_id(request.args.get("taxaId"))
+        taxa_id = get_valid_taxa_id()
         coords = get_valid_coords(taxa_id, context=int(context))
     except ClientResponseException as e:
         return e.response_tuple
@@ -168,7 +168,7 @@ class _ModificationContext:
     def __init__(self, target_type: str):
         self._target_type = get_valid_targets_type(target_type)
         self._is_strand = True
-        self._taxa_id = get_valid_taxa_id(request.args.get("taxaId"))
+        self._taxa_id = get_valid_taxa_id()
         self._coords = get_valid_coords(self._taxa_id)
 
     def __enter__(self) -> Ctx:
@@ -222,7 +222,7 @@ def _get_modifications_for_request(by_gene):
         gene_or_chrom = _get_gene_or_chrom_required()
         return modification_service.get_modifications_by_gene(
             annotation_source=_get_annotation_source(),
-            taxa_id=get_valid_taxa_id(request.args.get("taxaId")),
+            taxa_id=get_valid_taxa_id(),
             gene_filter=gene_or_chrom.gene_filter,
             chrom=gene_or_chrom.chrom_filter,
             chrom_start=gene_or_chrom.chrom_start_filter,
@@ -237,7 +237,7 @@ def _get_modifications_for_request(by_gene):
             modification_id=get_non_negative_int("modification"),
             organism_id=get_non_negative_int("organism"),
             technology_ids=_get_technology_ids(),
-            taxa_id=get_valid_taxa_id(request.args.get("taxaId")),
+            taxa_id=get_valid_taxa_id(),
             gene_filter=_get_gene_filters(),
             chrom=request.args.get("chrom", type=str),
             chrom_start=get_optional_non_negative_int("chromStart"),

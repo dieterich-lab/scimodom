@@ -1,6 +1,6 @@
-from scimodom.utils.specs.euf import EUF
+from scimodom.utils.specs.euf import EUF_VERSION
 
 
 def test_euf_version():
     LATEST_VERSION = "1.8"
-    assert EUF["versions"][-1] == LATEST_VERSION
+    assert EUF_VERSION == LATEST_VERSION

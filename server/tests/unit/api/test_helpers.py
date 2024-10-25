@@ -5,6 +5,7 @@ from sqlalchemy.exc import NoResultFound
 from scimodom.api.helpers import (
     ClientResponseException,
     get_valid_dataset,
+    get_valid_taxa_id_from_string,
     get_non_negative_int,
     get_positive_int,
     get_optional_non_negative_int,
@@ -17,6 +18,11 @@ from scimodom.api.helpers import (
 @pytest.fixture
 def test_client():
     app = Flask(__name__)
+
+    @app.route("/test/<taxa_id>", methods=["GET"])
+    def get_taxa_id(taxa_id):
+        return taxa_id, 200
+
     yield app.test_client()
 
 
@@ -27,6 +33,10 @@ def mock_services(mocker):
     )
     mocker.patch(
         "scimodom.api.helpers.get_file_service", return_value=MockFileService()
+    )
+    mocker.patch(
+        "scimodom.api.helpers.get_utilities_service",
+        return_value=MockUtilitiesService(),
     )
 
 
@@ -41,6 +51,20 @@ class MockFileService:
     @staticmethod
     def get_bam_file(dataset, name):
         raise NoResultFound
+
+
+class MockUtilitiesService:
+    @staticmethod
+    def get_taxa():
+        return [
+            {
+                "id": 9606,
+                "taxa_sname": "H. sapiens",
+                "domain": "Eukarya",
+                "kingdom": "Animalia",
+                "phylum": "Chordata",
+            }
+        ]
 
 
 # tests
@@ -76,6 +100,29 @@ def test_get_valid_dataset(eufid, expected_status, expected_message, mock_servic
     returned_message, returned_status = exc.value.response_tuple
     assert returned_message["message"] == expected_message
     assert returned_status == expected_status
+
+
+def test_get_valid_taxa_from_string(test_client, mock_services):
+    with test_client as client:
+        response = client.get("/test/9606")
+        taxa_id_as_int = get_valid_taxa_id_from_string(response.data)
+        assert taxa_id_as_int == 9606
+
+
+@pytest.mark.parametrize(
+    "value,expected_status,expected_message",
+    [(10090, 404, "Unrecognized Taxa ID"), ("X", 400, "Invalid Taxa ID")],
+)
+def test_get_valid_taxa_from_string_fail(
+    value, expected_status, expected_message, test_client, mock_services
+):
+    with test_client as client:
+        response = client.get(f"/test/{value}")
+        with pytest.raises(ClientResponseException) as exc:
+            taxa_id_as_int = get_valid_taxa_id_from_string(response.data)
+        returned_message, returned_status = exc.value.response_tuple
+        assert returned_message["message"] == expected_message
+        assert returned_status == expected_status
 
 
 @pytest.mark.parametrize(

@@ -2,7 +2,7 @@ import json
 import logging
 from functools import cache
 from posixpath import join as urljoin
-from typing import Any
+from typing import Any, Sequence
 
 from sqlalchemy import select, func
 from sqlalchemy.exc import NoResultFound
@@ -86,7 +86,7 @@ class AssemblyService:
         except NoResultFound:
             raise AssemblyNotFoundError(f"No such assembly with ID: {assembly_id}.")
 
-    def get_assemblies_by_taxa(self, taxa_id: int) -> list[Assembly]:
+    def get_assemblies_by_taxa(self, taxa_id: int) -> Sequence[Assembly]:
         """Retrieve all assemblies for a given organism.
 
         :param taxa_id: Taxonomy ID

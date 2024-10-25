@@ -19,7 +19,7 @@ from scimodom.database.models import (
     Annotation,
     AnnotationVersion,
 )
-from scimodom.utils.specs.euf import EUF
+from scimodom.utils.specs.euf import EUF_VERSION
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +34,7 @@ class NoSuchDataset(Exception):
 
 class Exporter:
     BAD_FILE_NAME_CHARACTERS_REGEXP = re.compile(r"[^a-zA-Z0-9(),._-]")
-    VERSION = EUF["versions"][-1]
+    VERSION = EUF_VERSION
 
     def __init__(self, session: Session):
         self._session = session

@@ -165,6 +165,16 @@ class MockBedtoolsService:
             "Unrecognized chrom 'I' for Taxa '9606'",
         ),
         (
+            "/target/MIRNA?taxaId=9606&chrom=1&start=3284721&end=end&strand=%2B",
+            400,
+            "Invalid end",
+        ),
+        (
+            "/target/MIRNA?taxaId=9606&chrom=1&start=start&end=3284722&strand=%2B",
+            400,
+            "Invalid start",
+        ),
+        (
             "/target/MIRNA?taxaId=9606&chrom=1&start=3284723&end=3284722&strand=%2B",
             400,
             "Invalid coordinates: start must be smaller than end",
