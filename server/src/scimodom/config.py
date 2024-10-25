@@ -64,10 +64,14 @@ _config: Config | None = None
 
 
 def get_config() -> Config:
-    global _config
     if _config is None:
         raise Exception("Internal error: get_config() called before initialisation!")
     return _config
+
+
+def set_config(new_config: Config | None):
+    global _config
+    _config = new_config
 
 
 def set_config_from_environment():
