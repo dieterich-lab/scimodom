@@ -12,13 +12,13 @@ class ExporterMock(Exporter):
         pass
 
     def get_dataset_file_name(self, dataset_id: str) -> str:
-        if dataset_id == "d1":
+        if dataset_id == "dataset_id01":
             return "foo"
         else:
             raise NoSuchDataset(f"No {dataset_id}")
 
     def generate_dataset(self, dataset_id: str) -> Generator[bytes, None, None]:
-        if dataset_id == "d1":
+        if dataset_id == "dataset_id01":
             yield b"Line 1\n"
             yield b"Line 2\n"
         else:
@@ -38,7 +38,7 @@ def exporter(mocker):
 
 
 def test_exporter_simple(test_client, exporter):
-    result = test_client.get("/dataset/d1")
+    result = test_client.get("/dataset/dataset_id01")
     assert result.status == "200 OK"
     assert result.data == b"Line 1\nLine 2\n"
     assert result.headers.get("Content-Disposition") == 'attachment; filename="foo"'
@@ -46,5 +46,5 @@ def test_exporter_simple(test_client, exporter):
 
 
 def test_exporter_bad_dataset(test_client, exporter):
-    result = test_client.get("/dataset/d2")
+    result = test_client.get("/dataset/dataset_id02")
     assert result.status == "404 NOT FOUND"

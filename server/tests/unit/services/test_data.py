@@ -6,7 +6,7 @@ from scimodom.utils.specs.enums import Strand
 
 def test_get_by_dataset(dataset, Session):  # noqa
     service = DataService(session=Session())
-    records = list(service.get_by_dataset("d1"))
+    records = list(service.get_by_dataset("dataset_id01"))
     assert len(records) == 2
     assert records[0].chrom == "17"
     assert records[0].strand == Strand.FORWARD

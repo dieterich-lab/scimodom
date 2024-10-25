@@ -171,7 +171,7 @@ GOOD_EUF_FILE = """#fileformat=bedRModv1.7
 
 def test_dataset_get_by_id(Session, dataset):
     service = _get_dataset_service(Session())
-    d1 = service.get_by_id("d1")
+    d1 = service.get_by_id("dataset_id01")
     assert d1.title == "dataset title"
     assert d1.organism_id == 1
     assert d1.external_source == "ext. source 1"
@@ -183,7 +183,7 @@ def test_get_datasets(Session, project, dataset):
     datasets = service.get_datasets()
     assert len(datasets) == 4
     assert datasets[3]["project_id"] == "ABCDEFGH"
-    assert datasets[3]["dataset_id"] == "d4"
+    assert datasets[3]["dataset_id"] == "dataset_id04"
     assert datasets[3]["modomics_sname"] == "m5C"
     assert datasets[3]["taxa_sname"] == "H. sapiens"
     assert datasets[3]["cto"] == "Cell type 2"
@@ -397,8 +397,8 @@ def test_import_dataset_update_with_change(
             "No such dataset: 'XXXXXXXXXXXX'.",
         ),
         (
-            "d2",
-            "Provided dataset 'd2', but found 'd1' with title 'dataset title' (SMID '12345678').",
+            "dataset_id02",
+            "Provided dataset 'dataset_id02', but found 'dataset_id01' with title 'dataset title' (SMID '12345678').",
         ),
     ],
 )
@@ -439,7 +439,7 @@ def test_import_dataset_exists(Session, selection, dataset, project):  # noqa
         )
     assert (
         str(exc.value)
-        == "Suspected duplicate dataset 'd1' (SMID '12345678'), and title 'dataset title'."
+        == "Suspected duplicate dataset 'dataset_id01' (SMID '12345678'), and title 'dataset title'."
     )
     assert exc.type == DatasetExistsError
 
@@ -708,4 +708,7 @@ def test_delete_dataset(Session, dataset, bam_file):
                 .all()
             )
             assert len(bam_list) == expected_length
-        assert service._file_service.deleted_bam_files == ["d1_1.bam", "d1_2.bam"]
+        assert service._file_service.deleted_bam_files == [
+            "dataset_id01_1.bam",
+            "dataset_id01_2.bam",
+        ]

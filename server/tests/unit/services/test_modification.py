@@ -29,7 +29,7 @@ RECORDS = [
         "strand": Strand.REVERSE,
         "coverage": 378,
         "frequency": 9,
-        "dataset_id": "d3",
+        "dataset_id": "dataset_id03",
         "feature": "CDS,Exonic",
         "gene_id": "ENSG1",
         "gene_name": "GENE1",
@@ -49,7 +49,7 @@ RECORDS = [
         "strand": Strand.FORWARD,
         "coverage": 183,
         "frequency": 6,
-        "dataset_id": "d3",
+        "dataset_id": "dataset_id03",
         "feature": "Intergenic",
         "gene_id": "ENSIntergenic",
         "gene_name": None,
@@ -69,7 +69,7 @@ RECORDS = [
         "strand": Strand.REVERSE,
         "coverage": 183,
         "frequency": 4,
-        "dataset_id": "d3",
+        "dataset_id": "dataset_id03",
         "feature": None,
         "gene_id": None,
         "gene_name": None,
@@ -89,7 +89,7 @@ RECORDS = [
         "strand": Strand.FORWARD,
         "coverage": 19,
         "frequency": 47,
-        "dataset_id": "d3",
+        "dataset_id": "dataset_id03",
         "feature": "Intronic,Exonic",
         "gene_id": "ENSG2,ENSG3",
         "gene_name": "ENSG2,GENE3",
@@ -109,7 +109,7 @@ RECORDS = [
         "strand": Strand.FORWARD,
         "coverage": 43,
         "frequency": 100,
-        "dataset_id": "d1",
+        "dataset_id": "dataset_id01",
         "feature": None,
         "gene_id": None,
         "gene_name": None,
@@ -129,7 +129,7 @@ RECORDS = [
         "strand": Strand.REVERSE,
         "coverage": 378,
         "frequency": 9,
-        "dataset_id": "d3",
+        "dataset_id": "dataset_id03",
         "feature": "CDS",
         "gene_id": "ENSG1",
         "gene_name": "GENE1",
@@ -149,7 +149,7 @@ RECORDS = [
         "strand": Strand.FORWARD,
         "coverage": 19,
         "frequency": 47,
-        "dataset_id": "d3",
+        "dataset_id": "dataset_id03",
         "feature": "Intronic",
         "gene_id": "ENSG2",
         "gene_name": "ENSG2",
@@ -341,8 +341,8 @@ def test_get_modification_site(Session, dataset):  # noqa
     modification_service = _get_modification_service(Session())
     response = modification_service.get_modification_site("17", 100001, 100002)
     assert len(response["records"]) == 2
-    assert response["records"][0]["dataset_id"] == "d1"
-    assert response["records"][1]["dataset_id"] == "d2"
+    assert response["records"][0]["dataset_id"] == "dataset_id01"
+    assert response["records"][1]["dataset_id"] == "dataset_id02"
     assert response["records"][0]["cto"] == "Cell type 1"
     assert response["records"][1]["cto"] == "Cell type 2"
     assert response["records"][0]["tech"] == "Technology 1"

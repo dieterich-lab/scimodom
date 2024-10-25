@@ -197,7 +197,10 @@ class Assembly(Base):
         String(12), nullable=False
     )  # current is assembly_version.version_num
 
-    __table_args__ = (UniqueConstraint(name, taxa_id, version, name="uq_assembly_ntv"),)
+    __table_args__ = (
+        UniqueConstraint(name, taxa_id, version, name="uq_assembly_ntv"),
+        CheckConstraint("LENGTH(version) = 12", name="version"),
+    )
 
     inst_taxa: Mapped["Taxa"] = relationship(back_populates="assemblies")
 
@@ -208,6 +211,8 @@ class AssemblyVersion(Base):
     __tablename__ = "assembly_version"
 
     version_num: Mapped[str] = mapped_column(String(12), primary_key=True)
+
+    __table_args__ = (CheckConstraint("LENGTH(version_num) = 12", name="version"),)
 
 
 class Annotation(Base):
@@ -225,6 +230,7 @@ class Annotation(Base):
 
     __table_args__ = (
         UniqueConstraint(release, taxa_id, source, version, name="uq_annotation_rtv"),
+        CheckConstraint("LENGTH(version) = 12", name="version"),
     )
 
     inst_taxa: Mapped["Taxa"] = relationship(back_populates="annotations")
@@ -239,6 +245,8 @@ class AnnotationVersion(Base):
     __tablename__ = "annotation_version"
 
     version_num: Mapped[str] = mapped_column(String(12), primary_key=True)
+
+    __table_args__ = (CheckConstraint("LENGTH(version_num) = 12", name="version"),)
 
 
 class GenomicAnnotation(Base):
@@ -285,6 +293,8 @@ class Project(Base):
         DateTime, nullable=True
     )  # datetime declaration/default format ?  YYYY-MM-DD ISO 8601
     date_added: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+    __table_args__ = (CheckConstraint("LENGTH(id) = 8", name="id"),)
 
     inst_contact: Mapped["ProjectContact"] = relationship(back_populates="projects")
 
@@ -344,6 +354,8 @@ class Dataset(Base):
     bioinformatics_workflow: Mapped[str] = mapped_column(Text, nullable=True)
     experiment: Mapped[str] = mapped_column(Text, nullable=True)
     external_source: Mapped[str] = mapped_column(String(255), nullable=True)
+
+    __table_args__ = (CheckConstraint("LENGTH(id) = 12", name="id"),)
 
     inst_project: Mapped["Project"] = relationship(back_populates="datasets")
     inst_technology: Mapped["DetectionTechnology"] = relationship(

@@ -12,7 +12,7 @@ def dataset(Session, selection, project):  # noqa
     project1_id = project[0].id
     project2_id = project[1].id
     dataset1 = Dataset(
-        id="d1",
+        id="dataset_id01",
         title="dataset title",
         organism_id=1,
         technology_id=1,
@@ -27,7 +27,7 @@ def dataset(Session, selection, project):  # noqa
     )
     data1 = Data(
         id=1,
-        dataset_id="d1",
+        dataset_id="dataset_id01",
         modification_id=1,
         chrom="17",
         start=100001,
@@ -43,7 +43,7 @@ def dataset(Session, selection, project):  # noqa
     )
     data2 = Data(
         id=2,
-        dataset_id="d1",
+        dataset_id="dataset_id01",
         modification_id=2,
         chrom="Y",
         start=200001,
@@ -58,7 +58,7 @@ def dataset(Session, selection, project):  # noqa
         frequency=99,
     )
     dataset2 = Dataset(
-        id="d2",
+        id="dataset_id02",
         title="Dataset title 2",
         organism_id=2,
         technology_id=2,
@@ -73,7 +73,7 @@ def dataset(Session, selection, project):  # noqa
     )
     data3 = Data(
         id=3,
-        dataset_id="d2",
+        dataset_id="dataset_id02",
         modification_id=1,
         chrom="17",
         start=100001,
@@ -88,7 +88,7 @@ def dataset(Session, selection, project):  # noqa
         frequency=10,
     )
     dataset3 = Dataset(
-        id="d3",
+        id="dataset_id03",
         title="Dataset title 3",
         organism_id=1,
         technology_id=2,
@@ -103,7 +103,7 @@ def dataset(Session, selection, project):  # noqa
     )
     data4 = Data(
         id=4,
-        dataset_id="d3",
+        dataset_id="dataset_id03",
         modification_id=1,
         chrom="1",
         start=20652450,
@@ -119,7 +119,7 @@ def dataset(Session, selection, project):  # noqa
     )
     data5 = Data(
         id=5,
-        dataset_id="d3",
+        dataset_id="dataset_id03",
         modification_id=1,
         chrom="1",
         start=87328672,
@@ -135,7 +135,7 @@ def dataset(Session, selection, project):  # noqa
     )
     data6 = Data(
         id=6,
-        dataset_id="d3",
+        dataset_id="dataset_id03",
         modification_id=1,
         chrom="1",
         start=104153268,
@@ -151,7 +151,7 @@ def dataset(Session, selection, project):  # noqa
     )
     data7 = Data(
         id=7,
-        dataset_id="d3",
+        dataset_id="dataset_id03",
         modification_id=1,
         chrom="1",
         start=194189297,
@@ -166,7 +166,7 @@ def dataset(Session, selection, project):  # noqa
         frequency=47,
     )
     dataset4 = Dataset(
-        id="d4",
+        id="dataset_id04",
         title="Dataset title 4",
         organism_id=2,
         technology_id=2,
@@ -179,11 +179,21 @@ def dataset(Session, selection, project):  # noqa
         external_source="",
         date_added=stamp,
     )
-    association1 = DatasetModificationAssociation(dataset_id="d1", modification_id=1)
-    association2 = DatasetModificationAssociation(dataset_id="d1", modification_id=2)
-    association3 = DatasetModificationAssociation(dataset_id="d2", modification_id=1)
-    association4 = DatasetModificationAssociation(dataset_id="d3", modification_id=1)
-    association5 = DatasetModificationAssociation(dataset_id="d4", modification_id=2)
+    association1 = DatasetModificationAssociation(
+        dataset_id="dataset_id01", modification_id=1
+    )
+    association2 = DatasetModificationAssociation(
+        dataset_id="dataset_id01", modification_id=2
+    )
+    association3 = DatasetModificationAssociation(
+        dataset_id="dataset_id02", modification_id=1
+    )
+    association4 = DatasetModificationAssociation(
+        dataset_id="dataset_id03", modification_id=1
+    )
+    association5 = DatasetModificationAssociation(
+        dataset_id="dataset_id04", modification_id=2
+    )
     session = Session()
     session.add_all(
         [

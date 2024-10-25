@@ -213,8 +213,8 @@ def test_update_bam_file(Session, tmp_path, dataset, bam_file):
     dataset2 = dataset[1]
     stream = BytesIO(b"\x53\x6F\x6D\x65\x20\x62\x61\x6D\x20\x64\x61\x74\x61")
     service = _get_file_service(Session, tmp_path)
-    service.create_or_update_bam_file(dataset2, "d2.bam", stream, 1024)
-    bam = service.get_bam_file(dataset2, "d2.bam")
+    service.create_or_update_bam_file(dataset2, "dataset_id02.bam", stream, 1024)
+    bam = service.get_bam_file(dataset2, "dataset_id02.bam")
     with service.open_bam_file(bam) as fh:
         assert fh.read() == b"Some bam data"
     with Session() as session:

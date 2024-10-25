@@ -1,4 +1,4 @@
-"""fix_covergae_constrain
+"""fix_coverage_constraint
 
 Revision ID: 316b46c4f535
 Revises: c61c3a61a4b4
