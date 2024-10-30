@@ -1,4 +1,4 @@
-from flask import Blueprint, request, Response
+from flask import Blueprint, Response
 from flask_cors import cross_origin
 from sqlalchemy.exc import NoResultFound
 
@@ -7,6 +7,7 @@ from scimodom.api.helpers import (
     get_valid_taxa_id_from_string,
     ClientResponseException,
     validate_rna_type,
+    get_unique_list_from_query_parameter,
 )
 from scimodom.services.annotation import get_annotation_service, BIOTYPES
 from scimodom.services.assembly import get_assembly_service
@@ -61,7 +62,7 @@ def get_selections():
 @cross_origin(supports_credentials=True)
 def get_genes():
     file_service = get_file_service()
-    selection_ids = request.args.getlist("selection[]", type=int)
+    selection_ids = get_unique_list_from_query_parameter("selection", int)
     try:
         return file_service.get_gene_cache(selection_ids)
     except FileNotFoundError:
@@ -70,7 +71,7 @@ def get_genes():
 
 @api.route("/biotypes/<rna_type>", methods=["GET"])
 @cross_origin(supports_credentials=True)
-def get_biotypes(rna_type):
+def get_biotypes(rna_type):  # noqa
     # TODO: do biotypes also depend on RNA type/annotation?
     return {"biotypes": MAPPED_BIOTYPES}
 

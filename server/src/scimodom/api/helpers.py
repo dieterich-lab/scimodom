@@ -98,7 +98,7 @@ def get_valid_bam_file(dataset, name) -> BamFile:
 
 
 def get_valid_dataset_id_list_from_request_parameter(parameter: str) -> list[str]:
-    as_list = request.args.getlist(parameter, type=str)
+    as_list = get_unique_list_from_query_parameter(parameter, str)
     if len(as_list) > MAX_DATASET_IDS_IN_LIST:
         raise ClientResponseException(
             400,
@@ -240,7 +240,7 @@ def get_valid_coords(taxa_id: int, context: int = 0) -> tuple[str, int, int, Str
         if end > chrom_size:
             end = chrom_size
 
-    return (chrom, start, end, strand_dto)
+    return chrom, start, end, strand_dto
 
 
 def get_valid_logo(motif: str) -> Path:
@@ -287,7 +287,9 @@ def get_optional_positive_int(field: str) -> int | None:
 
 
 def get_response_from_pydantic_object(obj: BaseModel):
-    return Response(response=obj.json(), status=200, mimetype="application/json")
+    return Response(
+        response=obj.model_dump_json(), status=200, mimetype="application/json"
+    )
 
 
 def _is_valid_identifier(identifier, length):
@@ -303,3 +305,25 @@ def _validate_taxa_id(taxa_id: int) -> None:
     taxa_ids = [d["id"] for d in utilities_service.get_taxa()]
     if taxa_id not in taxa_ids:
         raise ClientResponseException(404, "Unrecognized Taxa ID")
+
+
+def get_unique_list_from_query_parameter(name: str, list_type):
+    """
+    There seems to be some confusion how arrays should be transmitted as query parameters.
+    While most people seem to agree that the values are packed into multiple query parameters,
+    some (older?) implementations leave the original name, while newer ones insist on
+    adding square brackets '[]' at the end of the name, e.g. my_array = ['x', 'y'] may be
+    transmitted like this:
+
+        Old: ?my_array=x&my_array=y
+        New: ?my_array[]=x&my_array[]=y
+
+    Flask seems not to be aware of this. We don't care and allow both. Also, don't want
+    that our code breaks if Flask fixes this - so we ignore double results. So don't use this
+    function for lists, which are allowed to contain the same value multiple times.
+    """
+    result_as_set = {
+        *request.args.getlist(name, type=list_type),
+        *request.args.getlist(f"{name}[]", type=list_type),
+    }
+    return list(result_as_set)

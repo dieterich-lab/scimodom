@@ -22,6 +22,7 @@ from scimodom.api.helpers import (
     get_optional_positive_int,
     get_optional_non_negative_int,
     validate_rna_type,
+    get_unique_list_from_query_parameter,
 )
 from scimodom.services.bedtools import BedToolsService, get_bedtools_service
 from scimodom.utils.dtos.bedtools import Bed6Record
@@ -269,7 +270,7 @@ def _get_annotation_source():
 
 # TODO: for mod, org, and tech, we should in fact check that they exists in the DB...
 def _get_technology_ids():
-    raw = request.args.getlist("technology", type=int)
+    raw = get_unique_list_from_query_parameter("technology", int)
     if raw is None:
         return []
     for i in raw:
@@ -279,14 +280,14 @@ def _get_technology_ids():
 
 
 def _get_gene_filters():
-    raw = request.args.getlist("geneFilter", type=str)
+    raw = get_unique_list_from_query_parameter("geneFilter", str)
     if raw is None:
         return []
     return raw
 
 
 def _get_gene_or_chrom_required() -> GeneSearch:
-    gene = request.args.getlist("geneFilter", type=str)
+    gene = get_unique_list_from_query_parameter("geneFilter", str)
     if gene:
         return GeneSearch(gene_filter=gene)
     else:
@@ -302,7 +303,7 @@ def _get_gene_or_chrom_required() -> GeneSearch:
 
 
 def _get_multi_sort(url_split: str = "%2B"):
-    raw = request.args.getlist("multiSort", type=str)
+    raw = get_unique_list_from_query_parameter("multiSort", str)
     if raw is None or (len(raw) == 1 and raw[0] == ""):
         return []
     for i in raw:
