@@ -127,14 +127,14 @@ Note that email functionality may be limited, as your mail server must be willin
   generate_password_hash("mypassword", method="pbkdf2")
   # this will return e.g. 'pbkdf2:sha256:600000$vpYjirPAT8xBuPHo$1001474730f96085cdafbf0f159d12e20ec36342b4faddbf226d637c695ee642'
 
-Then go to the database, see *e.g.* `Container setup - Manual database connection <https://dieterich-lab.github.io/scimodom/containers.html#development-setup>`_ and do the following:
+Then go to the database, see *e.g.* `Container setup - Manual database connection <https://dieterich-lab.github.io/scimodom/containers.html#manual-database-connection>`_ and do the following:
 
 .. code-block:: mysql
 
   INSERT INTO user (email, state, password_hash) VALUES ('test@uni-heidelberg', 'active', 'pbkdf2:sha256:600000$vpYjirPAT8xBuPHo$1001474730f96085cdafbf0f159d12e20ec36342b4faddbf226d637c695ee642');
 
 
-A new user is now registered, and you can login using whatever email address you used *e.g.* "test@uni-heidelberg" with the chosen password *e.g.* "mypassword".
+A new user is now registered, and you can login using whatever email address you used *e.g.* *"test@uni-heidelberg"* with the chosen password *e.g.* *"mypassword"*.
 
 Client setup
 ^^^^^^^^^^^^
