@@ -9,18 +9,18 @@ Draft or long-running issues, WIP, triage, and additional references or context 
 
 - [ ] ~pre-commit run --all-files~ under server (.pre-commit-config.yaml) runs for all files incl. client.
 
-** TODO STYLE [1/22]
+** TODO STYLE [2/22]
 
 - [ ] DEADLINE: <2024-09-30 Mon> To harmonize style across views, components, and presets (colours, behaviour, dark mode, /etc./).
 
-- [ ] CascadeSelect :: /cf./ [[https://github.com/dieterich-lab/scimodom/issues/103][Cascade truncated.]]
-- [ ] CascadeSelect :: "No available options" is not defined, /cf./ TreeSelect or Dropdown. Styling is different.
+- [ ] CascadeSelect /cf./ [[https://github.com/dieterich-lab/scimodom/issues/103][Cascade truncated.]]
+- [ ] CascadeSelect "No available options" is not defined, /cf./ TreeSelect or Dropdown. Styling is different.
 - [ ] In ~ProjectMetadata,vue~, some placeholders are grey, others are black/darker (resp. lighter in dark mode).
 - [ ] Dark mode (specific issues)
   - [ ] Logos are displayed in greyscale in dark mode, as invert also inverts the colors. Otherwise, we may have to use 2 logos,
     or create SVGs.
   - [ ] ~DataTable~: ~stripedRows~ for dark mode.
-- [ ] URGENT :: ~VirtualScroll~ not working, see [[https://github.com/primefaces/primevue-tailwind/issues/108][Missing preset for VirtualScroller]] and [[https://github.com/primefaces/primevue-tailwind/issues/168][VirtualScroller not working with DataTabe.]]
+- [ ] ~VirtualScroll~ not working, see [[https://github.com/primefaces/primevue-tailwind/issues/108][Missing preset for VirtualScroller]] and [[https://github.com/primefaces/primevue-tailwind/issues/168][VirtualScroller not working with DataTabe.]]
 - [ ] Placeholder text color ~TreeSelect~ /vs./ ~MultiSelect~.
 - [ ] Default preset color is secondary for ~DataTable~, ~Paginator~, and ~tabView~. Why not use a local ~ptOptions~
   with ~mergeSections="false"~? Else this has to be documented.
@@ -43,36 +43,32 @@ Draft or long-running issues, WIP, triage, and additional references or context 
 - [X] Custom style ~FormTextInput~ (class/style binding), incl.secondary colour for sign up.
 - [ ] Form validation and warnings/messages styling/text for login/sign up/reset components.
 - [ ] Large numbers don't show nicely in the Search paginator.
-- [ ] Outdated presets for Lara. Remove?
+- [X] Outdated presets for Lara. Remove?
 - [ ] Add MeterGroup or ProgessBar for upload? See also [[https://github.com/dieterich-lab/scimodom/issues/94][Dataset upload progress]].
 
-** TODO PEP/TYPING [0/3]
+** TODO PEP/TYPING [2/2]
 
-- [ ] [2024-02-03 Fri] Uncomment [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/pyproject.toml::strict = "True"]]
-  and fix errors, add missing stubs for flask-cors, requests, /etc./
-- [ ] [2024-08-21 Wed] [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/src/scimodom/services/bedtools.py::"import pybedtools"]]
-- [ ] [2024-02-03 Fir] ~# type: ignore~ top level does not work for scimodom.api.models. File excluded:
+- [X] [2024-02-03 Fri] Add missing stubs for flask-cors, requests, /etc./
+- [X] [2024-02-03 Fir] ~# type: ignore~ top level does not work for scimodom.api.models. File excluded:
   [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/pyproject.toml::"scimodom.utils.models.py"]]
 
-** TODO TESTS [0/9]
+** TODO TESTS [6/8]
 
 - [ ] warnings :: freezgun, pydantic
 
-- [ ] refactor :: Use tests/fixtures throughout wherever possible. Some tests may still contain redundant locally defined fixtures.
+- [X] refactor :: Use tests/fixtures throughout wherever possible. Some tests may still contain redundant locally defined fixtures.
   ~conftest.py::data_path~ is only used by ~test_import_data~, this should be simplified /cf./ ~tool.pytest.ini_options~.
 - [ ] refactor :: ~test_ensembl~ subject to [[https://github.com/dieterich-lab/scimodom/issues/119][Annotation services]]. Currently it is not possible to fully isolate these tests.
 
-- [ ] missing :: ~test_dataset~ does not test ~DatasetImportError~, ~SelectionNotFoundError~, ~DatasetExistsError~.
-- [ ] missing :: Integration tests.
-- [ ] missing :: Missing models in ~test_bedtools_dto~, ~test_project_dto~, /etc./
-- [ ] missing :: ~test_bedtools~ has limited scope, some protected methods are not tested (isolation?). Everything
+- [X] missing :: ~test_dataset~ does not test ~DatasetImportError~, ~SelectionNotFoundError~, ~DatasetExistsError~.
+- [X] missing :: Integration tests.
+- [X] missing :: Missing models in ~test_bedtools_dto~, ~test_project_dto~, /etc./
+- [X] missing :: ~test_bedtools~ has limited scope, some protected methods are not tested (isolation?). Everything
   that touches annotation is not really tested (see related tests if testing could be reasonnably divided/isolated).
 
-- [ ] EUFID length is not validated? See /e.g./ dataset fixture. Same for random SMIDs...
-- [ ] I've noticed in some cases that adding rows to models with FK constraints succeeds even when the FK does
-  not exists, /e.g./ ~association_id~. This should be investigated, otherwise this "invalidates" a test!
+- [X] EUFID length is not validated? See /e.g./ dataset fixture. Same for random SMIDs...
 
-** TODO GENERAL [0/9]
+** TODO GENERAL [1/11]
 
 - [ ] dependencies :: Pandas is used only in ~SetupService~.
 
@@ -82,7 +78,11 @@ Draft or long-running issues, WIP, triage, and additional references or context 
 - [ ] refactor :: Setup is not fully sorted: the case of import tables and ~IMPORT_DIR~, /cf./ [[https://github.com/dieterich-lab/scimodom/issues/126][startup]] and [[https://github.com/dieterich-lab/scimodom/issues/116][directory permission]],
   is still to be addressed.
 
-- [ ] docs :: Update GitHub installation instructions, /e.g./ add instructions how to create project/data for testing, add dumps for testing,
+- [ ] vars :: Usage of Flask ~SESSION_COOKIE_SAMESITE~. Is ~None~ supposed to be a string or ~None~? And why not use default ~Lax~?
+- [ ] vars :: Shouldn't default for ~is_strand~ be ~True~ in [[file:repositories/scimodom/server/src/scimodom/api/dataset.py]]? Also,
+  how do we handle undefined strand in general /e.g./ in comparisons?
+
+- [X] docs :: Update GitHub installation instructions, /e.g./ add instructions how to create project/data for testing, add dumps for testing,
   import tables, /etc/. Some instructions are wrong, for instance the ~pip install~ command misses the "dot". How to mock login (login may be
   tricky /e.g./ with google accounts)?
 
