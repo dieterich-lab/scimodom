@@ -1,4 +1,4 @@
-# Sci-ModoM: The quantitative database of transcriptome-wide high-throughput RNA modification sites
+# Sci-ModoM
 
 Sci-ModoM is a quantitative database of RNA modifications dedicated to novel assays that provide transcriptome-wide information at
 single-base resolution.
@@ -8,9 +8,9 @@ single-base resolution.
 </p>
 
 <p align="center">
-![docs](https://github.com/github/dieterich-lab/scimodom/actions/workflows/static.yml/badge.svg)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.13911907.svg)](https://doi.org/10.5281/zenodo.13911907)
-[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+<a href="https://github.com/github/dieterich-lab/scimodom/actions/workflows/static.yml"><img alt="docs" src="https://github.com/github/dieterich-lab/scimodom/actions/workflows/static.yml/badge.svg"></a>
+<a href="https://doi.org/10.5281/zenodo.13911907"><img alt="DOI" src="https://zenodo.org/badge/DOI/10.5281/zenodo.13911907.svg"></a>
+<a href="https://www.gnu.org/licenses/agpl-3.0"><img alt="License: AGPL v3" src="https://img.shields.io/badge/License-AGPL_v3-blue.svg"></a>
 </p>
 
 ---
