@@ -150,7 +150,7 @@ def _get_dataset_service(
     )
 
 
-GOOD_EUF_FILE = """#fileformat=bedRModv1.7
+GOOD_EUF_FILE = """#fileformat=bedRModv1.8
 #organism=9606
 #modification_type=RNA
 #assembly=GRCh38
@@ -448,24 +448,24 @@ def test_import_dataset_exists(Session, selection, dataset, project):  # noqa
     "regexp,replacement,exception,message,record_tuples",
     [
         (
-            r"#fileformat=bedRModv1.7",
+            r"#fileformat=bedRModv1.8",
             "",
             SpecsError,
             "Failed to parse version from header (1).",
             [],
         ),
         (
-            r"#fileformat=bedRModv1.7",
+            r"#fileformat=bedRModv1.8",
             r"#fileformat=bedRModvXX",
             SpecsError,
             "Failed to parse version from header (2).",
             [],
         ),
         (
-            r"#fileformat=bedRModv1.7",
-            "#fileformat=bedRModv2.1",
+            r"#fileformat=bedRModv1.8",
+            "#fileformat=bedRModv1.6",
             SpecsError,
-            "Unknown or outdated version 2.1.",
+            "Unknown or outdated version 1.6.",
             [],
         ),
         (

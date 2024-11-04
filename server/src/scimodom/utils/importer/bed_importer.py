@@ -1,18 +1,21 @@
-import logging
-from typing import TextIO, Optional, Generator, Generic, TypeVar
-import re
 from abc import ABC, abstractmethod
+import logging
+import re
+from typing import TextIO, Optional, Generator, Generic, TypeVar
 
 from pydantic import ValidationError
 
+from scimodom.utils.importer.text_file_reader import TextFileReader, TextFileReaderError
 from scimodom.utils.dtos.bedtools import (
     EufRecord,
     Bed6Record,
 )
 from scimodom.utils.specs.enums import Strand, ImportLimits
-from scimodom.utils.importer.text_file_reader import TextFileReader, TextFileReaderError
 
 logger = logging.getLogger(__name__)
+
+
+RECORD_TYPE = TypeVar("RECORD_TYPE")
 
 
 class BedImportEmptyFile(Exception):
@@ -23,10 +26,9 @@ class BedImportTooManyErrors(Exception):
     pass
 
 
-RECORD_TYPE = TypeVar("RECORD_TYPE")
-
-
 class AbstractBedImporter(Generic[RECORD_TYPE], ABC):
+    """Abstract base class to read BED-formatted files."""
+
     BED_HEADER_REGEXP = re.compile(r"\A#\s*([a-zA-Z_]+)\s*=\s*(.*?)\s*\Z")
     MAX_ERRORS_TO_REPORT = 5
 
@@ -49,53 +51,6 @@ class AbstractBedImporter(Generic[RECORD_TYPE], ABC):
         self._next_record = (
             self._get_next_record()
         )  # Bootstrap iterator to force parsing of header records
-
-    def _get_next_record(self):
-        try:
-            while True:
-                line = self._line_iterator.__next__()
-                if line.startswith("#"):
-                    self._handle_comment(line)
-                    continue
-                if line == "":
-                    continue
-                record = self._get_record_from_line(line)
-                if record is not None:
-                    self._record_count += 1
-                    return record
-        except StopIteration:
-            return None
-
-    def _handle_comment(self, line):
-        if self._record_count == 0:  # We are parsing the header
-            match = self.BED_HEADER_REGEXP.match(line)
-            if match is not None:
-                self._headers[match.group(1)] = match.group(2)
-
-    def _get_record_from_line(self, line):
-        try:
-            try:
-                fields = [x.strip() for x in line.split("\t")]
-                record = self.get_record_from_fields(fields)
-                return record
-            except ValidationError as err:
-                self._reader.report_error_pydantic_error(err)
-            except ValueError as err:
-                self._reader.report_error(str(err))
-        except TextFileReaderError as err:
-            self._error_count += 1
-            if self._error_count <= self.MAX_ERRORS_TO_REPORT:
-                self._error_text += str(err).strip() + "\n"
-            logger.warning(str(err))
-        return None
-
-    def report_error(self, message: str):
-        try:
-            self._reader.report_error(message)
-        except TextFileReaderError as err:
-            self._error_count += 1
-            self._record_count -= 1
-            logger.warning(str(err))
 
     @abstractmethod
     def get_record_from_fields(self, fields: list[str]) -> RECORD_TYPE:
@@ -138,6 +93,55 @@ class AbstractBedImporter(Generic[RECORD_TYPE], ABC):
             ...
             ({self._error_count} errors in total)
             """
+
+    def report_error(self, message: str):
+        try:
+            self._reader.report_error(message)
+        except TextFileReaderError as err:
+            self._error_count += 1
+            self._record_count -= 1
+            logger.warning(str(err))
+
+    def _get_next_record(self):
+        try:
+            while True:
+                line = self._line_iterator.__next__()
+                if line.startswith("#"):
+                    self._handle_comment(line)
+                    continue
+                if line == "":
+                    continue
+                record = self._get_record_from_line(line)
+                if record is not None:
+                    self._record_count += 1
+                    return record
+        except StopIteration:
+            return None
+
+    def _handle_comment(self, line):
+        if self._record_count == 0:  # We are parsing the header
+            match = self.BED_HEADER_REGEXP.match(line)
+            if match is not None:
+                key = match.group(1)
+                if key not in self._headers:
+                    self._headers[key] = match.group(2)
+
+    def _get_record_from_line(self, line):
+        try:
+            try:
+                fields = [x.strip() for x in line.split("\t")]
+                record = self.get_record_from_fields(fields)
+                return record
+            except ValidationError as err:
+                self._reader.report_error_pydantic_error(err)
+            except ValueError as err:
+                self._reader.report_error(str(err))
+        except TextFileReaderError as err:
+            self._error_count += 1
+            if self._error_count <= self.MAX_ERRORS_TO_REPORT:
+                self._error_text += str(err).strip() + "\n"
+            logger.warning(str(err))
+        return None
 
 
 class Bed6Importer(AbstractBedImporter[Bed6Record]):

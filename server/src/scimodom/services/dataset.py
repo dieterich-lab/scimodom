@@ -1,8 +1,8 @@
-import re
-import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from functools import cache
+import logging
+import re
 from typing import List, Dict, Optional, TextIO
 
 from sqlalchemy import select, func, exists, delete
@@ -34,11 +34,15 @@ from scimodom.services.assembly import (
 )
 from scimodom.services.bedtools import get_bedtools_service, BedToolsService
 from scimodom.services.file import FileService, get_file_service
-from scimodom.utils import utils
 from scimodom.utils.importer.bed_importer import EufImporter
 from scimodom.utils.dtos.bedtools import EufRecord
-from scimodom.utils.specs.euf import EUF
+from scimodom.utils.specs.euf import (
+    EUF_COMPATIBLE_VERSIONS,
+    EUF_HEADERS,
+    EUF_REQUIRED_HEADERS,
+)
 from scimodom.utils.specs.enums import AnnotationSource, Identifiers
+from scimodom.utils.utils import gen_short_uuid
 
 logger = logging.getLogger(__name__)
 
@@ -389,7 +393,7 @@ class DatasetService:
 
     def _generate_eufid(self) -> str:
         eufids = self._session.execute(select(Dataset.id)).scalars().all()
-        return utils.gen_short_uuid(Identifiers.EUFID.length, eufids)
+        return gen_short_uuid(Identifiers.EUFID.length, eufids)
 
     def _modification_id_to_name(self, idx: int) -> str:
         return self._session.execute(
@@ -474,19 +478,18 @@ class DatasetService:
         if match is None:
             raise SpecsError("Failed to parse version from header (2).")
         version = match.group(1)
-        if version not in EUF["versions"]:
+        if version not in EUF_COMPATIBLE_VERSIONS:
             raise SpecsError(f"Unknown or outdated version {version}.")
-        specs = EUF[version]
 
         result = {}
-        for header, internal_name in specs["headers"].items():
+        for header, internal_name in EUF_HEADERS.items():
             value = importer.get_header(header)
             if value is None:
                 raise SpecsError(f"Required header '{header}' is missing.")
             result[internal_name] = value
 
         assembly = self._assembly_service.get_assembly_by_id(context.assembly_id)
-        for header in specs["required"]:
+        for header in EUF_REQUIRED_HEADERS:
             value = importer.get_header(header)
             if value is None or value == "":
                 raise SpecsError(f"Required header '{header}' is empty.")
