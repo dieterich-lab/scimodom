@@ -1,5 +1,6 @@
 from io import StringIO
 from typing import Iterable
+import unittest
 
 import pytest
 from flask import Flask
@@ -140,6 +141,13 @@ class MockBedtoolsService:
     ]
     SUBTRACT_RESULT = [SubtractRecord(**DEFAULT_COMPARISON_RECORD.dict())]
 
+    @staticmethod
+    def _log_operation(operation, a_records, b_records_list, is_strand):
+        MockBedtoolsService.last_operation = operation
+        MockBedtoolsService.last_a_dataset = list(a_records)
+        MockBedtoolsService.last_b_dataset_list = [list(x) for x in b_records_list]
+        MockBedtoolsService.last_is_strand = is_strand
+
     def intersect_comparison_records(
         self,
         a_records: Iterable[ComparisonRecord],
@@ -148,13 +156,6 @@ class MockBedtoolsService:
     ) -> Iterable[IntersectRecord]:
         self._log_operation("intersect", a_records, b_records_list, is_strand)
         return MockBedtoolsService.INTERSECT_RESULT
-
-    @staticmethod
-    def _log_operation(operation, a_records, b_records_list, is_strand):
-        MockBedtoolsService.last_operation = operation
-        MockBedtoolsService.last_a_dataset = list(a_records)
-        MockBedtoolsService.last_b_dataset_list = [list(x) for x in b_records_list]
-        MockBedtoolsService.last_is_strand = is_strand
 
     def closest_comparison_records(
         self,
@@ -358,15 +359,20 @@ def test_bad_url(test_client, mock_services, url, http_status, message):
 
 
 def check_comparison_mocks(operation, reference, comparison, upload, euf, strand):
+    # cf. 8a24c638b9c2a2f21d5ceaa926943d851f59d951
+    # assertCountEqual tests that sequence first contains the same elements
+    # as second, regardless of their order
+    case = unittest.TestCase()
     assert MockBedtoolsService.last_operation == operation
     assert MockBedtoolsService.last_is_strand == strand
-    assert MockBedtoolsService.last_a_dataset == get_a_datasets_as_comparison_records(
-        *reference
+    case.assertCountEqual(
+        MockBedtoolsService.last_a_dataset,
+        get_a_datasets_as_comparison_records(*reference),
     )
     if comparison is not None:
-        assert (
-            MockBedtoolsService.last_b_dataset_list
-            == get_b_dataset_list_as_comparison_records(*comparison)
+        case.assertCountEqual(
+            MockBedtoolsService.last_b_dataset_list,
+            get_b_dataset_list_as_comparison_records(*comparison),
         )
     if upload is not None:
         if euf:
