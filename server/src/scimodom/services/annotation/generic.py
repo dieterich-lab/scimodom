@@ -9,15 +9,13 @@ from sqlalchemy.orm import Session
 from scimodom.database.models import (
     Annotation,
     AnnotationVersion,
-    Data,
-    DataAnnotation,
     GenomicAnnotation,
-    Selection,
 )
 from scimodom.services.bedtools import BedToolsService
 from scimodom.services.data import DataService
 from scimodom.services.external import ExternalService
 from scimodom.services.file import FileService
+from scimodom.services.gene import GeneService
 from scimodom.services.web import WebService
 
 logger = logging.getLogger(__name__)
@@ -38,6 +36,7 @@ class GenericAnnotationService(ABC):
         bedtools_service: BedToolsService,
         external_service: ExternalService,
         web_service: WebService,
+        gene_service: GeneService,
         file_service: FileService,
     ) -> None:
         """Utility class to handle annotations.
@@ -61,6 +60,7 @@ class GenericAnnotationService(ABC):
         self._bedtools_service = bedtools_service
         self._external_service = external_service
         self._web_service = web_service
+        self._gene_service = gene_service
         self._file_service = file_service
 
         self._version = self._session.execute(
@@ -93,34 +93,6 @@ class GenericAnnotationService(ABC):
                 f"No such {source} annotation for taxonomy ID: {taxa_id}."
             )
 
-    def update_gene_cache(self, eufid: str, selections: dict[int, int]) -> None:
-        """Update gene cache.
-
-        :param eufid: EUFID (dataset ID)
-        :type eufid: str
-        :param selections: Dict of selection ID(s): modification ID(s)
-        :type selections: dict of {int: int}
-        """
-        for selection_id, modification_id in selections.items():
-            query = select(Data.id).filter_by(
-                dataset_id=eufid, modification_id=modification_id
-            )
-            data_ids = self._session.execute(query).scalars().all()
-            query = (
-                select(GenomicAnnotation.name)
-                .join_from(
-                    GenomicAnnotation, DataAnnotation, GenomicAnnotation.annotations
-                )
-                .where(DataAnnotation.data_id.in_(data_ids))
-            ).distinct()
-            genes = list(
-                filter(
-                    lambda g: g is not None,
-                    set(self._session.execute(query).scalars().all()),
-                )
-            )
-            self._file_service.update_gene_cache(selection_id, genes)
-
     def get_release_path(self, annotation: Annotation) -> Path:
         """Construct annotation release path.
 
@@ -145,17 +117,10 @@ class GenericAnnotationService(ABC):
             return True
         return False
 
-    def _get_modification_from_selection(self, idx: int) -> int:
-        return self._session.execute(
-            select(Selection.modification_id).where(Selection.id == idx)
-        ).scalar_one()
-
     def annotate_data(self, taxa_id: int, eufid: str, selection_ids: list[int]):
         self._annotate_data_in_database(taxa_id, eufid)
-        selections = {
-            idx: self._get_modification_from_selection(idx) for idx in selection_ids
-        }
-        self.update_gene_cache(eufid, selections)
+        for selection_id in selection_ids:
+            self._gene_service.update_gene_cache(selection_id)
 
     @abstractmethod
     def _annotate_data_in_database(self, taxa_id: int, eufid: str):
