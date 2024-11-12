@@ -1,7 +1,6 @@
-from collections import namedtuple
 from datetime import datetime
 from io import StringIO
-from typing import Any
+from typing import Any, Generator
 
 import pytest
 from sqlalchemy import select, func
@@ -11,28 +10,15 @@ from scimodom.database.models import (
     BamFile,
     Dataset,
     DatasetModificationAssociation,
-    Assembly,
     Data,
     User,
 )
-from scimodom.services.dataset import (
-    DatasetService,
-    SpecsError,
-    DatasetHeaderError,
-    DatasetUpdateError,
-    DatasetImportError,
-    SelectionNotFoundError,
-    DatasetExistsError,
-)
-from scimodom.utils.importer.bed_importer import (
-    BedImportEmptyFile,
-    BedImportTooManyErrors,
-)
-from scimodom.utils.specs.enums import Strand, AnnotationSource, ImportLimits
-
-InputSelection = namedtuple(
-    "InputSelection", "smid modification organism technology assembly"
-)
+from scimodom.services.dataset import DatasetService
+from scimodom.services.validator import _DatasetImportContext, DatasetUpdateError
+from scimodom.utils.importer.bed_importer import EufImporter
+from scimodom.utils.dtos.bedtools import EufRecord
+from scimodom.utils.specs.euf import EUF_HEADERS
+from scimodom.utils.specs.enums import Strand, AnnotationSource
 
 
 class MockFileService:
@@ -71,46 +57,9 @@ class MockFileService:
         }
 
 
-class MockBedToolsService:
-    def create_temp_euf_file(self, records):  # noqa
-        return "xxx"
-
-
-class MockAssemblyService:
-    def __init__(self, is_latest: bool, assemblies_by_id: dict[int, Assembly]):
-        self._is_latest = is_latest
-        self._assemblies_by_id = assemblies_by_id
-
-    def get_assembly_by_id(self, assembly_id: int) -> Assembly:
-        return self._assemblies_by_id[assembly_id]
-
-    def is_latest_assembly(self, assembly: Assembly) -> bool:  # noqa
-        return self._is_latest
-
-    def get_seqids(self, taxa_id: int) -> list[str]:  # noqa
-        return ["1"]
-
-    def get_name_for_version(self, taxa_id: int) -> str:  # noqa
-        return "GHRc38"
-
-    def liftover(
-        self,
-        assembly: Assembly,
-        raw_file: str,
-        unmapped_file: str | None = None,
-        threshold: float = ImportLimits.LIFTOVER.max,
-    ) -> str:
-        pass
-
-
 class MockAnnotationService:
-    def __init__(self, check_source_result):
-        self._check_source_result = check_source_result
-
-    def check_annotation_source(
-        self, annotation_source: AnnotationSource, modification_ids: list[int]
-    ):  # noqa
-        return self._check_source_result
+    def __init__(self):
+        self._annotated = False
 
     def annotate_data(
         self,
@@ -119,34 +68,46 @@ class MockAnnotationService:
         eufid: str,
         selection_ids: list[int],
     ):
-        pass
+        self._annotated = True
 
 
-def _get_dataset_service(
-    session, is_latest_asembly=True, assemblies_by_id=None, check_source_result=True
-):
-    if assemblies_by_id is None:
-        assemblies_by_id = {
-            1: Assembly(
-                name="GRCh38", alt_name="hg38", taxa_id=9606, version="GcatSmFcytpU"
-            ),
-            2: Assembly(
-                name="GRCm38", alt_name="mm10", taxa_id=10090, version="GcatSmFcytpU"
-            ),
-            3: Assembly(
-                name="GRCh37", alt_name="hg19", taxa_id=9606, version="J9dit7Tfc6Sb"
-            ),
-        }
+class MockValidatorService:
+    def __init__(self):
+        self._context: _DatasetImportContext
+        self._read_header: dict[str, str]
+
+    @staticmethod
+    def get_validated_records(
+        importer: EufImporter, context: _DatasetImportContext
+    ) -> Generator[EufRecord, None, None]:  # noqa
+        for record in importer.parse():
+            yield record
+
+    def create_import_context(self, importer: EufImporter, **kwargs) -> None:
+        kwargs = {**kwargs, "taxa_id": 9606}
+        self._context = _DatasetImportContext(**kwargs)
+        self._context.selection_ids = [1]
+        self._context.modification_names = {"m6A": 1}
+
+        read_header = {}
+        for header_tag, internal_name in EUF_HEADERS.items():
+            value = importer.get_header(header_tag)
+            read_header[internal_name] = value
+        self._read_header = read_header
+
+    def get_import_context(self) -> _DatasetImportContext:
+        return self._context
+
+    def get_validated_header(self) -> dict[str, str]:
+        return self._read_header
+
+
+def _get_dataset_service(session):
     return DatasetService(
         session=session,
+        annotation_service=MockAnnotationService(),
         file_service=MockFileService(session),
-        bedtools_service=MockBedToolsService(),  # noqa
-        assembly_service=MockAssemblyService(
-            is_latest=is_latest_asembly, assemblies_by_id=assemblies_by_id
-        ),  # noqa
-        annotation_service=MockAnnotationService(
-            check_source_result=check_source_result
-        ),  # noqa
+        validator_service=MockValidatorService(),
     )
 
 
@@ -168,8 +129,10 @@ GOOD_EUF_FILE = """#fileformat=bedRModv1.8
 
 # tests
 
+# NOTE: the importer is not mocked!
 
-def test_dataset_get_by_id(Session, dataset):
+
+def test_dataset_get_by_id(Session, dataset):  # noqa
     service = _get_dataset_service(Session())
     d1 = service.get_by_id("dataset_id01")
     assert d1.title == "dataset title"
@@ -178,7 +141,7 @@ def test_dataset_get_by_id(Session, dataset):
     assert d1.date_added == datetime(2024, 10, 21, 8, 10, 27)
 
 
-def test_get_datasets(Session, project, dataset):
+def test_get_datasets(Session, project, dataset):  # noqa
     service = _get_dataset_service(Session())
     datasets = service.get_datasets()
     assert len(datasets) == 4
@@ -189,7 +152,7 @@ def test_get_datasets(Session, project, dataset):
     assert datasets[3]["cto"] == "Cell type 2"
 
 
-def test_get_datasets_for_user(Session, project, dataset):
+def test_get_datasets_for_user(Session, project, dataset):  # noqa
     with Session() as session:
         user = session.get_one(User, 1)
     service = _get_dataset_service(Session())
@@ -240,6 +203,13 @@ def test_import_dataset(
         assert dataset.experiment == "Description of experiment."
         assert dataset.external_source is None
 
+        association = (
+            session.execute(select(DatasetModificationAssociation)).scalars().all()
+        )
+        assert len(association) == 1
+        assert association[0].dataset_id == eufid
+        assert association[0].modification_id == 1
+
         data = (
             session.execute(select(Data).where(Data.dataset_id == eufid))
             .scalars()
@@ -251,6 +221,8 @@ def test_import_dataset(
         assert data[0].name == "m6A"
         assert data[0].strand == Strand.FORWARD
         assert data[0].score == 1000
+
+    assert service._annotation_service._annotated is True
 
 
 def test_import_dataset_dry_run(Session, selection, project, freezer):  # noqa
@@ -277,6 +249,10 @@ def test_import_dataset_dry_run(Session, selection, project, freezer):  # noqa
         assert len(datasets) == 0
         data = session.execute(select(Data)).all()
         assert len(data) == 0
+        association = session.execute(select(DatasetModificationAssociation)).all()
+        assert len(association) == 0
+
+    assert service._annotation_service._annotated is False
 
 
 def test_import_dataset_update_no_change(Session, selection, project, freezer):  # noqa
@@ -389,22 +365,7 @@ def test_import_dataset_update_with_change(
         assert data[0].score == 555
 
 
-@pytest.mark.parametrize(
-    "eufid,message",
-    [
-        (
-            "XXXXXXXXXXXX",
-            "No such dataset: 'XXXXXXXXXXXX'.",
-        ),
-        (
-            "dataset_id02",
-            "Provided dataset 'dataset_id02', but found 'dataset_id01' with title 'dataset title' (SMID '12345678').",
-        ),
-    ],
-)
-def test_import_dataset_update_fail(
-    eufid, message, Session, selection, dataset, project
-):  # noqa
+def test_import_dataset_update_fail(Session, selection, dataset, project):  # noqa
     service = _get_dataset_service(Session())
     with pytest.raises(DatasetUpdateError) as exc:
         service.import_dataset(
@@ -417,258 +378,10 @@ def test_import_dataset_update_fail(
             technology_id=1,
             organism_id=1,
             annotation_source=AnnotationSource.ENSEMBL,
-            eufid=eufid,
+            eufid="XXXXXXXXXXXX",
         )
-    assert str(exc.value) == message
+    assert str(exc.value) == "No such dataset: 'XXXXXXXXXXXX'."
     assert exc.type == DatasetUpdateError
-
-
-def test_import_dataset_exists(Session, selection, dataset, project):  # noqa
-    service = _get_dataset_service(Session())
-    with pytest.raises(DatasetExistsError) as exc:
-        service.import_dataset(
-            StringIO(GOOD_EUF_FILE),
-            source="test",
-            smid=project[0].id,
-            title="dataset title",
-            assembly_id=1,
-            modification_ids=[1],
-            technology_id=1,
-            organism_id=1,
-            annotation_source=AnnotationSource.ENSEMBL,
-        )
-    assert (
-        str(exc.value)
-        == "Suspected duplicate dataset 'dataset_id01' (SMID '12345678'), and title 'dataset title'."
-    )
-    assert exc.type == DatasetExistsError
-
-
-@pytest.mark.parametrize(
-    "regexp,replacement,exception,message,record_tuples",
-    [
-        (
-            r"#fileformat=bedRModv1.8",
-            "",
-            SpecsError,
-            "Failed to parse version from header (1).",
-            [],
-        ),
-        (
-            r"#fileformat=bedRModv1.8",
-            r"#fileformat=bedRModvXX",
-            SpecsError,
-            "Failed to parse version from header (2).",
-            [],
-        ),
-        (
-            r"#fileformat=bedRModv1.8",
-            "#fileformat=bedRModv1.6",
-            SpecsError,
-            "Unknown or outdated version 1.6.",
-            [],
-        ),
-        (
-            r"#assembly=GRCh38",
-            "",
-            SpecsError,
-            "Required header 'assembly' is missing.",
-            [],
-        ),
-        (
-            r"#assembly=GRCh38",
-            "#assembly=",
-            SpecsError,
-            "Required header 'assembly' is empty.",
-            [],
-        ),
-        (
-            r"#organism=9606",
-            "#organism=10090",
-            DatasetHeaderError,
-            "Expected 9606 for organism; got 10090 from file header.",
-            [],
-        ),
-        (
-            r"#assembly=GRCh38",
-            "#assembly=GRCm38",
-            DatasetHeaderError,
-            "Expected GRCh38 for assembly; got GRCm38 from file header.",
-            [],
-        ),
-        (
-            "1\t0\t10\tm6A\t1000\t+\t0\t10\t0,0,0\t10\t1",
-            "1\t0\t10\tm6A\t1000\t+\t0\t10\t0,0,0\t10",
-            BedImportTooManyErrors,
-            "Found too many errors in test (valid: 0, errors: 1)",
-            [
-                (
-                    "scimodom.utils.importer.bed_importer",
-                    30,
-                    "test, line 13: Expected 11 fields, but got 10",
-                ),
-                (
-                    "scimodom.utils.importer.bed_importer",
-                    40,
-                    "Found too many errors in test (valid: 0, errors: 1)",
-                ),
-            ],
-        ),
-        (
-            "1\t0\t10\tm6A\t1000\t+\t0\t10\t0,0,0\t10\t1",
-            "",
-            BedImportEmptyFile,
-            "Did not find any records in 'test'",
-            [
-                (
-                    "scimodom.utils.importer.bed_importer",
-                    40,
-                    "Did not find any records in 'test'",
-                )
-            ],
-        ),
-        (
-            "1\t0\t10\tm6A\t1000\t+\t0\t10\t0,0,0\t10\t1",
-            "1\t0\t10\tm6\t1000\t+\t0\t10\t0,0,0\t10\t1",
-            BedImportTooManyErrors,
-            "Found too many errors in test (valid: 0, errors: 1)",
-            [
-                (
-                    "scimodom.utils.importer.bed_importer",
-                    30,
-                    "test, line 13: Unrecognized name: m6.",
-                ),
-                (
-                    "scimodom.utils.importer.bed_importer",
-                    40,
-                    "Found too many errors in test (valid: 0, errors: 1)",
-                ),
-            ],
-        ),
-        (
-            "1\t0\t10\tm6A\t1000\t+\t0\t10\t0,0,0\t10\t1",
-            "2\t0\t10\tm6A\t1000\t+\t0\t10\t0,0,0\t10\t1",
-            BedImportTooManyErrors,
-            "Found too many errors in test (valid: 0, errors: 1)",
-            [
-                (
-                    "scimodom.utils.importer.bed_importer",
-                    30,
-                    "test, line 13: Unrecognized chrom: 2. Ignore this warning for scaffolds and contigs, otherwise this could be due to misformatting!",
-                ),
-                (
-                    "scimodom.utils.importer.bed_importer",
-                    40,
-                    "Found too many errors in test (valid: 0, errors: 1)",
-                ),
-            ],
-        ),
-    ],
-)
-def test_import_dataset_bad_import(
-    regexp,
-    replacement,
-    exception,
-    message,
-    record_tuples,
-    Session,
-    selection,
-    project,
-    freezer,
-    caplog,
-):  # noqa
-    euf_file = GOOD_EUF_FILE.replace(regexp, replacement)
-    service = _get_dataset_service(Session())
-    file = StringIO(euf_file)
-    freezer.move_to("2017-05-20 11:00:23")
-    with pytest.raises(exception) as exc:
-        service.import_dataset(
-            file,
-            source="test",
-            smid=project[0].id,
-            title="title",
-            assembly_id=1,
-            modification_ids=[1],
-            technology_id=1,
-            organism_id=1,
-            annotation_source=AnnotationSource.ENSEMBL,
-        )
-    assert str(exc.value) == message
-    assert caplog.record_tuples == record_tuples
-
-
-@pytest.mark.parametrize(
-    "input_selection,exception,message",
-    [
-        (
-            InputSelection("XXXXXXXX", [1], 1, 1, 1),
-            DatasetImportError,
-            "No such SMID: XXXXXXXX.",
-        ),
-        (
-            InputSelection("12345678", [1, 99], 1, 1, 1),
-            DatasetImportError,
-            "No such modification ID: 99.",
-        ),
-        (
-            InputSelection("12345678", [1], 99, 1, 1),
-            DatasetImportError,
-            "No such organism ID: 99.",
-        ),
-        (
-            InputSelection("12345678", [1], 1, 99, 1),
-            DatasetImportError,
-            "No such technology ID: 99.",
-        ),
-        (
-            InputSelection("12345678", [1, 1], 1, 1, 1),
-            DatasetImportError,
-            "Repeated modification IDs.",
-        ),
-        (
-            InputSelection("12345678", [1], 1, 1, 2),
-            DatasetImportError,
-            "No such assembly GRCm38 for organism 9606.",
-        ),
-    ],
-)
-def test_import_dataset_import_error(
-    input_selection, exception, message, Session, selection, project
-):  # noqa
-    service = _get_dataset_service(Session())
-    with pytest.raises(exception) as exc:
-        service.import_dataset(
-            StringIO(GOOD_EUF_FILE),
-            source="test",
-            smid=input_selection.smid,
-            title="title",
-            assembly_id=input_selection.assembly,
-            modification_ids=input_selection.modification,
-            technology_id=input_selection.technology,
-            organism_id=input_selection.organism,
-            annotation_source=AnnotationSource.ENSEMBL,
-        )
-    assert str(exc.value) == message
-
-
-def test_import_dataset_selection_not_found(Session, selection, project):
-    service = _get_dataset_service(Session())
-    with pytest.raises(SelectionNotFoundError) as exc:
-        service.import_dataset(
-            StringIO(GOOD_EUF_FILE),
-            source="test",
-            smid=project[0].id,
-            title="title",
-            assembly_id=1,
-            modification_ids=[1],
-            technology_id=1,
-            organism_id=2,
-            annotation_source=AnnotationSource.ENSEMBL,
-        )
-    assert (
-        str(exc.value)
-        == "No such selection with m6A, Technology 1, and Cell type 2 (9606)."
-    )
 
 
 def test_delete_dataset(Session, dataset, bam_file):
@@ -684,7 +397,6 @@ def test_delete_dataset(Session, dataset, bam_file):
         eufid1 = dataset[1].id
         eufid2 = dataset[2].id
         eufid3 = dataset[3].id
-        remaining_dataset = session.get_one(Dataset, eufid1)  # noqa
         for eufid, expected_length in zip(
             [eufid0, eufid1, eufid2, eufid3], [0, 1, 0, 0]
         ):

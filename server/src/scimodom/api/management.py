@@ -9,8 +9,8 @@ from flask_jwt_extended import jwt_required
 from scimodom.config import get_config
 from scimodom.services.assembly import LiftOverError
 
-from scimodom.services.dataset import (
-    get_dataset_service,
+from scimodom.services.dataset import get_dataset_service
+from scimodom.services.validator import (
     SelectionNotFoundError,
     DatasetImportError,
     DatasetHeaderError,

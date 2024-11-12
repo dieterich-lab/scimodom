@@ -17,7 +17,7 @@ class NoDataRecords(Exception):
 
 class DataService:
     def __init__(self, session: Session):
-        self._db_session = session
+        self._session = session
 
     def get_by_dataset(
         self, datasets: Union[str, Dataset, List[Union[str, Dataset]]]
@@ -30,7 +30,7 @@ class DataService:
             .where(Data.dataset_id.in_(dataset_ids))
         )
         count = 0
-        for record in self._db_session.execute(query).all():
+        for record in self._session.execute(query).all():
             count += 1
             yield record[0]
         if count == 0:

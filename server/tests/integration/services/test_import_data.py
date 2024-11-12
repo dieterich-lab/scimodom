@@ -21,6 +21,7 @@ from scimodom.services.external import ExternalService
 from scimodom.services.file import FileService
 from scimodom.services.sunburst import SunburstService
 from scimodom.services.web import WebService
+from scimodom.services.validator import ValidatorService
 from scimodom.utils.specs.enums import AnnotationSource, SunburstChartType
 from tests.mocks.enums import MockEnsembl
 
@@ -221,6 +222,17 @@ def _get_web_service():
     return WebService()
 
 
+def _get_validator_service(
+    session, annotation_service, assembly_service, bedtools_service
+):
+    return ValidatorService(
+        session=session,
+        annotation_service=annotation_service,
+        assembly_service=assembly_service,
+        bedtools_service=bedtools_service,
+    )
+
+
 def _get_dataset_service(session, tmp_path):
     bedtools_service = _get_bedtools_service(tmp_path)
     file_service = _get_file_service(session, tmp_path)
@@ -238,12 +250,14 @@ def _get_dataset_service(session, tmp_path):
         web_service,
         file_service,
     )
+    validator_service = _get_validator_service(
+        session, annotation_service, assembly_service, bedtools_service
+    )
     return DatasetService(
         session=session,
-        file_service=file_service,
-        bedtools_service=bedtools_service,
         annotation_service=annotation_service,
-        assembly_service=assembly_service,
+        file_service=file_service,
+        validator_service=validator_service,
     )
 
 
