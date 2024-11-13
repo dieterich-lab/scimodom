@@ -161,7 +161,7 @@ function selectTechnology(data: Technology) {
         the latter case, all information that you entered will be lost.
       </InstructionsText>
       <div class="grid grid-cols-2 gap-y-2 gap-x-8">
-        <FormProjectSelection @change="selectProject" />
+        <FormProjectSelection :error="errors.smid" @change="selectProject" />
 
         <div />
 

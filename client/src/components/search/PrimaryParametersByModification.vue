@@ -55,7 +55,7 @@ async function selectCto() {
   clearTechnologySelection()
 }
 async function reportResults(technologies: Technology[]) {
-  if (selectedModificationType.value && selectedCto.value) {
+  if (selectedModificationType.value && selectedCto.value && technologies.length > 0) {
     const selections = await getSelectionsByIds(
       selectedModificationType.value.modification_id,
       selectedCto.value.organism_id,
@@ -69,8 +69,10 @@ async function reportResults(technologies: Technology[]) {
       technologies,
       rna_type: 'WTS'
     }
-    emit('change', results.value)
+  } else {
+    results.value = null
   }
+  emit('change', results.value)
 }
 </script>
 

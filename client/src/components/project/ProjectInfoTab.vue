@@ -46,9 +46,11 @@ const validationSchema = object({
   title: string().required('Title is required!').max(255, 'At most 255 characters allowed!'),
   summary: string().required('Summary is required!'),
   date_published: date(),
-  externalSources: array().of(
+  external_sources: array().of(
     object().shape({
-      doi: string().max(255, 'At most 255 characters allowed!'),
+      doi: string()
+        .max(255, 'At most 255 characters allowed!')
+        .matches(/^10\./, { message: 'DOI must start with "10."!' }),
       pmid: number()
         .integer()
         .typeError('PMID must be a number!')
@@ -162,14 +164,14 @@ function getFormDataFromModel(x: ProjectInfoTabModel): FormData {
         <div class="grid grid-cols-3 gap-4 mt-2" v-for="(field, idx) in fields" :key="field.key">
           <FormTextInput
             v-model="field.value.doi"
-            :error="errors[`externalSources.${idx}.doi`]"
+            :error="errors[`external_sources[${idx}].doi`]"
             placeholder="10.XXXX/..."
           >
             DOI
           </FormTextInput>
           <FormTextInput
             v-model="field.value.pmid"
-            :error="errors[`externalSources.${idx}.pmid`]"
+            :error="errors[`external_sources[${idx}].pmid`]"
             placeholder="PubMed-ID"
           >
             PMID

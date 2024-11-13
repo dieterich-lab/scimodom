@@ -1,52 +1,33 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import Button from 'primevue/button'
-import Dialog from 'primevue/dialog'
-import FormTextInput from '@/components/ui/FormTextInput.vue'
+import { useId } from 'vue'
 import type { Project } from '@/services/project'
-import ProjectSelectionBox from '@/components/ui/ProjectSelectionBox.vue'
+import FormFieldWrapper from '@/components/ui/FormFieldWrapper.vue'
+import ProjectSelection from '@/components/ui/ProjectSelection.vue'
+import { FORM_FIELD_DEFAULTS, type FormFieldProps } from '@/utils/ui_style'
+
+withDefaults(defineProps<FormFieldProps>(), FORM_FIELD_DEFAULTS)
 
 const model = defineModel<Project>()
-const emits = defineEmits<{
-  (e: 'change', project: Project): void
-}>()
-const dialogVisible = ref<boolean>(false)
-const smid = ref<string>('')
 
-function openDialog() {
-  dialogVisible.value = true
-}
+const emit = defineEmits<{ (e: 'change', project: Project): void }>()
 
 function change(project: Project) {
-  model.value = project
-  smid.value = project.project_id
-  dialogVisible.value = false
-  emits('change', project)
+  emit('change', project)
 }
+
+const id = useId()
 </script>
 <template>
-  <div class="flex flex-row">
-    <FormTextInput v-model="smid" :disabled="true" placeholder="XXXXXXXX">
-      Sci-ModoM ID (SMID)
-    </FormTextInput>
-    <Button
-      class="ml-4 self-center"
-      label="Select a project"
-      icon="pi pi-search-plus"
-      @click="openDialog"
-    />
-    <Dialog
-      v-model:visible="dialogVisible"
-      header="Available projects"
-      :breakpoints="{ '960px': '75vw', '640px': '90vw' }"
-      :pt="{
-        root: { class: 'w-fit' },
-        closeButton: { class: 'focus:ring-secondary-400 dark:focus:ring-secondary-300' }
-      }"
-      :ptOptions="{ mergeProps: true }"
-      :modal="true"
-    >
-      <ProjectSelectionBox @change="change" />
-    </Dialog>
-  </div>
+  <FormFieldWrapper :field-id="id" :error="error" :ui-style="uiStyle">
+    <template v-slot:label>Sci-ModoM ID (SMID)</template>
+    <template v-slot:field>
+      <ProjectSelection
+        v-model="model"
+        :id="id"
+        :markAsError="!!error"
+        :ui-style="uiStyle"
+        @change="change"
+      />
+    </template>
+  </FormFieldWrapper>
 </template>
