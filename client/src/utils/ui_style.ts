@@ -9,7 +9,7 @@ interface UiStyle {
   backgroundStyle: string
   buttonClasses: string
   textClasses: string
-  severity: string
+  severity?: string
 }
 
 const DEFAULT_STYLE = {
@@ -30,8 +30,7 @@ const DEFAULT_STYLE = {
         rgb(var(--primary-400))
   )`,
   buttonClasses: 'p-4 w-full text-primary-50 border border-primary-300 ring-primary-800',
-  textClasses: 'text-gray-700 dark:text-gray-300',
-  severity: 'primary'
+  textClasses: 'text-gray-700 dark:text-gray-300'
 }
 
 const PRIMARY_DIALOG_STYLE: UiStyle = {

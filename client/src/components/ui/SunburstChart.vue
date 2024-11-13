@@ -18,12 +18,9 @@ const props = defineProps<{
 const dialogStore = useDialogState()
 const chart = useTemplateRef<Plotly.Root>('chart_ref')
 
-function handleClick(event: Plotly.PlotMouseEvent) {
+function handleClick() {
   if (chart.value) {
-    const point = event.points[0]
-    if (point) {
-      Plotly.restyle(chart.value, {}, [point.pointIndex])
-    }
+    Plotly.restyle(chart.value, {})
   }
 }
 

@@ -50,10 +50,12 @@ function login(values: FormData) {
       }
     })
     .catch((err) => {
-      dialogState.handle_error(err, 'Failed to login - please try again', {
-        state: DIALOG.LOGIN,
-        email: values.email
-      })
+      dialogState.handle_error(
+        err,
+        'Failed to login',
+        { state: DIALOG.LOGIN, email: values.email },
+        new Map([[401, 'Wrong email or password']])
+      )
     })
 }
 

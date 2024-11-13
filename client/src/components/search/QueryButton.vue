@@ -23,7 +23,7 @@ const disabled = computed(
 
 function needsConfirm(): boolean {
   const p = model.value
-  return !(p?.gene || p?.biotypes || p?.chromStart || p?.chromEnd)
+  return !p?.gene && (!p?.chromStart || !p?.chromEnd)
 }
 
 function confirmSearch() {

@@ -3,23 +3,20 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 
 import { ref, onMounted } from 'vue'
-import { type Project, allProjectsCache, allProjectsByIdCache } from '@/services/project'
+import { type Project, allProjectsByIdCache } from '@/services/project'
 import LocalTime from '@/components/ui/LocalTime.vue'
 import ReferenceLinks from '@/components/ui/ReferenceLinks.vue'
 
-defineProps<{
-  projectId: String
+const props = defineProps<{
+  projectId: string
 }>()
 
-const projectsById = ref<Readonly<Map<string, Project>>>(new Map())
 const projects = ref<Project[]>([])
 
 onMounted(() => {
-  allProjectsCache.getData().then((data) => {
-    projects.value = [...data]
-  })
   allProjectsByIdCache.getData().then((data) => {
-    projectsById.value = data
+    const project = data.get(props.projectId)
+    projects.value = project ? [project] : []
   })
 })
 </script>

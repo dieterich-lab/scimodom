@@ -75,7 +75,7 @@ function getPlotlySunburstData(node: SunburstResponseData): SunburstData {
     parents: [],
     values: [],
     marker: { colors: [], line: { width: 1 } },
-    textfont: { color: [], family: 'Open Sans', size: 12 }, // Set the text color for each label.
+    textfont: { color: [], family: '"Open Sans", verdana, arial, sans-serif', size: 12 }, // Set the text color for each label.
     customdata: [],
     hovertemplate: '<b>%{label}</b> : %{customdata}<extra></extra>',
     textinfo: 'label'
