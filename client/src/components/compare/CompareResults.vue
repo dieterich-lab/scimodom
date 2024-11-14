@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import Button from 'primevue/button'
 import ProgressSpinner from 'primevue/progressspinner'
 import Column from 'primevue/column'
@@ -25,6 +25,10 @@ const dialogState = useDialogState()
 
 const dt = ref()
 const records = ref<ComparisonDisplayRecord[]>([])
+
+const empytMessage = computed(() =>
+  props.params && !loading.value ? 'No records match your search criteria!' : ''
+)
 
 const COLUMNS = [
   { field: 'a.chrom', header: 'Chrom', exportHeader: 'chrom_ref', sortable: true, tooltip: '' },
@@ -202,7 +206,7 @@ const ColumnStyle = 'w-{1/19}'
     </template>
     <template #empty>
       <p class="text-center text-secondary-500 font-semibold">
-        No records match your search criteria!
+        {{ empytMessage }}
       </p>
     </template>
     <ColumnGroup type="header">

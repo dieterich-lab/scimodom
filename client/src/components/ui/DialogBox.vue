@@ -18,7 +18,7 @@ const style = props.uiStyle.backgroundStyle
 </script>
 <template>
   <div class="flex flex-col px-8 py-8 gap-4 min-w-[30em]" :style="style">
-    <FormErrorMessage>{{ dialogState.message }}</FormErrorMessage>
+    <FormErrorMessage :ui-style="uiStyle">{{ dialogState.message }}</FormErrorMessage>
     <slot></slot>
   </div>
 </template>

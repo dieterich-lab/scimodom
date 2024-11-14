@@ -44,12 +44,14 @@ function uploader(event: FileUploadUploaderEvent) {
       model.value = result
       emit('change', result)
     })
-    .catch(() => clearUploadedFile())
+    .catch(() => reset())
 }
 
-function clearUploadedFile() {
+function reset() {
   disableDatasetSelection.value = false
   uploadedFileName.value = ''
+  selectedDatasets.value = []
+  model.value = undefined
   emit('change')
 }
 
@@ -60,6 +62,14 @@ function changeDatasets(datasets: Dataset[]) {
   model.value = result
   emit('change', result)
 }
+watch(
+  () => props.resultStepA,
+  () => {
+    if (model.value) {
+      reset()
+    }
+  }
+)
 </script>
 <template>
   <div v-if="doneWithStepA">
@@ -91,7 +101,7 @@ function changeDatasets(datasets: Dataset[]) {
         <ToggleButton v-model="isEUF" onLabel="bedRMod" offLabel="BED6" class="w-[8rem] ml-4" />
         <Button
           label="Clear selection"
-          @click="clearUploadedFile"
+          @click="reset"
           icon="pi pi-times"
           severity="danger"
           class="ml-4 max-h-[1.9rem] place-self-center text-nowrap"

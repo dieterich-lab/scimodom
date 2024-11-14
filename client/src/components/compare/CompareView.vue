@@ -40,6 +40,11 @@ function submit() {
     throw new Error('Submit with incomplete parameters - this should never happen!')
   }
 }
+
+function resetResults() {
+  compareParams.value = undefined
+  queryRevision.value += 1
+}
 </script>
 <template>
   <DefaultLayout>
@@ -57,12 +62,16 @@ function submit() {
         <TabView v-model:activeIndex="tabIndex">
           <TabPanel header="1. Select reference dataset">
             <div class="h-52">
-              <CompareStepA v-model="resultStepA" />
+              <CompareStepA v-model="resultStepA" @change="resetResults" />
             </div>
           </TabPanel>
           <TabPanel header="2. Select dataset for comparison">
             <div class="h-52">
-              <CompareStepB v-model="resultStepB" :result-step-a="resultStepA" />
+              <CompareStepB
+                v-model="resultStepB"
+                :result-step-a="resultStepA"
+                @change="resetResults"
+              />
             </div>
           </TabPanel>
           <TabPanel header="3. Select query criteria">

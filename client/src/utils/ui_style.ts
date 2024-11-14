@@ -35,11 +35,13 @@ const DEFAULT_STYLE = {
 
 const PRIMARY_DIALOG_STYLE: UiStyle = {
   ...DEFAULT_STYLE,
+  errorTextClasses: 'text-white font-bold',
   labelClasses: 'text-primary-50 font-semibold'
 }
 
 const SECONDARY_STYLE: UiStyle = {
   ...DEFAULT_STYLE,
+  errorTextClasses: 'text-white font-bold',
   baseColor: 'secondary',
   labelClasses: 'text-secondary-50 font-semibold',
   inputTextGroupClasses: 'bg-secondary-50/25 dark:bg-surface-900/20',
@@ -55,6 +57,27 @@ const SECONDARY_STYLE: UiStyle = {
   )`,
   buttonClasses: 'p-4 w-full text-secondary-50 border border-secondary-300 ring-secondary-800',
   severity: 'secondary'
+}
+
+const ERROR_ALERT_STYLE: UiStyle = {
+  ...DEFAULT_STYLE,
+  baseColor: 'error',
+  errorTextClasses: 'text-red-700 font-bold',
+  labelClasses: 'text-red-700 font-semibold',
+  inputTextGroupClasses: 'bg-surface-50/25 dark:bg-surface-900/20',
+  inputTextDefaultClasses:
+    'bg-surface-50/25 dark:bg-surface-900/20ing-surface-500/20 dark:ring-surface-500/20 focus:ring-surface-800',
+  backgroundStyle: `
+    border-radius: 12px;
+    background-image: radial-gradient(
+        circle at center,
+        rgb(var(--surface-200)),
+        rgb(var(--surface-100)),
+        rgb(var(--surface-50))
+  )`,
+  buttonClasses: 'p-4 w-full',
+  textClasses: 'text-red-700 dark:text-red-300',
+  severity: 'danger'
 }
 
 interface FormFieldProps {
@@ -89,6 +112,7 @@ export {
   DEFAULT_STYLE,
   PRIMARY_DIALOG_STYLE,
   SECONDARY_STYLE,
+  ERROR_ALERT_STYLE,
   FORM_FIELD_DEFAULTS,
   GENERIC_FIELD_DEFAULTS
 }

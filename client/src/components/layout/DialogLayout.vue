@@ -8,10 +8,11 @@ import LoginForm from '@/components/user/LoginForm.vue'
 import RegistrationForm from '@/components/user/RegistrationFrom.vue'
 import RequestPasswordResetForm from '@/components/user/RequestPasswordResetForm.vue'
 import ChangePasswordForm from '@/components/user/ChangePasswordForm.vue'
-import { boolean } from 'yup'
+import ErrorAlertBox from '@/components/ui/ErrorAlertBox.vue'
 
 const DIALOGS_BY_STATE: Readonly<Map<DIALOG, Component>> = new Map([
   [DIALOG.ALERT, AlertBox],
+  [DIALOG.ERROR_ALERT, ErrorAlertBox],
   [DIALOG.CONFIRM, ConfirmBox],
   [DIALOG.LOGIN, LoginForm],
   [DIALOG.REGISTER_ENTER_DATA, RegistrationForm],
@@ -37,6 +38,7 @@ const show = ref<boolean>(true)
         style: 'backdrop-filter: blur(2px)'
       }
     }"
+    :close-on-escape="false"
   >
     <template #container>
       <component :is="component"></component>

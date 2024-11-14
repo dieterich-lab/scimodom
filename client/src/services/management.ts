@@ -55,7 +55,8 @@ async function postDataset(
   return await handleRequestWithErrorReporting<void>(
     HTTPSecure.post('/management/dataset', request),
     `Failed to post dataset`,
-    dialogState
+    dialogState,
+    true
   )
 }
 

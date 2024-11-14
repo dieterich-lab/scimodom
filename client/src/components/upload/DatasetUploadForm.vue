@@ -23,6 +23,7 @@ import { type ModificationType, type Cto, type Technology } from '@/services/sel
 import { type DatasetPostRequest, postDataset } from '@/services/management'
 import { type RnaType } from '@/services/rna_type'
 import { type Assembly } from '@/services/assembly'
+import { allDatasetsCache } from '@/services/dataset'
 
 const MAX_UPLOAD_SIZE = 50 * 1024 * 1024
 const dialogState = useDialogState()
@@ -89,7 +90,10 @@ const onSubmit = handleSubmit((values: DatasetPostRequest) => {
   message.value = undefined
   loading.value = true
   postDataset(values, dialogState)
-    .then(() => router.push({ name: 'home' }))
+    .then(() => {
+      allDatasetsCache.getData(true)
+      router.push({ name: 'home' })
+    })
     .finally(() => {
       loading.value = false
     })

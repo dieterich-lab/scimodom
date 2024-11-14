@@ -50,7 +50,9 @@ const validationSchema = object({
     object().shape({
       doi: string()
         .max(255, 'At most 255 characters allowed!')
-        .matches(/^10\./, { message: 'DOI must start with "10."!' }),
+        .matches(/^10\./, { message: 'DOI must start with "10."!' })
+        .nullable()
+        .transform((_, val) => (val !== '' ? val : null)),
       pmid: number()
         .integer()
         .typeError('PMID must be a number!')

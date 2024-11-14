@@ -51,6 +51,12 @@ function submit(params: SearchParameters) {
   confirmedSearchParameters.value = params
   queryRevision.value += 1
 }
+
+function changeSearchBy() {
+  resetSearchParameters()
+  confirmedSearchParameters.value = null
+  queryRevision.value += 1
+}
 </script>
 
 <template>
@@ -65,7 +71,7 @@ function submit(params: SearchParameters) {
           v-model="searchByValue"
           :options="SEARCH_BY_OPTIONS"
           :allowEmpty="false"
-          @change="resetSearchParameters"
+          @change="changeSearchBy"
         />
       </div>
       <Divider />
