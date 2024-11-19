@@ -30,17 +30,13 @@ def register_user():
             email=request.json["email"], password=request.json["password"]
         )
         return jsonify({"result": "OK"})
-
     except UserExists:
         return jsonify({"result": "User exists"}), 403
-    except SMTPException as e:
-        logger.error(f"Failed to sent out email: {e}")
+    except SMTPException as exc:
+        msg = "Failed to send registration email"
+        logger.error(f"{msg}: {exc}")
         return (
-            jsonify(
-                {
-                    "result": "Failed to sent out registration email - please tak to the administrator"
-                }
-            ),
+            jsonify({"result": f"{msg} - contact the system administrator"}),
             500,
         )
 
@@ -95,7 +91,7 @@ def login():
         )
         return jsonify({"access_token": access_token})
     else:
-        return jsonify({"result": "Wrong user or password"}), 401
+        return jsonify({"result": "Wrong email or password"}), 401
 
 
 @user_api.route("/refresh_access_token")

@@ -23,9 +23,9 @@ function isUpload(x: ResultStepB): x is UploadDescriptor {
   return (x as UploadDescriptor).name !== undefined
 }
 enum ComparisonOperation {
-  intersect,
-  closest,
-  subtract
+  intersect = 'intersect',
+  closest = 'closest',
+  subtract = 'subtract'
 }
 
 interface OperationSpec {

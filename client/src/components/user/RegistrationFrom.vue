@@ -53,10 +53,12 @@ function register(values: FormData) {
       }
     })
     .catch((err) => {
-      dialogState.handle_error(err, 'Failed to register', {
-        state: DIALOG.REGISTER_ENTER_DATA,
-        email: values.email
-      })
+      dialogState.handle_error(
+        err,
+        'Failed to register',
+        { state: DIALOG.REGISTER_ENTER_DATA, email: values.email },
+        new Map([[403, 'User exists']])
+      )
     })
 }
 

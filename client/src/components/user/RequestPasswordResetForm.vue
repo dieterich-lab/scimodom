@@ -38,10 +38,12 @@ function requestPasswordReset(values: FormData) {
       }
     })
     .catch((err) => {
-      dialogState.handle_error(err, 'Sorry - something went wrong', {
-        state: DIALOG.RESET_PASSWORD_REQUEST,
-        email: values.email
-      })
+      dialogState.handle_error(
+        err,
+        'Unable to reset password',
+        { state: DIALOG.RESET_PASSWORD_REQUEST, email: values.email },
+        new Map([[404, 'Unknown user']])
+      )
     })
 }
 

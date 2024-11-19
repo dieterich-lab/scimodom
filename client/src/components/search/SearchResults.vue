@@ -39,6 +39,9 @@ const disableExportLink = computed(() => !props.searchParameters || loading.valu
 const exportLink = computed(() =>
   props.searchParameters ? getModificationExportLink(props.searchParameters, sortMetas.value) : ''
 )
+const emptyMessage = computed(() =>
+  props.searchParameters && !loading.value ? 'No records match your search criteria!' : ''
+)
 
 onMounted(() => loadData())
 
@@ -128,7 +131,7 @@ function onOverlay(record: Modification) {
     </template>
     <template #empty>
       <p class="text-center text-secondary-500 font-semibold">
-        No records match your search criteria!
+        {{ emptyMessage }}
       </p>
     </template>
     <template #loading>

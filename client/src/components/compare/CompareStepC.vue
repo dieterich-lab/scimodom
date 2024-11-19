@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import Button from 'primevue/button'
 import {
   type ResultStepA,
@@ -28,6 +28,13 @@ const doneWithStepB = computed(
   () => props.resultStepB && (isUpload(props.resultStepB) || !!props.resultStepB.datasets?.length)
 )
 const doneWithStepC = computed(() => doneWithStepA.value && doneWithStepB.value && model.value)
+
+watch(
+  () => props.resultStepB,
+  () => {
+    model.value = undefined
+  }
+)
 
 function submit() {
   if (model.value) {

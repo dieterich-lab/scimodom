@@ -182,7 +182,6 @@ class FileService:
         :returns: The genes of the selection
         :rtype: list[str]
         """
-        result: set = set()
         path = Path(self._get_gene_cache_dir(), str(selection_id))
         with open(path) as fh:
             flock(fh.fileno(), LOCK_SH)

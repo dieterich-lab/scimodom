@@ -7,7 +7,6 @@ import ModificationSiteTable from '@/components/modification/ModificationSiteTab
 import MicroRNASiteTable from '@/components/modification/MicroRNASiteTable.vue'
 import RBPSiteTable from '@/components/modification/RBPSiteTable.vue'
 import type { Modification } from '@/services/modification'
-import { ref } from 'vue'
 
 const props = defineProps<{ modification?: Modification }>()
 

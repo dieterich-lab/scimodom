@@ -20,6 +20,7 @@ const disabledDatasetSelection = computed(() => !selectedTaxa.value)
 
 const changeTaxa = (value: Taxa) => {
   model.value = undefined
+  selectedDatasets.value = []
   getDatasetsByTaxaId(value.taxa_id).then((data) => (availableDatasets.value = [...data]))
 }
 

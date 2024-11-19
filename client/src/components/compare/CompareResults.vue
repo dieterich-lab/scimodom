@@ -26,7 +26,7 @@ const dialogState = useDialogState()
 const dt = ref()
 const records = ref<ComparisonDisplayRecord[]>([])
 
-const empytMessage = computed(() =>
+const emptyMessage = computed(() =>
   props.params && !loading.value ? 'No records match your search criteria!' : ''
 )
 
@@ -134,7 +134,7 @@ const onExport = () => {
 }
 
 onMounted(() => {
-  if (props.operation && props.params) {
+  if (props.operation !== undefined && props.params !== undefined) {
     loading.value = true
     loadData(props.operation, props.params)
       .then((data) => {
@@ -206,7 +206,7 @@ const ColumnStyle = 'w-{1/19}'
     </template>
     <template #empty>
       <p class="text-center text-secondary-500 font-semibold">
-        {{ empytMessage }}
+        {{ emptyMessage }}
       </p>
     </template>
     <ColumnGroup type="header">
