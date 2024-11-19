@@ -10,6 +10,7 @@ from scimodom.services.assembly import (
     AssemblyService,
     AssemblyNotFoundError,
     AssemblyVersionError,
+    AssemblyAbortedError,
     LiftOverError,
 )
 from scimodom.utils.specs.enums import AssemblyFileType
@@ -19,7 +20,9 @@ from tests.mocks.web import MockWebService, MockHTTPError
 
 
 class MockExternalService:
-    def get_crossmap_output(self, raw_file, chain_file, unmapped=None, chrom_id="s"):
+    def get_crossmap_output(
+        self, raw_file, chain_file, unmapped=None, chrom_id="s"
+    ):  # noqa
         return "lifted.bed", unmapped
 
 
@@ -29,6 +32,10 @@ class MockFileService:
         self.lines_by_name: dict[str, int] = {}
         self.existing_assemblies: list[tuple[int, str]] = []
         self.deleted_assemblies: list[tuple[int, str]] = []
+
+    @staticmethod
+    def open_file_for_reading(path: str) -> str:
+        return path
 
     @staticmethod
     def get_assembly_file_path(
@@ -44,7 +51,9 @@ class MockFileService:
         else:
             return Path(f"/data/assembly/{taxa_id}/{file_type.value}")
 
-    def open_assembly_file(self, taxa_id: int, file_type: AssemblyFileType) -> TextIO:
+    def open_assembly_file(
+        self, taxa_id: int, file_type: AssemblyFileType
+    ) -> MockStringIO | MockBytesIO:
         if file_type == AssemblyFileType.CHAIN:
             raise NotImplementedError()
         name = self.get_assembly_file_path(taxa_id, file_type).as_posix()
@@ -91,11 +100,11 @@ def file_service():
 def _get_assembly_service(Session, file_service, url_to_result=None, url_to_data=None):
     return AssemblyService(
         session=Session(),
-        external_service=MockExternalService(),  # noqa
+        external_service=MockExternalService(),
         web_service=MockWebService(
             url_to_result=url_to_result, url_to_data=url_to_data
-        ),  # noqa
-        file_service=file_service,  # noqa
+        ),
+        file_service=file_service,
     )
 
 
@@ -109,7 +118,7 @@ def test_init(Session, file_service):
     assert service._version == "GcatSmFcytpU"
 
 
-def test_get_assembly_by_id(Session, file_service, setup):
+def test_get_assembly_by_id(Session, file_service, setup):  # noqa
     service = _get_assembly_service(Session, file_service)
     assembly = service.get_assembly_by_id(3)
     assert assembly.name == "GRCh37"
@@ -129,7 +138,7 @@ def test_get_assembly_by_id_fail(Session):
     assert exc.type == AssemblyNotFoundError
 
 
-def test_get_assemblies_by_taxa(Session, file_service, setup):
+def test_get_assemblies_by_taxa(Session, file_service, setup):  # noqa
     service = _get_assembly_service(Session, file_service)
     assemblies = service.get_assemblies_by_taxa(9606)
 
@@ -143,19 +152,21 @@ def test_get_assemblies_by_taxa(Session, file_service, setup):
 
 
 @pytest.mark.parametrize("assembly_id,is_latest", [(1, True), (3, False)])
-def test_is_latest_assembly(assembly_id, is_latest, Session, file_service, setup):
+def test_is_latest_assembly(
+    assembly_id, is_latest, Session, file_service, setup
+):  # noqa
     service = _get_assembly_service(Session, file_service)
     assembly = service.get_assembly_by_id(assembly_id)
     assert service.is_latest_assembly(assembly) == is_latest
 
 
-def test_get_name_for_version(Session, file_service, setup):
+def test_get_name_for_version(Session, file_service, setup):  # noqa
     service = _get_assembly_service(Session, file_service)
     assembly_name = service.get_name_for_version(9606)
     assert assembly_name == "GRCh38"
 
 
-def test_get_seqids(Session, file_service, setup):
+def test_get_seqids(Session, file_service, setup):  # noqa
     file_service.files_by_name["/data/assembly/9606/chrom.sizes"] = StringIO(
         "1\t12345\n2\t123456"
     )
@@ -164,7 +175,7 @@ def test_get_seqids(Session, file_service, setup):
     assert set(seqids) == {"1", "2"}
 
 
-def test_get_chroms(Session, file_service, setup):
+def test_get_chroms(Session, file_service, setup):  # noqa
     file_service.files_by_name["/data/assembly/9606/chrom.sizes"] = StringIO(
         "1\t12345\n2\t123456"
     )
@@ -175,7 +186,7 @@ def test_get_chroms(Session, file_service, setup):
         assert chrom == expected_chrom
 
 
-def test_liftover(Session, file_service, setup):
+def test_liftover(Session, file_service, setup):  # noqa
     file_service.files_by_name[
         "/data/assembly/9606/GRCh37/GRCh37_to_GRCh38.chain.gz"
     ] = BytesIO()
@@ -184,10 +195,12 @@ def test_liftover(Session, file_service, setup):
     file_service.lines_by_name["lifted.bed"] = 3
     service = _get_assembly_service(Session, file_service)
     assembly = service.get_assembly_by_id(3)
-    service.liftover(assembly, "to_be_lifted.bed", unmapped_file="unmapped.bed")
+    service.create_lifted_file(
+        assembly, "to_be_lifted.bed", unmapped_file="unmapped.bed"
+    )
 
 
-def test_liftover_fail_count(Session, file_service, setup):
+def test_liftover_fail_count(Session, file_service, setup):  # noqa
     file_service.files_by_name[
         "/data/assembly/9606/GRCh37/GRCh37_to_GRCh38.chain.gz"
     ] = BytesIO()
@@ -197,14 +210,16 @@ def test_liftover_fail_count(Session, file_service, setup):
     service = _get_assembly_service(Session, file_service)
     assembly = service.get_assembly_by_id(3)
     with pytest.raises(LiftOverError) as exc:
-        service.liftover(assembly, "to_be_lifted.bed", unmapped_file="unmapped.bed")
+        service.create_lifted_file(
+            assembly, "to_be_lifted.bed", unmapped_file="unmapped.bed"
+        )
     assert (
         str(exc.value)
     ) == "Liftover failed: 1 records out of 3 could not be mapped."
     assert exc.type == LiftOverError
 
 
-def test_liftover_warning(Session, file_service, setup, caplog):
+def test_liftover_warning(Session, file_service, setup, caplog):  # noqa
     file_service.files_by_name[
         "/data/assembly/9606/GRCh37/GRCh37_to_GRCh38.chain.gz"
     ] = BytesIO()
@@ -213,17 +228,19 @@ def test_liftover_warning(Session, file_service, setup, caplog):
     file_service.lines_by_name["lifted.bed"] = 3
     service = _get_assembly_service(Session, file_service)
     assembly = service.get_assembly_by_id(3)
-    service.liftover(assembly, "to_be_lifted.bed", unmapped_file="unmapped.bed")
+    service.create_lifted_file(
+        assembly, "to_be_lifted.bed", unmapped_file="unmapped.bed"
+    )
     assert caplog.messages == [
         "1 records could not be mapped... Contact the system administrator if you have questions."
     ]
 
 
-def test_liftover_fail_version(Session, file_service, setup):
+def test_liftover_fail_version(Session, file_service, setup):  # noqa
     service = _get_assembly_service(Session, file_service)
     assembly = service.get_assembly_by_id(1)
     with pytest.raises(AssemblyVersionError) as exc:
-        service.liftover(assembly, "raw_file")
+        service.create_lifted_file(assembly, "raw_file")
     assert (str(exc.value)) == "Cannot liftover for latest assembly."
     assert exc.type == AssemblyVersionError
 
@@ -232,7 +249,7 @@ def test_liftover_fail_version(Session, file_service, setup):
 # test protected methods e.g. _handle_gene_build and _handle_release
 
 
-def test_add_assembly(Session, file_service, setup, mocker):
+def test_get_assembly_by_name(Session, file_service, setup, mocker):  # noqa
     mocker.patch("scimodom.services.assembly.Ensembl", MockEnsembl)
     service = _get_assembly_service(
         Session,
@@ -241,39 +258,52 @@ def test_add_assembly(Session, file_service, setup, mocker):
             "https://ftp.ensembl.org/pub/release-110/assembly_chain/homo_sapiens/NCBI36_to_GRCh38.chain.gz": b"foo"
         },
     )
-    assembly_id = service.add_assembly(9606, "NCBI36")
+    assembly = service.get_assembly_by_name(9606, "NCBI36")
     with Session() as session:
         assert session.query(
             exists().where(Assembly.taxa_id == 9606, Assembly.name == "NCBI36")
         ).scalar()
-        assert assembly_id == 4
+        assert assembly.id == 4
     file = file_service.files_by_name[
         "/data/assembly/9606/NCBI36/NCBI36_to_GRCh38.chain.gz"
     ]
     assert file.final_content == b"foo"
 
 
-def test_add_assembly_exists(Session, file_service, setup):
+def test_get_assembly_by_name_exists(Session, file_service, setup):  # noqa
     service = _get_assembly_service(Session, file_service)
-    assert service.add_assembly(9606, "GRCh37") == 3
+    assert service.get_assembly_by_name(9606, "GRCh37").id == 3
 
 
-def test_add_assembly_directory_exists(Session, file_service):
+def test_get_assembly_by_name_directory_exists(Session, file_service):
     with Session() as session, session.begin():
         version = AssemblyVersion(version_num="GcatSmFcytpU")
         session.add(version)
     file_service.existing_assemblies = [(9606, "GRCh37")]
     service = _get_assembly_service(Session, file_service)
-    with pytest.raises(FileExistsError) as exc:
-        service.add_assembly(9606, "GRCh37")
-    assert (str(exc.value)) == "Directory exists, but assembly 'GRCh37' does not exist!"
+    with pytest.raises(AssemblyAbortedError) as exc:
+        service.get_assembly_by_name(9606, "GRCh37")
+    assert (
+        (str(exc.value))
+        == "Suspected incomplete or inconsistent data: files were found on the system for 'GRCh37', but assembly does not exist in the database."
+    )
 
 
-def test_add_assembly_wrong_url(Session, file_service, setup):
+def test_get_assembly_by_name_wrong_url(Session, file_service, setup):  # noqa
     service = _get_assembly_service(Session, file_service)
-    with pytest.raises(MockHTTPError):
-        service.add_assembly(9606, "GRCH37")
+    with pytest.raises(AssemblyAbortedError) as exc:  # traceback MockHTTPError
+        service.get_assembly_by_name(9606, "GRCH37")
+    assert (str(exc.value)) == "Adding assembly for 'GRCH37' aborted."
     assert file_service.deleted_assemblies == [(9606, "GRCH37")]
+    with Session() as session:
+        assert session.query(Assembly).count() == 3
+
+
+def test_get_assembly_by_name_not_found(Session, setup):  # noqa
+    service = _get_assembly_service(Session, file_service)
+    with pytest.raises(AssemblyNotFoundError) as exc:
+        service.get_assembly_by_name(9606, "NCBI36", fail_safe=False)
+    assert (str(exc.value)) == "No such assembly 'NCBI36' for organism '9606'."
     with Session() as session:
         assert session.query(Assembly).count() == 3
 
@@ -319,7 +349,7 @@ EXPECTED_RELEASE_JSON = """{
 }"""
 
 
-def test_prepare_assembly_for_version(Session, file_service, setup, mocker):
+def test_prepare_assembly_for_version(Session, file_service, setup, mocker):  # noqa
     mocker.patch("scimodom.services.assembly.Ensembl", MockEnsembl)
     service = _get_assembly_service(
         Session,
@@ -344,7 +374,9 @@ def test_prepare_assembly_for_version(Session, file_service, setup, mocker):
     )
 
 
-def test_prepare_assembly_for_version_wrong_version(Session, file_service, setup):
+def test_prepare_assembly_for_version_wrong_version(
+    Session, file_service, setup
+):  # noqa
     service = _get_assembly_service(
         Session,
         file_service,
@@ -358,7 +390,9 @@ def test_prepare_assembly_for_version_wrong_version(Session, file_service, setup
     assert exc.type == AssemblyVersionError
 
 
-def test_prepare_assembly_for_version_directory_exists(Session, file_service, setup):
+def test_prepare_assembly_for_version_directory_exists(
+    Session, file_service, setup
+):  # noqa
     file_service.existing_assemblies = [(9606, "GRCh38")]
     service = _get_assembly_service(Session, file_service)
     with pytest.raises(FileExistsError) as exc:
@@ -383,6 +417,18 @@ def test_prepare_assembly_for_version_build_error(Session, file_service, setup, 
         == "Mismatch between assembly GRCh38 and coord system version GRCh39. Upgrade your database!"
     )
     assert exc.type == AssemblyVersionError
+    assert file_service.deleted_assemblies == [(9606, "GRCh38")]
+
+
+def test_prepare_assembly_for_version_wrong_url(
+    Session, file_service, setup, mocker
+):  # noqa
+    mocker.patch("scimodom.services.assembly.Ensembl", MockEnsembl)
+    service = _get_assembly_service(Session, file_service)
+    with pytest.raises(AssemblyAbortedError) as exc:  # traceback MockHTTPError
+        service.prepare_assembly_for_version(1)
+    assert str(exc.value) == "Adding assembly for ID '1' aborted."
+    assert exc.type == AssemblyAbortedError
     assert file_service.deleted_assemblies == [(9606, "GRCh38")]
 
 

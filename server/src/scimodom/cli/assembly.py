@@ -2,6 +2,7 @@ import click
 
 from scimodom.services.assembly import (
     AssemblyVersionError,
+    AssemblyAbortedError,
     get_assembly_service,
 )
 
@@ -28,20 +29,20 @@ def add_assembly(**kwargs) -> None:
             return
         try:
             assembly_service.prepare_assembly_for_version(assembly_id)
-        except AssemblyVersionError:
-            click.secho(
-                "Cannot create assembly for this database version... Aborting!",
-                fg="red",
-            )
-            return
         except FileExistsError:
             click.secho(
                 "Assembly directory already exists... Aborting!",
                 fg="red",
             )
             return
-        except Exception as exc:
-            click.secho(f"Failed to prepare assembly: {exc}. Aborting!", fg="red")
+        except AssemblyVersionError as exc:
+            click.secho(
+                f"Cannot create assembly for this database version: {exc}",
+                fg="red",
+            )
+            return
+        except AssemblyAbortedError as exc:
+            click.secho(f"Failed to prepare assembly: {exc}", fg="red")
             return
         click.secho("... done!", fg="green")
     else:
@@ -56,16 +57,8 @@ def add_assembly(**kwargs) -> None:
         if c not in ["y", "Y"]:
             return
         try:
-            assembly_id = assembly_service.add_assembly(taxa_id, assembly_name)
-        except FileExistsError:
-            click.secho(
-                "Directory exists, but not assembly... check for data corruption. Aborting!",
-                fg="red",
-            )
-            return
-        except Exception as exc:
-            click.secho(
-                f"Failed to add alternative assembly: {exc}. Aborting!", fg="red"
-            )
+            assembly_id = assembly_service.get_assembly_by_name(taxa_id, assembly_name)
+        except AssemblyAbortedError as exc:
+            click.secho(f"Failed to add alternative assembly: {exc}", fg="red")
             return
         click.secho(f"... done! Assembly ID is {assembly_id}.", fg="green")

@@ -51,8 +51,8 @@ def validate_dataset_title(ctx, param, value):
 def add_assembly_to_template_if_none(organism, assembly_service):
     click.secho("Checking if assembly ID is defined...", fg="green")
     if organism.assembly_id is None:
-        assembly_id = assembly_service.add_assembly(
-            organism.taxa_id, organism.assembly_name
+        assembly_id = assembly_service.get_assembly_by_name(
+            organism.taxa_id, organism.assembly_name, fail_safe=False
         )
         click.secho(
             f"Updating project metadata template with assembly ID '{assembly_id}'... ",
