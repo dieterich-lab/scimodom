@@ -1,6 +1,5 @@
 import { type DialogStateStore } from '@/stores/DialogState'
-import { getApiUrl, HTTP, HTTPSecure } from '@/services/API'
-import { handleRequestWithErrorReporting } from '@/utils/request'
+import { getApiUrl, handleRequestWithErrorReporting, HTTP, HTTPSecure } from '@/services/API'
 
 interface BamFile {
   id: number

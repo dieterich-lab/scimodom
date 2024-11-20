@@ -59,6 +59,10 @@ function loadData() {
         records.value = data.records
         totalRecords.value = data.totalRecords
       })
+      .catch(() => {
+        records.value = undefined
+        totalRecords.value = 0
+      })
       .finally(() => {
         loading.value = false
       })

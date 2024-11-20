@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { useForm } from 'vee-validate'
 import * as yup from 'yup'
-import { HTTP, prepareAPI } from '@/services/API'
 import { useAccessToken } from '@/stores/AccessToken.js'
 import { DIALOG, useDialogState } from '@/stores/DialogState.js'
 import DialogBox from '@/components/ui/DialogBox.vue'
@@ -11,6 +10,7 @@ import DialogButton from '@/components/ui/DialogButton.vue'
 import DialogText from '@/components/ui/DialogText.vue'
 import FormLink from '@/components/ui/FormLink.vue'
 import { PRIMARY_DIALOG_STYLE } from '@/utils/ui_style'
+import { login } from '@/services/user'
 
 interface FormData {
   email: string
@@ -40,25 +40,6 @@ if (dialogState.email != null) {
   email.value = dialogState.email
 }
 
-function login(values: FormData) {
-  HTTP.post('/user/login', { email: values.email, password: values.password })
-    .then((response) => {
-      if (response.status == 200) {
-        accessToken.set(values.email, response.data.access_token)
-        dialogState.state = DIALOG.NONE
-        prepareAPI(false)
-      }
-    })
-    .catch((err) => {
-      dialogState.handle_error(
-        err,
-        'Failed to login',
-        { state: DIALOG.LOGIN, email: values.email },
-        new Map([[401, 'Wrong email or password']])
-      )
-    })
-}
-
 function cancel() {
   dialogState.state = DIALOG.NONE
 }
@@ -70,7 +51,7 @@ function resetPassword() {
 }
 
 const onSubmit = handleSubmit((values) => {
-  login(values)
+  login(values.email, values.password, accessToken, dialogState).catch(() => {})
 })
 </script>
 

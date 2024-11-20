@@ -17,9 +17,11 @@ const message = ref<string>()
 
 const submitForm = () => {
   if (props.data) {
-    postProject(props.data, dialogState).then(() => {
-      router.push({ name: 'home' })
-    })
+    postProject(props.data, dialogState)
+      .then(() => {
+        router.push({ name: 'home' })
+      })
+      .catch(() => {})
   } else {
     throw new Error('Project submission without data - this should never happen!')
   }

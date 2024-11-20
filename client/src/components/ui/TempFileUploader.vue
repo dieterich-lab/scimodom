@@ -36,10 +36,12 @@ function uploader(event: FileUploadUploaderEvent) {
   const file = Array.isArray(event.files) ? event.files[0] : event.files
   fileName.value = file.name
   fileNameRef.value = file.name
-  postTemporaryFile(file, dialogState).then((data) => {
-    fileId.value = data.file_id
-    emits('change', file.name, data.file_id)
-  })
+  postTemporaryFile(file, dialogState)
+    .then((data) => {
+      fileId.value = data.file_id
+      emits('change', file.name, data.file_id)
+    })
+    .catch(() => {})
 }
 
 const pt: InputTextPassThroughOptions = {

@@ -140,6 +140,9 @@ onMounted(() => {
       .then((data) => {
         records.value = data
       })
+      .catch(() => {
+        records.value = []
+      })
       .finally(() => {
         loading.value = false
       })

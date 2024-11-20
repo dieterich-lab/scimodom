@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { useForm } from 'vee-validate'
 import * as yup from 'yup'
-import { HTTP, HTTPSecure } from '@/services/API'
 import { DIALOG, useDialogState } from '@/stores/DialogState.js'
 import DialogBox from '@/components/ui/DialogBox.vue'
 import FormTextInput from '@/components/ui/FormTextInput.vue'
@@ -9,6 +8,7 @@ import DialogButtonGroup from '@/components/ui/DialogButtonGroup.vue'
 import DialogButton from '@/components/ui/DialogButton.vue'
 import DialogText from '@/components/ui/DialogText.vue'
 import { PRIMARY_DIALOG_STYLE } from '@/utils/ui_style'
+import { changePassword, resetPassword } from '@/services/user'
 
 interface FormData {
   password: string
@@ -32,43 +32,20 @@ const { defineField, handleSubmit, errors } = useForm<FormData>({
 const [password] = defineField('password')
 const [passwordConfirm] = defineField('passwordConfirm')
 
-function changePassword(values: FormData) {
-  let request
-  if (dialogState.token) {
-    request = HTTP.post('/user/do_password_reset', {
-      email: dialogState.email,
-      password: values.password,
-      token: dialogState.token
-    })
-  } else {
-    request = HTTPSecure.post('/user/change_password', {
-      password: values.password
-    })
-  }
-
-  request
-    .then((response) => {
-      if (response.status === 200) {
-        dialogState.message = 'Password set successfully.'
-        dialogState.state = DIALOG.ALERT
-      }
-    })
-    .catch((err) => {
-      dialogState.handle_error(err, 'Something went wrong', {
-        state: DIALOG.ALERT
-      })
-    })
-}
-
 function cancel() {
   dialogState.state = DIALOG.NONE
 }
 
 const onSubmit = handleSubmit((values: FormData) => {
-  changePassword(values)
+  if (dialogState.token && dialogState.email) {
+    resetPassword(dialogState.email, values.password, dialogState.token, dialogState).catch(
+      () => {}
+    )
+  } else {
+    changePassword(values.password, dialogState).catch(() => {})
+  }
 })
 </script>
-
 <template>
   <form @submit="onSubmit">
     <DialogBox :ui-style="PRIMARY_DIALOG_STYLE">

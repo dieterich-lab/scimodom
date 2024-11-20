@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia'
-import { HTTPSecure } from '@/services/API'
-import { getErrorMessageFromException, getErrorMessageFromResponse } from '@/utils/request'
+import { HTTPSecure, handleRequest } from '@/services/API'
 
 enum UPLOAD_STATE {
   WAITING = 'WAITING',
@@ -47,16 +46,12 @@ class ScheduledUpload {
   async run() {
     this.state = UPLOAD_STATE.RUNNING
     try {
-      const response = await HTTPSecure.post(this.url, this.file)
-      if (response.status === 200) {
-        this.state = UPLOAD_STATE.DONE
-        return
-      }
-      this.errorMessage = getErrorMessageFromResponse(response)
+      await handleRequest(HTTPSecure.post(this.url, this.file))
+      this.state = UPLOAD_STATE.DONE
     } catch (err) {
-      this.errorMessage = getErrorMessageFromException(err as object)
+      this.errorMessage = `${err}`
+      this.state = UPLOAD_STATE.FAILED
     }
-    this.state = UPLOAD_STATE.FAILED
   }
 
   remove() {

@@ -1,6 +1,5 @@
 import type { DialogStateStore } from '@/stores/DialogState'
-import { handleRequestWithErrorReporting } from '@/utils/request'
-import { HTTPSecure } from '@/services/API'
+import { handleRequestWithErrorReporting, HTTPSecure } from '@/services/API'
 
 interface DatasetPostRequest {
   smid: string
@@ -55,8 +54,7 @@ async function postDataset(
   return await handleRequestWithErrorReporting<void>(
     HTTPSecure.post('/management/dataset', request),
     `Failed to post dataset`,
-    dialogState,
-    true
+    dialogState
   )
 }
 

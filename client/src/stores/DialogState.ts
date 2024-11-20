@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia'
 import { VueCookieNext } from 'vue-cookie-next'
-import { string } from 'yup'
 
 enum DIALOG {
   NONE = 'NONE',
@@ -20,34 +19,6 @@ interface DialogState {
   newPassword: string | null
   message: string | null
   confirmCallback: (() => void) | null
-}
-
-interface AxiosErrorResponse {
-  response: {
-    data: {
-      result: string
-    }
-  }
-}
-
-interface HTTPError {
-  status: number
-}
-
-function isHTTPError(x: unknown): x is HTTPError {
-  return x !== null && typeof x === 'object' && 'status' in x
-}
-
-function isAxiosErrorResponse(x: any): x is AxiosErrorResponse {
-  return (
-    typeof x === 'object' &&
-    'response' in x &&
-    typeof x.response === 'object' &&
-    'data' in x.response &&
-    typeof x.response.data === 'object' &&
-    'result' in x.response.data &&
-    x.response.data.result instanceof string
-  )
 }
 
 const useDialogState = defineStore('dialogState', {
@@ -83,29 +54,6 @@ const useDialogState = defineStore('dialogState', {
         }
         VueCookieNext.removeCookie('workflow_status')
       }
-    },
-    handle_error(
-      axios_error: unknown,
-      context: string,
-      new_state_template: object,
-      messages_by_http_status?: Map<number, string>
-    ) {
-      let error_message: string
-      if (
-        messages_by_http_status &&
-        isHTTPError(axios_error) &&
-        messages_by_http_status.has(axios_error.status)
-      ) {
-        error_message = messages_by_http_status.get(axios_error.status) || ''
-      } else if (isAxiosErrorResponse(axios_error)) {
-        error_message = axios_error.response.data.result
-      } else {
-        error_message = `${axios_error}`
-      }
-      const full_message = `${context}: ${error_message}`
-      console.log(full_message)
-      const new_state = { ...new_state_template, message: full_message }
-      this.$patch(new_state)
     },
     confirm() {
       if (this.confirmCallback !== null) {

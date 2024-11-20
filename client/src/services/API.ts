@@ -1,9 +1,18 @@
-import axios, { type InternalAxiosRequestConfig } from 'axios'
+import axios, { type AxiosResponse, type InternalAxiosRequestConfig } from 'axios'
 import { type AccessTokenStore, useAccessToken } from '@/stores/AccessToken.js'
-import { DIALOG, useDialogState } from '@/stores/DialogState.js'
+import { DIALOG, type DialogStateStore, useDialogState } from '@/stores/DialogState.js'
 
 // TODO: refactor HTTP as HTTPPublic either export service, or
 // rename exported functions
+
+interface ErrorResponse {
+  message: string
+  user_error?: string // For expected problems the backend may supply detailed instructions for the user
+}
+
+function isErrorResponse(x: unknown): x is ErrorResponse {
+  return (x as ErrorResponse).message !== undefined
+}
 
 function getApiBaseUrl(): string {
   if (import.meta.env.PROD) {
@@ -82,4 +91,72 @@ function getApiUrl(endpoint: string): string {
   return `${base}${endpoint}`
 }
 
-export { HTTP, HTTPSecure, getApiBaseUrl, getApiUrl, prepareAPI }
+async function handleRequest<T>(
+  request: Promise<AxiosResponse>,
+  error_context?: string
+): Promise<T> {
+  let user_message = ''
+  try {
+    const response = await request
+    if (response.status === 200) {
+      return response.data as T
+    }
+    user_message = getErrorMessageFromResponse(response, error_context)
+  } catch (err) {
+    user_message = getErrorMessageFromException(err as object, error_context)
+  }
+  console.log(user_message)
+  throw new Error(user_message)
+}
+
+function getErrorMessageFromResponse(response: AxiosResponse, error_context?: string): string {
+  const prefix = error_context ? `${error_context}: ` : ''
+  if (isErrorResponse(response.data)) {
+    const errorResponse = response.data
+    if (errorResponse.user_error) {
+      return errorResponse.user_error
+    } else {
+      return `${prefix}HTTP status ${response.status} - ${errorResponse.message}`
+    }
+  } else {
+    return `${prefix}HTTP status ${response.status} - please contact the system administrator.`
+  }
+}
+
+function getErrorMessageFromException(err: object, error_context?: string): string {
+  if ('response' in err) {
+    return getErrorMessageFromResponse(err.response as AxiosResponse, error_context)
+  } else {
+    const prefix = error_context ? `${error_context}: ` : ''
+    const message = err.toString()
+    return `${prefix}${message}`
+  }
+}
+
+async function handleRequestWithErrorReporting<T>(
+  request: Promise<AxiosResponse>,
+  error_context: string,
+  dialogState: DialogStateStore,
+  dialogStateTemplate?: Partial<DialogStateStore>
+): Promise<T> {
+  try {
+    return handleRequest(request, error_context)
+  } catch (err) {
+    dialogState.$patch({
+      state: DIALOG.ERROR_ALERT,
+      message: `${err}`,
+      ...dialogStateTemplate
+    })
+    throw err
+  }
+}
+
+export {
+  HTTP,
+  HTTPSecure,
+  getApiBaseUrl,
+  getApiUrl,
+  prepareAPI,
+  handleRequest,
+  handleRequestWithErrorReporting
+}

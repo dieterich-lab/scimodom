@@ -33,7 +33,13 @@ const bamFiles = ref<BamFile[]>([])
 
 function refreshData() {
   if (accessToken.token !== null) {
-    mayChangeDataset(props.datasetId, dialogState).then((x) => (mayChange.value = x))
+    mayChangeDataset(props.datasetId, dialogState)
+      .then((x) => {
+        mayChange.value = x
+      })
+      .catch(() => {
+        mayChange.value = false
+      })
   }
   getBamFilesByDatasetId(props.datasetId, dialogState).then((data) => (bamFiles.value = data))
 }
@@ -45,7 +51,7 @@ function askToDelete(name: string) {
 }
 
 function deleteIt(datasetId: string, name: string) {
-  deleteBamFile(datasetId, name, dialogState).then(() => refreshData())
+  deleteBamFile(datasetId, name, dialogState).finally(() => refreshData())
 }
 
 function getDownLoadURL(bamFile: BamFile) {

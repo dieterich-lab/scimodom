@@ -1,7 +1,6 @@
 import Plotly from 'plotly.js'
-import { HTTP } from '@/services/API'
+import { handleRequestWithErrorReporting, HTTP } from '@/services/API'
 import { ColorFactory } from '@/utils/color'
-import { handleRequestWithErrorReporting } from '@/utils/request'
 import { type DialogStateStore } from '@/stores/DialogState'
 
 type SunburstType = 'search' | 'browse'

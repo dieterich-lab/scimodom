@@ -26,9 +26,13 @@ watch(
   () => props.modification,
   () => {
     if (props.modification) {
-      getTargetSites(props.modification, 'RBP', dialogState).then((data) => {
-        records.value = data.map((x) => getDataItemFromBed6Record(x))
-      })
+      getTargetSites(props.modification, 'RBP', dialogState)
+        .then((data) => {
+          records.value = data.map((x) => getDataItemFromBed6Record(x))
+        })
+        .catch(() => {
+          records.value = []
+        })
     } else {
       records.value = []
     }

@@ -28,6 +28,7 @@ watch(
         .then((x) => {
           records.value = x.filter((r) => r.dataset_id != m.dataset_id && r.modification_id != m.id)
         })
+        .catch(() => {})
         .finally(() => {
           loading.value = false
         })

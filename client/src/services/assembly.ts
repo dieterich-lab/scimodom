@@ -1,6 +1,5 @@
-import { HTTP } from '@/services/API'
+import { handleRequestWithErrorReporting, HTTP } from '@/services/API'
 import type { DialogStateStore } from '@/stores/DialogState'
-import { handleRequestWithErrorReporting } from '@/utils/request'
 
 interface Assembly {
   id: number

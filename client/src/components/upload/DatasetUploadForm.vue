@@ -94,6 +94,7 @@ const onSubmit = handleSubmit((values: DatasetPostRequest) => {
       allDatasetsCache.getData(true)
       router.push({ name: 'home' })
     })
+    .catch(() => {})
     .finally(() => {
       loading.value = false
     })

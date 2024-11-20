@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { useForm } from 'vee-validate'
 import * as yup from 'yup'
-import { HTTP } from '@/services/API'
 import { DIALOG, useDialogState } from '@/stores/DialogState.js'
 import DialogBox from '@/components/ui/DialogBox.vue'
 import FormTextInput from '@/components/ui/FormTextInput.vue'
 import DialogButtonGroup from '@/components/ui/DialogButtonGroup.vue'
 import DialogButton from '@/components/ui/DialogButton.vue'
 import { PRIMARY_DIALOG_STYLE } from '@/utils/ui_style'
+import { requestPasswordReset } from '@/services/user'
 
 interface FormData {
   email: string
@@ -28,31 +28,12 @@ if (dialogState.email != null) {
   email.value = dialogState.email
 }
 
-function requestPasswordReset(values: FormData) {
-  HTTP.post('/user/request_password_reset', { email: values.email })
-    .then((response) => {
-      if (response.status == 200) {
-        dialogState.message =
-          'We just sent you an email with a link. Please visit the link to set your new password.'
-        dialogState.state = DIALOG.ALERT
-      }
-    })
-    .catch((err) => {
-      dialogState.handle_error(
-        err,
-        'Unable to reset password',
-        { state: DIALOG.RESET_PASSWORD_REQUEST, email: values.email },
-        new Map([[404, 'Unknown user']])
-      )
-    })
-}
-
 function cancel() {
   dialogState.state = DIALOG.NONE
 }
 
 const onSubmit = handleSubmit((values) => {
-  requestPasswordReset(values)
+  requestPasswordReset(values.email, dialogState).catch(() => {})
 })
 </script>
 

@@ -1,5 +1,4 @@
-import { handleRequestWithErrorReporting } from '@/utils/request'
-import { HTTP } from '@/services/API'
+import { handleRequestWithErrorReporting, HTTP } from '@/services/API'
 import { type DialogStateStore } from '@/stores/DialogState'
 import { type EufRecord } from '@/utils/bed6'
 
@@ -29,7 +28,7 @@ interface Records<T> {
   records: T[]
 }
 
-async function do_http_get<T>(
+async function doHttpGet<T>(
   operation: string,
   params: ComparisonParams,
   dialogState: DialogStateStore
@@ -51,21 +50,21 @@ async function subtract(
   params: ComparisonParams,
   dialogState: DialogStateStore
 ): Promise<SubtractRecord[]> {
-  return await do_http_get<SubtractRecord>('subtract', params, dialogState)
+  return await doHttpGet<SubtractRecord>('subtract', params, dialogState)
 }
 
 async function intersect(
   params: ComparisonParams,
   dialogState: DialogStateStore
 ): Promise<IntersectRecord[]> {
-  return await do_http_get<IntersectRecord>('intersect', params, dialogState)
+  return await doHttpGet<IntersectRecord>('intersect', params, dialogState)
 }
 
 async function closest(
   params: ComparisonParams,
   dialogState: DialogStateStore
 ): Promise<ClosestRecord[]> {
-  return await do_http_get<ClosestRecord>('closest', params, dialogState)
+  return await doHttpGet<ClosestRecord>('closest', params, dialogState)
 }
 
 export {

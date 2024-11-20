@@ -1,6 +1,5 @@
-import { handleRequestWithErrorReporting } from '@/utils/request'
 import { type DialogStateStore } from '@/stores/DialogState'
-import { HTTP } from '@/services/API'
+import { handleRequestWithErrorReporting, HTTP } from '@/services/API'
 
 interface Chrom {
   chrom: string

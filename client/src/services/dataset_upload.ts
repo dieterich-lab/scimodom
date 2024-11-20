@@ -1,6 +1,5 @@
 import { DIALOG, type DialogStateStore } from '@/stores/DialogState'
-import { handleRequestWithErrorReporting } from '@/utils/request'
-import { HTTPSecure } from '@/services/API'
+import { handleRequestWithErrorReporting, HTTPSecure } from '@/services/API'
 
 const MAX_UPLOAD_SIZE = 50 * 1024 * 1024
 

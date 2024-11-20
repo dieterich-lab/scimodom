@@ -25,13 +25,15 @@ function handleClick() {
 }
 
 onMounted(() => {
-  getSunBurstData(props.type, dialogStore).then((new_data) => {
-    if (chart.value) {
-      Plotly.newPlot(chart.value, new_data, LAYOUT).then((x) => {
-        x.on('plotly_click', handleClick)
-      })
-    }
-  })
+  getSunBurstData(props.type, dialogStore)
+    .then((new_data) => {
+      if (chart.value) {
+        Plotly.newPlot(chart.value, new_data, LAYOUT).then((x) => {
+          x.on('plotly_click', handleClick)
+        })
+      }
+    })
+    .catch(() => {})
 })
 </script>
 

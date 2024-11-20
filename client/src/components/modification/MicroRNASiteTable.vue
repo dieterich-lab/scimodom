@@ -30,9 +30,11 @@ watch(
   () => props.modification,
   () => {
     if (props.modification) {
-      getTargetSites(props.modification, 'MIRNA', dialogState).then((data) => {
-        records.value = data.map((x) => getTableItemFromBed6Record(x))
-      })
+      getTargetSites(props.modification, 'MIRNA', dialogState)
+        .then((data) => {
+          records.value = data.map((x) => getTableItemFromBed6Record(x))
+        })
+        .catch(() => {})
     } else {
       records.value = []
     }

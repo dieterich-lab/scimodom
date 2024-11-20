@@ -15,9 +15,11 @@ watch(
     if (props.modification) {
       const context_index = DEFAULT_CONTEXT_INDEX
       const modification = props.modification
-      getGenomicContext(props.modification, context_index, dialogState).then((x) => {
-        sequence.value = getSequenceFromContext(modification, x, context_index)
-      })
+      getGenomicContext(props.modification, context_index, dialogState)
+        .then((x) => {
+          sequence.value = getSequenceFromContext(modification, x, context_index)
+        })
+        .catch(() => {})
     } else {
       sequence.value = []
     }

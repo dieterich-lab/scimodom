@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { useForm } from 'vee-validate'
 import * as yup from 'yup'
-import { HTTP } from '@/services/API'
 import { DIALOG, useDialogState } from '@/stores/DialogState.js'
 import { SECONDARY_STYLE } from '@/utils/ui_style'
 import DialogBox from '@/components/ui/DialogBox.vue'
 import FormTextInput from '@/components/ui/FormTextInput.vue'
 import DialogButtonGroup from '@/components/ui/DialogButtonGroup.vue'
 import DialogButton from '@/components/ui/DialogButton.vue'
+import { registerUser } from '@/services/user'
 
 interface FormData {
   email: string
@@ -43,31 +43,12 @@ const [email] = defineField('email')
 const [password] = defineField('password')
 const [passwordConfirm] = defineField('passwordConfirm')
 
-function register(values: FormData) {
-  HTTP.post('/user/register_user', { email: values.email, password: values.password })
-    .then((response) => {
-      if (response.status == 200) {
-        dialogState.message =
-          'We just sent you an email with a link to confirm your address. Please use the link to complete the registration.'
-        dialogState.state = DIALOG.ALERT
-      }
-    })
-    .catch((err) => {
-      dialogState.handle_error(
-        err,
-        'Failed to register',
-        { state: DIALOG.REGISTER_ENTER_DATA, email: values.email },
-        new Map([[403, 'User exists']])
-      )
-    })
-}
-
 function cancel() {
   dialogState.state = DIALOG.NONE
 }
 
 const onSubmit = handleSubmit((values) => {
-  register(values)
+  registerUser(values.email, values.password, dialogState).catch(() => {})
 })
 </script>
 

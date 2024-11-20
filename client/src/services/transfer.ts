@@ -1,6 +1,5 @@
-import { handleRequestWithErrorReporting } from '@/utils/request'
 import type { DialogStateStore } from '@/stores/DialogState'
-import { HTTPSecure } from '@/services/API'
+import { handleRequestWithErrorReporting, HTTPSecure } from '@/services/API'
 
 interface PostFileResponse {
   file_id: string

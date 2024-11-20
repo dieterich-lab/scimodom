@@ -1,6 +1,5 @@
 import { type DialogStateStore } from '@/stores/DialogState'
-import { handleRequestWithErrorReporting } from '@/utils/request'
-import { HTTP } from '@/services/API'
+import { handleRequestWithErrorReporting, HTTP } from '@/services/API'
 
 async function getGenesForSelectionIds(
   selectionIds: number[],

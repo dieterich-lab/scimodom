@@ -26,9 +26,13 @@ watch(
   () => props.taxaId,
   () => {
     if (props.taxaId) {
-      getAssembliesByTaxaId(props.taxaId, dialogState).then((data) => {
-        options.value = data
-      })
+      getAssembliesByTaxaId(props.taxaId, dialogState)
+        .then((data) => {
+          options.value = data
+        })
+        .catch(() => {
+          options.value = []
+        })
     } else {
       options.value = []
     }

@@ -1,7 +1,6 @@
 import { type Bed6Record, type Strand } from '@/utils/bed6'
 import type { DialogStateStore } from '@/stores/DialogState'
-import { handleRequestWithErrorReporting } from '@/utils/request'
-import { getApiUrl, HTTP } from '@/services/API'
+import { getApiUrl, handleRequestWithErrorReporting, HTTP } from '@/services/API'
 import type { DataTableSortMeta } from 'primevue/datatable'
 import { formatPrimvueSortMetas } from '@/utils/primevue'
 import type { SearchParameters } from '@/utils/search'
