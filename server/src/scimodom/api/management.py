@@ -58,7 +58,7 @@ def create_project_request():
     except SMTPException as exc:
         logger.error(f"Project {uuid} saved, but failed to send out email: {exc}")
         message = (
-            f"Request '{uuid}' created, but an error occurred during submission. "
+            f"Request '{uuid}' created, but an error occurred during submission.\b"
             "Please contact the system administrator."
         )
         return create_error_response(500, message, message)
@@ -94,19 +94,21 @@ def add_dataset():
         return create_error_response(
             422,
             "Selection not found",
-            "Invalid combination of RNA type, modification, organism, and/or technology. "
+            "Invalid combination of RNA type, modification, organism, and/or technology.\n"
             "Modify the form and try again.",
         )
     except DatasetImportError as e:
         message = str(e)
-        logger.error(f"DatasetImportError: {message}. The request was: {dataset_form}.")
+        logger.error(
+            f"DatasetImportError: {message}.\nThe request was: {dataset_form}."
+        )
         return create_error_response(422, message, message)
     except DatasetHeaderError as e:
         message = str(e)
         return create_error_response(
             422,
             message,
-            f"Failed to upload dataset due to an inconsistent header: {message} "
+            f"Failed to upload dataset due to an inconsistent header:\n{message}\n"
             "Please check the form or correct the file.",
         )
     except DatasetExistsError as e:
@@ -117,7 +119,7 @@ def add_dataset():
         return create_error_response(
             422,
             message,
-            f"File upload failed. The header is not conform to bedRMod specifications: {str(e)}",
+            f"File upload failed. The header is not conform to bedRMod specifications:\n{str(e)}",
         )
     except BedImportEmptyFile as e:
         message = str(e)
@@ -126,7 +128,7 @@ def add_dataset():
         raise create_error_response(
             422,
             "Too many errors in uploaded file",
-            f"Too many errors in uploaded file: {str(e)}\n\n{e.error_summary}",
+            f"Too many errors in uploaded file:{str(e)}\n\n{e.error_summary}",
         )
     except LiftOverError:
         message = (

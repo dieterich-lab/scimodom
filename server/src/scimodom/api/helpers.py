@@ -44,14 +44,14 @@ code - usually a 4xx. The response_tuple contains two items:
     to a bug, server failure, or network error.
 
   - user_message (optional): In case that the issue was caused by
-    by user error, (e.g. wrong password, bad email address). This
-    message should contain all context the user may need to to understand
-    the message. The frontend will usually display the message directly
-    to the user without adding any context. This message should be supplied
-    in all case where a user error is the most likely reason of the
-    error. It is pointless to supply this message in cases in which the
+    by user error (e.g. wrong password, bad email address) this field
+    should be supplied. This message should contain all context the user
+    may need to to understand the message. The frontend will usually display
+    the message directly to the user without adding any context.
+    It is pointless to supply this message in cases in which the
     the frontend validation will prevent the user error from reaching
-    the backend.
+    the backend. The user_message can *and* should be preformatted
+    with line breaks at suitable spots.
 
 * A HTTP error code - usually a 4xx if the problem on the frontend side,
   including all user errors, or 5xx in case the problem was most likely

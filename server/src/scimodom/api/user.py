@@ -35,15 +35,15 @@ def register_user():
         return create_error_response(
             403,
             "User exists",
-            "A user with this email address already exists. A password reset may work.",
+            "A user with this email address already exists.\nA password reset may work.",
         )
     except SMTPException as e:
         logger.error(f"Failed to send registration email: {e}")
         return create_error_response(
             500,
             "Failed to send registration email",
-            "We failed to send the email with your registration password. "
-            "Please check the email address you supplied. "
+            "We failed to send the email with your registration password.\n"
+            "Please check the email address you supplied.\n"
             "If this is not the problem please contact the system administrator.",
         )
 
@@ -71,8 +71,8 @@ def request_password_reset():
         return create_error_response(
             404,
             "Unknown user",
-            "We have no user with that email address. "
-            "You might have registered with another one or misspelled it."
+            "We have no user with that email address.\n"
+            "You might have registered with another one or misspelled it.\n"
             "If it looks correct, please consider to register a new account.",
         )
     return jsonify({"result": "OK"})
@@ -91,7 +91,7 @@ def do_password_reset():
         return create_error_response(
             401,
             "Wrong token",
-            "Sorry we don't recognise the link. You might have truncated it. "
+            "Sorry we don't recognise the link - you might have truncated it.\n"
             "If not, please contact the system administrator.",
         )
     return jsonify({"result": "OK"})

@@ -9,7 +9,7 @@ async function postTemporaryFile(
   file: File,
   dialogState: DialogStateStore
 ): Promise<PostFileResponse> {
-  return handleRequestWithErrorReporting<PostFileResponse>(
+  return await handleRequestWithErrorReporting<PostFileResponse>(
     HTTPSecure.post('transfer/tmp_upload', file),
     `Failed to upload '${file.name}'`,
     dialogState

@@ -4,7 +4,7 @@ import { type UiStyle, DEFAULT_STYLE } from '@/utils/ui_style'
 withDefaults(defineProps<{ uiStyle?: UiStyle }>(), { uiStyle: () => DEFAULT_STYLE })
 </script>
 <template>
-  <div :class="uiStyle.errorTextClasses" style="white-space: pre">
+  <p :class="uiStyle.errorTextClasses" style="white-space: pre">
     <slot></slot>
-  </div>
+  </p>
 </template>

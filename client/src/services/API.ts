@@ -7,7 +7,20 @@ import { DIALOG, type DialogStateStore, useDialogState } from '@/stores/DialogSt
 
 interface ErrorResponse {
   message: string
-  user_error?: string // For expected problems the backend may supply detailed instructions for the user
+  user_message?: string // For expected problems the backend may supply detailed instructions for the user
+}
+
+interface ErrorMessages {
+  userMessage: string
+  technicalMessage: string
+}
+
+class RequestError extends Error {
+  userMessage: string
+  constructor(messages: ErrorMessages) {
+    super(messages.technicalMessage)
+    this.userMessage = messages.userMessage
+  }
 }
 
 function isErrorResponse(x: unknown): x is ErrorResponse {
@@ -95,41 +108,58 @@ async function handleRequest<T>(
   request: Promise<AxiosResponse>,
   error_context?: string
 ): Promise<T> {
-  let user_message = ''
+  let messages: undefined | ErrorMessages
   try {
     const response = await request
     if (response.status === 200) {
       return response.data as T
     }
-    user_message = getErrorMessageFromResponse(response, error_context)
+    messages = getErrorMessagesFromResponse(response, error_context)
   } catch (err) {
-    user_message = getErrorMessageFromException(err as object, error_context)
+    messages = getErrorMessagesFromException(err as object, error_context)
   }
-  console.log(user_message)
-  throw new Error(user_message)
+  throw new RequestError(messages)
 }
 
-function getErrorMessageFromResponse(response: AxiosResponse, error_context?: string): string {
+function getErrorMessagesFromResponse(
+  response: AxiosResponse,
+  error_context?: string
+): ErrorMessages {
   const prefix = error_context ? `${error_context}: ` : ''
   if (isErrorResponse(response.data)) {
     const errorResponse = response.data
-    if (errorResponse.user_error) {
-      return errorResponse.user_error
+    const technical_message = `${prefix}HTTP status ${response.status} - ${errorResponse.message}`
+    if (errorResponse.user_message) {
+      return {
+        userMessage: errorResponse.user_message,
+        technicalMessage: technical_message
+      }
     } else {
-      return `${prefix}HTTP status ${response.status} - ${errorResponse.message}`
+      return {
+        userMessage: technical_message,
+        technicalMessage: technical_message
+      }
     }
   } else {
-    return `${prefix}HTTP status ${response.status} - please contact the system administrator.`
+    const technical_message = `${prefix}HTTP status ${response.status} - please contact the system administrator.`
+    return {
+      userMessage: technical_message,
+      technicalMessage: technical_message
+    }
   }
 }
 
-function getErrorMessageFromException(err: object, error_context?: string): string {
+function getErrorMessagesFromException(err: object, error_context?: string): ErrorMessages {
   if ('response' in err) {
-    return getErrorMessageFromResponse(err.response as AxiosResponse, error_context)
+    return getErrorMessagesFromResponse(err.response as AxiosResponse, error_context)
   } else {
     const prefix = error_context ? `${error_context}: ` : ''
     const message = err.toString()
-    return `${prefix}${message}`
+    const technical_message = `${prefix}${message}`
+    return {
+      userMessage: technical_message,
+      technicalMessage: technical_message
+    }
   }
 }
 
@@ -140,11 +170,14 @@ async function handleRequestWithErrorReporting<T>(
   dialogStateTemplate?: Partial<DialogStateStore>
 ): Promise<T> {
   try {
-    return handleRequest(request, error_context)
+    return await handleRequest(request, error_context)
   } catch (err) {
+    const technicalMessage = `${err}`
+    console.log(technicalMessage)
+    const userMessage = err instanceof RequestError ? err.userMessage : technicalMessage
     dialogState.$patch({
       state: DIALOG.ERROR_ALERT,
-      message: `${err}`,
+      message: userMessage,
       ...dialogStateTemplate
     })
     throw err

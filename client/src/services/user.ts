@@ -19,7 +19,7 @@ async function login(
   const request = HTTP.post('/user/login', { email, password })
   const result = await handleRequestWithErrorReporting<LoginResponse>(
     request,
-    'While loging in',
+    'While logging in',
     dialogState,
     { state: DIALOG.LOGIN, email }
   )
@@ -30,10 +30,12 @@ async function login(
 
 async function changePassword(password: string, dialogState: DialogStateStore): Promise<void> {
   const request = HTTPSecure.post('/user/change_password', { password })
-  handleRequestWithErrorReporting(request, 'Failed to change password', dialogState).then(() => {
-    dialogState.message = 'Password changed successfully.'
-    dialogState.state = DIALOG.ALERT
-  })
+  await handleRequestWithErrorReporting(request, 'Failed to change password', dialogState).then(
+    () => {
+      dialogState.message = 'Password changed successfully.'
+      dialogState.state = DIALOG.ALERT
+    }
+  )
 }
 
 async function resetPassword(
@@ -47,10 +49,12 @@ async function resetPassword(
     password,
     token
   })
-  handleRequestWithErrorReporting(request, 'Failed to reset password', dialogState).then(() => {
-    dialogState.message = 'Password set successfully.'
-    dialogState.state = DIALOG.ALERT
-  })
+  await handleRequestWithErrorReporting(request, 'Failed to reset password', dialogState).then(
+    () => {
+      dialogState.message = 'Password set successfully.'
+      dialogState.state = DIALOG.ALERT
+    }
+  )
 }
 
 async function mayChangeDataset(
@@ -72,18 +76,21 @@ async function registerUser(
 ): Promise<void> {
   const request = HTTP.post('/user/register_user', { email, password })
   const errorState = { state: DIALOG.REGISTER_ENTER_DATA }
-  handleRequestWithErrorReporting(request, 'Failed to register user', dialogState, errorState).then(
-    () => {
-      dialogState.message =
-        'We just sent you an email with a link to confirm your address. Please use the link to complete the registration.'
-      dialogState.state = DIALOG.ALERT
-    }
-  )
+  await handleRequestWithErrorReporting(
+    request,
+    'Failed to register user',
+    dialogState,
+    errorState
+  ).then(() => {
+    dialogState.message =
+      'We just sent you an email with a link to confirm your address. Please use the link to complete the registration.'
+    dialogState.state = DIALOG.ALERT
+  })
 }
 
 async function requestPasswordReset(email: string, dialogState: DialogStateStore): Promise<void> {
   const request = HTTP.post('/user/request_password_reset', { email })
-  handleRequestWithErrorReporting(request, 'Failed to request password reset', dialogState, {
+  await handleRequestWithErrorReporting(request, 'Failed to request password reset', dialogState, {
     state: DIALOG.RESET_PASSWORD_REQUEST
   }).then(() => {
     dialogState.message =

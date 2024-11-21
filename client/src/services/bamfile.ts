@@ -25,7 +25,7 @@ async function deleteBamFile(
   dialogState: DialogStateStore
 ): Promise<void> {
   const cookedName = encodeURI(name)
-  return handleRequestWithErrorReporting(
+  return await handleRequestWithErrorReporting(
     HTTPSecure.delete(`/bam_file/${datasetId}/${cookedName}`),
     `Failed to delete BAM file '${name}' (dataset ${datasetId})`,
     dialogState
