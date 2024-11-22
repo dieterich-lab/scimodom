@@ -102,6 +102,8 @@ class AbstractBedImporter(Generic[RECORD_TYPE], ABC):
         except TextFileReaderError as err:
             self._error_count += 1
             self._record_count -= 1
+            if self._error_count <= self.MAX_ERRORS_TO_REPORT:
+                self._error_text += str(err).strip() + "\n"
             logger.warning(str(err))
 
     def _get_next_record(self):

@@ -95,7 +95,7 @@ def add_dataset():
             422,
             "Selection not found",
             "Invalid combination of RNA type, modification, organism, and/or technology.\n"
-            "Modify the form and try again.",
+            "Modify the form to match a valid selection for this dataset.",
         )
     except DatasetImportError as e:
         message = str(e)
@@ -108,8 +108,9 @@ def add_dataset():
         return create_error_response(
             422,
             message,
-            f"Failed to upload dataset due to an inconsistent header:\n{message}\n"
-            "Please check the form or correct the file.",
+            f"Inconsistent header: {message}\n"
+            "Selected form values must agree with the file header.\n"
+            "Modify the form or select the correct dataset to upload.",
         )
     except DatasetExistsError as e:
         message = str(e)
@@ -119,16 +120,20 @@ def add_dataset():
         return create_error_response(
             422,
             message,
-            f"File upload failed. The header is not conform to bedRMod specifications:\n{str(e)}",
+            f"Invalid bedRMod format specifications: {str(e)}\n"
+            "Modify the file header to conform to the latest specifications.",
         )
     except BedImportEmptyFile as e:
-        message = str(e)
-        return create_error_response(422, message, message)
+        return create_error_response(
+            422, str(e), "File upload failed. The file is empty."
+        )
     except BedImportTooManyErrors as e:
-        raise create_error_response(
+        return create_error_response(
             422,
-            "Too many errors in uploaded file",
-            f"Too many errors in uploaded file:{str(e)}\n\n{e.error_summary}",
+            str(e),
+            f"File upload failed. Too many skipped records:\n{e.error_summary}\n"
+            "Modify the file to conform to the latest bedRMod format specifications.\n"
+            "Consult the documentation (Dataset upload errors) for more information.",
         )
     except LiftOverError:
         message = (
