@@ -4,6 +4,7 @@ import Dropdown from 'primevue/dropdown'
 import { useDialogState } from '@/stores/DialogState'
 import { type Chrom, getChromsByTaxaId } from '@/services/chrom'
 import type { DropdownChangeEvent } from 'primevue/dropdown'
+import { trashRequestErrors } from '@/services/API'
 
 const props = withDefaults(
   defineProps<{
@@ -37,7 +38,10 @@ watch(
     }
     getChromsByTaxaId(props.taxaId, dialogState)
       .then((data) => (chroms.value = data))
-      .catch(() => (chroms.value = []))
+      .catch((e) => {
+        chroms.value = []
+        trashRequestErrors(e)
+      })
   },
   { immediate: true }
 )

@@ -8,6 +8,7 @@ import FormTextInput from '@/components/ui/FormTextInput.vue'
 import DialogButtonGroup from '@/components/ui/DialogButtonGroup.vue'
 import DialogButton from '@/components/ui/DialogButton.vue'
 import { registerUser } from '@/services/user'
+import { trashRequestErrors } from '@/services/API'
 
 interface FormData {
   email: string
@@ -48,7 +49,7 @@ function cancel() {
 }
 
 const onSubmit = handleSubmit((values) => {
-  registerUser(values.email, values.password, dialogState).catch(() => {})
+  registerUser(values.email, values.password, dialogState).catch((e) => trashRequestErrors(e))
 })
 </script>
 

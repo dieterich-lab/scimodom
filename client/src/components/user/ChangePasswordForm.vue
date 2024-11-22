@@ -9,6 +9,7 @@ import DialogButton from '@/components/ui/DialogButton.vue'
 import DialogText from '@/components/ui/DialogText.vue'
 import { PRIMARY_DIALOG_STYLE } from '@/utils/ui_style'
 import { changePassword, resetPassword } from '@/services/user'
+import { trashRequestErrors } from '@/services/API'
 
 interface FormData {
   password: string
@@ -38,11 +39,11 @@ function cancel() {
 
 const onSubmit = handleSubmit((values: FormData) => {
   if (dialogState.token && dialogState.email) {
-    resetPassword(dialogState.email, values.password, dialogState.token, dialogState).catch(
-      () => {}
+    resetPassword(dialogState.email, values.password, dialogState.token, dialogState).catch((e) =>
+      trashRequestErrors(e)
     )
   } else {
-    changePassword(values.password, dialogState).catch(() => {})
+    changePassword(values.password, dialogState).catch((e) => trashRequestErrors(e))
   }
 })
 </script>

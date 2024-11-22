@@ -41,26 +41,6 @@ const HTTPSecure = axios.create({
   // default xsrfCookieName: 'XSRF-TOKEN'
 })
 
-HTTPSecure.interceptors.response.use(
-  (response) => {
-    // 2xx
-    return response
-  },
-  (error) => {
-    // outside 2xx
-    switch (error.response.status) {
-      case 401:
-        break
-      case 404:
-        // router push to 404
-        break
-      default:
-        break
-    }
-    return Promise.reject(error)
-  }
-)
-
 const HTTP = axios.create({
   baseURL: getApiBaseUrl(),
   withCredentials: false,
@@ -184,6 +164,33 @@ async function handleRequestWithErrorReporting<T>(
   }
 }
 
+function trashRequestErrors(err: unknown) {
+  // This function is intended to be used like this:
+  //
+  // handleRequestWithErrorReporting(...)
+  //     .catch((e) => trashRequestErrors(e))
+  //
+  // It will silently ignore all errors of type RequestError and
+  // re-throws all others.
+  //
+  // Why?
+  //
+  // In general RequestErrors are already handled in the handleRequestWithErrorReporting()
+  // function. Most of the time this is all which can and should be done. Sometimes the
+  // calling function may need to do more to recover. In this case rashResponseErrors()
+  // can be just used in the specific error handler.
+  //
+  // Also, we still want a full backtrace of an unhandled exception in the
+  // case that initial exception is *not* a RequestError, e.g. a pure frontend
+  // issue.
+  //
+  if (err instanceof RequestError) {
+    return
+  } else {
+    throw err
+  }
+}
+
 export {
   HTTP,
   HTTPSecure,
@@ -191,5 +198,6 @@ export {
   getApiUrl,
   prepareAPI,
   handleRequest,
-  handleRequestWithErrorReporting
+  handleRequestWithErrorReporting,
+  trashRequestErrors
 }

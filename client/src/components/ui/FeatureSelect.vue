@@ -3,6 +3,7 @@ import { ref, watch } from 'vue'
 import MultiSelect from 'primevue/multiselect'
 import { useDialogState } from '@/stores/DialogState'
 import { getFeaturesByRnaType } from '@/services/feature'
+import { trashRequestErrors } from '@/services/API'
 
 const props = withDefaults(
   defineProps<{
@@ -29,7 +30,10 @@ watch(
     }
     getFeaturesByRnaType(props.rnaType, dialogState)
       .then((data) => (features.value = data))
-      .catch(() => (features.value = []))
+      .catch((e) => {
+        features.value = []
+        trashRequestErrors(e)
+      })
   },
   { immediate: true }
 )

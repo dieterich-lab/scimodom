@@ -1,5 +1,11 @@
 import { DIALOG, type DialogStateStore } from '@/stores/DialogState'
-import { handleRequestWithErrorReporting, HTTP, HTTPSecure, prepareAPI } from '@/services/API'
+import {
+  handleRequestWithErrorReporting,
+  HTTP,
+  HTTPSecure,
+  prepareAPI,
+  trashRequestErrors
+} from '@/services/API'
 import type { AccessTokenStore } from '@/stores/AccessToken'
 
 interface MayChangeDatasetResponse {
@@ -92,11 +98,13 @@ async function requestPasswordReset(email: string, dialogState: DialogStateStore
   const request = HTTP.post('/user/request_password_reset', { email })
   await handleRequestWithErrorReporting(request, 'Failed to request password reset', dialogState, {
     state: DIALOG.RESET_PASSWORD_REQUEST
-  }).then(() => {
-    dialogState.message =
-      'We just sent you an email with a link. Please visit the link to set your new password.'
-    dialogState.state = DIALOG.ALERT
   })
+    .then(() => {
+      dialogState.message =
+        'We just sent you an email with a link. Please visit the link to set your new password.'
+      dialogState.state = DIALOG.ALERT
+    })
+    .catch((e) => trashRequestErrors(e))
 }
 
 export {

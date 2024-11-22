@@ -7,6 +7,7 @@ import DataTable from 'primevue/datatable'
 import { useRouter } from 'vue-router'
 import { getSiteWiseInfo, type Modification, type SiteWiseInfo } from '@/services/modification'
 import { useDialogState } from '@/stores/DialogState'
+import { trashRequestErrors } from '@/services/API'
 
 const props = defineProps<{
   modification?: Modification
@@ -28,7 +29,7 @@ watch(
         .then((x) => {
           records.value = x.filter((r) => r.dataset_id != m.dataset_id && r.modification_id != m.id)
         })
-        .catch(() => {})
+        .catch((e) => trashRequestErrors(e))
         .finally(() => {
           loading.value = false
         })

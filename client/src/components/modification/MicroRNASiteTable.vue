@@ -6,6 +6,7 @@ import DataTable from 'primevue/datatable'
 import { getTargetSites, type Modification } from '@/services/modification'
 import type { Bed6Record, Strand } from '@/utils/bed6'
 import { useDialogState } from '@/stores/DialogState'
+import { trashRequestErrors } from '@/services/API'
 
 interface TableItem {
   chrom: string
@@ -34,7 +35,7 @@ watch(
         .then((data) => {
           records.value = data.map((x) => getTableItemFromBed6Record(x))
         })
-        .catch(() => {})
+        .catch((e) => trashRequestErrors(e))
     } else {
       records.value = []
     }

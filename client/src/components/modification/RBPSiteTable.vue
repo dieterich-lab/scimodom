@@ -6,6 +6,7 @@ import DataTable from 'primevue/datatable'
 import { type Modification, getTargetSites } from '@/services/modification'
 import { useDialogState } from '@/stores/DialogState'
 import type { Bed6Record } from '@/utils/bed6'
+import { trashRequestErrors } from '@/services/API'
 
 const props = defineProps<{
   modification?: Modification
@@ -30,8 +31,9 @@ watch(
         .then((data) => {
           records.value = data.map((x) => getDataItemFromBed6Record(x))
         })
-        .catch(() => {
+        .catch((e) => {
           records.value = []
+          trashRequestErrors(e)
         })
     } else {
       records.value = []

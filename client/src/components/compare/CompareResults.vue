@@ -13,6 +13,7 @@ import {
 } from '@/utils/comparison'
 import { closest, type ComparisonParams, intersect, subtract } from '@/services/comparison'
 import { useDialogState } from '@/stores/DialogState'
+import { trashRequestErrors } from '@/services/API'
 
 const props = defineProps<{
   operation?: ComparisonOperation
@@ -140,8 +141,9 @@ onMounted(() => {
       .then((data) => {
         records.value = data
       })
-      .catch(() => {
+      .catch((e) => {
         records.value = []
+        trashRequestErrors(e)
       })
       .finally(() => {
         loading.value = false

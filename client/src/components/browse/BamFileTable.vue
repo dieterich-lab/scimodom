@@ -13,6 +13,7 @@ import {
   getBamFileDownLoadURL,
   getBamFilesByDatasetId
 } from '@/services/bamfile'
+import { trashRequestErrors } from '@/services/API'
 
 const props = defineProps({
   datasetId: {
@@ -37,11 +38,14 @@ function refreshData() {
       .then((x) => {
         mayChange.value = x
       })
-      .catch(() => {
+      .catch((e) => {
         mayChange.value = false
+        trashRequestErrors(e)
       })
   }
-  getBamFilesByDatasetId(props.datasetId, dialogState).then((data) => (bamFiles.value = data))
+  getBamFilesByDatasetId(props.datasetId, dialogState)
+    .then((data) => (bamFiles.value = data))
+    .catch((e) => trashRequestErrors(e))
 }
 
 function askToDelete(name: string) {
@@ -51,7 +55,9 @@ function askToDelete(name: string) {
 }
 
 function deleteIt(datasetId: string, name: string) {
-  deleteBamFile(datasetId, name, dialogState).finally(() => refreshData())
+  deleteBamFile(datasetId, name, dialogState)
+    .catch((e) => trashRequestErrors(e))
+    .finally(() => refreshData())
 }
 
 function getDownLoadURL(bamFile: BamFile) {

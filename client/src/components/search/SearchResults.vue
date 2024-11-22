@@ -17,6 +17,7 @@ import {
   type Modification
 } from '@/services/modification'
 import { useDialogState } from '@/stores/DialogState'
+import { trashRequestErrors } from '@/services/API'
 
 const props = defineProps<{
   searchParameters: SearchParameters | null
@@ -59,9 +60,10 @@ function loadData() {
         records.value = data.records
         totalRecords.value = data.totalRecords
       })
-      .catch(() => {
+      .catch((e) => {
         records.value = undefined
         totalRecords.value = 0
+        trashRequestErrors(e)
       })
       .finally(() => {
         loading.value = false

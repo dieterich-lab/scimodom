@@ -24,6 +24,7 @@ import { type DatasetPostRequest, postDataset } from '@/services/management'
 import { type RnaType } from '@/services/rna_type'
 import { type Assembly } from '@/services/assembly'
 import { allDatasetsCache } from '@/services/dataset'
+import { trashRequestErrors } from '@/services/API'
 
 const MAX_UPLOAD_SIZE = 50 * 1024 * 1024
 const dialogState = useDialogState()
@@ -94,7 +95,7 @@ const onSubmit = handleSubmit((values: DatasetPostRequest) => {
       allDatasetsCache.getData(true)
       router.push({ name: 'home' })
     })
-    .catch(() => {})
+    .catch((e) => trashRequestErrors(e))
     .finally(() => {
       loading.value = false
     })

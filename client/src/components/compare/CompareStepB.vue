@@ -10,6 +10,7 @@ import type { Dataset } from '@/services/dataset'
 import type { FileUploadUploaderEvent } from 'primevue/fileupload'
 import { uploadTemporaryDataset } from '@/services/dataset_upload'
 import { type ResultStepA, type ResultStepB } from '@/utils/comparison'
+import { trashRequestErrors } from '@/services/API'
 
 const props = defineProps<{
   resultStepA?: ResultStepA
@@ -44,7 +45,10 @@ function uploader(event: FileUploadUploaderEvent) {
       model.value = result
       emit('change', result)
     })
-    .catch(() => reset())
+    .catch((e) => {
+      reset()
+      trashRequestErrors(e)
+    })
 }
 
 function reset() {

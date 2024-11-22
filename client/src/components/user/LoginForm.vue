@@ -11,6 +11,7 @@ import DialogText from '@/components/ui/DialogText.vue'
 import FormLink from '@/components/ui/FormLink.vue'
 import { PRIMARY_DIALOG_STYLE } from '@/utils/ui_style'
 import { login } from '@/services/user'
+import { trashRequestErrors } from '@/services/API'
 
 interface FormData {
   email: string
@@ -51,7 +52,7 @@ function resetPassword() {
 }
 
 const onSubmit = handleSubmit((values) => {
-  login(values.email, values.password, accessToken, dialogState).catch(() => {})
+  login(values.email, values.password, accessToken, dialogState).catch((e) => trashRequestErrors(e))
 })
 </script>
 

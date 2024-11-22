@@ -4,6 +4,7 @@ import { getSunBurstData, type SunburstType } from '@/services/sunburst'
 import { COLORS } from '@/utils/color'
 import { useDialogState } from '@/stores/DialogState'
 import Plotly from 'plotly.js'
+import { trashRequestErrors } from '@/services/API'
 
 const LAYOUT = {
   margin: { t: 0, l: 0, r: 0, b: 0 },
@@ -33,7 +34,7 @@ onMounted(() => {
         })
       }
     })
-    .catch(() => {})
+    .catch((e) => trashRequestErrors(e))
 })
 </script>
 

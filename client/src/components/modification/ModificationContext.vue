@@ -2,6 +2,7 @@
 import { ref, watch } from 'vue'
 import { getGenomicContext, type Modification } from '@/services/modification'
 import { useDialogState } from '@/stores/DialogState'
+import { trashRequestErrors } from '@/services/API'
 
 const DEFAULT_CONTEXT_INDEX = 5
 
@@ -19,7 +20,7 @@ watch(
         .then((x) => {
           sequence.value = getSequenceFromContext(modification, x, context_index)
         })
-        .catch(() => {})
+        .catch((e) => trashRequestErrors(e))
     } else {
       sequence.value = []
     }

@@ -4,6 +4,7 @@ import AutoComplete, { type AutoCompleteChangeEvent } from 'primevue/autocomplet
 import { useDialogState } from '@/stores/DialogState'
 import { getGenesForSelectionIds } from '@/services/gene'
 import type { AutoCompleteCompleteEvent } from 'primevue/autocomplete'
+import { trashRequestErrors } from '@/services/API'
 
 const props = withDefaults(
   defineProps<{
@@ -37,7 +38,10 @@ watch(
     }
     getGenesForSelectionIds(props.selectionIds, dialogState)
       .then((data) => (genes.value = data))
-      .catch(() => (genes.value = []))
+      .catch((e) => {
+        genes.value = []
+        trashRequestErrors(e)
+      })
   },
   { immediate: true }
 )

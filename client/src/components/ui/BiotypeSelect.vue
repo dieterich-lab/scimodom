@@ -4,6 +4,7 @@ import MultiSelect from 'primevue/multiselect'
 
 import { useDialogState } from '@/stores/DialogState'
 import { getBioTypes } from '@/services/biotype'
+import { trashRequestErrors } from '@/services/API'
 
 const props = withDefaults(
   defineProps<{
@@ -30,8 +31,9 @@ watch(
         .then((data) => {
           biotypes.value = data
         })
-        .catch(() => {
+        .catch((e) => {
           biotypes.value = []
+          trashRequestErrors(e)
         })
     } else {
       biotypes.value = []

@@ -4,6 +4,7 @@ import { useDialogState } from '@/stores/DialogState'
 import { type Assembly, getAssembliesByTaxaId } from '@/services/assembly'
 import { type GenericFieldProps, GENERIC_FIELD_DEFAULTS } from '@/utils/ui_style'
 import Dropdown, { type DropdownChangeEvent } from 'primevue/dropdown'
+import { trashRequestErrors } from '@/services/API'
 
 interface Props extends GenericFieldProps {
   taxaId?: number
@@ -30,8 +31,9 @@ watch(
         .then((data) => {
           options.value = data
         })
-        .catch(() => {
+        .catch((e) => {
           options.value = []
+          trashRequestErrors(e)
         })
     } else {
       options.value = []

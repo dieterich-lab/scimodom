@@ -6,6 +6,7 @@ import { postTemporaryFile } from '@/services/transfer'
 import { useDialogState } from '@/stores/DialogState'
 import { GENERIC_FIELD_DEFAULTS, type GenericFieldProps } from '@/utils/ui_style'
 import { ref } from 'vue'
+import { trashRequestErrors } from '@/services/API'
 
 export interface TmpUploadExtraProps {
   accept: string
@@ -41,7 +42,7 @@ function uploader(event: FileUploadUploaderEvent) {
       fileId.value = data.file_id
       emits('change', file.name, data.file_id)
     })
-    .catch(() => {})
+    .catch((e) => trashRequestErrors(e))
 }
 
 const pt: InputTextPassThroughOptions = {
