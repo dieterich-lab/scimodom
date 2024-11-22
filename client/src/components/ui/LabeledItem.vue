@@ -1,26 +1,23 @@
-<script setup>
-import AbstractStyle from '@/ui_styles/AbstractStyle.js'
-import DefaultStyle from '@/ui_styles/DefaultStyle.js'
+<script setup lang="ts">
+import { type UiStyle, DEFAULT_STYLE } from '@/utils/ui_style'
 
-const props = defineProps({
-  label: {
-    type: String,
-    required: true
-  },
-  uiStyle: {
-    type: AbstractStyle,
-    required: false,
-    default: DefaultStyle
+const props = withDefaults(
+  defineProps<{
+    label: string
+    uiStyle?: UiStyle
+  }>(),
+  {
+    uiStyle: () => DEFAULT_STYLE
   }
-})
+)
 </script>
 
 <template>
   <div class="inline-flex flex-col gap-2">
-    <span :class="props.uiStyle.labelClasses()">
+    <span :class="props.uiStyle.labelClasses">
       {{ props.label }}
     </span>
-    <span :class="props.uiStyle.textClasses()">
+    <span :class="props.uiStyle.textClasses">
       <slot></slot>
     </span>
   </div>

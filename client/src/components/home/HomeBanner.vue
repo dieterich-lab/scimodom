@@ -1,3 +1,6 @@
+<script setup lang="ts">
+import SectionLayout from '@/components/layout/SectionLayout.vue'
+</script>
 <template>
   <SectionLayout>
     <div class="text-center">

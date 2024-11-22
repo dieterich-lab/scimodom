@@ -23,7 +23,9 @@ class BedImportEmptyFile(Exception):
 
 
 class BedImportTooManyErrors(Exception):
-    pass
+    def __init__(self, message: str, error_summary: str):
+        super().__init__(message)
+        self.error_summary = error_summary
 
 
 class AbstractBedImporter(Generic[RECORD_TYPE], ABC):
@@ -77,7 +79,7 @@ class AbstractBedImporter(Generic[RECORD_TYPE], ABC):
                 f"(valid: {self._record_count}, errors: {self._error_count})"
             )
             logger.error(msg)
-            raise BedImportTooManyErrors(msg)
+            raise BedImportTooManyErrors(msg, self.get_error_summary())
         if self._record_count == 0:
             msg = f"Did not find any records in '{self._source}'"
             logger.error(msg)
@@ -100,6 +102,8 @@ class AbstractBedImporter(Generic[RECORD_TYPE], ABC):
         except TextFileReaderError as err:
             self._error_count += 1
             self._record_count -= 1
+            if self._error_count <= self.MAX_ERRORS_TO_REPORT:
+                self._error_text += str(err).strip() + "\n"
             logger.warning(str(err))
 
     def _get_next_record(self):

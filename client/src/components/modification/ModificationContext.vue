@@ -1,52 +1,40 @@
-<script setup>
+<script setup lang="ts">
 import { ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { HTTP } from '@/services/API.js'
+import { getGenomicContext, type Modification } from '@/services/modification'
+import { useDialogState } from '@/stores/DialogState'
+import { trashRequestErrors } from '@/services/API'
 
-const props = defineProps({
-  coords: {
-    type: Object,
-    required: true
-  }
-})
+const DEFAULT_CONTEXT_INDEX = 5
 
-const router = useRouter()
-
-const defaultContext = ref(5)
-const sequence = ref([])
+const props = defineProps<{ modification?: Modification }>()
+const dialogState = useDialogState()
+const sequence = ref<string[]>([])
 
 watch(
-  () => props.coords,
+  () => props.modification,
   () => {
-    load(defaultContext.value)
+    if (props.modification) {
+      const context_index = DEFAULT_CONTEXT_INDEX
+      const modification = props.modification
+      getGenomicContext(props.modification, context_index, dialogState)
+        .then((x) => {
+          sequence.value = getSequenceFromContext(modification, x, context_index)
+        })
+        .catch((e) => trashRequestErrors(e))
+    } else {
+      sequence.value = []
+    }
   },
   { immediate: true }
 )
 
-function load(context) {
-  HTTP.get(`/modification/genomic-context/${context}`, {
-    params: {
-      taxaId: props.coords.taxa_id,
-      chrom: props.coords.chrom,
-      start: props.coords.start,
-      end: props.coords.end,
-      strand: props.coords.strand
-    },
-    paramsSerializer: {
-      indexes: null
-    }
-  })
-    .then(function (response) {
-      sequence.value = splitContext(response.data.context)
-    })
-    .catch((error) => {
-      console.log(error)
-    })
-}
-
-function splitContext(str, index = defaultContext.value) {
-  const span = index + props.coords.end - props.coords.start
-  return [str.slice(0, index), str.slice(index, span), str.slice(span)]
+function getSequenceFromContext(
+  modification: Modification,
+  context: string,
+  context_index: number
+): string[] {
+  const span = context_index + modification.end - modification.start
+  return [context.slice(0, context_index), context.slice(context_index, span), context.slice(span)]
 }
 </script>
 

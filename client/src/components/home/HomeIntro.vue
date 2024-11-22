@@ -1,3 +1,7 @@
+<script setup lang="ts">
+import Button from 'primevue/button'
+import SectionLayout from '@/components/layout/SectionLayout.vue'
+</script>
 <template>
   <SectionLayout :secondary="true">
     <div class="px-4 py-8 md:px-6 lg:px-8 text-center">

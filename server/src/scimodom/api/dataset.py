@@ -158,7 +158,9 @@ class _CompareContext:
                 )
             except FileNotFoundError:
                 raise ClientResponseException(
-                    404, "Your uploaded file was not found - maybe it expired"
+                    404,
+                    "Upload file ID not found"
+                    "Your uploaded file was not found - maybe it expired and you need to re-upload the file",
                 )
             b_records_list = [list(self._get_comparison_records_from_file())]
 
@@ -206,10 +208,13 @@ class _CompareContext:
                 yield ComparisonRecord(**raw_record, **dummy_values)
         except BedImportTooManyErrors as e:
             raise ClientResponseException(
-                400, f"{str(e)}\n\n{importer.get_error_summary()}"
+                422,
+                "Too many errors in uploaded file",
+                f"Too many errors in uploaded file: {str(e)}\n\n{e.error_summary}",
             )
-        except BedImportEmptyFile as e:
-            raise ClientResponseException(400, "Uploaded file had no records")
+        except BedImportEmptyFile:
+            message = "Uploaded file had no records"
+            raise ClientResponseException(400, message, message)
 
     def __exit__(self, exc_type, exc_value, traceback):
         if self._tmp_file_handle is not None:

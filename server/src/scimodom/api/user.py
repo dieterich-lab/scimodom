@@ -6,6 +6,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from sqlalchemy.exc import NoResultFound
 
+from scimodom.api.helpers import create_error_response
 from scimodom.services.dataset import get_dataset_service
 from scimodom.services.permission import get_permission_service
 from scimodom.services.user import (
@@ -30,18 +31,20 @@ def register_user():
             email=request.json["email"], password=request.json["password"]
         )
         return jsonify({"result": "OK"})
-
     except UserExists:
-        return jsonify({"result": "User exists"}), 403
+        return create_error_response(
+            403,
+            "User exists",
+            "A user with this email address already exists.\nA password reset may work.",
+        )
     except SMTPException as e:
-        logger.error(f"Failed to sent out email: {e}")
-        return (
-            jsonify(
-                {
-                    "result": "Failed to sent out registration email - please tak to the administrator"
-                }
-            ),
+        logger.error(f"Failed to send registration email: {e}")
+        return create_error_response(
             500,
+            "Failed to send registration email",
+            "We failed to send the email with your registration password.\n"
+            "Please check the email address you supplied.\n"
+            "If this is not the problem please contact the system administrator.",
         )
 
 
@@ -54,7 +57,9 @@ def confirm_user():
         )
         return jsonify({"result": "OK"})
     except WrongUserOrPassword:
-        return jsonify({"result": "Bad confirmation link"}), 400
+        return create_error_response(
+            400, "Bad confirmation link", "Bad confirmation link"
+        )
 
 
 @user_api.route("/request_password_reset", methods=["POST"])
@@ -63,7 +68,13 @@ def request_password_reset():
     try:
         user_service.request_password_reset(request.json["email"])
     except NoSuchUser:
-        return jsonify({"result": "Unknown user"}), 404
+        return create_error_response(
+            404,
+            "Unknown user",
+            "We have no user with that email address.\n"
+            "You might have registered with another one or misspelled it.\n"
+            "If it looks correct, please consider to register a new account.",
+        )
     return jsonify({"result": "OK"})
 
 
@@ -77,9 +88,11 @@ def do_password_reset():
             new_password=request.json["password"],
         )
     except WrongUserOrPassword:
-        return (
-            jsonify({"result": "Something is wrong - did you have the right link?"}),
+        return create_error_response(
             401,
+            "Wrong token",
+            "Sorry we don't recognise the link - you might have truncated it.\n"
+            "If not, please contact the system administrator.",
         )
     return jsonify({"result": "OK"})
 
@@ -95,7 +108,9 @@ def login():
         )
         return jsonify({"access_token": access_token})
     else:
-        return jsonify({"result": "Wrong user or password"}), 401
+        return create_error_response(
+            401, "Wrong user or password", "Wrong email address or password."
+        )
 
 
 @user_api.route("/refresh_access_token")
@@ -132,11 +147,11 @@ def may_change_dataset(dataset_id):
     try:
         user = user_service.get_user_by_email(email)
     except NoSuchUser:
-        return {"message": "No such user"}, 404
+        return create_error_response(404, "No such user")
     try:
         dataset = dataset_service.get_by_id(dataset_id)
     except NoResultFound:
-        return {"message": "Unknown dataset"}, 404
+        return create_error_response(404, "Unknown dataset")
 
     return {"write_access": permission_service.may_change_dataset(user, dataset)}
 

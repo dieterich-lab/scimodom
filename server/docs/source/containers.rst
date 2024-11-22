@@ -171,4 +171,9 @@ To directly connect to the database:
   podman exec -it docker_scimodom_db_1 mariadb -u root -p scimodom
 
 
-Use the password found in *secrets/mariadb-root*.
+Use the password found in *secrets/mariadb-root*. Also podman-compose/docker-compose
+may be used. In case of the 'db-only' DEV setup one may do this:
+
+.. code-block:: bash
+
+  docker podman-compose -f docker-compose-db-only.yml  exec scimodom_db_dev mariadb -u root -p scimodom

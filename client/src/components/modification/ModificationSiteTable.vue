@@ -1,47 +1,39 @@
-<script setup>
+<script setup lang="ts">
 import { ref, watch } from 'vue'
+import Button from 'primevue/button'
+import ProgressSpinner from 'primevue/progressspinner'
+import Column from 'primevue/column'
+import DataTable from 'primevue/datatable'
 import { useRouter } from 'vue-router'
-import { HTTP } from '@/services/API.js'
+import { getSiteWiseInfo, type Modification, type SiteWiseInfo } from '@/services/modification'
+import { useDialogState } from '@/stores/DialogState'
+import { trashRequestErrors } from '@/services/API'
 
-const props = defineProps({
-  coords: {
-    type: Object,
-    required: true
-  }
-})
-
+const props = defineProps<{
+  modification?: Modification
+}>()
+const dialogState = useDialogState()
 const router = useRouter()
 
 const dt = ref()
-const records = ref()
-const loading = ref(false)
+const records = ref<SiteWiseInfo[]>([])
+const loading = ref<boolean>(false)
 
 watch(
-  () => props.coords,
+  () => props.modification,
   () => {
-    loading.value = true
-    HTTP.get('/modification/sitewise', {
-      params: {
-        taxaId: props.coords.taxa_id,
-        chrom: props.coords.chrom,
-        start: props.coords.start,
-        end: props.coords.end
-      },
-      paramsSerializer: {
-        indexes: null
-      }
-    })
-      .then(function (response) {
-        records.value = response.data.records.filter(
-          (record) =>
-            record.dataset_id != props.coords.dataset_id &&
-            record.modification_id != props.coords.modification_id
-        )
-        loading.value = false
-      })
-      .catch((error) => {
-        console.log(error)
-      })
+    if (props.modification) {
+      const m = props.modification
+      loading.value = true
+      getSiteWiseInfo(m, dialogState)
+        .then((x) => {
+          records.value = x.filter((r) => r.dataset_id != m.dataset_id && r.modification_id != m.id)
+        })
+        .catch((e) => trashRequestErrors(e))
+        .finally(() => {
+          loading.value = false
+        })
+    }
   },
   { immediate: true }
 )
@@ -49,14 +41,14 @@ watch(
 // table-related utilities
 const getFileName = () => {
   let stamp = new Date()
-  return 'scimodom_per_site_' + stamp.toISOString().replaceAll(/:/g, '')
+  return 'scimodom_per_site_' + stamp.toISOString().replace(/:/g, '')
 }
 
 const onExport = () => {
   dt.value.exportCSV()
 }
 
-const navigateTo = (eufid) => {
+const navigateTo = (eufid: string) => {
   const { href } = router.resolve({ name: 'browse', params: { eufid: eufid } })
   window.open(href, '_blank')
 }
@@ -85,7 +77,7 @@ const navigateTo = (eufid) => {
           label="Export"
           severity="secondary"
           raised
-          @click="onExport($event)"
+          @click="onExport()"
         />
       </div>
     </template>
@@ -127,8 +119,8 @@ const navigateTo = (eufid) => {
     <Column field="start" exportHeader="chromStart" style="display: none"></Column>
     <Column field="end" exportHeader="chromEnd" style="display: none"></Column>
     <Column field="strand" exportHeader="strand" style="display: none"></Column>
-    <Column field="score" header="Score" sortable exportHeader="score"></Column>
-    <Column field="coverage" header="Coverage" sortable exportHeader="coverage"></Column>
-    <Column field="frequency" header="Frequency" sortable exportHeader="frequency"></Column>
+    <Column field="score" header="Score" :sortable="true" exportHeader="score"></Column>
+    <Column field="coverage" header="Coverage" :sortable="true" exportHeader="coverage"></Column>
+    <Column field="frequency" header="Frequency" :sortable="true" exportHeader="frequency"></Column>
   </DataTable>
 </template>

@@ -1,3 +1,7 @@
+<script setup lang="ts">
+import DefaultLayout from '@/components/layout/DefaultLayout.vue'
+import SectionLayout from '@/components/layout/SectionLayout.vue'
+</script>
 <template>
   <DefaultLayout>
     <SectionLayout>

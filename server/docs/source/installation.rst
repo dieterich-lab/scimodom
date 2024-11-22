@@ -211,3 +211,17 @@ Any change to the schema is generally tracked with:
 
   alembic revision [--autogenerate] -m "message"
   alembic upgrade head
+
+CORS and DEBUG mode
+"""""""""""""""""""
+
+The Flask app uses CORS for development only. We need it to process backend calls
+(usually port 5000) from the Vite dev server (usually port 5173). Unfortunately
+unhandled backend exceptions will be interrupted in the backend *before* the CORS
+header is attached to the response in *development mode only*. That will never
+matter in production. To reproduce and test such cases correctly the DEBUG mode of
+Flask must be **disabled**, e.g. by changing server/.flaskenv file like this:
+
+.. code-block:: bash
+
+  FLASK_DEBUG=False

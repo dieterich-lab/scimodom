@@ -1,9 +1,9 @@
-<script setup>
+<script setup lang="ts">
 import { DIALOG, useDialogState } from '@/stores/DialogState.js'
-import FromBox from '@/components/ui/FormBox.vue'
-import FormButtonGroup from '@/components/ui/FormButtonGroup.vue'
-import FormButton from '@/components/ui/FormButton.vue'
-import PrimaryDialogStyle from '@/ui_styles/PrimaryDialogStyle.js'
+import DialogBox from '@/components/ui/DialogBox.vue'
+import DialogButtonGroup from '@/components/ui/DialogButtonGroup.vue'
+import DialogButton from '@/components/ui/DialogButton.vue'
+import { PRIMARY_DIALOG_STYLE } from '@/utils/ui_style'
 
 const dialogState = useDialogState()
 
@@ -18,11 +18,11 @@ function cancel() {
 
 <template>
   <form @submit="ok">
-    <FromBox :ui-style="PrimaryDialogStyle">
-      <FormButtonGroup>
-        <FormButton type="submit" :ui-style="PrimaryDialogStyle">Confirm</FormButton>
-        <FormButton @on-click="cancel()" :ui-style="PrimaryDialogStyle">Cancel</FormButton>
-      </FormButtonGroup>
-    </FromBox>
+    <DialogBox :ui-style="PRIMARY_DIALOG_STYLE">
+      <DialogButtonGroup>
+        <DialogButton type="submit" :ui-style="PRIMARY_DIALOG_STYLE">Confirm</DialogButton>
+        <DialogButton @on-click="cancel()" :ui-style="PRIMARY_DIALOG_STYLE">Cancel</DialogButton>
+      </DialogButtonGroup>
+    </DialogBox>
   </form>
 </template>

@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import Logo from '@/assets/images/rmap-logo.svg'
 import RNomeLogo from '@/assets/images/rnome-logo.svg'
 </script>

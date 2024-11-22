@@ -1,73 +1,61 @@
-<script setup>
+<script setup lang="ts">
 import { ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { HTTP } from '@/services/API.js'
+import Button from 'primevue/button'
+import Column from 'primevue/column'
+import DataTable from 'primevue/datatable'
+import { getTargetSites, type Modification } from '@/services/modification'
+import type { Bed6Record, Strand } from '@/utils/bed6'
+import { useDialogState } from '@/stores/DialogState'
+import { trashRequestErrors } from '@/services/API'
 
-const props = defineProps({
-  coords: {
-    type: Object,
-    required: true
-  }
-})
+interface TableItem {
+  chrom: string
+  start: number
+  end: number
+  strand: Strand
+  score: number
+  source: string
+  target: string
+  mirna: string
+}
 
-const router = useRouter()
+const props = defineProps<{
+  modification?: Modification
+}>()
 
 const dt = ref()
-const records = ref()
+const records = ref<TableItem[]>([])
+const dialogState = useDialogState()
 
 watch(
-  () => props.coords,
+  () => props.modification,
   () => {
-    load()
+    if (props.modification) {
+      getTargetSites(props.modification, 'MIRNA', dialogState)
+        .then((data) => {
+          records.value = data.map((x) => getTableItemFromBed6Record(x))
+        })
+        .catch((e) => trashRequestErrors(e))
+    } else {
+      records.value = []
+    }
   },
   { immediate: true }
 )
 
+function getTableItemFromBed6Record(x: Bed6Record): TableItem {
+  let [source, target, mirna] = x.name.split(':')
+  return { ...x, source, target, mirna }
+}
+
 // table-related utilities
 const getFileName = () => {
   let stamp = new Date()
-  return 'scimodom_mirna_targets_' + stamp.toISOString().replaceAll(/:/g, '')
+  return 'scimodom_mirna_targets_' + stamp.toISOString().replace(/:/g, '')
 }
 
 const onExport = () => {
   dt.value.exportCSV()
-}
-
-const navigateTo = (eufid) => {
-  router.push({ name: 'browse', params: { eufid: eufid } })
-}
-
-function load(event) {
-  HTTP.get('/modification/target/MIRNA', {
-    params: {
-      taxaId: props.coords.taxa_id,
-      chrom: props.coords.chrom,
-      start: props.coords.start,
-      end: props.coords.end,
-      strand: props.coords.strand
-    },
-    paramsSerializer: {
-      indexes: null
-    }
-  })
-    .then(function (response) {
-      records.value = response.data.records.map(function (obj) {
-        let name = obj.name.split(':')
-        return {
-          chrom: obj.chrom,
-          start: obj.start,
-          end: obj.end,
-          strand: obj.strand,
-          score: obj.score,
-          source: name[0],
-          target: name[1],
-          mirna: name[2]
-        }
-      })
-    })
-    .catch((error) => {
-      console.log(error)
-    })
 }
 </script>
 
@@ -81,7 +69,7 @@ function load(event) {
           label="Export"
           severity="secondary"
           raised
-          @click="onExport($event)"
+          @click="onExport()"
         />
       </div>
     </template>

@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import Dialog from 'primevue/dialog'
 
 import SubTitle from '@/components/ui/SubTitle.vue'
@@ -6,30 +6,24 @@ import ModificationContext from '@/components/modification/ModificationContext.v
 import ModificationSiteTable from '@/components/modification/ModificationSiteTable.vue'
 import MicroRNASiteTable from '@/components/modification/MicroRNASiteTable.vue'
 import RBPSiteTable from '@/components/modification/RBPSiteTable.vue'
+import type { Modification } from '@/services/modification'
 
-const props = defineProps({
-  site: {
-    type: Object,
-    required: true
+const props = defineProps<{ modification?: Modification }>()
+
+const visible = defineModel<boolean>('visible')
+function header() {
+  if (props.modification) {
+    const m = props.modification
+    return `Information for modification site ${m.chrom}:${m.start}-${m.end}`
+  } else {
+    return ''
   }
-})
-const modelVisible = defineModel('visible')
-
-const header = () => {
-  return (
-    'Information for modification site ' +
-    props.site.chrom +
-    ':' +
-    props.site.start +
-    '-' +
-    props.site.end
-  )
 }
 </script>
 
 <template>
   <Dialog
-    v-model:visible="modelVisible"
+    v-model:visible="visible"
     :header="header()"
     :modal="true"
     :pt="{
@@ -38,18 +32,26 @@ const header = () => {
     }"
     :ptOptions="{ mergeProps: true }"
   >
-    <SubTitle :small="true"> Genomic context: <ModificationContext :coords="site" /> </SubTitle>
+    <SubTitle :small="true">
+      Genomic context: <ModificationContext :modification="modification" />
+    </SubTitle>
+
     <SubTitle :small="true" :padding="true"
       >This site is also reported in the following datasets:</SubTitle
     >
-    <ModificationSiteTable :coords="site" />
-    <SubTitle :small="true" :padding="true"
-      >The following miRNA target sites may be affected by this modification:</SubTitle
-    >
-    <MicroRNASiteTable :coords="site" />
-    <SubTitle :small="true" :padding="true"
-      >The following RBP binding sites may be affected by this modification:</SubTitle
-    >
-    <RBPSiteTable :coords="site" />
+
+    <ModificationSiteTable :modification="modification" />
+
+    <SubTitle :small="true" :padding="true">
+      The following miRNA target sites may be affected by this modification:
+    </SubTitle>
+
+    <MicroRNASiteTable :modification="modification" />
+
+    <SubTitle :small="true" :padding="true">
+      The following RBP binding sites may be affected by this modification:
+    </SubTitle>
+
+    <RBPSiteTable :modification="modification" />
   </Dialog>
 </template>

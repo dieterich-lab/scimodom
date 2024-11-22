@@ -1,11 +1,11 @@
-<script setup>
-const props = defineProps({
-  label: { type: String, required: false },
-  taxaName: { type: String },
-  chrom: { type: String },
-  start: { type: Number },
-  end: { type: Number }
-})
+<script setup lang="ts">
+const props = defineProps<{
+  label?: string
+  taxaName: string
+  chrom: string
+  start: number
+  end: number
+}>()
 
 const text = props.label || props.start
 const cookedTaxaName = props.taxaName.replace(/ /g, '_')

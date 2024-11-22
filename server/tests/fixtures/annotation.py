@@ -20,6 +20,9 @@ def annotation(Session, dataset):
     genomic_annotation5 = GenomicAnnotation(
         id="ENSG3", annotation_id=1, name="GENE3", biotype="processed_pseudogene"
     )
+    genomic_annotation6 = GenomicAnnotation(
+        id="ENSG4", annotation_id=1, name="GENE4", biotype="protein_coding"
+    )
     data_annotation1 = DataAnnotation(
         id=1, data_id=4, gene_id="ENSG1", feature="Exonic"
     )
@@ -41,6 +44,7 @@ def annotation(Session, dataset):
             genomic_annotation3,
             genomic_annotation4,
             genomic_annotation5,
+            genomic_annotation6,
             data_annotation1,
             data_annotation2,
             data_annotation3,

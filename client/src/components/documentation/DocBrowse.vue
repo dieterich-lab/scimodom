@@ -1,4 +1,5 @@
-<script setup>
+<script setup lang="ts">
+import Message from 'primevue/message'
 import img1 from '@/assets/images/docs/browse1.png'
 import img2 from '@/assets/images/docs/browse2.png'
 import img3 from '@/assets/images/docs/browse3.png'

@@ -1,92 +1,69 @@
-<script setup>
-// provides a custom wrapper for the PrimeVue Cascade component
-// to be used in a form
-import { ref, computed } from 'vue'
+<script setup lang="ts" generic="T, K extends keyof T">
+import { ref, useId, watch } from 'vue'
+import { type CascadeSelectProps, type CascadeSelectChangeEvent } from 'primevue/cascadeselect'
+import { DEFAULT_STYLE, type FormFieldProps, type FormFieldWrapperProps } from '@/utils/ui_style'
+import FormFieldWrapper from '@/components/ui/FormFieldWrapper.vue'
+import { type CascadeItem, getOptionsForPrimvueCascadeSelect } from '@/utils/primevue'
 
-const emit = defineEmits(['change'])
-const model = defineModel()
-const props = defineProps({
-  error: {
-    required: true
-  },
-  options: {
-    type: Array,
-    required: true
-  },
-  optionLabel: {
-    type: String,
-    required: false,
-    default: 'label'
-  },
-  optionValue: {
-    type: String,
-    required: false,
-    default: 'value'
-  },
-  optionGroupLabel: {
-    type: String,
-    required: false,
-    default: 'label'
-  },
-  optionGroupChildren: {
-    type: Array,
-    required: false,
-    default: ['child1']
-  },
-  placeholder: {
-    type: String,
-    required: false,
-    default: ''
-  },
-  labelCls: {
-    type: String,
-    required: false,
-    default: 'text-primary-500 font-semibold'
-  },
-  errMsgCls: {
-    type: String,
-    required: false,
-    default: 'text-red-700'
-  },
-  errIconCls: {
-    type: String,
-    required: false,
-    default: 'pi pi-times-circle place-self-center text-red-700'
-  },
-  // overwrites component style in case of error
-  errCls: {
-    type: String,
-    required: false,
-    default: '!ring-red-700'
-  }
+interface Props extends CascadeSelectProps, FormFieldProps {
+  options: T[]
+  optionGroupKeys: K[]
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  optionGroupLabel: 'label',
+  uiStyle: () => DEFAULT_STYLE
 })
+
+const model = defineModel<T>()
+
+const emit = defineEmits<{
+  (e: 'change', data: T): void
+}>()
+
+const cascadeOptions = ref<CascadeItem<T>[]>([])
+
+watch(
+  () => props.options,
+  () => {
+    cascadeOptions.value = getOptionsForPrimvueCascadeSelect(props.options, props.optionGroupKeys)
+  }
+)
+
+const fieldId = useId()
+
+const optionLabel = String(props.optionGroupKeys[-1])
+const optionGroupChildren = props.optionGroupKeys.slice(0, -1).map(() => 'cChildren')
+const pt = { root: { class: 'w-full md:w-full' }, sublist: { class: 'w-full sm:w-80' } }
+const ptOptions = { mergeProps: true }
+const cascadeProps: CascadeSelectProps = {
+  ...props,
+  optionGroupChildren,
+  optionLabel,
+  pt,
+  ptOptions,
+  options: cascadeOptions.value
+}
+const wrapperProps: FormFieldWrapperProps = { ...props, fieldId: fieldId }
+
+function change(event: CascadeSelectChangeEvent): void {
+  emit('change', event.value)
+}
 </script>
 
 <template>
-  <div class="inline-flex flex-col gap-2">
-    <label for="field" :class="props.labelCls">
+  <FormFieldWrapper v-bind="wrapperProps">
+    <template v-slot:label>
       <slot></slot>
-    </label>
-    <CascadeSelect
-      id="field"
-      v-model="model"
-      @change="$emit('change', $event.value)"
-      :options="props.options"
-      :optionLabel="props.optionLabel"
-      :optionValue="props.optionValue"
-      :optionGroupLabel="props.optionGroupLabel"
-      :optionGroupChildren="props.optionGroupChildren"
-      :placeholder="props.placeholder"
-      :class="error ? props.errCls : ''"
-      :pt="{
-        root: { class: 'w-full md:w-full' },
-        sublist: { class: 'w-full sm:w-80' }
-      }"
-      :ptOptions="{ mergeProps: true }"
-    />
-    <span class="inline-flex items-baseline">
-      <i :class="error ? props.errIconCls : ''" />
-      <span :class="['pl-1 place-self-center', props.errMsgCls]">{{ error }}&nbsp;</span>
-    </span>
-  </div>
+    </template>
+    <template v-slot:field>
+      <CascadeSelect
+        id="field"
+        v-model="model"
+        v-bind="cascadeProps"
+        @change="change"
+        :class="error ? props.uiStyle.errorClasses : ''"
+      />
+    </template>
+  </FormFieldWrapper>
 </template>

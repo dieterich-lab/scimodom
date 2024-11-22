@@ -1,111 +1,128 @@
-<script setup>
-import { ref, watch } from 'vue'
-import { HTTPSecure } from '@/services/API.js'
+<script setup lang="ts">
+import { computed, ref, watch } from 'vue'
+import ToggleButton from 'primevue/togglebutton'
+import InputText from 'primevue/inputtext'
+import FileUpload from 'primevue/fileupload'
+import Button from 'primevue/button'
 import DatasetSelectionMulti from '@/components/ui/DatasetSelectionMulti.vue'
-import { handleRequestWithErrorReporting } from '@/utils/request'
-import { DIALOG, useDialogState } from '@/stores/DialogState'
+import { useDialogState } from '@/stores/DialogState'
+import type { Dataset } from '@/services/dataset'
+import type { FileUploadUploaderEvent } from 'primevue/fileupload'
+import { uploadTemporaryDataset } from '@/services/dataset_upload'
+import { type ResultStepA, type ResultStepB } from '@/utils/comparison'
+import { trashRequestErrors } from '@/services/API'
 
-const emit = defineEmits(['datasetUploaded'])
-const model = defineModel()
-const isEUF = defineModel('isEUF')
-const props = defineProps({
-  selectedDatasets: {
-    type: Array,
-    required: true
-  },
-  datasets: {
-    type: Array,
-    required: true
-  }
-})
+const props = defineProps<{
+  resultStepA?: ResultStepA
+}>()
+const model = defineModel<ResultStepB>()
+const emit = defineEmits<{
+  (e: 'change', result?: ResultStepB): void
+}>()
 
-const MAX_UPLOAD_SIZE = 50 * 1024 * 1024
 const dialogState = useDialogState()
-const remainingDatasets = ref()
-const disabled = ref(false)
-const uploadedFile = ref()
 
-watch(
-  () => props.selectedDatasets,
-  () => {
-    model.value = []
-    remainingDatasets.value = props.datasets.filter(
-      (item) => !props.selectedDatasets.includes(item.dataset_id)
-    )
-  },
-  { immediate: true }
-)
+const selectedDatasets = ref<Dataset[]>([])
+const isEUF = ref<boolean>(false)
+const disableDatasetSelection = ref<boolean>(false)
+const uploadedFileName = ref<string>('')
 
-function uploader(event) {
-  const file = event.files[0]
-  const file_size = file.size
-  if (file_size > MAX_UPLOAD_SIZE) {
-    clear()
-    dialogState.message = `This file is to large (${file_size} bytes, max ${MAX_UPLOAD_SIZE})`
-    dialogState.state = DIALOG.ALERT
-    return
-  }
-  handleRequestWithErrorReporting(
-    HTTPSecure.post('transfer/tmp_upload', file),
-    `Failed to upload '${file.name}'`,
-    dialogState
-  )
-    .then((data) => {
-      disabled.value = true
-      model.value = []
-      uploadedFile.value = file.name
-      let ext = file.name.split('.').pop()
-      isEUF.value = ext.toLowerCase() === 'bedrmod'
-      emit('datasetUploaded', { id: data.file_id, name: file.name })
+const doneWithStepA = computed(() => !!props.resultStepA?.datasets.length)
+const datasets = computed(() => (props?.resultStepA ? props.resultStepA.remainingDatasets : []))
+
+function uploader(event: FileUploadUploaderEvent) {
+  const file = Array.isArray(event.files) ? event.files[0] : event.files
+  uploadedFileName.value = file.name
+  uploadTemporaryDataset(file, dialogState)
+    .then((uploadedFile) => {
+      disableDatasetSelection.value = true
+      selectedDatasets.value = []
+      isEUF.value = file.name.toLowerCase().endsWith('.bedrmod')
+      const result: ResultStepB = {
+        ...uploadedFile,
+        isEUF: isEUF.value
+      }
+      model.value = result
+      emit('change', result)
     })
     .catch((e) => {
-      clear()
+      reset()
+      trashRequestErrors(e)
     })
 }
 
-function clear() {
-  disabled.value = false
-  uploadedFile.value = undefined
-  emit('datasetUploaded', undefined)
+function reset() {
+  disableDatasetSelection.value = false
+  uploadedFileName.value = ''
+  selectedDatasets.value = []
+  model.value = undefined
+  emit('change')
 }
-</script>
 
+function changeDatasets(datasets: Dataset[]) {
+  const result: ResultStepB = {
+    datasets: datasets
+  }
+  model.value = result
+  emit('change', result)
+}
+watch(
+  () => props.resultStepA,
+  () => {
+    if (model.value) {
+      reset()
+    }
+  }
+)
+</script>
 <template>
-  <div class="grid grid-cols-3 gap-6">
-    <InputText
-      v-model="uploadedFile"
-      :disabled="true"
-      placeholder="filename.bed or filename.bedrmod"
-      class="col-span-2 w-full"
-      >Dataset file
-    </InputText>
-    <div class="flex flex-row">
-      <FileUpload
-        mode="basic"
-        customUpload
-        @uploader="uploader"
-        accept="text/plain,.bed,.bedrmod"
-        :auto="true"
-        chooseLabel="Select a file"
-        class="w-[8rem]"
+  <div v-if="doneWithStepA">
+    <div class="mb-4">
+      At least one reference dataset must be selected. Upload your own data or select up to three
+      dataset for comparison. For upload, pay attention to the organism and/or the assembly of your
+      data to avoid spurious comparison results.
+    </div>
+    <div class="grid grid-cols-3 gap-6">
+      <InputText
+        v-model="uploadedFileName"
+        :disabled="true"
+        placeholder="filename.bed or filename.bedrmod"
+        class="col-span-2 w-full"
       >
-      </FileUpload>
-      <ToggleButton v-model="isEUF" onLabel="bedRMod" offLabel="BED6" class="w-[8rem] ml-4" />
-      <Button
-        label="Clear selection"
-        @click="clear"
-        icon="pi pi-times"
-        severity="danger"
-        class="ml-4 max-h-[1.9rem] place-self-center text-nowrap"
+        Dataset file
+      </InputText>
+      <div class="flex flex-row">
+        <FileUpload
+          mode="basic"
+          customUpload
+          @uploader="uploader"
+          accept="text/plain,.bed,.bedrmod"
+          :auto="true"
+          chooseLabel="Select a file"
+          class="w-[8rem]"
+        >
+        </FileUpload>
+        <ToggleButton v-model="isEUF" onLabel="bedRMod" offLabel="BED6" class="w-[8rem] ml-4" />
+        <Button
+          label="Clear selection"
+          @click="reset"
+          icon="pi pi-times"
+          severity="danger"
+          class="ml-4 max-h-[1.9rem] place-self-center text-nowrap"
+        />
+      </div>
+      <DatasetSelectionMulti
+        v-model="selectedDatasets"
+        :datasets="datasets"
+        placeholder="Select dataset"
+        :selectionLimit="3"
+        :maxSelectedLabels="3"
+        :disabled="disableDatasetSelection"
+        @change="changeDatasets"
       />
     </div>
-    <DatasetSelectionMulti
-      v-model="model"
-      :datasets="remainingDatasets"
-      placeholder="Select dataset"
-      :selectionLimit="3"
-      :maxSelectedLabels="3"
-      :disabled="disabled"
-    />
+  </div>
+  <div v-else>
+    <div class="mb-4">Please select at least one reference dataset first.</div>
   </div>
 </template>

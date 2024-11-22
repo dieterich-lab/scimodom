@@ -23,6 +23,7 @@ from scimodom.services.bedtools import get_bedtools_service
 from scimodom.services.data import get_data_service
 from scimodom.services.external import get_external_service
 from scimodom.services.file import get_file_service
+from scimodom.services.gene import get_gene_service
 from scimodom.services.web import get_web_service
 from scimodom.utils.specs.enums import AnnotationSource
 
@@ -244,6 +245,7 @@ def get_annotation_service() -> AnnotationService:
     bedtools_service = get_bedtools_service()
     external_service = get_external_service()
     web_service = get_web_service()
+    gene_service = get_gene_service()
     file_service = get_file_service()
     return AnnotationService(
         session=session,
@@ -254,6 +256,7 @@ def get_annotation_service() -> AnnotationService:
                 bedtools_service=bedtools_service,
                 external_service=external_service,
                 web_service=web_service,
+                gene_service=gene_service,
                 file_service=file_service,
             ),
             AnnotationSource.GTRNADB: GtRNAdbAnnotationService(
@@ -262,6 +265,7 @@ def get_annotation_service() -> AnnotationService:
                 bedtools_service=bedtools_service,
                 external_service=external_service,
                 web_service=web_service,
+                gene_service=gene_service,
                 file_service=file_service,
             ),
         },

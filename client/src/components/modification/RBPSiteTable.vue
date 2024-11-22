@@ -1,76 +1,62 @@
-<script setup>
+<script setup lang="ts">
 import { ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { HTTP } from '@/services/API.js'
+import Button from 'primevue/button'
+import Column from 'primevue/column'
+import DataTable from 'primevue/datatable'
+import { type Modification, getTargetSites } from '@/services/modification'
+import { useDialogState } from '@/stores/DialogState'
+import type { Bed6Record } from '@/utils/bed6'
+import { trashRequestErrors } from '@/services/API'
 
-const props = defineProps({
-  coords: {
-    type: Object,
-    required: true
-  }
-})
+const props = defineProps<{
+  modification?: Modification
+}>()
+const dialogState = useDialogState()
 
-const router = useRouter()
+interface DataItem extends Bed6Record {
+  source: string
+  target: string
+  motif: string
+  rbp: string
+}
 
 const dt = ref()
-const records = ref()
+const records = ref<DataItem[]>([])
 
 watch(
-  () => props.coords,
+  () => props.modification,
   () => {
-    load()
+    if (props.modification) {
+      getTargetSites(props.modification, 'RBP', dialogState)
+        .then((data) => {
+          records.value = data.map((x) => getDataItemFromBed6Record(x))
+        })
+        .catch((e) => {
+          records.value = []
+          trashRequestErrors(e)
+        })
+    } else {
+      records.value = []
+    }
   },
   { immediate: true }
 )
 
+function getDataItemFromBed6Record(x: Bed6Record): DataItem {
+  const [source, target, rawMotif, rbp] = x.name.split(':')
+  const motif = rawMotif.padStart(3, '0')
+  const score = x.score / 1000
+  return { ...x, score, source, target, motif, rbp }
+}
+
 // table-related utilities
 const getFileName = () => {
   let stamp = new Date()
-  return 'scimodom_binding_sites_' + stamp.toISOString().replaceAll(/:/g, '')
+  return 'scimodom_binding_sites_' + stamp.toISOString().replace(/:/g, '')
 }
 
 const onExport = () => {
   dt.value.exportCSV()
-}
-
-const navigateTo = (eufid) => {
-  router.push({ name: 'browse', params: { eufid: eufid } })
-}
-
-const zeroPad = (num, places) => String(num).padStart(places, '0')
-
-function load(event) {
-  HTTP.get('/modification/target/RBP', {
-    params: {
-      taxaId: props.coords.taxa_id,
-      chrom: props.coords.chrom,
-      start: props.coords.start,
-      end: props.coords.end,
-      strand: props.coords.strand
-    },
-    paramsSerializer: {
-      indexes: null
-    }
-  })
-    .then(function (response) {
-      records.value = response.data.records.map(function (obj) {
-        let name = obj.name.split(':')
-        return {
-          chrom: obj.chrom,
-          start: obj.start,
-          end: obj.end,
-          strand: obj.strand,
-          score: obj.score / 1000,
-          source: name[0],
-          target: name[1],
-          motif: zeroPad(name[2], 3),
-          rbp: name[3]
-        }
-      })
-    })
-    .catch((error) => {
-      console.log(error)
-    })
 }
 </script>
 
@@ -84,7 +70,7 @@ function load(event) {
           label="Export"
           severity="secondary"
           raised
-          @click="onExport($event)"
+          @click="onExport"
         />
       </div>
     </template>

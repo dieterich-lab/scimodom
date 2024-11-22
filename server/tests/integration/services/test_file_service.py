@@ -40,12 +40,13 @@ def test_gene_cache(Session, tmp_path):
     service.update_gene_cache(122, ["1", "2", "Y"])
     service.update_gene_cache(123, ["1", "3"])
     service.update_gene_cache(124, ["1", "3", "X"])
-    assert set(service.get_gene_cache([122, 123])) == set(["1", "2", "3", "Y"])
+    assert service.get_gene_cache(122) == ["1", "2", "Y"]
+    assert service.get_gene_cache(123) == ["1", "3"]
     service.update_gene_cache(123, ["1", "15"])
-    assert set(service.get_gene_cache([122, 123])) == set(["1", "2", "15", "Y"])
+    assert service.get_gene_cache(123) == ["1", "15"]
     service.delete_gene_cache(124)
     with pytest.raises(FileNotFoundError):
-        service.get_gene_cache([124])
+        service.get_gene_cache(124)
 
 
 def test_sunburst_cache(Session, tmp_path):

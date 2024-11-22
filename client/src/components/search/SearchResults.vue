@@ -1,145 +1,94 @@
-<script setup>
-import { computed, watch, onMounted, ref } from 'vue'
+<script setup lang="ts">
+import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import Button from 'primevue/button'
+import ProgressSpinner from 'primevue/progressspinner'
+import Column from 'primevue/column'
+import DataTable from 'primevue/datatable'
 import ModificationInfo from '@/components/modification/ModificationInfo.vue'
-import { getApiUrl, HTTP } from '@/services/API'
-import { fmtFilter, fmtOrder } from '@/utils'
 import ChromRegionEnsemblLink from '@/components/search/ChromRegionEnsemblLink.vue'
 import GeneEnsemblLink from '@/components/search/GeneEnsemblLink.vue'
 import GenesilicoModificationLink from '@/components/search/GenesilicoModificationLink.vue'
+import type { SearchParameters } from '@/utils/search'
+import type { DataTablePageEvent, DataTableSortEvent, DataTableSortMeta } from 'primevue/datatable'
+import {
+  getModificationExportLink,
+  getModifications,
+  type Modification
+} from '@/services/modification'
+import { useDialogState } from '@/stores/DialogState'
+import { trashRequestErrors } from '@/services/API'
 
-const props = defineProps({
-  searchParameters: { type: Object },
-  taxaName: { type: String },
-  searchByValue: { type: String },
-  disabled: { type: Boolean }
-})
+const props = defineProps<{
+  searchParameters: SearchParameters | null
+}>()
 
-/*
-  searchParameters look like this
-
-  modification: int - modification ID,
-  organism: int - organism ID,
-  technology: int[] - technology IDs,
-  rnaType: ?,
-  taxaId: int | null,
-  taxaName: str | null,
-  chrom: str | null
-  chromStart: int | null
-  chromEnd: int | null,
-  geneName: ? | null,
-  geneBiotype: ? | null,
-  feature: ? | null,
-
-  We really need to move to TypeScript ...
-
-*/
+const dialogState = useDialogState()
 
 const dt = ref()
 const showDetails = ref(false)
-const selectedSite = ref({})
+const selectedSite = ref<Modification>()
 const totalRecords = ref(0)
 const loading = ref(false)
 const firstRecord = ref(0)
 const maxRecords = ref(10)
-const multiSortMeta = ref()
+const sortMetas = ref<DataTableSortMeta[]>()
 const records = ref()
 
 const router = useRouter()
-const disableExportLink = computed(() => props.disabled || loading.value)
-const exportLink = computed(() => getExportLink())
-const endPoint = computed(() => (props.searchByValue === 'Modification' ? '' : '/gene'))
-
-watch(
-  () => props.disabled,
-  () => {
-    if (props.disabled) {
-      records.value = undefined
-      totalRecords.value = 0
-    }
-  },
-  { immediate: true }
+const disableExportLink = computed(() => !props.searchParameters || loading.value)
+const exportLink = computed(() =>
+  props.searchParameters ? getModificationExportLink(props.searchParameters, sortMetas.value) : ''
+)
+const emptyMessage = computed(() =>
+  props.searchParameters && !loading.value ? 'No records match your search criteria!' : ''
 )
 
 onMounted(() => loadData())
 
-function onPageOrSort(event) {
-  multiSortMeta.value = event.multiSortMeta
+function loadData() {
+  if (props.searchParameters) {
+    loading.value = true
+    getModifications(
+      props.searchParameters,
+      dialogState,
+      firstRecord.value,
+      maxRecords.value,
+      sortMetas.value
+    )
+      .then((data) => {
+        records.value = data.records
+        totalRecords.value = data.totalRecords
+      })
+      .catch((e) => {
+        records.value = undefined
+        totalRecords.value = 0
+        trashRequestErrors(e)
+      })
+      .finally(() => {
+        loading.value = false
+      })
+  } else {
+    records.value = undefined
+    totalRecords.value = 0
+  }
+}
+
+function onPageOrSort(event: DataTablePageEvent | DataTableSortEvent) {
+  sortMetas.value = event.multiSortMeta
   firstRecord.value = event.first
   maxRecords.value = event.rows
   loadData()
 }
 
-function navigateTo(eufid) {
-  const { href } = router.resolve({ name: 'browse', params: { eufid: eufid } })
+function navigateTo(eufid: string) {
+  const { href } = router.resolve({ name: 'browse', params: { initialSearchString: eufid } })
   window.open(href, '_blank')
 }
 
-function onOverlay(record) {
+function onOverlay(record: Modification) {
   selectedSite.value = { ...record }
   showDetails.value = true
-}
-
-function loadData() {
-  if (!props.disabled) {
-    loading.value = true
-    const params = getQueryParams(firstRecord.value, maxRecords.value)
-    HTTP.get(`/modification/query${endPoint.value}`, {
-      params: params,
-      paramsSerializer: { indexes: null }
-    })
-      .then(function (response) {
-        records.value = response.data.records
-        totalRecords.value = response.data.totalRecords
-        loading.value = false
-      })
-      .catch((error) => {
-        console.log(error)
-      })
-  }
-}
-
-function getQueryParams(myFirstRecord = null, myMaxRecords = null) {
-  const p = props.searchParameters
-  // reformat filters for gene, biotypes and features as PV table filters
-  const filters = {
-    // matchMode is actually hard coded to "equal" in the BE; forceSelection is toggled
-    gene_name: { value: p.geneName, matchMode: 'startsWith' },
-    gene_biotype: { value: p.geneBiotype, matchMode: 'in' },
-    feature: { value: p.feature, matchMode: 'in' }
-  }
-  return {
-    modification: p.modification,
-    organism: p.organism,
-    technology: p.technology,
-    rnaType: p.rnaType,
-    taxaId: p.taxaId,
-    geneFilter: fmtFilter(filters),
-    chrom: p.chrom,
-    chromStart: p.chromStart,
-    chromEnd: p.chromEnd,
-    firstRecord: myFirstRecord,
-    maxRecords: myMaxRecords,
-    multiSort: fmtOrder(multiSortMeta.value)
-  }
-}
-
-function getExportLink() {
-  if (disableExportLink.value) {
-    return ''
-  }
-  const rawParams = getQueryParams()
-  const url = new URL(getApiUrl(`modification/csv${endPoint.value}`))
-  for (const [k, v] of Object.entries(rawParams)) {
-    if (v != null) {
-      if (Array.isArray(v)) {
-        v.forEach((x) => url.searchParams.append(k, x))
-      } else {
-        url.searchParams.append(k, v)
-      }
-    }
-  }
-  return url.toString()
 }
 </script>
 
@@ -188,17 +137,17 @@ function getExportLink() {
     </template>
     <template #empty>
       <p class="text-center text-secondary-500 font-semibold">
-        No records match your search criteria!
+        {{ emptyMessage }}
       </p>
     </template>
     <template #loading>
       <ProgressSpinner style="width: 60px; height: 60px" strokeWidth="6" />
     </template>
-    <Column field="chrom" header="Chrom" sortable></Column>
-    <Column field="start" header="Start" sortable>
+    <Column field="chrom" header="Chrom" :sortable="true"></Column>
+    <Column field="start" header="Start" :sortable="true">
       <template #body="{ data }">
         <ChromRegionEnsemblLink
-          :taxa-name="taxaName"
+          :taxa-name="searchParameters?.taxa.taxa_name || ''"
           :chrom="data.chrom"
           :start="data.start"
           :end="data.end"
@@ -215,18 +164,18 @@ function getExportLink() {
         <GenesilicoModificationLink :name="data.name" :reference-id="data.reference_id" />
       </template>
     </Column>
-    <Column field="score" sortable>
+    <Column field="score" :sortable="true">
       <template #header>
         <span v-tooltip.top="'-log10(p) or 0 if undefined'">Score</span>
       </template>
     </Column>
     <Column field="strand" header="Strand"></Column>
-    <Column field="coverage" sortable>
+    <Column field="coverage" :sortable="true">
       <template #header>
         <span v-tooltip.top="'0 if not available'">Coverage</span>
       </template>
     </Column>
-    <Column field="frequency" sortable>
+    <Column field="frequency" :sortable="true">
       <template #header>
         <span v-tooltip.top="'Modification stoichiometry'">Frequency</span>
       </template>
@@ -247,10 +196,10 @@ function getExportLink() {
     </Column>
     <Column field="tech" header="Technology"></Column>
     <Column field="feature" header="Feature"></Column>
-    <Column field="gene_anme" header="Gene">
+    <Column field="gene_name" header="Gene">
       <template #body="{ data }">
         <GeneEnsemblLink
-          :taxa-name="taxaName"
+          :taxa-name="searchParameters?.taxa.taxa_name || ''"
           :gene-name="data.gene_name"
           :gene-id="data.gene_id"
         />
@@ -272,5 +221,9 @@ function getExportLink() {
       </template>
     </Column>
   </DataTable>
-  <ModificationInfo v-model:visible="showDetails" :site="selectedSite" />
+  <ModificationInfo
+    v-model:visible="showDetails"
+    :modification="selectedSite"
+    :key="selectedSite?.id"
+  />
 </template>

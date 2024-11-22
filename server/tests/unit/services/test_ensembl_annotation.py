@@ -47,6 +47,11 @@ class MockExternalService:
         pass
 
 
+class MockGeneService:
+    def update_gene_cache(selfselection_id: int):  # moqa
+        pass
+
+
 class MockFileService:
     @staticmethod
     def get_assembly_file_path(
@@ -82,7 +87,8 @@ def _get_ensembl_annotation_service(
         bedtools_service=MockBedToolsService(),  # noqa
         external_service=MockExternalService(),  # noqa
         web_service=MockWebService(url_to_result),  # noqa
-        file_service=MockFileService(),
+        gene_service=MockGeneService(),  # noqa
+        file_service=MockFileService(),  # noqa
     )
 
 

@@ -8,10 +8,11 @@ from scimodom.api.helpers import (
     ClientResponseException,
     validate_rna_type,
     get_unique_list_from_query_parameter,
+    create_error_response,
 )
 from scimodom.services.annotation import get_annotation_service, BIOTYPES
 from scimodom.services.assembly import get_assembly_service
-from scimodom.services.file import get_file_service
+from scimodom.services.gene import get_gene_service
 from scimodom.services.sunburst import get_sunburst_service
 from scimodom.services.utilities import get_utilities_service
 from scimodom.utils.specs.enums import SunburstChartType
@@ -61,12 +62,12 @@ def get_selections():
 @api.route("/genes", methods=["GET"])
 @cross_origin(supports_credentials=True)
 def get_genes():
-    file_service = get_file_service()
+    gene_service = get_gene_service()
     selection_ids = get_unique_list_from_query_parameter("selection", int)
     try:
-        return file_service.get_gene_cache(selection_ids)
+        return gene_service.get_genes(selection_ids)
     except FileNotFoundError:
-        return {"message": "No data found for these selection."}, 404
+        return create_error_response(404, "No data found for these selection")
 
 
 @api.route("/biotypes/<rna_type>", methods=["GET"])
@@ -86,7 +87,7 @@ def get_features(rna_type):
     except ClientResponseException as e:
         return e.response_tuple
     except NotImplementedError:
-        return {"message": f"RNA type '{rna_type}' not implemented."}, 501
+        return create_error_response(501, f"RNA type '{rna_type}' not implemented.")
 
 
 @api.route("/chroms/<taxa_id>", methods=["GET"])
@@ -99,9 +100,9 @@ def get_chroms(taxa_id: str):
     except ClientResponseException as e:
         return e.response_tuple
     except NoResultFound:
-        return {"message": "No chrom data available for this taxa (1)."}, 404
+        return create_error_response(404, "No chrom data available for this taxa (1).")
     except FileNotFoundError:
-        return {"message": "No chrom data available for this taxa (2)."}, 404
+        return create_error_response(404, "No chrom data available for this taxa (2).")
 
 
 @api.route("/assembly/<taxa_id>", methods=["GET"])
@@ -129,8 +130,8 @@ def get_logo_file(motif):
 def get_sunburst_chart(chart):
     try:
         cooked_type = SunburstChartType(chart)
-    except:
-        raise ClientResponseException(404, "Unrecognized chart type.")
+    except ValueError:
+        return create_error_response(404, "Unrecognized chart type.")
     sunburst_service = get_sunburst_service()
 
     def generate():

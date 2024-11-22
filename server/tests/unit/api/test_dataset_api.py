@@ -306,17 +306,19 @@ def test_subtract(
 
 
 @pytest.mark.parametrize(
-    "url,http_status,message",
+    "url,http_status,message,user_message",
     [
         (
             "/intersect?reference=datasetidAxx&strand=true",
             400,
             "Need at least one: upload_id or comparison_ids are not defined",
+            None,
         ),
         (
             "/intersect?reference=datasetidAxx&comparison=datasetidBxx&upload=im_the_only_valid_temp_file_id&strand=true",
             400,
             "Can only handle one of upload_id or comparison_ids, but not both",
+            None,
         ),
         (
             "/subtract?reference=datasetidAxx"
@@ -324,38 +326,48 @@ def test_subtract(
             "&strand=true",
             400,
             "'comparison' contained too many dataset IDs (max. 3)",
+            None,
         ),
         (
             "/intersect?reference=datasetidAxx&comparison=datasetidZxxxx&strand=true",
             400,
             "Invalid dataset ID for 'comparison'",
+            None,
         ),
         (
             "/intersect?reference=datasetidAxx&comparison=datasetidZxx&strand=true",
             404,
             "Unknown dataset for 'comparison'",
+            None,
         ),
         (
             "/closest?reference=datasetidAxx&comparison=datasetidBxx&strand=strand_aware",
             400,
             "Invalid value for 'strand' (allowed: 'true', 'false')",
+            None,
         ),
         (
             "/subtract?reference=datasetidAxx&upload=bl+ubber&strand=strand_aware",
             400,
             "Invalid file ID in 'upload'",
+            None,
         ),
         (
             "/subtract?reference=datasetidAxx&upload=blubber&strand=strand_aware",
             404,
-            "Temporary file not found - your upload may have expired",
+            "Upload file ID not found",
+            "Your uploaded file was not found - maybe it expired and you need to re-upload the file",
         ),
     ],
 )
-def test_bad_url(test_client, mock_services, url, http_status, message):
+def test_bad_url(test_client, mock_services, url, http_status, message, user_message):
     result = test_client.get(url)
     assert result.status_code == http_status
     assert result.json["message"] == message
+    if user_message is None:
+        assert "user_message" not in result.json
+    else:
+        assert result.json["user_message"] == user_message
 
 
 def check_comparison_mocks(operation, reference, comparison, upload, euf, strand):

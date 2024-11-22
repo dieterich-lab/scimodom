@@ -1,38 +1,29 @@
-<script setup>
-import AbstractStyle from '@/ui_styles/AbstractStyle'
-import DefaultStyle from '@/ui_styles/DefaultStyle'
+<script setup lang="ts">
+import Textarea from 'primevue/textarea'
+import { type UiStyle, DEFAULT_STYLE } from '@/utils/ui_style'
 
-const model = defineModel()
-const props = defineProps({
-  error: {
-    required: true
-  },
-  rows: {
-    type: Number,
-    required: false,
-    default: 5
-  },
-  cols: {
-    type: Number,
-    required: false,
-    default: 50
-  },
-  placeholder: {
-    type: String,
-    required: false,
-    default: ''
-  },
-  uiStyle: {
-    type: AbstractStyle,
-    required: false,
-    default: DefaultStyle
+const model = defineModel<string>()
+const props = withDefaults(
+  defineProps<{
+    error?: string
+    rows?: number
+    cols?: number
+    placeholder?: string
+    uiStyle?: UiStyle
+  }>(),
+  {
+    error: '',
+    rows: 5,
+    cols: 50,
+    placeholder: '',
+    uiStyle: () => DEFAULT_STYLE
   }
-})
+)
 </script>
 
 <template>
   <div class="inline-flex flex-col gap-2">
-    <label for="field" :class="props.uiStyle.labelClasses()">
+    <label for="field" :class="props.uiStyle.labelClasses">
       <slot></slot>
     </label>
     <Textarea
@@ -42,11 +33,11 @@ const props = defineProps({
       rows="props.rows"
       cols="props.cols"
       :placeholder="props.placeholder"
-      :class="error ? props.uiStyle.errorClasses() : ''"
+      :class="error ? props.uiStyle.errorClasses : ''"
     />
     <span class="inline-flex items-baseline">
-      <i :class="error ? props.uiStyle.errorIconClasses() : ''" />
-      <span :class="['pl-1 place-self-center', props.uiStyle.errorTextClasses()]"
+      <i :class="error ? props.uiStyle.errorIconClasses : ''" />
+      <span :class="['pl-1 place-self-center', props.uiStyle.errorTextClasses]"
         >{{ error }}&nbsp;</span
       >
     </span>

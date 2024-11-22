@@ -44,7 +44,7 @@ local/
 logs/
 
 .idea
-.env
+docker/.env
 docker/.env_docker
 docker/secrets/
 docker/backup/
@@ -54,3 +54,4 @@ docker/config/
 docker/upload/
 docker/test_data/
 docker/data/
+client/.env.production

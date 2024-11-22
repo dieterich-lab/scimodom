@@ -1,8 +1,8 @@
-<script setup>
-const props = defineProps({
-  name: { type: String },
-  referenceId: { type: Number }
-})
+<script setup lang="ts">
+const props = defineProps<{
+  name: string
+  referenceId: number
+}>()
 const link = `https://www.genesilico.pl/modomics/modifications/${props.referenceId}`
 </script>
 <template>

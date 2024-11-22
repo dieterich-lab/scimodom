@@ -1,14 +1,20 @@
-<script setup>
+<script setup lang="ts">
 import { useForm } from 'vee-validate'
 import * as yup from 'yup'
-import { HTTP, HTTPSecure } from '@/services/API'
 import { DIALOG, useDialogState } from '@/stores/DialogState.js'
-import FormBox from '@/components/ui/FormBox.vue'
+import DialogBox from '@/components/ui/DialogBox.vue'
 import FormTextInput from '@/components/ui/FormTextInput.vue'
-import FormButtonGroup from '@/components/ui/FormButtonGroup.vue'
-import FormButton from '@/components/ui/FormButton.vue'
-import FormText from '@/components/ui/FormText.vue'
-import PrimaryDialogStyle from '@/ui_styles/PrimaryDialogStyle.js'
+import DialogButtonGroup from '@/components/ui/DialogButtonGroup.vue'
+import DialogButton from '@/components/ui/DialogButton.vue'
+import DialogText from '@/components/ui/DialogText.vue'
+import { PRIMARY_DIALOG_STYLE } from '@/utils/ui_style'
+import { changePassword, resetPassword } from '@/services/user'
+import { trashRequestErrors } from '@/services/API'
+
+interface FormData {
+  password: string
+  passwordConfirm: string
+}
 
 const dialogState = useDialogState()
 
@@ -20,59 +26,36 @@ const validationSchema = yup.object({
     .required('required field')
     .label('Password confirmation')
 })
-const { defineField, handleSubmit, resetForm, errors } = useForm({
+const { defineField, handleSubmit, errors } = useForm<FormData>({
   validationSchema: validationSchema
 })
 
 const [password] = defineField('password')
 const [passwordConfirm] = defineField('passwordConfirm')
 
-function changePassword(values) {
-  let request
-  if (dialogState.token) {
-    request = HTTP.post('/user/do_password_reset', {
-      email: dialogState.email,
-      password: values.password,
-      token: dialogState.token
-    })
-  } else {
-    request = HTTPSecure.post('/user/change_password', {
-      password: values.password
-    })
-  }
-
-  request
-    .then((response) => {
-      if (response.status === 200) {
-        dialogState.message = 'Password set successfully.'
-        dialogState.state = DIALOG.ALERT
-      }
-    })
-    .catch((err) => {
-      dialogState.handle_error(err, 'Something went wrong', {
-        state: DIALOG.ALERT
-      })
-    })
-}
-
 function cancel() {
   dialogState.state = DIALOG.NONE
 }
 
-const onSubmit = handleSubmit((values) => {
-  changePassword(values)
+const onSubmit = handleSubmit((values: FormData) => {
+  if (dialogState.token && dialogState.email) {
+    resetPassword(dialogState.email, values.password, dialogState.token, dialogState).catch((e) =>
+      trashRequestErrors(e)
+    )
+  } else {
+    changePassword(values.password, dialogState).catch((e) => trashRequestErrors(e))
+  }
 })
 </script>
-
 <template>
   <form @submit="onSubmit">
-    <FormBox :ui-style="PrimaryDialogStyle">
-      <FormText>Change password for {{ dialogState.email }}:</FormText>
+    <DialogBox :ui-style="PRIMARY_DIALOG_STYLE">
+      <DialogText>Change password for {{ dialogState.email }}:</DialogText>
       <FormTextInput
         v-model="password"
         :error="errors.password"
         type="password"
-        :ui-style="PrimaryDialogStyle"
+        :ui-style="PRIMARY_DIALOG_STYLE"
       >
         Password
       </FormTextInput>
@@ -80,14 +63,14 @@ const onSubmit = handleSubmit((values) => {
         v-model="passwordConfirm"
         :error="errors.passwordConfirm"
         type="password"
-        :ui-style="PrimaryDialogStyle"
+        :ui-style="PRIMARY_DIALOG_STYLE"
       >
         Password Confirmation
       </FormTextInput>
-      <FormButtonGroup>
-        <FormButton type="submit" :ui-style="PrimaryDialogStyle">Change</FormButton>
-        <FormButton @on-click="cancel()" :ui-style="PrimaryDialogStyle">Cancel</FormButton>
-      </FormButtonGroup>
-    </FormBox>
+      <DialogButtonGroup>
+        <DialogButton type="submit" :ui-style="PRIMARY_DIALOG_STYLE">Change</DialogButton>
+        <DialogButton @on-click="cancel()" :ui-style="PRIMARY_DIALOG_STYLE">Cancel</DialogButton>
+      </DialogButtonGroup>
+    </DialogBox>
   </form>
 </template>

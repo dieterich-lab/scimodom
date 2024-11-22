@@ -6,6 +6,7 @@ from flask import Blueprint, request
 from flask_cors import cross_origin
 from flask_jwt_extended import jwt_required
 
+from scimodom.api.helpers import create_error_response
 from scimodom.config import get_config
 from scimodom.services.assembly import LiftOverError
 
@@ -49,21 +50,18 @@ def create_project_request():
         uuid = project_service.create_project_request(project_template)
     except Exception as exc:
         logger.error(f"{exc}. The request was: {project_template_raw}.")
-        return {
-            "message": "Failed to create request. Contact the system administrator."
-        }, 500
+        raise exc
 
     mail_service = get_mail_service()
     try:
         mail_service.send_project_request_notification(uuid)
     except SMTPException as exc:
         logger.error(f"Project {uuid} saved, but failed to send out email: {exc}")
-        return {
-            "message": (
-                f"Request '{uuid}' created, but an error occurred during submission. "
-                "Contact the system administrator."
-            )
-        }, 500
+        message = (
+            f"Request '{uuid}' created, but an error occurred during submission.\b"
+            "Please contact the system administrator."
+        )
+        return create_error_response(500, message, message)
     return {"message": "OK"}, 200
 
 
@@ -93,48 +91,60 @@ def add_dataset():
                 annotation_source=annotation_source,
             )
     except SelectionNotFoundError:
-        return {
-            "message": (
-                "Invalid combination of RNA type, modification, organism, and/or technology. "
-                "Modify the form and try again."
-            )
-        }, 422
-    except DatasetImportError as exc:
-        logger.error(f"{exc}. The request was: {dataset_form}.")
-        return {
-            "message": "Invalid selection. Try again or contact the system administrator."
-        }, 422
-    except DatasetHeaderError:
-        return {
-            "message": (
-                "File upload failed. Mismatch for organism and/or assembly between the file header and "
-                "the selected values. Click 'Cancel'. Modify the form or the file and start again."
-            )
-        }, 422
-    except DatasetExistsError as exc:
-        return {
-            "message": (
-                f"File upload failed: {str(exc)} If you are unsure about what happened, "
-                "click 'Cancel' and contact the system administrator."
-            )
-        }, 422
-    except SpecsError as exc:
-        return {
-            "message": f"File upload failed. The header is not conform to bedRMod specifications: {str(exc)}"
-        }, 500
-    except BedImportEmptyFile as exc:
-        return {"message": f"File upload failed. File {str(exc)} is empty!"}, 500
-    except BedImportTooManyErrors:
-        return {"message": "File upload failed. Too many skipped records."}, 500
+        return create_error_response(
+            422,
+            "Selection not found",
+            "Invalid combination of RNA type, modification, organism, and/or technology.\n"
+            "Modify the form to match a valid selection for this dataset.",
+        )
+    except DatasetImportError as e:
+        message = str(e)
+        logger.error(
+            f"DatasetImportError: {message}.\nThe request was: {dataset_form}."
+        )
+        return create_error_response(422, message, message)
+    except DatasetHeaderError as e:
+        message = str(e)
+        return create_error_response(
+            422,
+            message,
+            f"Inconsistent header: {message}\n"
+            "Selected form values must agree with the file header.\n"
+            "Modify the form or select the correct dataset to upload.",
+        )
+    except DatasetExistsError as e:
+        message = str(e)
+        return create_error_response(422, message, f"File upload failed: {message}")
+    except SpecsError as e:
+        message = str(e)
+        return create_error_response(
+            422,
+            message,
+            f"Invalid bedRMod format specifications: {str(e)}\n"
+            "Modify the file header to conform to the latest specifications.",
+        )
+    except BedImportEmptyFile as e:
+        return create_error_response(
+            422, str(e), "File upload failed. The file is empty."
+        )
+    except BedImportTooManyErrors as e:
+        return create_error_response(
+            422,
+            str(e),
+            f"File upload failed. Too many skipped records:\n{e.error_summary}\n"
+            "Modify the file to conform to the latest bedRMod format specifications.\n"
+            "Consult the documentation (Dataset upload errors) for more information.",
+        )
     except LiftOverError:
-        return {
-            "message": "Liftover failed. Check your data or contact the system administrator."
-        }, 500
-    except Exception as exc:
-        logger.error(f"{exc}. The request was: {dataset_form}.")
-        return {
-            "message": "Failed to create dataset. Contact the system administrator."
-        }, 500
+        message = (
+            "Liftover failed. Check your data or contact the system administrator."
+        )
+        return create_error_response(500, message, message)
+    except Exception as e:
+        logger.error(
+            f"Import failed in a unexpected way: {e}. The request was: {dataset_form}."
+        )
+        raise e
     sunburst_service = get_sunburst_service()
     sunburst_service.trigger_background_update()
     return {"result": "Ok"}, 200

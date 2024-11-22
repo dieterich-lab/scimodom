@@ -170,27 +170,24 @@ class FileService:
 
     # Cache
 
-    def get_gene_cache(self, selection_ids: Iterable[int]) -> list[str]:
+    def get_gene_cache(self, selection_id: int) -> Iterable[str]:
         """Retrieve gene list for a given selection.
 
         In the case that a project was created but no data was uploaded so far
         the gene cash may not be initialized and a FileNotFoundError may be
         generated.
 
-        :param selection_ids: Selection ID(s)
-        :type selection_ids: Iterable[int]
+        :param selection_id: Selection ID
+        :type selection_id: int
         :returns: The genes of the selection
         :rtype: list[str]
         """
-        result: set = set()
-        for selection_id in selection_ids:
-            path = Path(self._get_gene_cache_dir(), str(selection_id))
-            with open(path) as fh:
-                flock(fh.fileno(), LOCK_SH)
-                genes = set(fh.read().strip().split())
-                flock(fh.fileno(), LOCK_UN)
-            result = result | genes
-        return list(result)
+        path = Path(self._get_gene_cache_dir(), str(selection_id))
+        with open(path) as fh:
+            flock(fh.fileno(), LOCK_SH)
+            genes = fh.read().strip().split()
+            flock(fh.fileno(), LOCK_UN)
+            return genes
 
     def update_gene_cache(self, selection_id: int, genes: Iterable[str]) -> None:
         """Update gene cache for a selection ID.

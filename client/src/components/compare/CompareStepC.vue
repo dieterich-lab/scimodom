@@ -1,76 +1,99 @@
-<script setup>
-const model = defineModel()
+<script setup lang="ts">
+import { ref, computed, watch } from 'vue'
+import Button from 'primevue/button'
+import {
+  type ResultStepA,
+  type ResultStepB,
+  type ResultStepC,
+  type OperationSpec,
+  ComparisonOperation,
+  isUpload
+} from '@/utils/comparison'
+import OperationButton from '@/components/compare/OperationButton.vue'
+
+const props = defineProps<{
+  resultStepA?: ResultStepA
+  resultStepB?: ResultStepB
+  loading: boolean
+}>()
+const model = defineModel<ResultStepC>()
+const emit = defineEmits<{
+  (e: 'submit', data: ResultStepC)
+}>()
+
+const selectedOperation = ref<OperationSpec>()
+
+const doneWithStepA = computed(() => !!props.resultStepA?.datasets.length)
+const doneWithStepB = computed(
+  () => props.resultStepB && (isUpload(props.resultStepB) || !!props.resultStepB.datasets?.length)
+)
+const doneWithStepC = computed(() => doneWithStepA.value && doneWithStepB.value && model.value)
+
+watch(
+  () => props.resultStepB,
+  () => {
+    model.value = undefined
+  }
+)
+
+function submit() {
+  if (model.value) {
+    emit('submit', model.value)
+  }
+}
 </script>
 
 <template>
-  <div class="flex flex-col gap-4">
-    <div class="flex flex-row">
-      <div class="w-1/2">
-        <RadioButton v-model="model" inputId="criteria1" name="step3" value="intersect-true" />
-        <label for="criteria1" class="ml-2">
-          <span class="inline font-bold">Intersection</span>
-        </label>
-        <p class="mt-0 ml-8 text-sm">
-          Search for overlaps between <span class="font-semibold">1</span> and
-          <span class="font-semibold">2</span> on the same strand.
-        </p>
+  <div v-if="!doneWithStepA">Please select at least one reference dataset first.</div>
+  <div v-else-if="!doneWithStepB">Please select a dataset to compare to.</div>
+  <div v-else>
+    <div class="flex flex-col gap-4">
+      <div class="flex flex-row">
+        <div class="w-1/2" v-for="strandAware in [true, false]" :key="String(strandAware)">
+          <OperationButton
+            v-model="model"
+            :value="{ operation: ComparisonOperation.intersect, strandAware }"
+          >
+            overlaps between <span class="font-semibold">1</span> and
+            <span class="font-semibold">2</span>
+          </OperationButton>
+        </div>
       </div>
-      <div class="w-1/2">
-        <RadioButton v-model="model" inputId="criteria2" name="step3" value="intersect-false" />
-        <label for="criteria3" class="ml-2">
-          <span class="inline font-bold">Intersection (strand-unaware)</span>
-        </label>
-        <p class="mt-0 ml-8 text-sm">
-          Search for overlaps between <span class="font-semibold">1</span> and
-          <span class="font-semibold">2</span> without respect to strand.
-        </p>
+
+      <div class="flex flex-row">
+        <div class="w-1/2" v-for="strandAware in [true, false]" :key="String(strandAware)">
+          <OperationButton
+            v-model="model"
+            :value="{ operation: ComparisonOperation.closest, strandAware }"
+          >
+            closest non-overlaps in <span class="font-semibold">2</span> (wrt.
+            <span class="font-semibold">1</span>)
+          </OperationButton>
+        </div>
       </div>
-    </div>
-    <div class="flex flex-row">
-      <div class="w-1/2">
-        <RadioButton v-model="model" inputId="criteria3" name="step3" value="closest-true" />
-        <label for="criteria3" class="ml-2">
-          <span class="inline font-bold">Closest</span>
-        </label>
-        <p class="mt-0 ml-8 text-sm">
-          Search for closest non-overlaps in <span class="font-semibold">2</span> (wrt.
-          <span class="font-semibold">1</span>) on the same strand.
-        </p>
-      </div>
-      <div class="w-1/2">
-        <RadioButton v-model="model" inputId="criteria4" name="step3" value="closest-false" />
-        <label for="criteria3" class="ml-2">
-          <span class="inline font-bold">Closest (strand-unaware)</span>
-        </label>
-        <p class="mt-0 ml-8 text-sm">
-          Search for closest non-overlaps in <span class="font-semibold">2</span> (wrt.
-          <span class="font-semibold">1</span>) without respect to strand.
-        </p>
+
+      <div class="flex flex-row">
+        <div class="w-1/2" v-for="strandAware in [true, false]" :key="String(strandAware)">
+          <OperationButton
+            v-model="model"
+            :value="{ operation: ComparisonOperation.subtract, strandAware: strandAware }"
+          >
+            strict non-overlaps in reference (modifications in
+            <span class="font-semibold">1</span> but not in <span class="font-semibold">2</span>)
+          </OperationButton>
+        </div>
       </div>
     </div>
-    <div class="flex flex-row">
-      <div class="w-1/2">
-        <RadioButton v-model="model" inputId="criteria5" name="step3" value="subtract-true" />
-        <label for="criteria5" class="ml-2">
-          <span class="inline font-bold">Difference</span>
-        </label>
-        <p class="mt-0 ml-8 text-sm">
-          Search for strict non-overlaps in reference (modifications in
-          <span class="font-semibold">1</span> but not in <span class="font-semibold">2</span>) on
-          the same strand.
-        </p>
-      </div>
-      <div class="w-1/2">
-        <RadioButton v-model="model" inputId="criteria6" name="step3" value="subtract-false" />
-        <label for="criteria6" class="ml-2">
-          <span class="inline font-bold">Difference (strand-unaware)</span>
-        </label>
-        <p class="mt-0 ml-8 text-sm">
-          Search for strict non-overlaps in reference (modifications in
-          <span class="font-semibold">1</span> but not in <span class="font-semibold">2</span>)
-          without respect to strand.
-        </p>
-      </div>
-    </div>
+
+    <Button
+      icon="pi pi-sync"
+      size="small"
+      type="submit"
+      label="Submit"
+      :disabled="!doneWithStepC"
+      :loading="loading"
+      class="mt-4"
+      @click="submit"
+    />
   </div>
 </template>

@@ -1,20 +1,20 @@
-<script setup>
-const props = defineProps({
-  secondary: {
-    type: Boolean,
-    default: false
+<script setup lang="ts">
+const props = withDefaults(
+  defineProps<{
+    secondary?: boolean
+  }>(),
+  {
+    secondary: false
   }
-})
+)
 
-function sectionClass() {
-  let classes = []
-  if (props.secondary) classes.push('section--secondary')
-  return classes
+function getClasses(): string | undefined {
+  return props.secondary ? 'section section--secondary' : 'section'
 }
 </script>
 
 <template>
-  <section class="section" :class="sectionClass()">
+  <section class="section" :class="getClasses()">
     <div class="section--inner container mx-auto">
       <slot></slot>
     </div>

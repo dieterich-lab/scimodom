@@ -19,6 +19,7 @@ from scimodom.services.data import DataService
 from scimodom.services.dataset import DatasetService
 from scimodom.services.external import ExternalService
 from scimodom.services.file import FileService
+from scimodom.services.gene import GeneService
 from scimodom.services.sunburst import SunburstService
 from scimodom.services.web import WebService
 from scimodom.services.validator import ValidatorService
@@ -168,6 +169,7 @@ def _get_annotation_service(
     bedtools_service,
     external_service,
     web_service,
+    gene_service,
     file_service,
 ):
     return AnnotationService(
@@ -179,6 +181,7 @@ def _get_annotation_service(
                 bedtools_service=bedtools_service,
                 external_service=external_service,
                 web_service=web_service,
+                gene_service=gene_service,
                 file_service=file_service,
             ),
             AnnotationSource.GTRNADB: GtRNAdbAnnotationService(
@@ -187,6 +190,7 @@ def _get_annotation_service(
                 bedtools_service=bedtools_service,
                 external_service=external_service,
                 web_service=web_service,
+                gene_service=gene_service,
                 file_service=file_service,
             ),
         },
@@ -201,6 +205,10 @@ def _get_file_service(session, tmp_path):
         data_path=tmp_path,
         import_path=tmp_path,
     )
+
+
+def _get_gene_service(session, file_service):
+    return GeneService(session, file_service)
 
 
 def _get_data_service(session):
@@ -239,6 +247,7 @@ def _get_dataset_service(session, tmp_path):
     data_service = _get_data_service(session)
     external_service = _get_external_service(file_service)
     web_service = _get_web_service()
+    gene_service = _get_gene_service(session, file_service)
     assembly_service = _get_assembly_service(
         session, external_service, web_service, file_service
     )
@@ -248,6 +257,7 @@ def _get_dataset_service(session, tmp_path):
         bedtools_service,
         external_service,
         web_service,
+        gene_service,
         file_service,
     )
     validator_service = _get_validator_service(
@@ -307,7 +317,7 @@ def test_import_data(Session, selection, project, test_data, tmp_path, freezer, 
         )
         assert annotated_records == set(EXPECTED_ANNOTATED_RECORDS)
         # tmp_path / FileService.GENE_CACHE_DEST / "1"
-        gene_set = set(service._file_service.get_gene_cache(["1"]))
+        gene_set = set(service._file_service.get_gene_cache(1))
         assert gene_set == {"GENE1", "GENE2"}
         for chart_type in SunburstChartType:
             # tmp_path / FileService.SUNBURST_CACHE_DEST / chart_type.value

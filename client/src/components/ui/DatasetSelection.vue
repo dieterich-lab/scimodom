@@ -1,26 +1,31 @@
-<script setup>
+<script setup lang="ts">
+import Dropdown from 'primevue/dropdown'
 import { onMounted, ref } from 'vue'
 import DatasetItem from '@/components/ui/DatasetItem.vue'
-import { loadDatasets } from '@/services/dataset'
+import {
+  type Dataset,
+  allDatasetsByIdCache,
+  allDatasetsCache,
+  myDatasetsByIdCache,
+  myDatasetsCache
+} from '@/services/dataset'
 
-const props = defineProps({
-  myDatasetsOnly: {
-    type: Boolean,
-    required: false,
-    default: false
-  },
-  refresh: {
-    type: Boolean,
-    required: false,
-    default: true
+const props = withDefaults(
+  defineProps<{
+    myDatasetsOnly?: boolean
+    refresh?: boolean
+  }>(),
+  {
+    myDatasetsOnly: false,
+    refresh: true
   }
-})
+)
 
-const model = defineModel()
-const datasets = ref([])
-const datasetsById = ref(new Map())
+const model = defineModel<Dataset>()
+const datasets = ref<Dataset[]>([])
+const datasetsById = ref<Map<string, Dataset>>(new Map())
 
-function getLabel(dataset) {
+function getLabel(dataset: Dataset) {
   return `${dataset.dataset_title} ${dataset.dataset_id}`
 }
 
@@ -31,7 +36,12 @@ function getEmptyMessage() {
 }
 
 onMounted(() => {
-  loadDatasets(datasets, datasetsById, props.myDatasetsOnly, true)
+  const cache = props.myDatasetsOnly ? myDatasetsCache : allDatasetsCache
+  const byIdCache = props.myDatasetsOnly ? myDatasetsByIdCache : allDatasetsByIdCache
+  cache.getData().then((data) => {
+    datasets.value = [...data]
+  })
+  byIdCache.getData().then((data) => (datasetsById.value = data))
 })
 </script>
 <template>

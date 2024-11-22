@@ -1,64 +1,58 @@
-<script setup>
-import { ref, onMounted } from 'vue'
+<script setup lang="ts">
+import { ref, computed } from 'vue'
+import TaxaSelection from '@/components/ui/TaxaSelection.vue'
 import DatasetSelectionMulti from '@/components/ui/DatasetSelectionMulti.vue'
-import { loadDatasets } from '@/services/dataset'
-import { HTTP } from '@/services/API'
-import { nestedSort, toCascade, toTree } from '@/utils'
+import { type Dataset, getDatasetsByTaxaId } from '@/services/dataset'
+import { type Taxa } from '@/services/selection'
+import { type ResultStepA } from '@/utils/comparison'
 
-const emit = defineEmits(['datasetUpdated'])
-const selectedDatasets = defineModel()
+const model = defineModel<ResultStepA>()
 
-const selectedTaxid = ref()
-const datasets = ref()
-const filteredDatasets = ref([])
-const taxid = ref()
+const emit = defineEmits<{
+  (e: 'change', datasets: ResultStepA): void
+}>()
 
-const updateFilteredDatasets = (value) => {
+const selectedTaxa = ref<Taxa>()
+const availableDatasets = ref<Dataset[]>([])
+const selectedDatasets = ref<Dataset[]>([])
+
+const disabledDatasetSelection = computed(() => !selectedTaxa.value)
+
+const changeTaxa = (value: Taxa) => {
+  model.value = undefined
   selectedDatasets.value = []
-  filteredDatasets.value = datasets.value.filter((item) => item.taxa_id === value)
-  emit('datasetUpdated', filteredDatasets.value)
+  getDatasetsByTaxaId(value.taxa_id).then((data) => (availableDatasets.value = [...data]))
 }
-onMounted(() => {
-  loadDatasets(datasets, null, false)
 
-  HTTP.get('/selections')
-    .then(function (response) {
-      let opts = response.data
-      opts = opts.map((item) => {
-        const kingdom = Object.is(item.kingdom, null) ? item.domain : item.kingdom
-        return { ...item, kingdom }
-      })
-      taxid.value = toCascade(toTree(opts, ['kingdom', 'taxa_sname'], 'taxa_id'))
-      nestedSort(taxid.value, ['child1'])
-    })
-    .catch((error) => {
-      console.log(error)
-    })
-})
+function changeDataset(datasets: Dataset[]) {
+  const datasetIds = datasets.map((x) => x.dataset_id)
+  const result: ResultStepA = {
+    datasets,
+    remainingDatasets: availableDatasets.value.filter((x) => !datasetIds.includes(x.dataset_id))
+  }
+  model.value = result
+  emit('change', result)
+}
 </script>
-
 <template>
+  <div class="mb-4">
+    Select one organism and choose up to three reference dataset. Use the dataset search bar to find
+    records.
+  </div>
   <div class="grid grid-cols-4 gap-6">
-    <CascadeSelect
-      @change="updateFilteredDatasets($event.value)"
-      v-model="selectedTaxid"
-      :options="taxid"
-      optionValue="key"
-      optionLabel="label"
-      optionGroupLabel="label"
-      :optionGroupChildren="['child1']"
+    <TaxaSelection
+      v-model="selectedTaxa"
       placeholder="1. Select one organism"
-      :pt="{
-        root: { class: 'w-full md:w-full' }
-      }"
-      :ptOptions="{ mergeProps: true }"
+      @change="changeTaxa"
     />
     <DatasetSelectionMulti
       v-model="selectedDatasets"
-      :datasets="filteredDatasets"
+      :datasets="availableDatasets"
       placeholder="2. Select dataset"
       :selectionLimit="3"
       :maxSelectedLabels="3"
+      :disabled="disabledDatasetSelection"
+      @change="changeDataset"
     />
   </div>
 </template>

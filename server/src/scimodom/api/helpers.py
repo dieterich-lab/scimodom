@@ -29,17 +29,49 @@ A ClientResponseException is raised, which contains a data field
 response_tuple, meant to be returned by a function handling a flask route.
 This tuple will usually contain a dict, which will be turned by Flask
 into a JSON document to form the body of the response and a HTTP status
-code - usually a 4xx.
+code - usually a 4xx. The response_tuple contains two items:
+
+* A dict with the following keys:
+  - message (mandatory): A short technical error message, which states
+    the issue as precisely as possible assuming that the reader knows
+    the all the context, especially the original HTTP request. This
+    message is meant for debugging, logging or for users using the Rest
+    API directly. The web frontend may fall back to use this message
+    if no 'user_message' was supplied. In this case it is the
+    responsibility of the frontend to add context information such as
+    the operation, that failed, and the HTTP status code. That is the normal
+    behaviour in case of a mismatch between frontend and backend, e.g. due
+    to a bug, server failure, or network error.
+
+  - user_message (optional): In case that the issue was caused by
+    by user error (e.g. wrong password, bad email address) this field
+    should be supplied. This message should contain all context the user
+    may need to to understand the message. The frontend will usually display
+    the message directly to the user without adding any context.
+    It is pointless to supply this message in cases in which the
+    the frontend validation will prevent the user error from reaching
+    the backend. The user_message can *and* should be preformatted
+    with line breaks at suitable spots.
+
+* A HTTP error code - usually a 4xx if the problem on the frontend side,
+  including all user errors, or 5xx in case the problem was most likely
+  caused by the backend.
 
 If something really unexpected happens, we leave it to Flask to generate
-a 500 response. This module depends on Flask. Most importantly some
-functions will assume that they are called while a HTTP request is
-processed and use the Flask 'request'.
+a 500 response. In this case the content of the response is a HTML document
+without any details. This avoids information leak to hostile users (aka hackers).
+Such issues must be tracked using the logs on the server side.
 
-Response
+The helper functions in this modules mostly detect incorrect input
+on the user side and generate mostly 4xx errors.
 
-Function to generate a response object, e.g. from a DTO.
+In addition a function create_error_response is supplied to allow modules
+to generate a response in the same format without raising a
+ClientResponseException.
 
+This module depends on Flask. Most importantly some functions will assume
+that they are called while a HTTP request is processed and use the Flask
+'request' object.
 """
 
 # EUFID length is validated separately
@@ -49,12 +81,36 @@ INVALID_CHARS_REGEXP = re.compile(r"[^a-zA-Z0-9.,_-]")
 MAX_DATASET_IDS_IN_LIST = 3
 
 
+def create_error_response(
+    status_code: int, message: str, user_message: str | None = None
+) -> (dict[str, str], int):
+    json_response = {"message": message}
+    if user_message is not None:
+        json_response["user_message"] = user_message
+    return json_response, status_code
+
+
+def _get_file_too_large_message(max_size: int):
+    return f"File too large (max. {max_size} bytes)"
+
+
+def create_file_too_large_response(max_size: int) -> (dict[str, str], int):
+    message = _get_file_too_large_message(max_size)
+    return create_error_response(413, message, message)
+
+
 class ClientResponseException(Exception):
-    def __init__(self, http_status: int, message: str):
+    def __init__(self, http_status: int, message: str, user_message: str | None = None):
         super(ClientResponseException, self).__init__(
             f"HTTP status {http_status} {message}"
         )
-        self.response_tuple = {"message": message}, http_status
+        self.response_tuple = create_error_response(http_status, message, user_message)
+
+
+class FileTooLargeException(ClientResponseException):
+    def __init__(self, max_size: int):
+        message = _get_file_too_large_message(max_size)
+        super(FileTooLargeException, self).__init__(413, message, message)
 
 
 # Incoming parameter validation
@@ -128,7 +184,9 @@ def get_valid_tmp_file_id_from_request_parameter(
     file_service = get_file_service()
     if not file_service.check_tmp_upload_file_id(raw_id):
         raise ClientResponseException(
-            404, "Temporary file not found - your upload may have expired"
+            404,
+            "Upload file ID not found",
+            "Your uploaded file was not found - maybe it expired and you need to re-upload the file",
         )
     return raw_id
 
@@ -166,7 +224,8 @@ def get_valid_boolean_from_request_parameter(
 
 def validate_request_size(max_size) -> None:
     if request.content_length is not None and request.content_length > max_size:
-        raise ClientResponseException(413, f"File too large (max. {max_size} bytes)")
+        message = f"File too large (max. {max_size} bytes)"
+        raise FileTooLargeException(max_size)
 
 
 def get_valid_taxa_id() -> int:

@@ -8,6 +8,7 @@ from scimodom.api.helpers import (
     get_valid_bam_file,
     ClientResponseException,
     validate_request_size,
+    create_file_too_large_response,
 )
 from scimodom.services.file import get_file_service, FileTooLarge
 
@@ -46,7 +47,7 @@ def post_bam_file(dataset_id: str, name: str):
             dataset, name, request.stream, MAX_BAM_FILE_SIZE
         )
     except FileTooLarge:
-        return {"message": f"File too large (max. {MAX_BAM_FILE_SIZE} bytes)"}, 413
+        return create_file_too_large_response(MAX_BAM_FILE_SIZE)
     return {"message": "OK"}, 200
 
 

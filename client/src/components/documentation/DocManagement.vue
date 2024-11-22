@@ -1,8 +1,8 @@
-<script setup>
+<script setup lang="ts">
+import Message from 'primevue/message'
 import img1 from '@/assets/images/docs/management1.png'
 import img2 from '@/assets/images/docs/management2.png'
 import img3 from '@/assets/images/docs/management3.png'
-import img4 from '@/assets/images/docs/management4.png'
 import img5 from '@/assets/images/docs/management5.png'
 import img6 from '@/assets/images/docs/management6.png'
 </script>
