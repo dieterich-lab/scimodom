@@ -9,7 +9,7 @@ import { type ResultStepA } from '@/utils/comparison'
 const model = defineModel<ResultStepA>()
 
 const emit = defineEmits<{
-  (e: 'change', datasets: ResultStepA): void
+  (e: 'change', result: ResultStepA): void
 }>()
 
 const selectedTaxa = ref<Taxa>()
@@ -26,8 +26,10 @@ const changeTaxa = (value: Taxa) => {
 
 function changeDataset(datasets: Dataset[]) {
   const datasetIds = datasets.map((x) => x.dataset_id)
+  const [taxaId] = datasets.map((x) => x.taxa_id)
   const result: ResultStepA = {
-    datasets,
+    taxaId: taxaId,
+    datasets: datasets,
     remainingDatasets: availableDatasets.value.filter((x) => !datasetIds.includes(x.dataset_id))
   }
   model.value = result

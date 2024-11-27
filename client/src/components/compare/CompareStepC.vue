@@ -44,15 +44,15 @@ function submit() {
 </script>
 
 <template>
-  <div v-if="!doneWithStepA">Please select at least one reference dataset first.</div>
-  <div v-else-if="!doneWithStepB">Please select a dataset to compare to.</div>
+  <div v-if="!doneWithStepA">Select reference dataset in step 1 to continue.</div>
+  <div v-else-if="!doneWithStepB">Select dataset in step 2 to continue.</div>
   <div v-else>
     <div class="flex flex-col gap-4">
       <div class="flex flex-row">
         <div class="w-1/2" v-for="strandAware in [true, false]" :key="String(strandAware)">
           <OperationButton
             v-model="model"
-            :value="{ operation: ComparisonOperation.intersect, strandAware }"
+            :value="{ operation: ComparisonOperation.intersect, strandAware: strandAware }"
           >
             overlaps between <span class="font-semibold">1</span> and
             <span class="font-semibold">2</span>
@@ -64,7 +64,7 @@ function submit() {
         <div class="w-1/2" v-for="strandAware in [true, false]" :key="String(strandAware)">
           <OperationButton
             v-model="model"
-            :value="{ operation: ComparisonOperation.closest, strandAware }"
+            :value="{ operation: ComparisonOperation.closest, strandAware: strandAware }"
           >
             closest non-overlaps in <span class="font-semibold">2</span> (wrt.
             <span class="font-semibold">1</span>)

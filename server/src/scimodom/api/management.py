@@ -99,7 +99,7 @@ def add_dataset():
         )
     except DatasetImportError as e:
         message = str(e)
-        logger.error(
+        logger.warning(
             f"DatasetImportError: {message}.\nThe request was: {dataset_form}."
         )
         return create_error_response(422, message, message)
@@ -120,7 +120,7 @@ def add_dataset():
         return create_error_response(
             422,
             message,
-            f"Invalid bedRMod format specifications: {str(e)}\n"
+            f"Invalid bedRMod format specifications: {message}\n"
             "Modify the file header to conform to the latest specifications.",
         )
     except BedImportEmptyFile as e:
@@ -135,11 +135,10 @@ def add_dataset():
             "Modify the file to conform to the latest bedRMod format specifications.\n"
             "Consult the documentation (Dataset upload errors) for more information.",
         )
-    except LiftOverError:
-        message = (
-            "Liftover failed. Check your data or contact the system administrator."
+    except LiftOverError as exc:
+        return create_error_response(
+            500, str(exc), "Liftover failed. Contact the system administrator."
         )
-        return create_error_response(500, message, message)
     except Exception as e:
         logger.error(
             f"Import failed in a unexpected way: {e}. The request was: {dataset_form}."

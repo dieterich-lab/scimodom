@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from io import StringIO
 from typing import Iterable
 import unittest
@@ -12,6 +13,11 @@ from scimodom.api.dataset import (
     ClosestResponse,
     SubtractResponse,
 )
+from scimodom.services.validator import (
+    SpecsError,
+    DatasetHeaderError,
+    DatasetImportError,
+)
 from scimodom.database.models import Data
 from scimodom.utils.dtos.bedtools import (
     ComparisonRecord,
@@ -21,7 +27,7 @@ from scimodom.utils.dtos.bedtools import (
     EufRecord,
     Bed6Record,
 )
-from scimodom.utils.specs.enums import Strand
+from scimodom.utils.specs.enums import Identifiers, Strand
 
 
 @pytest.fixture
@@ -43,7 +49,15 @@ def mock_services(mocker):
         "scimodom.api.helpers.get_dataset_service", return_value=MockDatasetService()
     )
     mocker.patch(
+        "scimodom.api.helpers.get_utilities_service",
+        return_value=MockUtilitiesService(),
+    )
+    mocker.patch(
         "scimodom.api.dataset.get_data_service", return_value=MockDataService()
+    )
+    mocker.patch(
+        "scimodom.api.dataset.get_validator_service",
+        return_value=MockValidatorService(),
     )
     mocker.patch(
         "scimodom.api.dataset.get_bedtools_service", return_value=MockBedtoolsService()
@@ -184,7 +198,12 @@ class MockBed6Importer:
     ]
 
     RESULT_AS_COMPARISON = [
-        ComparisonRecord(**x.__dict__, coverage=0, frequency=1, eufid="upload      ")
+        ComparisonRecord(
+            **x.__dict__,
+            coverage=0,
+            frequency=1,
+            eufid="UPLOAD".ljust(Identifiers.EUFID.length),
+        )
         for x in RESULT
     ]
 
@@ -215,7 +234,8 @@ class MockEufImporter:
     ]
 
     RESULT_AS_COMPARISON = [
-        ComparisonRecord(**x.__dict__, eufid="upload      ") for x in RESULT
+        ComparisonRecord(**x.__dict__, eufid="UPLOAD".ljust(Identifiers.EUFID.length))
+        for x in RESULT
     ]
 
     def __init__(self, stream):
@@ -227,22 +247,72 @@ class MockEufImporter:
             yield x
 
 
+class MockUtilitiesService:
+    @staticmethod
+    def get_taxa():
+        return [
+            {
+                "id": 9606,
+                "taxa_sname": "H. sapiens",
+                "domain": "Eukarya",
+                "kingdom": "Animalia",
+                "phylum": "Chordata",
+            }
+        ]
+
+
+@dataclass
+class MockContext:
+    is_liftover: bool = False
+
+
+class MockValidatorService:
+    def __init__(self, is_liftover: bool = False, raise_error=None):
+        self._is_liftover = is_liftover
+        self._raise_error = raise_error
+
+        self._context: MockContext
+
+    def create_read_only_import_context(
+        self, importer: MockEufImporter, taxa_id: int, **kwargs
+    ):  # noqa
+        self._context = MockContext(is_liftover=self._is_liftover)
+        if self._raise_error is not None:
+            raise self._raise_error("MESSAGE")
+
+    def get_read_only_context(self) -> MockContext:
+        return self._context
+
+    def get_validated_records(
+        self, importer: MockEufImporter, context: MockContext
+    ):  # -> Generator[EufRecord, None, None] noqa
+        for record in importer.parse():
+            yield record
+
+
 @pytest.mark.parametrize(
-    "reference,comparison,upload,euf,strand",
+    "reference,comparison,upload,euf,strand,taxa_id",
     [
-        (["datasetidAxx"], ["datasetidBxx"], None, None, True),
-        (["datasetidAxx", "datasetidBxx"], ["datasetidCxx"], None, None, True),
-        (["datasetidAxx"], ["datasetidBxx", "datasetidCxx"], None, None, False),
-        (["datasetidAxx"], None, MockFileService.VALID_TEMP_FILE_ID, False, False),
-        (["datasetidBxx"], None, MockFileService.VALID_TEMP_FILE_ID, True, False),
+        (["datasetidAxx"], ["datasetidBxx"], None, None, True, None),
+        (["datasetidAxx", "datasetidBxx"], ["datasetidCxx"], None, None, True, None),
+        (["datasetidAxx"], ["datasetidBxx", "datasetidCxx"], None, None, False, None),
+        (
+            ["datasetidAxx"],
+            None,
+            MockFileService.VALID_TEMP_FILE_ID,
+            False,
+            False,
+            None,
+        ),
+        (["datasetidBxx"], None, MockFileService.VALID_TEMP_FILE_ID, True, False, 9606),
     ],
 )
 def test_intersect(
-    test_client, mock_services, reference, comparison, upload, euf, strand
+    test_client, mock_services, reference, comparison, upload, euf, strand, taxa_id
 ):
     result = test_client.get(
         get_compare_url_parameters(
-            "intersect", reference, comparison, upload, euf, strand
+            "intersect", reference, comparison, upload, euf, strand, taxa_id
         )
     )
     assert result.status == "200 OK"
@@ -254,21 +324,28 @@ def test_intersect(
 
 
 @pytest.mark.parametrize(
-    "reference,comparison,upload,euf,strand",
+    "reference,comparison,upload,euf,strand,taxa_id",
     [
-        (["datasetidAxx"], ["datasetidBxx"], None, None, True),
-        (["datasetidAxx", "datasetidBxx"], ["datasetidCxx"], None, None, True),
-        (["datasetidAxx"], ["datasetidBxx", "datasetidCxx"], None, None, False),
-        (["datasetidAxx"], None, MockFileService.VALID_TEMP_FILE_ID, False, False),
-        (["datasetidBxx"], None, MockFileService.VALID_TEMP_FILE_ID, True, False),
+        (["datasetidAxx"], ["datasetidBxx"], None, None, True, None),
+        (["datasetidAxx", "datasetidBxx"], ["datasetidCxx"], None, None, True, None),
+        (["datasetidAxx"], ["datasetidBxx", "datasetidCxx"], None, None, False, None),
+        (
+            ["datasetidAxx"],
+            None,
+            MockFileService.VALID_TEMP_FILE_ID,
+            False,
+            False,
+            None,
+        ),
+        (["datasetidBxx"], None, MockFileService.VALID_TEMP_FILE_ID, True, False, 9606),
     ],
 )
 def test_closest(
-    test_client, mock_services, reference, comparison, upload, euf, strand
+    test_client, mock_services, reference, comparison, upload, euf, strand, taxa_id
 ):
     result = test_client.get(
         get_compare_url_parameters(
-            "closest", reference, comparison, upload, euf, strand
+            "closest", reference, comparison, upload, euf, strand, taxa_id
         )
     )
     assert result.status == "200 OK"
@@ -280,21 +357,28 @@ def test_closest(
 
 
 @pytest.mark.parametrize(
-    "reference,comparison,upload,euf,strand",
+    "reference,comparison,upload,euf,strand,taxa_id",
     [
-        (["datasetidAxx"], ["datasetidBxx"], None, None, True),
-        (["datasetidAxx", "datasetidBxx"], ["datasetidCxx"], None, None, True),
-        (["datasetidAxx"], ["datasetidBxx", "datasetidCxx"], None, None, False),
-        (["datasetidAxx"], None, MockFileService.VALID_TEMP_FILE_ID, False, False),
-        (["datasetidBxx"], None, MockFileService.VALID_TEMP_FILE_ID, True, False),
+        (["datasetidAxx"], ["datasetidBxx"], None, None, True, None),
+        (["datasetidAxx", "datasetidBxx"], ["datasetidCxx"], None, None, True, None),
+        (["datasetidAxx"], ["datasetidBxx", "datasetidCxx"], None, None, False, None),
+        (
+            ["datasetidAxx"],
+            None,
+            MockFileService.VALID_TEMP_FILE_ID,
+            False,
+            False,
+            None,
+        ),
+        (["datasetidBxx"], None, MockFileService.VALID_TEMP_FILE_ID, True, False, 9606),
     ],
 )
 def test_subtract(
-    test_client, mock_services, reference, comparison, upload, euf, strand
+    test_client, mock_services, reference, comparison, upload, euf, strand, taxa_id
 ):
     result = test_client.get(
         get_compare_url_parameters(
-            "subtract", reference, comparison, upload, euf, strand
+            "subtract", reference, comparison, upload, euf, strand, taxa_id
         )
     )
     assert result.status == "200 OK"
@@ -306,18 +390,118 @@ def test_subtract(
 
 
 @pytest.mark.parametrize(
+    "raise_error,http_status,message,user_message",
+    [
+        (
+            SpecsError,
+            422,
+            "MESSAGE",
+            "Invalid bedRMod format specifications: MESSAGE\n"
+            "Modify the file and start again, or toggle BED6 on file selection to ignore header.",
+        ),
+        (
+            DatasetHeaderError,
+            422,
+            "MESSAGE",
+            "Inconsistent header: MESSAGE\nSelect reference dataset for the correct organism.",
+        ),
+        (
+            DatasetImportError,
+            422,
+            "MESSAGE",
+            "MESSAGE\nValidate the file header for inconsistencies.",
+        ),
+        (
+            Exception,
+            500,
+            "Server was unable to process file import request.\nContact the system administrator.",
+            None,
+        ),
+    ],
+)
+def test_import_with_context_fail(
+    test_client, mock_services, mocker, raise_error, http_status, message, user_message
+):
+    mocker.patch(
+        "scimodom.api.dataset.get_validator_service",
+        return_value=MockValidatorService(raise_error=raise_error),
+    )
+    result = test_client.get(
+        get_compare_url_parameters(
+            "intersect",
+            ["datasetidAxx"],
+            None,
+            MockFileService.VALID_TEMP_FILE_ID,
+            True,
+            True,
+            9606,
+        )
+    )
+    assert result.status_code == http_status
+    assert result.json["message"] == message
+    if user_message is None:
+        assert "user_message" not in result.json
+    else:
+        assert result.json["user_message"] == user_message
+
+
+def test_intersect_with_liftover(test_client, mock_services, mocker):
+    mocker.patch(
+        "scimodom.api.dataset.get_validator_service",
+        return_value=MockValidatorService(is_liftover=True),
+    )
+    result = test_client.get(
+        get_compare_url_parameters(
+            "intersect",
+            ["datasetidAxx"],
+            None,
+            MockFileService.VALID_TEMP_FILE_ID,
+            True,
+            True,
+            9606,
+        )
+    )
+    assert result.status_code == 200
+    assert MockBedtoolsService.last_b_dataset_list[0][0].eufid == "LIFTED".ljust(
+        Identifiers.EUFID.length
+    )
+    assert (
+        IntersectResponse.model_validate_json(result.text).records
+        == MockBedtoolsService.INTERSECT_RESULT
+    )
+
+
+@pytest.mark.parametrize(
     "url,http_status,message,user_message",
     [
         (
+            "/intersect?reference=datasetidAxx&comparison=datasetidBxx&euf=true&strand=true",
+            400,
+            "Invalid Taxa ID",
+            "Request needs a valid 'taxaId' when 'euf=true': Invalid Taxa ID",
+        ),
+        (
+            "/intersect?reference=datasetidAxx&comparison=datasetidBxx&euf=true&taxaId=XXXX&strand=true",
+            400,
+            "Invalid Taxa ID",
+            "Request needs a valid 'taxaId' when 'euf=true': Invalid Taxa ID",
+        ),
+        (
+            "/intersect?reference=datasetidAxx&comparison=datasetidBxx&euf=true&taxaId=99&strand=true",
+            404,
+            "Unrecognized Taxa ID",
+            "Request needs a valid 'taxaId' when 'euf=true': Unrecognized Taxa ID",
+        ),
+        (
             "/intersect?reference=datasetidAxx&strand=true",
             400,
-            "Need at least one: upload_id or comparison_ids are not defined",
+            "Request is missing 'upload' or 'comparison'",
             None,
         ),
         (
             "/intersect?reference=datasetidAxx&comparison=datasetidBxx&upload=im_the_only_valid_temp_file_id&strand=true",
             400,
-            "Can only handle one of upload_id or comparison_ids, but not both",
+            "Request can only handle 'upload' or 'comparison', but not both",
             None,
         ),
         (
@@ -356,7 +540,7 @@ def test_subtract(
             "/subtract?reference=datasetidAxx&upload=blubber&strand=strand_aware",
             404,
             "Upload file ID not found",
-            "Your uploaded file was not found - maybe it expired and you need to re-upload the file",
+            "File not found - Select the file again and try to re-upload",
         ),
     ],
 )
@@ -398,7 +582,13 @@ def check_comparison_mocks(operation, reference, comparison, upload, euf, strand
 
 
 def get_compare_url_parameters(
-    operation, reference, comparison=None, upload=None, euf=False, strand=True
+    operation,
+    reference,
+    comparison=None,
+    upload=None,
+    euf=False,
+    strand=True,
+    taxa_id=None,
 ):
     parameters = []
     for r in reference:
@@ -414,6 +604,8 @@ def get_compare_url_parameters(
         parameters.append(f"upload={upload}")
     if euf:
         parameters.append("euf=true")
+    if taxa_id:
+        parameters.append(f"taxaId={taxa_id}")
     return f"/{operation}?" + "&".join(parameters)
 
 

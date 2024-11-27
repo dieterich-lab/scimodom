@@ -1,6 +1,7 @@
 import click
 
 from scimodom.services.assembly import (
+    AssemblyNotFoundError,
     AssemblyVersionError,
     AssemblyAbortedError,
     get_assembly_service,
@@ -58,6 +59,8 @@ def add_assembly(**kwargs) -> None:
             return
         try:
             assembly_id = assembly_service.get_assembly_by_name(taxa_id, assembly_name)
+        except AssemblyNotFoundError as exc:
+            click.secho(f"Cannot add alternative assembly: {exc}", fg="red")
         except AssemblyAbortedError as exc:
             click.secho(f"Failed to add alternative assembly: {exc}", fg="red")
             return

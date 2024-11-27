@@ -8,19 +8,28 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from pydantic import BaseModel
 
 from scimodom.api.helpers import (
+    ClientResponseException,
     get_valid_dataset_id_list_from_request_parameter,
     get_valid_tmp_file_id_from_request_parameter,
-    get_valid_boolean_from_request_parameter,
-    ClientResponseException,
-    get_response_from_pydantic_object,
     get_valid_remote_file_name_from_request_parameter,
+    get_valid_boolean_from_request_parameter,
+    get_valid_taxa_id,
+    get_response_from_pydantic_object,
 )
+from scimodom.services.assembly import LiftOverError
 from scimodom.services.bedtools import get_bedtools_service, BedToolsService
 from scimodom.services.dataset import get_dataset_service
 from scimodom.services.file import get_file_service
 from scimodom.services.data import get_data_service
 from scimodom.services.user import get_user_service
+from scimodom.services.validator import (
+    get_validator_service,
+    SpecsError,
+    DatasetHeaderError,
+    DatasetImportError,
+)
 from scimodom.utils.importer.bed_importer import (
+    RECORD_TYPE,
     Bed6Importer,
     EufImporter,
     BedImportTooManyErrors,
@@ -32,6 +41,7 @@ from scimodom.utils.dtos.bedtools import (
     SubtractRecord,
     ComparisonRecord,
 )
+from scimodom.utils.specs.enums import Identifiers
 
 logger = logging.getLogger(__name__)
 
@@ -127,25 +137,36 @@ class _CompareContext:
             "upload_name"
         )
         self._is_strand = get_valid_boolean_from_request_parameter(
-            "strand", default=False
+            "strand", default=True
         )
         self._is_euf = get_valid_boolean_from_request_parameter("euf", default=False)
+        try:
+            self._taxa_id = get_valid_taxa_id(is_optional=not self._is_euf)
+        except ClientResponseException as exc:
+            response, status_code = exc.response_tuple
+            message = response["message"]
+            raise ClientResponseException(
+                status_code,
+                message,
+                f"Request needs a valid 'taxaId' when 'euf=true': {message}",
+            )
         self._tmp_file_handle = None
 
         if self._upload_id is None and len(self._comparison_ids) == 0:
             raise ClientResponseException(
-                400, "Need at least one: upload_id or comparison_ids are not defined"
+                400, "Request is missing 'upload' or 'comparison'"
             )
         if self._upload_id is not None and len(self._comparison_ids) > 0:
             raise ClientResponseException(
-                400, "Can only handle one of upload_id or comparison_ids, but not both"
+                400, "Request can only handle 'upload' or 'comparison', but not both"
             )
         self._data_service = get_data_service()
+        self._validator_service = get_validator_service()
 
     def __enter__(self) -> Ctx:
         if self._upload_id is None:
-            # Unfortunately the MySQL driver does not allow use to have multiple queries run at once.
-            # To work around this issue we have to buffer the b_records in memory
+            # The MySQL driver does not allow to have multiple queries run at once;
+            # we have to buffer the b_records in memory
             b_records_list = [
                 list(self._get_comparison_records_from_db([dataset_id]))
                 for dataset_id in self._comparison_ids
@@ -160,7 +181,7 @@ class _CompareContext:
                 raise ClientResponseException(
                     404,
                     "Upload file ID not found"
-                    "Your uploaded file was not found - maybe it expired and you need to re-upload the file",
+                    "File not found - Select the file again and try to re-upload",
                 )
             b_records_list = [list(self._get_comparison_records_from_file())]
 
@@ -192,29 +213,93 @@ class _CompareContext:
     def _get_comparison_records_from_file(
         self,
     ) -> Generator[ComparisonRecord, None, None]:
-        dummy_values: dict[str, str | int] = {"eufid": "upload      "}
-        if self._is_euf:
-            importer = EufImporter(
-                stream=self._tmp_file_handle, source=self._upload_name
+        generator, context = self._import_with_context()
+        try:
+            for record in generator:
+                raw_record = record.model_dump()
+                yield ComparisonRecord(**raw_record, **context)
+        except BedImportEmptyFile as exc:
+            raise ClientResponseException(
+                422, str(exc), "File upload failed. The file is empty."
             )
+        except BedImportTooManyErrors as exc:
+            raise ClientResponseException(
+                422,
+                str(exc),
+                f"File upload failed. Too many skipped records:\n{exc.error_summary}\n"
+                "Modify the file to conform to the latest bedRMod format specifications or\n"
+                "try toggling the BED6 option to ignore validation.",
+            )
+        except LiftOverError as exc:
+            raise ClientResponseException(
+                500, str(exc), "Liftover failed. Contact the system administrator."
+            )
+        except Exception as exc:
+            logger.error(f"Import failed (Comparison 2): {str(exc)}")
+            message = (
+                "Server was unable to process file import request.\n"
+                "Contact the system administrator."
+            )
+            raise ClientResponseException(500, message)
+
+    def _import_with_context(
+        self,
+    ) -> (Generator[RECORD_TYPE, None, None], dict[str, str | int]):
+        local_context: dict[str, str | int] = {
+            "eufid": "UPLOAD".ljust(Identifiers.EUFID.length)
+        }
+        if self._is_euf:
+            try:
+                importer = EufImporter(
+                    stream=self._tmp_file_handle, source=self._upload_name
+                )
+                self._validator_service.create_read_only_import_context(
+                    importer, self._taxa_id
+                )
+                context = self._validator_service.get_read_only_context()
+                if context.is_liftover:
+                    local_context["eufid"] = "LIFTED".ljust(Identifiers.EUFID.length)
+                return (
+                    self._validator_service.get_validated_records(importer, context),
+                    local_context,
+                )
+            except SpecsError as exc:
+                message = str(exc)
+                raise ClientResponseException(
+                    422,
+                    message,
+                    f"Invalid bedRMod format specifications: {message}\n"
+                    "Modify the file and start again, or toggle BED6 on "
+                    "file selection to ignore header.",
+                )
+            except DatasetHeaderError as exc:
+                message = str(exc)
+                raise ClientResponseException(
+                    422,
+                    message,
+                    f"Inconsistent header: {message}\n"
+                    "Select reference dataset for the correct organism.",
+                )
+            except DatasetImportError as exc:
+                message = str(exc)
+                raise ClientResponseException(
+                    422,
+                    message,
+                    f"{message}\nValidate the file header for inconsistencies.",
+                )
+            except Exception as exc:
+                logger.error(f"Import failed (Comparison 1): {str(exc)}")
+                message = (
+                    "Server was unable to process file import request.\n"
+                    "Contact the system administrator."
+                )
+                raise ClientResponseException(500, message)
         else:
             importer = Bed6Importer(
                 stream=self._tmp_file_handle, source=self._upload_name
             )
-            dummy_values = {**dummy_values, "frequency": 1, "coverage": 0}
-        try:
-            for x in importer.parse():
-                raw_record = x.model_dump()
-                yield ComparisonRecord(**raw_record, **dummy_values)
-        except BedImportTooManyErrors as e:
-            raise ClientResponseException(
-                422,
-                "Too many errors in uploaded file",
-                f"Too many errors in uploaded file: {str(e)}\n\n{e.error_summary}",
-            )
-        except BedImportEmptyFile:
-            message = "Uploaded file had no records"
-            raise ClientResponseException(400, message, message)
+            local_context = {**local_context, "frequency": 1, "coverage": 0}
+            return importer.parse(), local_context
 
     def __exit__(self, exc_type, exc_value, traceback):
         if self._tmp_file_handle is not None:

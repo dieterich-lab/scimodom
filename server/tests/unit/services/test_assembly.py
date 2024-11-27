@@ -16,7 +16,7 @@ from scimodom.services.assembly import (
 from scimodom.utils.specs.enums import AssemblyFileType
 from tests.mocks.enums import MockEnsembl
 from tests.mocks.io import MockStringIO, MockBytesIO
-from tests.mocks.web import MockWebService, MockHTTPError
+from tests.mocks.web import MockWebService
 
 
 class MockExternalService:
@@ -249,8 +249,23 @@ def test_liftover_fail_version(Session, file_service, setup):  # noqa
 # test protected methods e.g. _handle_gene_build and _handle_release
 
 
+INFO = """{
+\t"assembly_accession": "GCA_000001405.29",
+\t"assembly_date": "2013-12",
+\t"assembly_name": "GRCh38.p14",
+\t"coord_system_versions": [
+\t\t"GRCh38",
+\t\t"GRCh37",
+\t\t"NCBI36",
+\t\t"NCBI35",
+\t\t"NCBI34"
+\t]
+}"""
+
+
 def test_get_assembly_by_name(Session, file_service, setup, mocker):  # noqa
     mocker.patch("scimodom.services.assembly.Ensembl", MockEnsembl)
+    file_service.files_by_name["/data/assembly/9606/info.json"] = StringIO(INFO)
     service = _get_assembly_service(
         Session,
         file_service,
@@ -280,21 +295,38 @@ def test_get_assembly_by_name_directory_exists(Session, file_service):
         version = AssemblyVersion(version_num="GcatSmFcytpU")
         session.add(version)
     file_service.existing_assemblies = [(9606, "GRCh37")]
+    # INFO is wrong for this assembly, but for testing this doesn't matter...
+    file_service.files_by_name["/data/assembly/9606/info.json"] = StringIO(INFO)
     service = _get_assembly_service(Session, file_service)
     with pytest.raises(AssemblyAbortedError) as exc:
         service.get_assembly_by_name(9606, "GRCh37")
     assert (
         (str(exc.value))
-        == "Suspected incomplete or inconsistent data: files were found on the system for 'GRCh37', but assembly does not exist in the database."
+        == "Suspected data corruption for 'GRCh37'. Files were found on the system, but assembly does not exist in the database."
     )
 
 
-def test_get_assembly_by_name_wrong_url(Session, file_service, setup):  # noqa
+def test_get_assembly_by_name_wrong_name(Session, file_service, setup):  # noqa
+    file_service.files_by_name["/data/assembly/9606/info.json"] = StringIO(INFO)
+    service = _get_assembly_service(Session, file_service)
+    with pytest.raises(AssemblyNotFoundError) as exc:
+        service.get_assembly_by_name(9606, "GRCH37")
+    assert (
+        (str(exc.value))
+        == "No such assembly 'GRCH37' for organism '9606'. Valid assemblies are: 'GRCh38 GRCh37 NCBI36 NCBI35 NCBI34'"
+    )
+    with Session() as session:
+        assert session.query(Assembly).count() == 3
+
+
+def test_get_assembly_by_name_wrong_url(Session, file_service, setup, mocker):  # noqa
+    mocker.patch("scimodom.services.assembly.Ensembl", MockEnsembl)
+    file_service.files_by_name["/data/assembly/9606/info.json"] = StringIO(INFO)
     service = _get_assembly_service(Session, file_service)
     with pytest.raises(AssemblyAbortedError) as exc:  # traceback MockHTTPError
-        service.get_assembly_by_name(9606, "GRCH37")
-    assert (str(exc.value)) == "Adding assembly for 'GRCH37' aborted."
-    assert file_service.deleted_assemblies == [(9606, "GRCH37")]
+        service.get_assembly_by_name(9606, "NCBI36")
+    assert (str(exc.value)) == "Adding assembly for 'NCBI36' aborted."
+    assert file_service.deleted_assemblies == [(9606, "NCBI36")]
     with Session() as session:
         assert session.query(Assembly).count() == 3
 
@@ -312,7 +344,7 @@ EXAMPLE_GENE_BUILD_DATA = {
     "assembly_accession": "GCA_000001405.29",
     "assembly_date": "2013-12",
     "assembly_name": "GRCh38.p14",
-    "coord_system_versions": ["GRCh38", "GRCh37"],
+    "coord_system_versions": ["GRCh38", "GRCh37", "NCBI36", "NCBI35", "NCBI34"],
     "default_coord_system_version": "GRCh38",
     "karyotype": ["1", "2", "X"],
     "top_level_region": [
@@ -336,11 +368,7 @@ EXPECTED_CHROM_SIZES = """1\t248956422
 X\t156040895
 """
 
-EXPECTED_INFO_JSON = """{
-\t"assembly_accession": "GCA_000001405.29",
-\t"assembly_date": "2013-12",
-\t"assembly_name": "GRCh38.p14"
-}"""
+EXPECTED_INFO_JSON = INFO
 
 EXPECTED_RELEASE_JSON = """{
 \t"releases": [
@@ -413,9 +441,8 @@ def test_prepare_assembly_for_version_build_error(Session, file_service, setup, 
     with pytest.raises(AssemblyVersionError) as exc:
         service.prepare_assembly_for_version(1)
     assert (
-        (str(exc.value))
-        == "Mismatch between assembly GRCh38 and coord system version GRCh39. Upgrade your database!"
-    )
+        str(exc.value)
+    ) == "Mismatch between assembly GRCh38 and coord system version GRCh39."
     assert exc.type == AssemblyVersionError
     assert file_service.deleted_assemblies == [(9606, "GRCh38")]
 

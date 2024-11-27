@@ -68,6 +68,7 @@ function getDataset(index: number): Dataset {
 test('getCompareParams - upload', () => {
   const result = getCompareParams(
     {
+      taxaId: 7,
       datasets: [getDataset(1), getDataset(2)],
       remainingDatasets: []
     },
@@ -86,13 +87,15 @@ test('getCompareParams - upload', () => {
     upload: 'fileId1',
     upload_name: 'fil1.bedrmod',
     strand: false,
-    euf: true
+    euf: true,
+    taxaId: 7
   })
 })
 
 test('getCompareParams - internal', () => {
   const result = getCompareParams(
     {
+      taxaId: 7,
       datasets: [getDataset(1)],
       remainingDatasets: []
     },
@@ -107,6 +110,7 @@ test('getCompareParams - internal', () => {
   expect(result).toStrictEqual({
     reference: ['d1'],
     comparison: ['d2', 'd3'],
-    strand: true
+    strand: true,
+    taxaId: 7
   })
 })
