@@ -33,7 +33,7 @@ For bugs, issues, or feature requests, use the [bug tracker](https://github.com/
 
 ## How to cite
 
-Etienne Boileau, Haradl Wilhelmi, Anne Busch, Andrea Cappannini, Andreas Hildebrand, Janusz M. Bujnicki, Christoph Dieterich. [Sci-ModoM: a quantitative database of transcriptome-wide high-throughput RNA modification sites](none), _Nucleic Acids Research_, ...
+Etienne Boileau, Harald Wilhelmi, Anne Busch, Andrea Cappannini, Andreas Hildebrand, Janusz M. Bujnicki, Christoph Dieterich. [Sci-ModoM: a quantitative database of transcriptome-wide high-throughput RNA modification sites](https://academic.oup.com/nar/advance-article/doi/10.1093/nar/gkae972/7875981), _Nucleic Acids Research_, 2024;, gkae972, [https://doi.org/10.1093/nar/gkae972](https://doi.org/10.1093/nar/gkae972).
 
 ## License
 

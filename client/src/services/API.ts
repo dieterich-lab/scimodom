@@ -2,8 +2,7 @@ import axios, { type AxiosResponse, type InternalAxiosRequestConfig } from 'axio
 import { type AccessTokenStore, useAccessToken } from '@/stores/AccessToken.js'
 import { DIALOG, type DialogStateStore, useDialogState } from '@/stores/DialogState.js'
 
-// TODO: refactor HTTP as HTTPPublic either export service, or
-// rename exported functions
+const API_PREFIX = '/api/v0/'
 
 interface ErrorResponse {
   message: string
@@ -29,9 +28,9 @@ function isErrorResponse(x: unknown): x is ErrorResponse {
 
 function getApiBaseUrl(): string {
   if (import.meta.env.PROD) {
-    return '/api/v0/'
+    return API_PREFIX
   } else {
-    return import.meta.env?.VITE_API_BASE_URL ? import.meta.env.VITE_API_BASE_URL : '/api/v0/'
+    return import.meta.env?.VITE_API_BASE_URL ? import.meta.env.VITE_API_BASE_URL : API_PREFIX
   }
 }
 

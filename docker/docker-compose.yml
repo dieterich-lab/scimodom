@@ -21,5 +21,4 @@ services:
       - ${HOST_IMPORT_DIR}:/import
       - ${HOST_DATA_DIR}:/data
       - ${HOST_BACKUP_DIR}:/backup
-      - ${HOST_CONFIG_DIR}/config.js:/frontend/config.js
     restart: always
