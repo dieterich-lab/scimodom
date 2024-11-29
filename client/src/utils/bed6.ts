@@ -1,4 +1,4 @@
-type Strand = '+' | '-'
+type Strand = '+' | '-' | '.'
 
 interface Bed6Record {
   chrom: string

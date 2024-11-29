@@ -9,23 +9,33 @@ Draft or long-running issues, WIP, triage, and additional references or context 
 
 - [ ] ~pre-commit run --all-files~ under server (.pre-commit-config.yaml) runs for all files incl. client.
 
-** TODO STYLE [2/22]
+** TODO STYLE [11/23]
 
 - [ ] DEADLINE: <2024-09-30 Mon> To harmonize style across views, components, and presets (colours, behaviour, dark mode, /etc./).
 
-- [ ] CascadeSelect /cf./ [[https://github.com/dieterich-lab/scimodom/issues/103][Cascade truncated.]]
-- [ ] CascadeSelect "No available options" is not defined, /cf./ TreeSelect or Dropdown. Styling is different.
-- [ ] In ~ProjectMetadata,vue~, some placeholders are grey, others are black/darker (resp. lighter in dark mode).
-- [ ] Dark mode (specific issues)
+- [X] CascadeSelect /cf./ [[https://github.com/dieterich-lab/scimodom/issues/103][Cascade truncated.]]
+- [X] CascadeSelect "No available options" is not defined, /cf./ TreeSelect or Dropdown. Styling is different.
+- [X] In ~ProjectMetadata,vue~, some placeholders are grey, others are black/darker (resp. lighter in dark mode).
+- [-] Dark mode (specific issues)
   - [ ] Logos are displayed in greyscale in dark mode, as invert also inverts the colors. Otherwise, we may have to use 2 logos,
     or create SVGs.
-  - [ ] ~DataTable~: ~stripedRows~ for dark mode.
+  - [X] ~DataTable~: ~stripedRows~ for dark mode.
 - [ ] ~VirtualScroll~ not working, see [[https://github.com/primefaces/primevue-tailwind/issues/108][Missing preset for VirtualScroller]] and [[https://github.com/primefaces/primevue-tailwind/issues/168][VirtualScroller not working with DataTabe.]]
-- [ ] Placeholder text color ~TreeSelect~ /vs./ ~MultiSelect~.
-- [ ] Default preset color is secondary for ~DataTable~, ~Paginator~, and ~tabView~. Why not use a local ~ptOptions~
+     As of v4.1.1, the new Tailwind styles have been rewritten using the preprocessor approach with ~@apply~ instead of pass-through.
+     As a result this issue is not relevant any more. We're using ~primevue@3.53.0~. Updating to latest version will most likely
+     break. See also https://tailwind.primevue.org/vite/.
+- [ ] Unpredictable color for ring (dark mode). This is an example of a more general problem.
+  UiStyle ~inputTextDefaultClasses~ redefines the ring color /e.g./ inside ~InputText~ in ~FormTextInput.vue~, but when
+  ~parent.instance.$name !== 'InputGroup'~ the default preset values somehow overwrite the style, even though the latter is
+  applied afterwards. When need to use ~:ptOptions="{ mergeProps: true }"~, because we don't want to rewrite the style entirely.
+  Modifying a value in ~ui_style.ts~ works only temporarily or unpredictably, and /e.g./ adding ~!~ does not work, as
+  it overwrites the ~errorClasses~. See [[https://github.com/tailwindlabs/tailwindcss/discussions/12733][Which bg color should be apply, when multiply bg-color class was appled to the same element?]]
+  for an explanation and possible ways to solve this.
+- [X] Placeholder text color ~TreeSelect~ /vs./ ~MultiSelect~.
+- [X] Default preset color is secondary for ~DataTable~, ~Paginator~, and ~tabView~. Why not use a local ~ptOptions~
   with ~mergeSections="false"~? Else this has to be documented.
 - [ ] Use fill and stroke for svg/icons, instead of text color, see also [[https://github.com/dieterich-lab/scimodom/issues/64][Add icon to InputText not working]].
-- [ ] Button presets adapted for /primary/ and /secondary/ by redefining the API for severity. Should we redefine the API
+- [X] Button presets adapted for /primary/ and /secondary/ by redefining the API for severity. Should we redefine the API
   or add another option, or just leave it as is?
 - [ ] ~DataTable~ filters /e.g./ ~filterMatchModeDropdown~ show a mix of primary and default green colors (where is this
   defined in presets? Can we use ~pt~?)
@@ -35,13 +45,13 @@ Draft or long-running issues, WIP, triage, and additional references or context 
   - [ ] Why ~SectionLayout~ with ~secondary="true"~ in dark mode have a white border at the top?
 - [ ] ~TreeSelect~, ~MultiSelect~, and ~Dropdown~ root class shape commented out, using local ~pt~, as I couldn't get it to work,
   in particular in grid (Compare), but we should leave this untouched.
-- [ ] (Browse) ~InputText~ and ~Dialog~ local ~pt~ has no effect with alpha modifier for secondary color using **Wind** preset.
+- [X] (Browse) ~InputText~ and ~Dialog~ local ~pt~ has no effect with alpha modifier for secondary color using **Wind** preset.
   Temporarily removed ~/50~ for ~dialog~ and ~inputtext~ (focus). Local ~pt~ description currently follows the **Lara** preset.
-- [ ] To harmonize ~DataTable~ header across views.
+- [X] To harmonize ~DataTable~ header across views.
 - [ ] Add p-float-label?
 - [ ] ~Divider~ styling, thickness and color.
 - [X] Custom style ~FormTextInput~ (class/style binding), incl.secondary colour for sign up.
-- [ ] Form validation and warnings/messages styling/text for login/sign up/reset components.
+- [X] Form validation and warnings/messages styling/text for login/sign up/reset components.
 - [ ] Large numbers don't show nicely in the Search paginator.
 - [X] Outdated presets for Lara. Remove?
 - [ ] Add MeterGroup or ProgessBar for upload? See also [[https://github.com/dieterich-lab/scimodom/issues/94][Dataset upload progress]].

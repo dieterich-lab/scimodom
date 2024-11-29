@@ -150,12 +150,12 @@ class MockBedtoolsService:
             "Unknown targets type",
         ),
         (
-            "/target/MIRNA?taxaId=9605&chrom=1&start=3284723&end=3284724&strand=%2B",
+            "/target/MIRNA?taxaId=9605&chrom=1&start=3284723&end=3284724&strand=%2D",
             404,
             "Unrecognized Taxa ID",
         ),
         (
-            "/target/MIRNA?taxaId=a&chrom=1&start=3284723&end=3284724&strand=%2B",
+            "/target/MIRNA?taxaId=a&chrom=1&start=3284723&end=3284724&strand=%2E",
             400,
             "Invalid Taxa ID",
         ),

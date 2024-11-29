@@ -5,6 +5,23 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/), and this 
 
 ## [Release candidate] - started 2024-09-25
 
+### Added
+
+- bedRMod validation in Comparison (#92)
+- TypeScript
+
+### Changed
+
+- utils
+- Error handling
+- Documentation
+
+### Fixed
+
+- Gene cache management
+- EUF toggle in Comparison
+- SMID/EUFID length validation
+
 ## [3.0.0] 2024-09-25
 
 ### Added

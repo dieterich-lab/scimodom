@@ -1,6 +1,6 @@
 from pathlib import Path
 import re
-from typing import Optional
+from typing import Optional, Any
 
 from flask import request, Response
 from flask_jwt_extended import get_jwt_identity
@@ -81,25 +81,9 @@ INVALID_CHARS_REGEXP = re.compile(r"[^a-zA-Z0-9.,_-]")
 MAX_DATASET_IDS_IN_LIST = 3
 
 
-def create_error_response(
-    status_code: int, message: str, user_message: str | None = None
-) -> (dict[str, str], int):
-    json_response = {"message": message}
-    if user_message is not None:
-        json_response["user_message"] = user_message
-    return json_response, status_code
-
-
-def _get_file_too_large_message(max_size: int):
-    return f"File too large (max. {max_size} bytes)"
-
-
-def create_file_too_large_response(max_size: int) -> (dict[str, str], int):
-    message = _get_file_too_large_message(max_size)
-    return create_error_response(413, message, message)
-
-
 class ClientResponseException(Exception):
+    """Extend base exception for client response."""
+
     def __init__(self, http_status: int, message: str, user_message: str | None = None):
         super(ClientResponseException, self).__init__(
             f"HTTP status {http_status} {message}"
@@ -108,9 +92,45 @@ class ClientResponseException(Exception):
 
 
 class FileTooLargeException(ClientResponseException):
+    """Extend ClientResponseException for file size."""
+
     def __init__(self, max_size: int):
         message = _get_file_too_large_message(max_size)
         super(FileTooLargeException, self).__init__(413, message, message)
+
+
+def create_error_response(
+    status_code: int, message: str, user_message: str | None = None
+) -> (dict[str, str], int):
+    """Construct an error response.
+
+    :param status_code: HTTP status code
+    :type status_code: int
+    :param message: General error message
+    :type message: str
+    :param user_message: Error message specifically for the user.
+    This can be used e.g. to add context per endpoint, or
+    intercept more complex error messages.
+    :type error_message: str
+    :returns: Error response
+    :rtype: Tuple[dict[str, str], int]
+    """
+    json_response = {"message": message}
+    if user_message is not None:
+        json_response["user_message"] = user_message
+    return json_response, status_code
+
+
+def create_file_too_large_response(max_size: int) -> (dict[str, str], int):
+    """Construct an error response for file size.
+
+    :param max_size: Allowed max. file size
+    :type max_size: int
+    :returns: Error response
+    :rtype: Tuple[dict[str, str], int]
+    """
+    message = _get_file_too_large_message(max_size)
+    return create_error_response(413, message, message)
 
 
 # Incoming parameter validation
@@ -154,6 +174,13 @@ def get_valid_bam_file(dataset, name) -> BamFile:
 
 
 def get_valid_dataset_id_list_from_request_parameter(parameter: str) -> list[str]:
+    """Get a list of valid dataset IDs.
+
+    :param parameter: Query parameter
+    :type parameter: str
+    :returns: List of dataset ID(s)
+    :rtype: list[str]
+    """
     as_list = get_unique_list_from_query_parameter(parameter, str)
     if len(as_list) > MAX_DATASET_IDS_IN_LIST:
         raise ClientResponseException(
@@ -174,6 +201,15 @@ def get_valid_dataset_id_list_from_request_parameter(parameter: str) -> list[str
 def get_valid_tmp_file_id_from_request_parameter(
     parameter: str, is_optional=False
 ) -> Optional[str]:
+    """Get uploaded/temporary file identifier.
+
+    :param parameter: Query parameter
+    :type parameter: str
+    :param is_optional: True if parameter is required (Default: False)
+    :type is_optional: bool
+    :returns: Uploaded/temporary file identifier or None
+    :rtype: str | None
+    """
     raw_id = request.args.get(parameter, type=str)
     if raw_id is None or raw_id == "":
         if is_optional:
@@ -186,14 +222,23 @@ def get_valid_tmp_file_id_from_request_parameter(
         raise ClientResponseException(
             404,
             "Upload file ID not found",
-            "Your uploaded file was not found - maybe it expired and you need to re-upload the file",
+            "File not found - Select the file again and try to re-upload",
         )
     return raw_id
 
 
 def get_valid_remote_file_name_from_request_parameter(
     parameter: str, default: str = "uploaded file"
-) -> Optional[str]:
+) -> str:
+    """Get uploaded/temporary file name.
+
+    :param parameter: Query parameter
+    :type parameter: str
+    :param default: Default file name
+    :type default: str
+    :returns: Uploaded/temporary file name
+    :rtype: str | None
+    """
     raw = request.args.get(parameter, type=str)
     if raw is None or raw == "":
         return default
@@ -204,6 +249,17 @@ def get_valid_remote_file_name_from_request_parameter(
 def get_valid_boolean_from_request_parameter(
     parameter: str, default: Optional[bool] = None
 ) -> bool:
+    """Get boolean value out of query parameter.
+
+    :param parameter: Query parameter
+    :type parameter: str
+    :param default: Default value. If query
+    parameter is None, and there is no default,
+    a ClientResponseException is raised.
+    :type default: bool | None
+    :returns: Boolean value
+    :rtype: bool
+    """
     raw_value = request.args.get(parameter, type=str)
     if raw_value is None:
         if default is None:
@@ -228,9 +284,18 @@ def validate_request_size(max_size) -> None:
         raise FileTooLargeException(max_size)
 
 
-def get_valid_taxa_id() -> int:
+def get_valid_taxa_id(is_optional: bool = False) -> Optional[int]:
+    """Get Taxa ID from query parameter.
+
+    :param is_optional: True if required (Default: False)
+    :type is_optional: bool
+    :returns: Taxa ID or None
+    :rtype: int | None
+    """
     taxa_id = request.args.get("taxaId", type=int)
-    if taxa_id is None:
+    if taxa_id is None or taxa_id == "":
+        if is_optional:
+            return None
         raise ClientResponseException(400, "Invalid Taxa ID")
     _validate_taxa_id(taxa_id)
     return taxa_id
@@ -342,6 +407,32 @@ def get_optional_positive_int(field: str) -> int | None:
     return raw
 
 
+def get_unique_list_from_query_parameter(name: str, list_type) -> list[Any]:
+    """Get unique list from query parameters.
+
+    There seem to be some confusion how arrays should be transmitted
+    as query parameters. While most people seem to agree that the values
+    are packed into multiple query parameters, some (older?) implementations
+    leave the original name, while newer ones insist on adding square
+    brackets '[]' at the end of the name, e.g. my_array = ['x', 'y'] may be
+    transmitted like this:
+
+        Old: ?my_array=x&my_array=y
+        New: ?my_array[]=x&my_array[]=y
+
+    Flask seems not to be aware of this. We don't care and allow both.
+    Also, we don't want that our code breaks if Flask fixes this - so we
+    ignore double results. So don't use this function for lists that are
+    allowed to contain the same value multiple times. Note also that the
+    order of returned values is not guaranteed.
+    """
+    result_as_set = {
+        *request.args.getlist(name, type=list_type),
+        *request.args.getlist(f"{name}[]", type=list_type),
+    }
+    return list(result_as_set)
+
+
 # Response
 
 
@@ -349,6 +440,13 @@ def get_response_from_pydantic_object(obj: BaseModel):
     return Response(
         response=obj.model_dump_json(), status=200, mimetype="application/json"
     )
+
+
+# Private
+
+
+def _get_file_too_large_message(max_size: int):
+    return f"File too large (max. {max_size} bytes)"
 
 
 def _is_valid_identifier(identifier, length):
@@ -364,25 +462,3 @@ def _validate_taxa_id(taxa_id: int) -> None:
     taxa_ids = [d["id"] for d in utilities_service.get_taxa()]
     if taxa_id not in taxa_ids:
         raise ClientResponseException(404, "Unrecognized Taxa ID")
-
-
-def get_unique_list_from_query_parameter(name: str, list_type):
-    """
-    There seems to be some confusion how arrays should be transmitted as query parameters.
-    While most people seem to agree that the values are packed into multiple query parameters,
-    some (older?) implementations leave the original name, while newer ones insist on
-    adding square brackets '[]' at the end of the name, e.g. my_array = ['x', 'y'] may be
-    transmitted like this:
-
-        Old: ?my_array=x&my_array=y
-        New: ?my_array[]=x&my_array[]=y
-
-    Flask seems not to be aware of this. We don't care and allow both. Also, don't want
-    that our code breaks if Flask fixes this - so we ignore double results. So don't use this
-    function for lists, which are allowed to contain the same value multiple times.
-    """
-    result_as_set = {
-        *request.args.getlist(name, type=list_type),
-        *request.args.getlist(f"{name}[]", type=list_type),
-    }
-    return list(result_as_set)

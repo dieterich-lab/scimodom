@@ -98,6 +98,7 @@ onMounted(async () => {
             :exportFilename="getFileName()"
             :paginator="true"
             :rows="5"
+            stripedRows
             v-model:filters="filters"
             filterDisplay="menu"
             :globalFilterFields="[

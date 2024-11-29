@@ -51,6 +51,19 @@ function uploader(event: FileUploadUploaderEvent) {
     })
 }
 
+function update() {
+  if (model.value !== undefined) {
+    if ('isEUF' in model.value) {
+      const result: ResultStepB = {
+        ...model.value,
+        isEUF: isEUF.value
+      }
+      model.value = result
+      emit('change', result)
+    }
+  }
+}
+
 function reset() {
   disableDatasetSelection.value = false
   uploadedFileName.value = ''
@@ -66,22 +79,20 @@ function changeDatasets(datasets: Dataset[]) {
   model.value = result
   emit('change', result)
 }
+
 watch(
   () => props.resultStepA,
   () => {
-    if (model.value) {
+    if (model.value !== undefined) {
       reset()
     }
   }
 )
 </script>
+
 <template>
   <div v-if="doneWithStepA">
-    <div class="mb-4">
-      At least one reference dataset must be selected. Upload your own data or select up to three
-      dataset for comparison. For upload, pay attention to the organism and/or the assembly of your
-      data to avoid spurious comparison results.
-    </div>
+    <div class="mb-4">Select up to three dataset for comparison or upload your own data.</div>
     <div class="grid grid-cols-3 gap-6">
       <InputText
         v-model="uploadedFileName"
@@ -102,7 +113,13 @@ watch(
           class="w-[8rem]"
         >
         </FileUpload>
-        <ToggleButton v-model="isEUF" onLabel="bedRMod" offLabel="BED6" class="w-[8rem] ml-4" />
+        <ToggleButton
+          v-model="isEUF"
+          onLabel="bedRMod"
+          offLabel="BED6"
+          @change="update"
+          class="w-[8rem] ml-4"
+        />
         <Button
           label="Clear selection"
           @click="reset"
@@ -123,6 +140,6 @@ watch(
     </div>
   </div>
   <div v-else>
-    <div class="mb-4">Please select at least one reference dataset first.</div>
+    <div class="mb-4">Select reference dataset in step 1 to continue.</div>
   </div>
 </template>

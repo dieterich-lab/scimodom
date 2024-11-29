@@ -96,8 +96,11 @@ class AssemblyService:
     def get_assembly_by_name(
         self, taxa_id: int, assembly_name: str, fail_safe: bool = True
     ) -> Assembly:
-        """Retrieve assembly by name. If not found, add it to the database,
-        unless fail_safe is False, in which case raises AssemblyNotFoundError.
+        """Retrieve assembly by name.
+
+        If not found, add it to the database, unless fail_safe is False,
+        in which case raises AssemblyNotFoundError. The 'assembly_name'
+        must be a valid Ensembl assembly.
 
         :param taxa_id: Taxonomy ID
         :type taxa_id: int
@@ -117,6 +120,12 @@ class AssemblyService:
             return assembly
         except NoResultFound:
             if fail_safe:
+                valid_assembly_names = self._get_coord_system_versions(taxa_id)
+                if assembly_name not in valid_assembly_names:
+                    raise AssemblyNotFoundError(
+                        f"No such assembly '{assembly_name}' for organism '{taxa_id}'. "
+                        f"Valid assemblies are: '{' '.join(valid_assembly_names)}'"
+                    )
                 return self._add_assembly(taxa_id, assembly_name)
             else:
                 raise AssemblyNotFoundError(
@@ -176,8 +185,7 @@ class AssemblyService:
         return [line.split()[0] for line in lines]
 
     def get_chroms(self, taxa_id: int) -> list[dict[str, Any]]:
-        """Provides access to chrom.sizes for a given
-        organism for the latest database version.
+        """Return chrom.sizes for the latest database version.
 
         :param taxa_id: Taxonomy ID
         :type taxa_id: int
@@ -264,6 +272,7 @@ class AssemblyService:
 
         logger.info(f"Setting up assembly {assembly.name} for current version...")
 
+        # TODO
         if self._file_service.check_if_assembly_exists(assembly.taxa_id, assembly.name):
             raise FileExistsError(
                 f"Assembly '{assembly.name}' already exists (Taxa ID {assembly.taxa_id})."
@@ -288,8 +297,8 @@ class AssemblyService:
     def _add_assembly(self, taxa_id: int, assembly_name: str) -> Assembly:
         if self._file_service.check_if_assembly_exists(taxa_id, assembly_name):
             raise AssemblyAbortedError(
-                f"Suspected incomplete or inconsistent data: files were found on the "
-                f"system for '{assembly_name}', but assembly does not exist in the database."
+                f"Suspected data corruption for '{assembly_name}'. Files were found "
+                "on the system, but assembly does not exist in the database."
             )
 
         chain_file_name = self._get_chain_file_name(
@@ -321,6 +330,13 @@ class AssemblyService:
             raise AssemblyAbortedError(
                 f"Adding assembly for '{assembly_name}' aborted."
             ) from exc
+
+    def _get_coord_system_versions(self, taxa_id: int) -> list[str]:
+        with self._file_service.open_assembly_file(
+            taxa_id, AssemblyFileType.INFO
+        ) as fp:
+            info = json.load(fp)
+        return info["coord_system_versions"]
 
     def _get_ensembl_chain_file_url(self, taxa_id: int, chain_file_name):
         return urljoin(
@@ -365,7 +381,7 @@ class AssemblyService:
         if coord_sysver != assembly.name:
             raise AssemblyVersionError(
                 f"Mismatch between assembly {assembly.name} and coord system "
-                f"version {coord_sysver}. Upgrade your database!"
+                f"version {coord_sysver}."
             )
         chroms = gene_build["karyotype"]
         top_level = {
@@ -380,7 +396,12 @@ class AssemblyService:
             for chrom in sorted(chroms):
                 fh.write(f"{chrom}\t{top_level[chrom]}\n")
 
-        keys = ["assembly_accession", "assembly_date", "assembly_name"]
+        keys = [
+            "assembly_accession",
+            "assembly_date",
+            "assembly_name",
+            "coord_system_versions",
+        ]
         gene_build = {k: v for k, v in gene_build.items() if k in keys}
         with self._file_service.create_assembly_file(
             assembly.taxa_id, AssemblyFileType.INFO

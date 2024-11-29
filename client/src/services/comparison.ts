@@ -9,6 +9,7 @@ interface ComparisonParams {
   upload_name?: string
   strand: boolean
   euf?: boolean
+  taxaId?: number
 }
 
 interface SubtractRecord extends EufRecord {}
@@ -40,7 +41,7 @@ async function doHttpGet<T>(
         indexes: null
       }
     }),
-    `Failed to do ${operation}`,
+    `Comparison failed (${operation})`,
     dialogState
   )) as Records<T>
   return response.records

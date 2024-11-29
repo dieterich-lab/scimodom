@@ -4,7 +4,7 @@ from io import StringIO
 import pytest
 
 from scimodom.database.models import Assembly
-from scimodom.services.assembly import AssemblyNotFoundError
+from scimodom.services.assembly import AssemblyNotFoundError, AssemblyAbortedError
 from scimodom.services.validator import (
     _DatasetImportContext,
     _ReadOnlyImportContext,
@@ -40,10 +40,12 @@ class MockAssemblyService:
         is_latest: bool,
         assemblies_by_id: dict[int, Assembly],
         assemblies_by_name: dict[int, dict[str, Assembly]],
+        allowed_assemblies: dict[int, list[str]] | None,
     ):
         self._is_latest = is_latest
         self._assemblies_by_id = assemblies_by_id
         self._assemblies_by_name = assemblies_by_name
+        self._allowed_assemblies = allowed_assemblies
         self._added_assembly: Assembly | None = None
 
     def get_assembly_by_id(self, assembly_id: int) -> Assembly:
@@ -59,12 +61,21 @@ class MockAssemblyService:
             return self._assemblies_by_name[taxa_id][assembly_name]
         except KeyError:
             if fail_safe:
-                assembly = Assembly(
-                    id=4, name=assembly_name, taxa_id=taxa_id, version="NFrsaxAU9UjS"
-                )
-                self._added_assembly = assembly
-                self._assemblies_by_id.update({4: assembly})
-                return assembly
+                if self._allowed_assemblies is None:
+                    raise AssemblyAbortedError
+                else:
+                    if assembly_name in self._allowed_assemblies[taxa_id]:
+                        assembly = Assembly(
+                            id=4,
+                            name=assembly_name,
+                            taxa_id=taxa_id,
+                            version="NFrsaxAU9UjS",
+                        )
+                        self._added_assembly = assembly
+                        self._assemblies_by_id.update({4: assembly})
+                        return assembly
+                    else:
+                        raise AssemblyNotFoundError
             else:
                 raise AssemblyNotFoundError
 
@@ -116,7 +127,11 @@ def input_ctx(selection, project):  # noqa
 
 
 def _get_validator_service(
-    session, is_latest_asembly=True, assemblies_by_id=None, check_source_result=True
+    session,
+    is_latest_asembly=True,
+    assemblies_by_id=None,
+    allowed_assemblies=None,
+    check_source_result=True,
 ):
     if assemblies_by_id is None:
         assemblies_by_id = {
@@ -153,6 +168,7 @@ def _get_validator_service(
             is_latest=is_latest_asembly,
             assemblies_by_id=assemblies_by_id,
             assemblies_by_name=assemblies_by_name,
+            allowed_assemblies=allowed_assemblies,
         ),
         annotation_service=MockAnnotationService(
             check_source_result=check_source_result
@@ -184,9 +200,7 @@ GOOD_EUF_FILE = """#fileformat=bedRModv1.8
 def test_read_only_import_context(Session, setup):  # noqa
     importer = EufImporter(stream=StringIO(GOOD_EUF_FILE), source="test")
     service = _get_validator_service(Session())
-    service.create_read_only_import_context(
-        importer=importer, taxa_id=9606, assembly_name="GRCh38"
-    )
+    service.create_read_only_import_context(importer=importer, taxa_id=9606)
     assert service.get_read_only_context() == _ReadOnlyImportContext(
         taxa_id=9606,
         assembly_id=1,
@@ -199,10 +213,10 @@ def test_read_only_import_context(Session, setup):  # noqa
 def test_read_only_import_context_add_assembly(Session, setup):
     euf_file = GOOD_EUF_FILE.replace(r"#assembly=GRCh38", r"#assembly=NCBI36")
     importer = EufImporter(stream=StringIO(euf_file), source="test")
-    service = _get_validator_service(Session())
-    service.create_read_only_import_context(
-        importer=importer, taxa_id=9606, assembly_name="NCBI36"
+    service = _get_validator_service(
+        Session(), allowed_assemblies={9606: ["GRCh37", "GRCh38", "NCBI36"]}
     )
+    service.create_read_only_import_context(importer=importer, taxa_id=9606)
     assert service.get_read_only_context() == _ReadOnlyImportContext(
         taxa_id=9606,
         assembly_id=4,
@@ -210,6 +224,24 @@ def test_read_only_import_context_add_assembly(Session, setup):
         seqids=["1"],
         modification_names={"Y": "Y", "m5C": "m5C", "m6A": "m6A"},
     )
+
+
+def test_read_only_import_context_wrong_assembly(Session, setup):
+    euf_file = GOOD_EUF_FILE.replace(r"#assembly=GRCh38", r"#assembly=NCBI36")
+    importer = EufImporter(stream=StringIO(euf_file), source="test")
+    service = _get_validator_service(
+        Session(), allowed_assemblies={9606: ["GRCh37", "GRCh38"]}
+    )
+    with pytest.raises(DatasetImportError):
+        service.create_read_only_import_context(importer=importer, taxa_id=9606)
+
+
+def test_read_only_import_context_add_assembly_fail(Session, setup):
+    euf_file = GOOD_EUF_FILE.replace(r"#assembly=GRCh38", r"#assembly=NCBI36")
+    importer = EufImporter(stream=StringIO(euf_file), source="test")
+    service = _get_validator_service(Session())
+    with pytest.raises(AssemblyAbortedError):
+        service.create_read_only_import_context(importer=importer, taxa_id=9606)
 
 
 def test_create_import_context(Session, input_ctx):

@@ -33,12 +33,16 @@ import img4 from '@/assets/images/docs/compare4.png'
       <img :src="img2" class="object-center mt-6 mb-6" alt="Compare: filter 2" />
       You can also use your own data (bedRMod or BED format), click on "Select a file". The format
       is automatically recognized, but can also be forced by using the toggle button. You data is
-      securely handled and is automatically deleted. BED files with more than 6 columns are cut down
-      to BED6.
+      securely handled and is automatically deleted.
+      <Message severity="info" :closable="false"
+        >bedRmod is fully supported. The format specifications are enforced. Records from a
+        different assembly are automatically lifted over for comparison.</Message
+      >
       <Message severity="warn" :closable="false"
-        >Data coming from a different assembly or an inconsistent choice of reference dataset will
-        lead to spurious comparison results. Liftover is not yet available for data
-        comparison!</Message
+        >BED files with more than 6 columns are cut down to BED6. Header lines starting with # are
+        ignored. There is no organism and/or assembly validation. Data coming from a different
+        assembly or an inconsistent choice of reference dataset will lead to spurious comparison
+        results.</Message
       >
       Finally, select the operation you want to perform on the datasets selected in previous steps:
       <img :src="img3" class="object-center mt-6 mb-6" alt="Compare: filter 3" />

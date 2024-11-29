@@ -7,7 +7,6 @@ import { useAccessToken } from '@/stores/AccessToken.js'
 import { useRouter } from 'vue-router'
 import ScimodomLogo from './ScimodomLogo.vue'
 import NavigationBar from './NavigationBar.vue'
-import { getApiBaseUrl } from '@/services/API'
 
 const router = useRouter()
 
@@ -16,7 +15,7 @@ const accessToken = useAccessToken()
 
 const isLoggedIn = computed(() => accessToken.token !== null)
 const userName = computed(getUserName)
-const isDev = computed(() => getApiBaseUrl() !== 'https://scimodom.dieterichlab.org/api/v0/')
+const isDev = computed(() => import.meta.env.DEV === true)
 
 const menu = ref()
 const items = ref([

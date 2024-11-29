@@ -13,6 +13,7 @@ interface ComparisonDatasets {
 }
 
 interface ResultStepA {
+  taxaId: number
   datasets: Dataset[]
   remainingDatasets: Dataset[]
 }
@@ -51,6 +52,7 @@ function getCompareParams(
       }
 
   return {
+    taxaId: resultStepA.taxaId,
     reference: resultStepA.datasets.map((x) => x.dataset_id),
     ...paramsStepB,
     strand: resultStepC?.strandAware === true

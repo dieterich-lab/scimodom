@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-from os import umask, environ, chmod
+from os import umask, environ
 from pathlib import Path
 from os.path import join
 from random import randrange
@@ -7,14 +7,12 @@ from sys import stderr
 
 HOST_BACKUP_DIR = environ.get("HOST_BACKUP_DIR")
 HOST_SECRETS_DIR = environ.get("HOST_SECRETS_DIR")
-HOST_CONFIG_DIR = environ.get("HOST_CONFIG_DIR")
 HOST_DB_DATA_DIR = environ.get("HOST_DB_DATA_DIR")
 HOST_IMPORT_DIR = environ.get("HOST_IMPORT_DIR")
 
 HOST_FOLDERS = [
     HOST_BACKUP_DIR,
     HOST_SECRETS_DIR,
-    HOST_CONFIG_DIR,
     HOST_DB_DATA_DIR,
     HOST_IMPORT_DIR,
 ]
@@ -49,17 +47,8 @@ def write_password_file(filename):
         print(get_random_string(), file=fp)
 
 
-def write_client_config():
-    path = join(HOST_CONFIG_DIR, "config.js")
-    url = environ.get("HTTP_PUBLIC_URL")
-    with open(path, "w") as fp:
-        print(f"export const API_BASE_URL = '{url}/api/v0/';", file=fp)
-    chmod(path, 0o644)
-
-
 umask(0o7)
 for folder in HOST_FOLDERS:
     Path(folder).mkdir(parents=True, exist_ok=True)
 for name in SECRET_FILES:
     write_password_file(name)
-write_client_config()

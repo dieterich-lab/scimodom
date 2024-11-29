@@ -106,8 +106,10 @@ class DatasetUpdateError(Exception):
 
 
 class ValidatorService:
-    """Provides an import context and helper methods
-    to perform validation and, where relevant, lift over
+    """Provide a validator service for data import.
+
+    Provide an import context and helper methods to
+    perform validation and, where relevant, lift over
     during data import (EU-formatted or bedRMod files).
 
     :param session: SQLAlchemy ORM session
@@ -141,10 +143,12 @@ class ValidatorService:
         self._read_header: dict[str, str]
 
     def create_read_only_import_context(
-        self, importer: EufImporter, taxa_id: int, assembly_name: str, **kwargs
+        self, importer: EufImporter, taxa_id: int, **kwargs
     ) -> None:
-        """Create a minimal context for importing data when
-        writing to the database is not intended. This is used
+        """Create a minimal context for data import.
+
+        To be used for importing data when writing
+        to the database is not intended. This is used
         e.g. to import data for the Comparison View.
         Assemblies are added on the fly.
 
@@ -152,19 +156,24 @@ class ValidatorService:
         :type importer: EufImporter
         :param taxa_id: Taxonomy ID
         :type taxa_id: int
-        :param assembly_name: Assembly name.
-        :type assembly_name: str
         """
         self._sanitize_header(importer)
         self._sanitize_taxa_id(taxa_id)
-        assembly = self._assembly_service.get_assembly_by_name(taxa_id, assembly_name)
-        kwargs = {**kwargs, "taxa_id": taxa_id, "assembly_id": assembly.id}
+        try:
+            assembly_name = self._read_header["assembly_name"]
+            assembly = self._assembly_service.get_assembly_by_name(
+                taxa_id, assembly_name
+            )
+            kwargs = {**kwargs, "taxa_id": taxa_id, "assembly_id": assembly.id}
+        except AssemblyNotFoundError as exc:
+            raise DatasetImportError(exc)
         self._ro_context = _ReadOnlyImportContext(**kwargs)
         self._sanitize_read_only_import_context()
 
     def create_import_context(self, importer: EufImporter, **kwargs) -> None:
-        """Create and validate a context to import data
-        into the database.
+        """Create and validate import context.
+
+        To be used for importing data into the database.
 
         :param importer: BED importer
         :type importer: EufImporter
@@ -178,7 +187,7 @@ class ValidatorService:
         self._sanitize_import_context()
 
     def get_read_only_context(self) -> _ReadOnlyImportContext | None:
-        """Return read-only context if exists
+        """Return read-only context if exists.
 
         :returns: Read-only context
         :rtype: _ReadOnlyImportContext | None
@@ -189,7 +198,7 @@ class ValidatorService:
             return None
 
     def get_import_context(self) -> _DatasetImportContext | None:
-        """Return dataset import context if exists
+        """Return dataset import context if exists.
 
         :returns: Dataset import context
         :rtype: _DatasetImportContext | None
@@ -200,7 +209,7 @@ class ValidatorService:
             return None
 
     def get_validated_header(self) -> dict[str, str] | None:
-        """Return imported header as dict if exists
+        """Return imported header as dict if exists.
 
         :returns: bedRMod header as dict
         :rtype: ditc[str, str] | None
@@ -215,9 +224,10 @@ class ValidatorService:
         importer: EufImporter,
         context: _ReadOnlyImportContext | _DatasetImportContext,
     ) -> Generator[EufRecord, None, None]:
-        """Parse, eventually lift over, and return records,
-        providing additional validation, i.e. on top of the
-        model validation performed inside the importer.
+        """Parse, eventually lift over, and return records.
+
+        This method provides additional validation, i.e. in
+        addition to model validation performed by the importer.
 
         :param importer: BED importer
         :type importer: EufImporter
