@@ -58,10 +58,10 @@ def add_assembly(**kwargs) -> None:
         if c not in ["y", "Y"]:
             return
         try:
-            assembly_id = assembly_service.get_assembly_by_name(taxa_id, assembly_name)
+            assembly = assembly_service.get_assembly_by_name(taxa_id, assembly_name)
         except AssemblyNotFoundError as exc:
             click.secho(f"Cannot add alternative assembly: {exc}", fg="red")
         except AssemblyAbortedError as exc:
             click.secho(f"Failed to add alternative assembly: {exc}", fg="red")
             return
-        click.secho(f"... done! Assembly ID is {assembly_id}.", fg="green")
+        click.secho(f"... done! Assembly ID is {assembly.id}.", fg="green")
