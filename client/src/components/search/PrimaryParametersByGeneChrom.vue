@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { type Taxa, getSelectionsByTaxaId } from '@/services/selection'
+import { type Taxa } from '@/services/taxa'
+import { getSelectionsByTaxaId } from '@/services/selection'
 import type { PrimarySearchParameters } from '@/utils/search'
 import TaxaSelection from '@/components/ui/TaxaSelection.vue'
 

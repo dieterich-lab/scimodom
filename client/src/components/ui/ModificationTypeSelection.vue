@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import Dropdown from 'primevue/dropdown'
-import { type ModificationType, modificationTypeCache } from '@/services/selection'
+import { type ModificationType, modificationTypeSelectionCache } from '@/services/selection'
 import { type CascadeItem, getOptionsForPrimvueCascadeSelect } from '@/utils/primevue'
 
 const model = defineModel<ModificationType>()
@@ -22,7 +22,7 @@ defineEmits<{
 const options = ref<CascadeItem<ModificationType>[]>([])
 
 onMounted(async () => {
-  modificationTypeCache.getData().then((data) => {
+  modificationTypeSelectionCache.getData().then((data) => {
     options.value = getOptionsForPrimvueCascadeSelect(data, ['rna_name', 'modomics_sname'])
   })
 })

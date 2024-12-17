@@ -459,6 +459,6 @@ def _is_valid_identifier(identifier, length):
 
 def _validate_taxa_id(taxa_id: int) -> None:
     utilities_service = get_utilities_service()
-    taxa_ids = [d["id"] for d in utilities_service.get_taxa()]
+    taxa_ids = [d["taxa_id"] for d in utilities_service.get_taxa()]
     if taxa_id not in taxa_ids:
         raise ClientResponseException(404, "Unrecognized Taxa ID")

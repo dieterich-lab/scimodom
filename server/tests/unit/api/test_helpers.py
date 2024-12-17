@@ -58,7 +58,8 @@ class MockUtilitiesService:
     def get_taxa():
         return [
             {
-                "id": 9606,
+                "taxa_id": 9606,
+                "taxa_name": "Homo sapiens",
                 "taxa_sname": "H. sapiens",
                 "domain": "Eukarya",
                 "kingdom": "Animalia",

@@ -43,21 +43,24 @@ def test_get_rna_types(Session, utilities_service: UtilitiesService, setup):
 def test_get_taxa(Session, utilities_service: UtilitiesService, setup):
     expected_taxa = [
         {
-            "id": 7227,
+            "taxa_id": 7227,
+            "taxa_name": "Drosophila melanogaster",
             "taxa_sname": "D. melanogaster",
             "domain": "Eukarya",
             "kingdom": "Animalia",
             "phylum": "Arthropoda",
         },
         {
-            "id": 9606,
+            "taxa_id": 9606,
+            "taxa_name": "Homo sapiens",
             "taxa_sname": "H. sapiens",
             "domain": "Eukarya",
             "kingdom": "Animalia",
             "phylum": "Chordata",
         },
         {
-            "id": 10090,
+            "taxa_id": 10090,
+            "taxa_name": "Mus musculus",
             "taxa_sname": "M. musculus",
             "domain": "Eukarya",
             "kingdom": "Animalia",
