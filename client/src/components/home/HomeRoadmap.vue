@@ -9,9 +9,11 @@ import SectionLayout from '@/components/layout/SectionLayout.vue'
           <span>Roadmap</span>
         </h1>
         <p class="text-xl font-medium text-gray-600 p-4 dark:text-surface-400">
-          We are working hard to improve Sci-ModoM, and we want to share our ideas for 2024. These
+          We are working hard to improve Sci-ModoM, and we want to share our ideas for 2025. These
           are planned to be implemented in parallel to any regular maintenance work involving review
-          of issues, PRs and support to the wider community.
+          of issues, PRs and support to the wider community. The roadmap will be updated regularly
+          to reflect changes. Substantial development work may extend through more than one quarter
+          and into 2026.
         </p>
       </div>
       <!-- ROADMAP ---- -->
@@ -50,152 +52,71 @@ import SectionLayout from '@/components/layout/SectionLayout.vue'
               </div>
               <div class="flex-1 flex gap-3 flex-col">
                 <div class="p-3 border-l-4 border-solid border-gb-2 rounded-l dark:text-white/80">
-                  <h2 class="text-lg font-bold mt-0 mb-2">Data Model & Query Optimization</h2>
-                  <p class="mt-0 mb-3 leading-tight">Provide fast sort and filter options.</p>
-                  <div class="border-2 border-solid border-gb-2 rounded">
-                    <div
-                      class="border-2 border-solid border-gb-2 rounded"
-                      style="width: 100%"
-                    ></div>
-                  </div>
-                </div>
-                <div class="p-3 border-l-4 border-solid border-gb-2 rounded-l dark:text-white/80">
-                  <h2 class="text-lg font-bold mt-0 mb-2">Advanced Queries</h2>
-                  <p class="mt-0 mb-3 line-height-3">
-                    Allow to filter by genomic annotation (feature, biotype), evidence per site
-                    across techniques, dataset, ...
-                  </p>
-                  <div class="border-2 border-solid border-gb-2 rounded">
-                    <div
-                      class="border-2 border-solid border-gb-2 rounded"
-                      style="width: 100%"
-                    ></div>
-                  </div>
-                </div>
-                <div class="p-3 border-l-4 border-solid border-gb-2 rounded-l dark:text-white/80">
                   <h2 class="text-lg font-bold mt-0 mb-2">Data Annotation</h2>
-                  <p class="mt-0 mb-3 line-height-3">
-                    Update model, provide advanced and faster records annotation.
+                  <p class="mt-0 mb-3 leading-tight">
+                    Interactome resources, sequence context, easy-to-decode summary statistics, ...
                   </p>
                   <div class="border-2 border-solid border-gb-2 rounded">
-                    <div
-                      class="border-2 border-solid border-gb-2 rounded"
-                      style="width: 100%"
-                    ></div>
+                    <div class="border-2 border-solid border-gb-2 rounded" style="width: 15%"></div>
                   </div>
                 </div>
                 <div class="p-3 border-l-4 border-solid border-gb-2 rounded-l dark:text-white/80">
-                  <h2 class="text-lg font-bold mt-0 mb-2">DB Assembly Version</h2>
+                  <h2 class="text-lg font-bold mt-0 mb-2">Assembly & Annotation</h2>
                   <p class="mt-0 mb-3 line-height-3">
-                    Add version management and services: data cleaning, liftover, ...
+                    Add version and cache management, upgrade DB.
                   </p>
                   <div class="border-2 border-solid border-gb-2 rounded">
-                    <div
-                      class="border-2 border-solid border-gb-2 rounded"
-                      style="width: 100%"
-                    ></div>
-                  </div>
-                </div>
-                <div class="p-3 border-l-4 border-solid border-gb-2 rounded-l dark:text-white/80">
-                  <h2 class="text-lg font-bold mt-0 mb-2">Data Upload</h2>
-                  <p class="mt-0 mb-3 line-height-3">
-                    Harmonize upload services, data validation, setup for Q2.
-                  </p>
-                  <div class="border-2 border-solid border-gb-2 rounded">
-                    <div
-                      class="border-2 border-solid border-gb-2 rounded"
-                      style="width: 100%"
-                    ></div>
+                    <div class="border-2 border-solid border-gb-2 rounded" style="width: 0%"></div>
                   </div>
                 </div>
               </div>
               <div class="flex-1 flex gap-3 flex-col">
                 <div class="p-3 border-l-4 border-solid border-gb-2 rounded-l dark:text-white/80">
-                  <h2 class="text-lg font-bold mt-0 mb-2">Authentication & Autorization</h2>
-                  <p class="mt-0 mb-3 line-height-3">
-                    Add A&A, user account, data sharing and management, ...
-                  </p>
+                  <h2 class="text-lg font-bold mt-0 mb-2">Assembly & Annotation</h2>
+                  <p class="mt-0 mb-3 line-height-3">Add more species and data.</p>
                   <div class="border-2 border-solid border-gb-2 rounded">
-                    <div
-                      class="border-2 border-solid border-gb-2 rounded"
-                      style="width: 100%"
-                    ></div>
+                    <div class="border-2 border-solid border-gb-2 rounded" style="width: 0%"></div>
                   </div>
                 </div>
                 <div class="p-3 border-l-4 border-solid border-gb-2 rounded-l dark:text-white/80">
-                  <h2 class="text-lg font-bold mt-0 mb-2">Data Upload</h2>
+                  <h2 class="text-lg font-bold mt-0 mb-2">API</h2>
                   <p class="mt-0 mb-3 line-height-3">
-                    Add public API, integration with A&A, data access management.
+                    Extend REST API (data management and more), API documentation.
                   </p>
                   <div class="border-2 border-solid border-gb-2 rounded">
-                    <div
-                      class="border-2 border-solid border-gb-2 rounded"
-                      style="width: 100%"
-                    ></div>
+                    <div class="border-2 border-solid border-gb-2 rounded" style="width: 15%"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="flex-1 flex gap-3 flex-col">
+                <div class="p-3 border-l-4 border-solid border-gb-2 rounded-l dark:text-white/80">
+                  <h2 class="text-lg font-bold mt-0 mb-2">RNA Types</h2>
+                  <p class="mt-0 mb-3 line-height-3">Add more RNA types (tRNA, rRNA).</p>
+                  <div class="border-2 border-solid border-gb-2 rounded">
+                    <div class="border-2 border-solid border-gb-2 rounded" style="width: 0%"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="flex-1 flex gap-3 flex-col">
+                <div class="p-3 border-l-4 border-solid border-gb-2 rounded-l dark:text-white/80">
+                  <h2 class="text-lg font-bold mt-0 mb-2">RNA Processing</h2>
+                  <p class="mt-0 mb-3 line-height-3">Integrate RNA processing.</p>
+                  <div class="border-2 border-solid border-gb-2 rounded">
+                    <div class="border-2 border-solid border-gb-2 rounded" style="width: 0%"></div>
                   </div>
                 </div>
                 <div class="p-3 border-l-4 border-solid border-gb-2 rounded-l dark:text-white/80">
                   <h2 class="text-lg font-bold mt-0 mb-2">Data Download</h2>
-                  <p class="mt-0 mb-3 line-height-3">Provide dataset download in bedRMod.</p>
+                  <p class="mt-0 mb-3 line-height-3">
+                    Provide GUI and API for customizable downloads.
+                  </p>
                   <div class="border-2 border-solid border-gb-2 rounded">
-                    <div
-                      class="border-2 border-solid border-gb-2 rounded"
-                      style="width: 100%"
-                    ></div>
-                  </div>
-                </div>
-              </div>
-              <div class="flex-1 flex gap-3 flex-col">
-                <div class="p-3 border-l-4 border-solid border-gb-2 rounded-l dark:text-white/80">
-                  <h2 class="text-lg font-bold mt-0 mb-2">First release</h2>
-                  <p class="mt-0 mb-3 line-height-3">Add data, release version.</p>
-                  <div class="border-2 border-solid border-gb-2 rounded">
-                    <div
-                      class="border-2 border-solid border-gb-2 rounded"
-                      style="width: 100%"
-                    ></div>
+                    <div class="border-2 border-solid border-gb-2 rounded" style="width: 0%"></div>
                   </div>
                 </div>
                 <div class="p-3 border-l-4 border-solid border-gb-2 rounded-l dark:text-white/80">
                   <h2 class="text-lg font-bold mt-0 mb-2">Genome Browser</h2>
-                  <p class="mt-0 mb-3 line-height-3">Visualize data via Ensembl.</p>
-                  <div class="border-2 border-solid border-gb-2 rounded">
-                    <div
-                      class="border-2 border-solid border-gb-2 rounded"
-                      style="width: 100%"
-                    ></div>
-                  </div>
-                </div>
-              </div>
-              <div class="flex-1 flex gap-3 flex-col">
-                <div class="p-3 border-l-4 border-solid border-gb-2 rounded-l dark:text-white/80">
-                  <h2 class="text-lg font-bold mt-0 mb-2">Additional Annotation</h2>
-                  <p class="mt-0 mb-3 line-height-3">Add RBPs, SNPs, miRNA targets, ...</p>
-                  <div class="border-2 border-solid border-gb-2 rounded">
-                    <div class="border-2 border-solid border-gb-2 rounded" style="width: 75%"></div>
-                  </div>
-                </div>
-                <div class="p-3 border-l-4 border-solid border-gb-2 rounded-l dark:text-white/80">
-                  <h2 class="text-lg font-bold mt-0 mb-2">Analysis & Visualization</h2>
-                  <p class="mt-0 mb-3 line-height-3">
-                    DB visualization, online data analysis and tools.
-                  </p>
-                  <div class="border-2 border-solid border-gb-2 rounded">
-                    <div class="border-2 border-solid border-gb-2 rounded" style="width: 0%"></div>
-                  </div>
-                </div>
-                <div class="p-3 border-l-4 border-solid border-gb-2 rounded-l dark:text-white/80">
-                  <h2 class="text-lg font-bold mt-0 mb-2">RNA types</h2>
-                  <p class="mt-0 mb-3 line-height-3">Add tRNA and more, data annotation.</p>
-                  <div class="border-2 border-solid border-gb-2 rounded">
-                    <div class="border-2 border-solid border-gb-2 rounded" style="width: 0%"></div>
-                  </div>
-                </div>
-                <div class="p-3 border-l-4 border-solid border-gb-2 rounded-l dark:text-white/80">
-                  <h2 class="text-lg font-bold mt-0 mb-2">RNA Processing</h2>
-                  <p class="mt-0 mb-3 line-height-3">
-                    Think tank: integrate RNA processing (bedRMod, Sci-ModoM).
-                  </p>
+                  <p class="mt-0 mb-3 line-height-3">Database visualization locally.</p>
                   <div class="border-2 border-solid border-gb-2 rounded">
                     <div class="border-2 border-solid border-gb-2 rounded" style="width: 0%"></div>
                   </div>
@@ -212,49 +133,26 @@ import SectionLayout from '@/components/layout/SectionLayout.vue'
                 </div>
                 <div class="flex-1 flex gap-3 flex-col">
                   <div class="p-3 border-l-4 border-solid border-gb-4 rounded-l dark:text-white/80">
-                    <h2 class="text-lg font-bold mt-0 mb-2">Online App</h2>
-                    <p class="mt-0 mb-3 leading-tight">Public API.</p>
-                    <div class="border-2 border-solid border-gb-4 rounded">
-                      <div
-                        class="border-2 border-solid border-gb-4 rounded"
-                        style="width: 100%"
-                      ></div>
-                    </div>
-                  </div>
-                  <div class="p-3 border-l-4 border-solid border-gb-4 rounded-l dark:text-white/80">
                     <h2 class="text-lg font-bold mt-0 mb-2">Data Management</h2>
-                    <p class="mt-0 mb-3 leading-tight">Temporary and permanent data management.</p>
+                    <p class="mt-0 mb-3 leading-tight">File storage (formats).</p>
                     <div class="border-2 border-solid border-gb-4 rounded">
                       <div
                         class="border-2 border-solid border-gb-4 rounded"
-                        style="width: 100%"
-                      ></div>
-                    </div>
-                  </div>
-                </div>
-                <div class="flex-1 flex gap-3 flex-col">
-                  <div class="p-3 border-l-4 border-solid border-gb-4 rounded-l dark:text-white/80">
-                    <h2 class="text-lg font-bold mt-0 mb-2">Authentication & Authorization</h2>
-                    <p class="mt-0 mb-3 line-height-3">
-                      Build infrastructure to support A&A, secure data storage, backup.
-                    </p>
-                    <div class="border-2 border-solid border-gb-4 rounded">
-                      <div
-                        class="border-2 border-solid border-gb-4 rounded"
-                        style="width: 100%"
+                        style="width: 15%"
                       ></div>
                     </div>
                   </div>
                 </div>
                 <div class="flex-1 flex gap-3 flex-col"></div>
+                <div class="flex-1 flex gap-3 flex-col"></div>
                 <div class="flex-1 flex gap-3 flex-col">
                   <div class="p-3 border-l-4 border-solid border-gb-4 rounded-l dark:text-white/80">
-                    <h2 class="text-lg font-bold mt-0 mb-2">Application</h2>
-                    <p class="mt-0 mb-3 line-height-3">REST API and related documentation.</p>
+                    <h2 class="text-lg font-bold mt-0 mb-2">Database mirroring</h2>
+                    <p class="mt-0 mb-3 line-height-3">Develop infrastructure for mirroring.</p>
                     <div class="border-2 border-solid border-gb-4 rounded">
                       <div
                         class="border-2 border-solid border-gb-4 rounded"
-                        style="width: 15%"
+                        style="width: 0%"
                       ></div>
                     </div>
                   </div>
@@ -271,28 +169,14 @@ import SectionLayout from '@/components/layout/SectionLayout.vue'
                 </div>
                 <div class="flex-1 flex gap-3 flex-col">
                   <div class="p-3 border-l-4 border-solid border-gg-2 rounded-l dark:text-white/80">
-                    <h2 class="text-lg font-bold mt-0 mb-2">Tables Display</h2>
+                    <h2 class="text-lg font-bold mt-0 mb-2">Theme update</h2>
                     <p class="mt-0 mb-3 line-height-3">
-                      Re-design, update layout (+intuitive, +control)
+                      UI components, design, general improvements.
                     </p>
                     <div class="border-2 border-solid border-gg-2 rounded">
                       <div
                         class="border-2 border-solid border-gg-2 rounded"
-                        style="width: 100%"
-                      ></div>
-                    </div>
-                  </div>
-                </div>
-                <div class="flex-1 flex gap-3 flex-col">
-                  <div class="p-3 border-l-4 border-solid border-gg-2 rounded-l dark:text-white/80">
-                    <h2 class="text-lg font-bold mt-0 mb-2">Theme Update</h2>
-                    <p class="mt-0 mb-3 line-height-3">
-                      UI components, design, dark theme (web browser), ...
-                    </p>
-                    <div class="border-2 border-solid border-gg-2 rounded">
-                      <div
-                        class="border-2 border-solid border-gg-2 rounded"
-                        style="width: 85%"
+                        style="width: 15%"
                       ></div>
                     </div>
                   </div>
@@ -306,10 +190,13 @@ import SectionLayout from '@/components/layout/SectionLayout.vue'
                     <div class="border-2 border-solid border-gg-2 rounded">
                       <div
                         class="border-2 border-solid border-gg-2 rounded"
-                        style="width: 15%"
+                        style="width: 5%"
                       ></div>
                     </div>
                   </div>
+                </div>
+                <div class="flex-1 flex gap-3 flex-col"></div>
+                <div class="flex-1 flex gap-3 flex-col">
                   <div class="p-3 border-l-4 border-solid border-gg-2 rounded-l dark:text-white/80">
                     <h2 class="text-lg font-bold mt-0 mb-2">Web Accessibility</h2>
                     <p class="mt-0 mb-3 line-height-3">
@@ -323,7 +210,6 @@ import SectionLayout from '@/components/layout/SectionLayout.vue'
                     </div>
                   </div>
                 </div>
-                <div class="flex-1 flex gap-3 flex-col"></div>
               </div>
             </div>
             <!-- SHOWCASE ------------------ -->
@@ -336,26 +222,14 @@ import SectionLayout from '@/components/layout/SectionLayout.vue'
                 </div>
                 <div class="flex-1 flex gap-3 flex-col">
                   <div class="p-3 border-l-4 border-solid border-gg-1 rounded-l dark:text-white/80">
-                    <h2 class="text-lg font-bold mt-0 mb-2">Documentation</h2>
-                    <p class="mt-0 mb-3 line-height-3">Add documentation.</p>
-                    <div class="border-2 border-solid border-gg-1 rounded">
-                      <div
-                        class="border-2 border-solid border-gg-1 rounded"
-                        style="width: 100%"
-                      ></div>
-                    </div>
-                  </div>
-                </div>
-                <div class="flex-1 flex gap-3 flex-col">
-                  <div class="p-3 border-l-4 border-solid border-gg-1 rounded-l dark:text-white/80">
-                    <h2 class="text-lg font-bold mt-0 mb-2">Feedback</h2>
+                    <h2 class="text-lg font-bold mt-0 mb-2">bedRMod</h2>
                     <p class="mt-0 mb-3 line-height-3">
-                      A&A functionalities, user upload, roll up, update roadmap, ...
+                      bedRMod community development (euf-specs).
                     </p>
                     <div class="border-2 border-solid border-gg-1 rounded">
                       <div
                         class="border-2 border-solid border-gg-1 rounded"
-                        style="width: 100%"
+                        style="width: 20%"
                       ></div>
                     </div>
                   </div>
@@ -363,17 +237,16 @@ import SectionLayout from '@/components/layout/SectionLayout.vue'
                 <div class="flex-1 flex gap-3 flex-col">
                   <div class="p-3 border-l-4 border-solid border-gg-1 rounded-l dark:text-white/80">
                     <h2 class="text-lg font-bold mt-0 mb-2">Modomics</h2>
-                    <p class="mt-0 mb-3 line-height-3">
-                      Link with Sci-ModoM (functionality), synchronize efforts.
-                    </p>
+                    <p class="mt-0 mb-3 line-height-3">Integration with Modomics (RNome project)</p>
                     <div class="border-2 border-solid border-gg-1 rounded">
                       <div
                         class="border-2 border-solid border-gg-1 rounded"
-                        style="width: 75%"
+                        style="width: 0%"
                       ></div>
                     </div>
                   </div>
                 </div>
+                <div class="flex-1 flex gap-3 flex-col"></div>
                 <div class="flex-1 flex gap-3 flex-col"></div>
               </div>
             </div>

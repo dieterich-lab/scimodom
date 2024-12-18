@@ -23,7 +23,7 @@ for more details.
 Dependencies
 ^^^^^^^^^^^^
 
-Sci-ModoM depends on `Bedtools <https://bedtools.readthedocs.io/en/latest/>`_ v2.31.0. There is nothing to do for production. The version is specified in the `Dockerfile <https://github.com/dieterich-lab/scimodom/blob/7d4dad0f69c5c7d9988d5dcc9c51eba4ddfdc61b/docker/app_container/Dockerfile>`_. For development, it is recommended to use `pre-compiled binaries <https://bedtools.readthedocs.io/en/latest/content/installation.html#downloading-a-pre-compiled-binary>`_ with the correct version number.
+Sci-ModoM depends on `Bedtools <https://bedtools.readthedocs.io/en/latest/>`_ v2.31.0. There is nothing to do for production. The version is specified in the `Dockerfile <https://github.com/dieterich-lab/scimodom/blob/master/docker/app_container/Dockerfile>`_. For development, it is recommended to use `pre-compiled binaries <https://bedtools.readthedocs.io/en/latest/content/installation.html#downloading-a-pre-compiled-binary>`_ with the correct version number.
 
 Production setup
 ----------------
@@ -145,7 +145,15 @@ The first time, you need to install the local packages that the project needs, g
 
   npm install
 
-This creates a *node_modules* folder. You are now ready to bring up the frontend
+This creates a *node_modules* folder. Now set up your environment configuration in *client/.env*:
+
+.. code-block:: bash
+
+  VITE_API_BASE_URL=http://127.0.0.1:5000/api/v0/
+
+See also `API URL and version <https://dieterich-lab.github.io/scimodom/installation.html#api-url-and-version>`_.
+
+You are now ready to bring up the frontend
 
 .. code-block:: bash
 
@@ -195,7 +203,7 @@ To execute the tests, run under the *server* directory:
 Test automation
 """""""""""""""
 
-The Bedtools version is specified in the `Jenkinsfile <https://github.com/dieterich-lab/scimodom/blob/7d4dad0f69c5c7d9988d5dcc9c51eba4ddfdc61b/Jenkinsfile>`_.
+The Bedtools version is specified in the `Jenkinsfile <https://github.com/dieterich-lab/scimodom/blob/master/Jenkinsfile>`_.
 
 Database schema updates
 """""""""""""""""""""""

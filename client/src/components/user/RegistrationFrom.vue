@@ -27,13 +27,13 @@ const validationSchema = yup.object({
     .label('Email address'),
   password: yup
     .string()
-    .required('Password is required')
+    .required('Password is required!')
     .min(8, 'min 8 characters')
     .label('Password'),
   passwordConfirm: yup
     .string()
-    .oneOf([yup.ref('password')], 'Passwords must match')
-    .required('Required field')
+    .oneOf([yup.ref('password')], 'Passwords must match!')
+    .required('Password is required!')
     .label('Password confirmation')
 })
 const { defineField, handleSubmit, errors } = useForm<FormData>({

@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/), and this 
 
 ### Changed
 
+- API version management
 - utils
 - Error handling
 - Documentation

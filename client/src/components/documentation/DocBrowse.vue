@@ -43,7 +43,7 @@ import img4 from '@/assets/images/docs/browse4.png'
       aggregated site-wise into bedRMod. Each dataset can be downloaded as a
       <a
         class="text-primary-500 hover:text-secondary-500"
-        href="https://dieterich-lab.github.io/scimodom/bedrmod.html"
+        href="https://dieterich-lab.github.io/euf-specs/"
         target="_blank"
         rel="noopener noreferrer"
         >bedRMod</a

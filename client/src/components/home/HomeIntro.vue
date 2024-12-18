@@ -19,7 +19,7 @@ import SectionLayout from '@/components/layout/SectionLayout.vue'
     </div>
     <div class="flex justify-center mt-4 animate-pulse">
       <a href="https://humanrnomeproject.org" target="_blank" rel="noopener noreferrer">
-        <Button icon="pi pi-arrow-right" label="Learn more" rounded />
+        <Button icon="pi pi-arrow-right" label="Learn more about the RNome project" rounded />
       </a>
     </div>
     <div class="flex justify-center mt-4 py-4">
