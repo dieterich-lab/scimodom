@@ -2,9 +2,9 @@ import {
   type Selection,
   type ModificationType,
   type Technology,
-  type Taxa,
   type Cto
 } from '@/services/selection'
+import { type Taxa } from '@/services/taxa'
 import type { Chrom } from '@/services/chrom'
 
 type SearchBy = 'Modification' | 'Gene/Chrom'

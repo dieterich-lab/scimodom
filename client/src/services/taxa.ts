@@ -5,7 +5,7 @@ import { HTTP } from '@/services/API'
 interface Taxa {
   domain: string
   kingdom: string | null
-  phylum: string | null
+  phylum?: string | null
   taxa_id: number
   taxa_name: string
   taxa_sname: string
