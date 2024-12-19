@@ -130,7 +130,7 @@ class SunburstService:
 
     @staticmethod
     def trigger_background_update():
-        run(["flask --app scimodom.app", "sunburst-update"])
+        run(["flask", "--app", "scimodom.app", "sunburst-update"])
 
     def do_background_update(self):
         def update_all():
