@@ -9,11 +9,9 @@ import SectionLayout from '@/components/layout/SectionLayout.vue'
           <span>Roadmap</span>
         </h1>
         <p class="text-xl font-medium text-gray-600 p-4 dark:text-surface-400">
-          We are working hard to improve Sci-ModoM, and we want to share our ideas for 2025. These
-          are planned to be implemented in parallel to any regular maintenance work involving review
-          of issues, PRs and support to the wider community. The roadmap will be updated regularly
-          to reflect changes. Substantial development work may extend through more than one quarter
-          and into 2026.
+          We are working hard to improve Sci-ModoM, and we want to share our ideas for 2025/2026.
+          These are planned to be implemented in parallel to any regular maintenance work involving
+          review of issues, PRs and support to the wider community.
         </p>
       </div>
       <!-- ROADMAP ---- -->
@@ -24,22 +22,22 @@ import SectionLayout from '@/components/layout/SectionLayout.vue'
             <div
               class="flex-1 bg-slate-400 text-white font-bold text-center p-3 text-xl border-solid rounded-md dark:text-surface-900"
             >
-              Q1
+              Q1/Q2
             </div>
             <div
               class="flex-1 bg-slate-400 text-white font-bold text-center p-3 text-xl border-solid rounded-md dark:text-surface-900"
             >
-              Q2
+              Q3/Q4
             </div>
             <div
               class="flex-1 bg-slate-400 text-white font-bold text-center p-3 text-xl border-solid rounded-md dark:text-surface-900"
             >
-              Q3
+              Q5/Q6
             </div>
             <div
               class="flex-1 bg-slate-400 text-white font-bold text-center p-3 text-xl border-solid rounded-md dark:text-surface-900"
             >
-              Q4
+              Q7/Q8
             </div>
           </div>
           <!-- FUNCTIONALITY ----------- -->
@@ -52,18 +50,19 @@ import SectionLayout from '@/components/layout/SectionLayout.vue'
               </div>
               <div class="flex-1 flex gap-3 flex-col">
                 <div class="p-3 border-l-4 border-solid border-gb-2 rounded-l dark:text-white/80">
-                  <h2 class="text-lg font-bold mt-0 mb-2">Data Annotation</h2>
+                  <h2 class="text-lg font-bold mt-0 mb-2">Data Annotation & Features</h2>
                   <p class="mt-0 mb-3 leading-tight">
-                    Interactome resources, sequence context, easy-to-decode summary statistics, ...
+                    Interactome resources, sequence context, and more ...
                   </p>
                   <div class="border-2 border-solid border-gb-2 rounded">
                     <div class="border-2 border-solid border-gb-2 rounded" style="width: 15%"></div>
                   </div>
                 </div>
                 <div class="p-3 border-l-4 border-solid border-gb-2 rounded-l dark:text-white/80">
-                  <h2 class="text-lg font-bold mt-0 mb-2">Assembly & Annotation</h2>
+                  <h2 class="text-lg font-bold mt-0 mb-2">Database</h2>
                   <p class="mt-0 mb-3 line-height-3">
-                    Add version and cache management, upgrade DB.
+                    Add version (assembly, annotation) and cache management, upgrade DB to latest
+                    version.
                   </p>
                   <div class="border-2 border-solid border-gb-2 rounded">
                     <div class="border-2 border-solid border-gb-2 rounded" style="width: 0%"></div>
@@ -73,18 +72,11 @@ import SectionLayout from '@/components/layout/SectionLayout.vue'
               <div class="flex-1 flex gap-3 flex-col">
                 <div class="p-3 border-l-4 border-solid border-gb-2 rounded-l dark:text-white/80">
                   <h2 class="text-lg font-bold mt-0 mb-2">Assembly & Annotation</h2>
-                  <p class="mt-0 mb-3 line-height-3">Add more species and data.</p>
-                  <div class="border-2 border-solid border-gb-2 rounded">
-                    <div class="border-2 border-solid border-gb-2 rounded" style="width: 0%"></div>
-                  </div>
-                </div>
-                <div class="p-3 border-l-4 border-solid border-gb-2 rounded-l dark:text-white/80">
-                  <h2 class="text-lg font-bold mt-0 mb-2">API</h2>
                   <p class="mt-0 mb-3 line-height-3">
-                    Extend REST API (data management and more), API documentation.
+                    Add more species (model organisms) and data.
                   </p>
                   <div class="border-2 border-solid border-gb-2 rounded">
-                    <div class="border-2 border-solid border-gb-2 rounded" style="width: 15%"></div>
+                    <div class="border-2 border-solid border-gb-2 rounded" style="width: 0%"></div>
                   </div>
                 </div>
               </div>
@@ -96,8 +88,6 @@ import SectionLayout from '@/components/layout/SectionLayout.vue'
                     <div class="border-2 border-solid border-gb-2 rounded" style="width: 0%"></div>
                   </div>
                 </div>
-              </div>
-              <div class="flex-1 flex gap-3 flex-col">
                 <div class="p-3 border-l-4 border-solid border-gb-2 rounded-l dark:text-white/80">
                   <h2 class="text-lg font-bold mt-0 mb-2">RNA Processing</h2>
                   <p class="mt-0 mb-3 line-height-3">Integrate RNA processing.</p>
@@ -105,6 +95,8 @@ import SectionLayout from '@/components/layout/SectionLayout.vue'
                     <div class="border-2 border-solid border-gb-2 rounded" style="width: 0%"></div>
                   </div>
                 </div>
+              </div>
+              <div class="flex-1 flex gap-3 flex-col">
                 <div class="p-3 border-l-4 border-solid border-gb-2 rounded-l dark:text-white/80">
                   <h2 class="text-lg font-bold mt-0 mb-2">Data Download</h2>
                   <p class="mt-0 mb-3 line-height-3">
@@ -131,6 +123,21 @@ import SectionLayout from '@/components/layout/SectionLayout.vue'
                 >
                   Infrastructure
                 </div>
+                <div class="flex-1 flex gap-3 flex-col"></div>
+                <div class="flex-1 flex gap-3 flex-col">
+                  <div class="p-3 border-l-4 border-solid border-gb-4 rounded-l dark:text-white/80">
+                    <h2 class="text-lg font-bold mt-0 mb-2">REST API</h2>
+                    <p class="mt-0 mb-3 line-height-3">
+                      Extend and validate API (data management and more).
+                    </p>
+                    <div class="border-2 border-solid border-gb-4 rounded">
+                      <div
+                        class="border-2 border-solid border-gb-4 rounded"
+                        style="width: 15%"
+                      ></div>
+                    </div>
+                  </div>
+                </div>
                 <div class="flex-1 flex gap-3 flex-col">
                   <div class="p-3 border-l-4 border-solid border-gb-4 rounded-l dark:text-white/80">
                     <h2 class="text-lg font-bold mt-0 mb-2">Data Management</h2>
@@ -143,8 +150,6 @@ import SectionLayout from '@/components/layout/SectionLayout.vue'
                     </div>
                   </div>
                 </div>
-                <div class="flex-1 flex gap-3 flex-col"></div>
-                <div class="flex-1 flex gap-3 flex-col"></div>
                 <div class="flex-1 flex gap-3 flex-col">
                   <div class="p-3 border-l-4 border-solid border-gb-4 rounded-l dark:text-white/80">
                     <h2 class="text-lg font-bold mt-0 mb-2">Database mirroring</h2>
@@ -181,6 +186,8 @@ import SectionLayout from '@/components/layout/SectionLayout.vue'
                     </div>
                   </div>
                 </div>
+                <div class="flex-1 flex gap-3 flex-col"></div>
+                <div class="flex-1 flex gap-3 flex-col"></div>
                 <div class="flex-1 flex gap-3 flex-col">
                   <div class="p-3 border-l-4 border-solid border-gg-2 rounded-l dark:text-white/80">
                     <h2 class="text-lg font-bold mt-0 mb-2">Responsive Design</h2>
@@ -194,9 +201,6 @@ import SectionLayout from '@/components/layout/SectionLayout.vue'
                       ></div>
                     </div>
                   </div>
-                </div>
-                <div class="flex-1 flex gap-3 flex-col"></div>
-                <div class="flex-1 flex gap-3 flex-col">
                   <div class="p-3 border-l-4 border-solid border-gg-2 rounded-l dark:text-white/80">
                     <h2 class="text-lg font-bold mt-0 mb-2">Web Accessibility</h2>
                     <p class="mt-0 mb-3 line-height-3">
@@ -224,7 +228,7 @@ import SectionLayout from '@/components/layout/SectionLayout.vue'
                   <div class="p-3 border-l-4 border-solid border-gg-1 rounded-l dark:text-white/80">
                     <h2 class="text-lg font-bold mt-0 mb-2">bedRMod</h2>
                     <p class="mt-0 mb-3 line-height-3">
-                      bedRMod community development (euf-specs).
+                      bedRMod specs and tools community development (euf-specs).
                     </p>
                     <div class="border-2 border-solid border-gg-1 rounded">
                       <div
@@ -246,7 +250,7 @@ import SectionLayout from '@/components/layout/SectionLayout.vue'
                     </div>
                   </div>
                 </div>
-                <div class="flex-1 flex gap-3 flex-col"></div>
+                <!-- <div class="flex-1 flex gap-3 flex-col"></div> -->
                 <div class="flex-1 flex gap-3 flex-col"></div>
               </div>
             </div>
