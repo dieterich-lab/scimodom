@@ -1,13 +1,11 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import { type Taxa } from '@/services/taxa'
-import { taxaSelectionCache } from '@/services/selection'
+import { ref, onMounted } from 'vue'
+import { type Taxa, taxaCache } from '@/services/taxa'
 import CascadeSelect, { type CascadeSelectChangeEvent } from 'primevue/cascadeselect'
 import { type CascadeItem, getOptionsForPrimvueCascadeSelect } from '@/utils/primevue'
 import { GENERIC_FIELD_DEFAULTS, type GenericFieldProps } from '@/utils/ui_style'
 
 interface Props extends GenericFieldProps {
-  modificationIds?: number[]
   placeholder?: string
   disabled?: boolean
 }
@@ -25,23 +23,20 @@ const emit = defineEmits<{
 
 const options = ref<CascadeItem<Taxa>[]>([])
 
-watch(
-  () => props.modificationIds,
-  () => {
-    taxaSelectionCache.getData().then((data) => {
-      const rawOptions = data.map((x) => {
-        return { ...x, kingdom: x.kingdom ? x.kingdom : x.domain }
-      })
-      options.value = getOptionsForPrimvueCascadeSelect(rawOptions, ['kingdom', 'taxa_sname'])
+onMounted(() => {
+  taxaCache.getData().then((data) => {
+    const rawOptions = data.map((x) => {
+      return { ...x, kingdom: x.kingdom ? x.kingdom : x.domain }
     })
-  },
-  { immediate: true }
-)
+    options.value = getOptionsForPrimvueCascadeSelect(rawOptions, ['kingdom', 'taxa_sname'])
+  })
+})
 
 function change(data: CascadeSelectChangeEvent) {
   emit('change', data.value)
 }
 </script>
+
 <template>
   <CascadeSelect
     v-model="model"

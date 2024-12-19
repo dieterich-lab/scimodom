@@ -3,7 +3,7 @@ import { ref, computed } from 'vue'
 import TaxaSelection from '@/components/ui/TaxaSelection.vue'
 import DatasetSelectionMulti from '@/components/ui/DatasetSelectionMulti.vue'
 import { type Dataset, getDatasetsByTaxaId } from '@/services/dataset'
-import { type Taxa } from '@/services/selection'
+import { type Taxa } from '@/services/taxa'
 import { type ResultStepA } from '@/utils/comparison'
 
 const model = defineModel<ResultStepA>()

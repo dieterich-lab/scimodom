@@ -16,7 +16,7 @@ interface FormData {
 const dialogState = useDialogState()
 
 const validationSchema = yup.object({
-  email: yup.string().required('required field').email('invalid email').label('Email address')
+  email: yup.string().required('Email is required!').email('Invalid email!').label('Email address')
 })
 const { defineField, handleSubmit, errors } = useForm<FormData>({
   validationSchema: validationSchema

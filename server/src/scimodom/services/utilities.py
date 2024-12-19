@@ -53,7 +53,8 @@ class UtilitiesService:
         )
         return [
             {
-                "id": row.Taxa.id,
+                "taxa_id": row.Taxa.id,
+                "taxa_name": row.Taxa.name,
                 "taxa_sname": row.Taxa.short_name,
                 "domain": row.Taxonomy.domain,
                 "kingdom": row.Taxonomy.kingdom,

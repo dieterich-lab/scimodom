@@ -2,7 +2,7 @@
 import { useId } from 'vue'
 import { type Modomics } from '@/services/modomics'
 import FormFieldWrapper from '@/components/ui/FormFieldWrapper.vue'
-import ModomicsSelection from '@/components/ui/ModomicsSelection.vue'
+import ModomicsSelect from '@/components/ui/ModomicsSelect.vue'
 import { type FormFieldProps, FORM_FIELD_DEFAULTS } from '@/utils/ui_style'
 
 withDefaults(defineProps<FormFieldProps>(), FORM_FIELD_DEFAULTS)
@@ -21,7 +21,7 @@ const id = useId()
   <FormFieldWrapper :field-id="id" :error="error" :ui-style="uiStyle">
     <template v-slot:label>Modification</template>
     <template v-slot:field>
-      <ModomicsSelection
+      <ModomicsSelect
         v-model="model"
         :id="id"
         :markAsError="!!error"

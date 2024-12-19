@@ -21,20 +21,12 @@ import SectionLayout from '@/components/layout/SectionLayout.vue'
             Support and promote the
             <a
               class="text-primary-500 hover:text-secondary-500"
-              href="https://dieterich-lab.github.io/scimodom/bedrmod.html"
+              href="https://dieterich-lab.github.io/euf-specs/"
               target="_blank"
               rel="noopener noreferrer"
               >bedRMod</a
             >
-            format. This format is similar to the
-            <a
-              class="text-primary-500 hover:text-secondary-500"
-              href="https://www.encodeproject.org/data-standards/wgbs/"
-              target="_blank"
-              rel="noopener noreferrer"
-              >ENCODE bedMethyl</a
-            >
-            format (BED9+2).
+            format.
           </span>
         </div>
         <div class="col-12 md:col-4 mb-4 px-5">
@@ -53,7 +45,7 @@ import SectionLayout from '@/components/layout/SectionLayout.vue'
           </span>
           <div class="text-900 text-xl mb-3 font-medium dark:text-white/80">Tools</div>
           <span class="text-700 line-height-3 dark:text-white/80">
-            Search and compare modifications across datasets.
+            Search and compare modifications across datasets. Annotation, interactome.
           </span>
         </div>
         <div class="col-12 md:col-4 mb-4 px-5">
@@ -93,16 +85,16 @@ import SectionLayout from '@/components/layout/SectionLayout.vue'
           <span class="p-3 shadow-2 mb-3 inline-block surface-card" style="border-radius: 10px">
             <i class="pi pi-list text-4xl text-primary-500 dark:text-secondary-500"></i>
           </span>
-          <div class="text-900 text-xl mb-3 font-medium dark:text-white/80">RNA processing</div>
+          <div class="text-900 text-xl mb-3 font-medium dark:text-white/80">More...</div>
           <span class="text-700 line-height-3 dark:text-white/80">
-            Integration of RNA processing and RNA-modification-aware MS data.</span
+            Addition of RNA types (tRNA, rRNA), integration of RNA processing events.</span
           >
         </div>
       </div>
     </div>
     <div class="flex justify-center mt-8 animate-pulse">
       <RouterLink :to="{ name: 'about-docs' }">
-        <Button icon="pi pi-arrow-right" label="Learn more" rounded />
+        <Button icon="pi pi-arrow-right" label="Learn more about Sci-ModoM" rounded />
       </RouterLink>
     </div>
   </SectionLayout>

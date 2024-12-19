@@ -53,21 +53,24 @@ class MockUtilitiesService:
     def get_taxa() -> list[dict[str, Any]]:
         return [
             {
-                "id": 9606,
+                "taxa_id": 9606,
+                "taxa_name": "Homo sapiens",
                 "taxa_sname": "H. sapiens",
                 "domain": "Eukarya",
                 "kingdom": "Animalia",
                 "phylum": "Chordata",
             },
             {
-                "id": 10090,
+                "taxa_id": 10090,
+                "taxa_name": "Mus musculus",
                 "taxa_sname": "M. musculus",
                 "domain": "Eukarya",
                 "kingdom": "Animalia",
                 "phylum": "Chordata",
             },
             {
-                "id": 7227,
+                "taxa_id": 7227,
+                "taxa_name": "Drosophila melanogaster",
                 "taxa_sname": "D. melanogaster",
                 "domain": "Eukarya",
                 "kingdom": "Animalia",

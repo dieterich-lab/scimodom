@@ -35,16 +35,16 @@ def register_user():
         return create_error_response(
             403,
             "User exists",
-            "A user with this email address already exists.\nA password reset may work.",
+            "User already exists.\nTry to reset your password.",
         )
     except SMTPException as e:
         logger.error(f"Failed to send registration email: {e}")
         return create_error_response(
             500,
             "Failed to send registration email",
-            "We failed to send the email with your registration password.\n"
-            "Please check the email address you supplied.\n"
-            "If this is not the problem please contact the system administrator.",
+            "Failed to send registration email.\n"
+            "Make sure the email address is valid.\n"
+            "If the problem persists, contact the system administrator.",
         )
 
 
@@ -71,9 +71,9 @@ def request_password_reset():
         return create_error_response(
             404,
             "Unknown user",
-            "We have no user with that email address.\n"
-            "You might have registered with another one or misspelled it.\n"
-            "If it looks correct, please consider to register a new account.",
+            "There is no user with this email address.\n"
+            "Make sure this is the same address used for registration.\n"
+            "If the problem persists, contact the system administrator.",
         )
     return jsonify({"result": "OK"})
 

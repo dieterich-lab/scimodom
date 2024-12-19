@@ -1,29 +1,34 @@
 <script setup lang="ts">
 import { useId } from 'vue'
-import { type DetectionMethod } from '@/services/detection_method'
+import { type Assembly } from '@/services/assembly'
 import FormFieldWrapper from '@/components/ui/FormFieldWrapper.vue'
-import DetectionMethodSelection from '@/components/ui/DetectionMethodSelection.vue'
+import AssemblySelect from '@/components/ui/AssemblySelect.vue'
 import { type FormFieldProps, FORM_FIELD_DEFAULTS } from '@/utils/ui_style'
 
-withDefaults(defineProps<FormFieldProps>(), FORM_FIELD_DEFAULTS)
+interface Props extends FormFieldProps {
+  taxaId?: number
+}
 
-const model = defineModel<DetectionMethod>()
+withDefaults(defineProps<Props>(), FORM_FIELD_DEFAULTS)
 
-const emit = defineEmits<{ (e: 'change', method: DetectionMethod): void }>()
+const model = defineModel<Assembly>()
 
-function change(method: DetectionMethod): void {
-  emit('change', method)
+const emit = defineEmits<{ (e: 'change', assembly: Assembly): void }>()
+
+function change(assembly: Assembly): void {
+  emit('change', assembly)
 }
 
 const id = useId()
 </script>
 <template>
   <FormFieldWrapper :field-id="id" :error="error" :ui-style="uiStyle">
-    <template v-slot:label>Method</template>
+    <template v-slot:label>Assembly</template>
     <template v-slot:field>
-      <DetectionMethodSelection
+      <AssemblySelect
         v-model="model"
         :id="id"
+        :taxa-id="taxaId"
         :markAsError="!!error"
         :ui-style="uiStyle"
         @change="change"

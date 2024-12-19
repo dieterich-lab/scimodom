@@ -115,10 +115,15 @@ import img2 from '@/assets/images/docs/about2.png'
       >.
     </p>
     <p class="indent-4 text-xl leading-relaxed mt-4 mb-2">
-      Consult our development plan for 2024
+      Check out the latest features
       <RouterLink class="pl-2 animate-pulse" :to="{ name: 'roadmap' }">
         <!-- <a class="pl-2 animate-pulse" href="https://www.trr319-rmap.de" target="_blank" rel="noopener noreferrer"> -->
-        <Button icon="pi pi-arrow-right" size="small" label="Learn more" rounded />
+        <Button
+          icon="pi pi-arrow-right"
+          size="small"
+          label="Learn more about our development plan for 2025"
+          rounded
+        />
       </RouterLink>
     </p>
   </div>

@@ -5,18 +5,18 @@ import { useForm, useFieldArray, type FieldEntry } from 'vee-validate'
 import { object, array, string, number } from 'yup'
 
 import SectionLayout from '@/components/layout/SectionLayout.vue'
-import FormRnaTypeSelection from '@/components/ui/FormRnaTypeSelection.vue'
-import FormModomicsSelection from '@/components/ui/FormModomicsSelection.vue'
-import FormDetectionMethodSelection from '@/components/ui/FormDetectionMethodSelection.vue'
-import FormTaxaSelection from '@/components/ui/FormTaxaSelection.vue'
-import FormAssemblySelection from '@/components/ui/FormAssemblySelection.vue'
+import FormRnaTypeSelect from '@/components/ui/FormRnaTypeSelect.vue'
+import FormModomicsSelect from '@/components/ui/FormModomicsSelect.vue'
+import FormDetectionMethodSelect from '@/components/ui/FormDetectionMethodSelect.vue'
+import FormTaxaSelect from '@/components/ui/FormTaxaSelect.vue'
+import FormAssemblySelect from '@/components/ui/FormAssemblySelect.vue'
 import FormTextInput from '@/components/ui/FormTextInput.vue'
 import FormTextArea from '@/components/ui/FormTextArea.vue'
 import { type RnaType } from '@/services/rna_type'
 import { type ProjectMetaData, type ProjectOrganism } from '@/services/management'
 import { type Modomics } from '@/services/modomics'
 import { type DetectionMethod } from '@/services/detection_method'
-import { type Taxa } from '@/services/selection'
+import { type Taxa } from '@/services/taxa'
 import { type Assembly } from '@/services/assembly'
 
 interface FormOrganism extends Partial<Omit<ProjectOrganism, 'taxa_id'>> {
@@ -167,17 +167,17 @@ function selectAssembly(field: FieldEntry<FormDataMetadata>, data: Assembly) {
           v-for="(field, idx) in fields"
           :key="field.key"
         >
-          <FormRnaTypeSelection
+          <FormRnaTypeSelect
             :error="errors[`metadata[${idx}].rna`]"
             @change="(rnaType) => selectRnaType(field, rnaType)"
           />
 
-          <FormModomicsSelection
+          <FormModomicsSelect
             :error="errors[`metadata[${idx}].modomics_id`]"
             @change="(data) => selectModomics(field, data)"
           />
 
-          <FormDetectionMethodSelection
+          <FormDetectionMethodSelect
             :error="errors[`metadata[${idx}].method_id`]"
             @change="(method) => selectDetectionMethod(field, method)"
           />
@@ -190,7 +190,7 @@ function selectAssembly(field: FieldEntry<FormDataMetadata>, data: Assembly) {
             Technology
           </FormTextInput>
 
-          <FormTaxaSelection
+          <FormTaxaSelect
             @change="(data) => selectTaxa(field, data)"
             :error="errors[`metadata[${idx}].organism.taxa_id`]"
           />
@@ -203,7 +203,7 @@ function selectAssembly(field: FieldEntry<FormDataMetadata>, data: Assembly) {
             Cell, tissue, organ
           </FormTextInput>
 
-          <FormAssemblySelection
+          <FormAssemblySelect
             :taxa-id="field.value.organism.taxa_id ? +field.value.organism.taxa_id : undefined"
             @change="(data) => selectAssembly(field, data)"
             :error="errors[`metadata[${idx}].organism.assembly_id`]"

@@ -11,10 +11,10 @@ import InstructionsText from '@/components/ui/InstructionsText.vue'
 import FormTextInput from '@/components/ui/FormTextInput.vue'
 import FormProjectSelection from '@/components/ui/FormProjectSelection.vue'
 import FormTempFileUploader from '@/components/ui/FormTempFileUploader.vue'
-import FormRnaTypeSelection from '@/components/ui/FormRnaTypeSelection.vue'
+import FormRnaTypeSelect from '@/components/ui/FormRnaTypeSelect.vue'
 import FormMultiModificationTypeSelection from '@/components/ui/FormMultiModificationTypeSelection.vue'
 import FormCtoSelection from '@/components/ui/FormCtoSelection.vue'
-import FormAssemblySelection from '@/components/ui/FormAssemblySelection.vue'
+import FormAssemblySelect from '@/components/ui/FormAssemblySelect.vue'
 import FormTechnologySelection from '@/components/ui/FormTechnologySelection.vue'
 
 import { type Project } from '@/services/project'
@@ -187,11 +187,7 @@ function selectTechnology(data: Technology) {
           Dataset title
         </FormTextInput>
 
-        <FormRnaTypeSelection
-          v-model="rnaTypeRef"
-          :error="errors.rna_type"
-          @change="selectRnaType"
-        />
+        <FormRnaTypeSelect v-model="rnaTypeRef" :error="errors.rna_type" @change="selectRnaType" />
 
         <FormMultiModificationTypeSelection
           v-model="modificationTypes"
@@ -207,7 +203,7 @@ function selectTechnology(data: Technology) {
           @change="selectOrganism"
         />
 
-        <FormAssemblySelection
+        <FormAssemblySelect
           v-model="assemblyRef"
           :taxa-id="ctoRef?.taxa_id"
           :error="errors.assembly_id"

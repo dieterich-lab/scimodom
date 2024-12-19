@@ -1,18 +1,11 @@
 import { Cache, GroupedCache } from '@/utils/cache'
 import { HTTP } from '@/services/API'
+import { type Taxa } from '@/services/taxa'
 
 interface ModificationType {
   modification_id: number
   modomics_sname: string
   rna_name: string
-}
-
-interface Taxa {
-  domain: string
-  kingdom: string | null
-  taxa_id: number
-  taxa_name: string
-  taxa_sname: string
 }
 
 interface Cto extends Taxa {
@@ -44,19 +37,20 @@ class SelectionCache extends Cache<Selection[]> {
 }
 
 const selectionsCache = new SelectionCache()
-const modificationTypeCache: GroupedCache<ModificationType, Selection, number> = new GroupedCache(
-  selectionsCache,
-  (x) => x.modification_id,
-  (x) => {
-    return {
-      modification_id: x.modification_id,
-      modomics_sname: x.modomics_sname,
-      rna_name: x.rna_name
+const modificationTypeSelectionCache: GroupedCache<ModificationType, Selection, number> =
+  new GroupedCache(
+    selectionsCache,
+    (x) => x.modification_id,
+    (x) => {
+      return {
+        modification_id: x.modification_id,
+        modomics_sname: x.modomics_sname,
+        rna_name: x.rna_name
+      }
     }
-  }
-)
+  )
 
-const taxaCache: GroupedCache<Taxa, Selection, number> = new GroupedCache(
+const taxaSelectionCache: GroupedCache<Taxa, Selection, number> = new GroupedCache(
   selectionsCache,
   (x) => x.taxa_id,
   (x) => ({
@@ -68,7 +62,7 @@ const taxaCache: GroupedCache<Taxa, Selection, number> = new GroupedCache(
   })
 )
 
-const ctoCache: GroupedCache<Cto, Selection, number> = new GroupedCache(
+const ctoSelectionCache: GroupedCache<Cto, Selection, number> = new GroupedCache(
   selectionsCache,
   (x) => x.organism_id,
   (x) => ({
@@ -82,7 +76,7 @@ const ctoCache: GroupedCache<Cto, Selection, number> = new GroupedCache(
   })
 )
 
-const technologyCache: GroupedCache<Technology, Selection, number> = new GroupedCache(
+const technologySelectionCache: GroupedCache<Technology, Selection, number> = new GroupedCache(
   selectionsCache,
   (x) => x.technology_id,
   (x) => {
@@ -102,7 +96,7 @@ async function getCtosByModificationIds(modificationIds: number[]): Promise<Cto[
       organismIds.add(item.organism_id)
     }
   }
-  return (await ctoCache.getData()).filter((x) => organismIds.has(x.organism_id))
+  return (await ctoSelectionCache.getData()).filter((x) => organismIds.has(x.organism_id))
 }
 
 async function getTechnologiesByModificationIdsAndOrganismId(
@@ -115,7 +109,9 @@ async function getTechnologiesByModificationIdsAndOrganismId(
       technologyIds.add(item.technology_id)
     }
   }
-  return (await technologyCache.getData()).filter((x) => technologyIds.has(x.technology_id))
+  return (await technologySelectionCache.getData()).filter((x) =>
+    technologyIds.has(x.technology_id)
+  )
 }
 
 async function getSelectionsByIds(
@@ -136,7 +132,7 @@ async function getSelectionsByTaxaId(taxaId: number): Promise<Selection[]> {
 }
 
 async function getTechnologiesByIds(technologyIds: number[]): Promise<Technology[]> {
-  const canidates = (await technologyCache.getData()).filter((x) =>
+  const canidates = (await technologySelectionCache.getData()).filter((x) =>
     technologyIds.includes(x.technology_id)
   )
   if (canidates.length > 0) {
@@ -149,20 +145,19 @@ async function getTechnologiesByIds(technologyIds: number[]): Promise<Technology
 }
 
 async function getModificationTypesByRnaName(rnaName: string): Promise<ModificationType[]> {
-  return (await modificationTypeCache.getData()).filter((x) => x.rna_name === rnaName)
+  return (await modificationTypeSelectionCache.getData()).filter((x) => x.rna_name === rnaName)
 }
 
 export {
   type Selection,
   type ModificationType,
-  type Taxa,
   type Cto,
   type Technology,
   selectionsCache,
-  modificationTypeCache,
-  taxaCache,
-  ctoCache,
-  technologyCache,
+  modificationTypeSelectionCache,
+  taxaSelectionCache,
+  ctoSelectionCache,
+  technologySelectionCache,
   getCtosByModificationIds,
   getTechnologiesByModificationIdsAndOrganismId,
   getSelectionsByTaxaId,

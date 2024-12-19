@@ -24,6 +24,7 @@ function change(event: DropdownChangeEvent) {
   emit('change', event.value)
 }
 </script>
+
 <template>
   <Dropdown
     v-model="model"

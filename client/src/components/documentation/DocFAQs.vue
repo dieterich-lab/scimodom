@@ -34,6 +34,30 @@
       tool. Login is not required. Data is handled securely.
     </p>
     <p class="indent-4 text-lg underline underline-offset-8 decoration-gb-4/25 font-semibold">
+      Can I get more information about the bedRMod format?
+    </p>
+    <p class="indent-4 text-lg leading-relaxed mt-2 mb-2">
+      Yes, the official specifications are available at
+      <a
+        href="https://dieterich-lab.github.io/euf-specs/"
+        class="text-primary-500 hover:text-secondary-500"
+        rel="noopener noreferrer"
+        target="_blank"
+      >
+        EU format specifications </a
+      >. Sci-ModoM imposes a few additional requirements, <span class="italic">e.g.</span>
+      only chromosomes are allowed, and they must be formatted according to the Ensembl short
+      format. For details, consult the
+      <a
+        href="https://dieterich-lab.github.io/scimodom/bedrmod.html"
+        class="text-primary-500 hover:text-secondary-500"
+        rel="noopener noreferrer"
+        target="_blank"
+      >
+        bedRMod format specification (Sci-ModoM) </a
+      >.
+    </p>
+    <p class="indent-4 text-lg underline underline-offset-8 decoration-gb-4/25 font-semibold">
       Can I propose new datasets?
     </p>
     <p class="indent-4 text-lg leading-relaxed mt-2 mb-2">

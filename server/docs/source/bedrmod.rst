@@ -3,42 +3,41 @@
 bedRMod format
 ==============
 
-The bedRMod format specification working group.
+The bedRMod format is described in the official `EU format specifications <https://dieterich-lab.github.io/euf-specs/>`_ website.
+Users should always refer to the latest version.
 
-Version v1.8. July 2024
+.. attention::
+
+  Sci-ModoM relies on the bedRMod format for data transfer and storage, but imposes a controlled vocabulary for selected
+  header fields and a strict nomenclature for chromosomes. This documentation summarizes the bedRMod format, and introduces
+  requirements for data upload to Sci-ModoM.
 
 
 The bedRMod format specification
 --------------------------------
 
-The bedRMod, previously known as the EU (epitranscriptome unified data exchange) format is similar to the `ENCODE bedMethyl <https://www.encodeproject.org/data-standards/wgbs/>`_ format (BED9+2), but includes a header. The name (4th column) must conform to the `MODOMICS <https://www.genesilico.pl/modomics/modifications>`_ nomenclature for the modification short name, and the score (5th column) is a site-specific measure of confidence.
-
-The bedRMod file is a tabulated count of base modifications from every sequencing read over each reference genomic position or modification site. It is a convenient representation of the information stored in the `MM/ML tags <http://samtools.github.io/hts-specs/SAMtags.pdf>`_ in BAM alignment files.
+A bedRMod file is a tabulated count of base modifications from every sequencing read over each reference genomic position or modification site. It is a convenient representation of the information stored in the `MM/ML tags <http://samtools.github.io/hts-specs/SAMtags.pdf>`_ in BAM alignment files. This documentation summarizes the bedRMod format, and introduces additional requirements for data upload to Sci-ModoM. Users should always refer to the official `EU format specifications (bedRMod) <https://dieterich-lab.github.io/euf-specs/>`_.
 
 .. hint::
 
   Sci-ModoM requirements
 
   A given dataset or bedRMod file can contain more than one modification, as reported in column 4 (MODOMICS short name), but this should
-  be for the same RNA type. Currently, supported RNA types are *WTS* or *whole transcriptome sequencing*. A dataset or bedRMod
-  file can only contain ONE RNA type, ONE technology, ONE organism (incl. cell type, tissue, or organ), and records from the same assembly.
-  The best way to handle treatment and/or conditions is to have as many bedRMod files as required to describe the experimental protocol, and
-  provide a meaningful title and metadata for each file.
+  be for the same RNA type. Currently, the only supported RNA types are *WTS* or *whole transcriptome sequencing*. According to the official
+  specification, a dataset or bedRMod file can only contain ONE RNA type and ONE organism (incl. cell type, tissue, or organ), and records
+  from the same assembly. This stems form the bedRMod header, which describes information for one organism, one assembly and annotation, and
+  one RNA type.
 
-
-.. attention::
-
-  Format specification for tRNA
-
-  Sci-ModoM currently does not handle tRNA annotation. We are actively working on this, and more information will be soon available...
-
+  To upload data to Sci-ModoM, in addition, bedRMod files should contain records for ONE technology only, *i.e.* ONE RNA type,
+  ONE organism, and ONE technology. The best way to handle different technologies, treatment and/or conditions is to have as many bedRMod
+  files as required to describe the experimental protocol, and provide a meaningful title and metadata for each file.
 
 
 The header section
 ^^^^^^^^^^^^^^^^^^
 
-Each line starts with a ``#`` and contains the header tag and its value, separated by a ``=``, *e.g.* ``#fileformat=bedRModv1.8``.
-As bedRMod contains data for only one organism, only one reference to organism, assembly, annotation source, and annotation version is possible.
+The header contains metainformation about the source of the data. Only one reference to organism, assembly, annotation source, and annotation
+version is possible.
 
 .. list-table:: bedRMod header
    :widths: 50 75
@@ -49,7 +48,7 @@ As bedRMod contains data for only one organism, only one reference to organism, 
    * - fileformat
      - Fileformat and version *e.g.* bedRModv1.8
    * - organism
-     - NCBI taxid
+     - NCBI taxonomic identifier
    * - modification_type
      - RNA
    * - assembly
@@ -59,7 +58,7 @@ As bedRMod contains data for only one organism, only one reference to organism, 
    * - annotation_version
      - Annotation version *e.g.* 110
    * - sequencing_platform
-     - Sequencing platform *e.g.* Illumina, ONT, *etc.*
+     - Sequencing platform *e.g.* Illumina NovaSeq 6000, *etc.*
    * - basecalling
      - Basecalling model information where relevant
    * - bioinformatics_workflow
@@ -67,7 +66,7 @@ As bedRMod contains data for only one organism, only one reference to organism, 
    * - experiment
      - Information about experimental protocol, design, *etc.* or link to *e.g.* openBIS
    * - external_source
-     - Databank;ID of data *e.g.* GEO;GSEXXXXXX
+     - Databank:ID of data *e.g.* GEO:GSEXXXXXX
 
 
 While all tags are required, ``sequencing_platform``, ``basecalling``, ``bioinformatics_workflow``, ``experiment`` or ``external_source`` can be left
@@ -92,16 +91,16 @@ empty, although it is strongly advised to provide as much information as possibl
   Sci-ModoM requirements
 
   For data upload, ``fileformat``, ``organism``, and ``assembly`` are validated. Only the latest specifications are used, and
-  only ``modification_type=RNA`` is allowed. The ``assembly`` tag entry must match exactly the assembly chosen from the dropdown menu
-  during upload, and it must follow the Ensembl nomenclature. Data does not have to be for a specific genome assembly, Sci-ModoM will
-  take care of lifting over all records to the most recent assembly for each organism. Additional user-defined tags or extra header
+  only ``modification_type=RNA`` is currently allowed. The ``assembly`` tag entry must match exactly the assembly chosen from the dropdown menu
+  during upload, and **it must follow the Ensembl nomenclature (without patch number)**. Data does not have to be for a specific genome assembly,
+  Sci-ModoM will take care of lifting over all records to the most recent assembly for each organism. Additional user-defined tags or extra header
   lines starting with ``#`` are ignored during upload.
 
 
 The data section
 ^^^^^^^^^^^^^^^^
 
-The first nine columns generally follow the standard `BED specification <https://samtools.github.io/hts-specs/BEDv1.pdf>`_, but the name (4th column) must conform to the `MODOMICS <https://www.genesilico.pl/modomics/modifications>`_ nomenclature for the modification short name, and the score (5th column) is a site-specific measure of confidence. The last two columns contain the coverage (10th column), or number of reads at this position, and the frequency (11th column), or the integer value capped at 100 representing the precentage of reads that are modified at this position. These columns must be separated by tabs and each row must have the same number of columns.
+The first nine columns generally follow the standard `BED specification <https://samtools.github.io/hts-specs>`_, but the name (4th column) must conform to the `MODOMICS <https://www.genesilico.pl/modomics/modifications>`_ nomenclature for the modification short name, and the score (5th column) is a site-specific measure of confidence. The last two columns contain the coverage (10th column), or number of reads at this position, and the frequency (11th column), or the integer value capped at 100 representing the precentage of reads that are modified at this position. These columns must be separated by tabs and each row must have the same number of columns.
 
 .. list-table:: bedRMod data
    :widths: 50 75
@@ -145,10 +144,10 @@ The first nine columns generally follow the standard `BED specification <https:/
 
 .. warning::
 
-  For data upload to Sci-ModoM, chromosomes (1st column) must be formatted following the Ensembl short format *e.g.* 1 and not chr1, or MT and
-  not chrM. Only chromosomes are considered, records from contigs/scaffolds are discarded. The modification name (4th column) must match exactly
-  the chosen modifications, according to the `MODOMICS <https://www.genesilico.pl/modomics/modifications>`_ nomenclature for the modification
-  short name. Rows with out-of-range values for score (5th column) or frequency (11th column) are discarded.
+  For data upload to Sci-ModoM, **chromosomes (1st column) must be formatted following the Ensembl short format** *e.g.* 1 and not chr1, or MT and
+  not chrM. **Only chromosomes are considered, records from contigs/scaffolds are discarded**. The modification name (4th column) must match
+  exactly the chosen modifications, according to the `MODOMICS <https://www.genesilico.pl/modomics/modifications>`_ nomenclature for the
+  modification short name. Rows with out-of-range values for score (5th column) or frequency (11th column) are discarded.
 
   File upload will fail if there are too many skipped records, *e.g.* due to wrong chromosome formatting, too many contigs, out-of-range
   values, *etc.*
@@ -174,4 +173,4 @@ Context can be recorded using chromStart/End + thickStart/End, additional column
 Download
 ^^^^^^^^
 
-A PDF version of the latest specification can be downloaded `here <https://github.com/anmabu/bedRMod/blob/47e85b9aa48016fdb262259332cb399e787e1d3a/bedRModv1.8.pdf>`_.
+A PDF version of the latest specification can be downloaded `here <https://dieterich-lab.github.io/euf-specs/>`_.

@@ -4,7 +4,9 @@ from sqlalchemy import select
 
 from scimodom.database.database import get_session
 from scimodom.database.models import Modomics, DetectionMethod, Dataset
+from scimodom.services.assembly import AssemblyService
 from scimodom.services.setup import get_setup_service
+from scimodom.utils.dtos.project import ProjectOrganismDto
 
 
 def upsert(init: bool, **kwargs) -> None:
@@ -48,17 +50,28 @@ def validate_dataset_title(ctx, param, value):
     return value
 
 
-def add_assembly_to_template_if_none(organism, assembly_service):
+def add_assembly_to_template_if_none(
+    organism: ProjectOrganismDto, assembly_service: AssemblyService
+):
+    """Add assembly to template.
+
+    Assembly must exists, it is not created by default.
+
+    :param organism: Organism template
+    :type organism: ProjectOrganismDto
+    :param assembly_service: Assembly service
+    :type assembly_service: AssemblyService
+    """
     click.secho("Checking if assembly ID is defined...", fg="green")
     if organism.assembly_id is None:
-        assembly_id = assembly_service.get_assembly_by_name(
+        assembly = assembly_service.get_assembly_by_name(
             organism.taxa_id, organism.assembly_name, fail_safe=False
         )
         click.secho(
-            f"Updating project metadata template with assembly ID '{assembly_id}'... ",
+            f"Updating project metadata template with assembly ID '{assembly.id}'... ",
             fg="yellow",
         )
-        organism.assembly_id = assembly_id
+        organism.assembly_id = assembly.id
     else:
         assembly_service.get_assembly_by_id(organism.assembly_id)
 

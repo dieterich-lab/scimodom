@@ -32,13 +32,13 @@ General setup
 Configure the docker/.env_docker file
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Create a file *.env_docker* in the *docker* directory using `env_docker_example <https://github.com/dieterich-lab/scimodom/blob/7d4dad0f69c5c7d9988d5dcc9c51eba4ddfdc61b/docker/env_docker_example>`_ as template. Environment variables
+Create a file *.env_docker* in the *docker* directory using `env_docker_example <https://github.com/dieterich-lab/scimodom/blob/master/docker/env_docker_example>`_ as template. Environment variables
 defined in this file are used to build the images.
 
 Configure the .env file
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-Create a file *.env* in the same directory as the YAML file used to define the services *i.e.* *docker-compose.yml* or *docker-compose-db-only.yml*, using `env_example <https://github.com/dieterich-lab/scimodom/blob/7d4dad0f69c5c7d9988d5dcc9c51eba4ddfdc61b/server/env_example>`_ as template. This is the environment file used by compose. For development, this file is typically located in the *docker* directory (same location as *.env_docker*), but under production it may be located in a separate deployment directory.
+Create a file *.env* in the same directory as the YAML file used to define the services *i.e.* *docker-compose.yml* or *docker-compose-db-only.yml*, using `env_example <https://github.com/dieterich-lab/scimodom/blob/master/server/env_example>`_ as template. This is the environment file used by compose. For development, this file is typically located in the *docker* directory (same location as *.env_docker*), but under production it may be located in a separate deployment directory.
 
 Set up the local directories
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
