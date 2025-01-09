@@ -133,22 +133,23 @@ function getGeneFilters(searchParameters: SearchParameters): string[] {
 
 function getModificationExportLink(
   searchParameters: SearchParameters,
-  sortMetas?: DataTableSortMeta[]
+  sortMetas?: DataTableSortMeta[],
+  getApiUrlCb: (uri: string) => string = getApiUrl
 ) {
   const uri =
     searchParameters.searchBy === 'Gene/Chrom' ? 'modification/csv/gene' : 'modification/csv'
   const rawParams = getQueryParametersFromSearchParameters(searchParameters, sortMetas)
-  const url = new URL(getApiUrl(uri))
+  const params = new URLSearchParams()
   for (const [k, v] of Object.entries(rawParams)) {
     if (v) {
       if (Array.isArray(v)) {
-        v.forEach((x) => url.searchParams.append(k, x))
+        v.forEach((x) => params.append(k, x))
       } else {
-        url.searchParams.append(k, v)
+        params.append(k, v)
       }
     }
   }
-  return url.toString()
+  return getApiUrlCb(uri) + '?' + params.toString()
 }
 
 function getSiteParams(modification: Modification): SiteParams {
