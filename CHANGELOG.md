@@ -3,7 +3,9 @@
 All notable changes to scimodom will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/), and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Release candidate] - started 2024-09-25
+## [Release candidate] - started 2025-01
+
+## [3.1.0] - 2025-01-08
 
 ### Added
 
@@ -19,6 +21,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/), and this 
 
 ### Fixed
 
+- URL constructor
 - Gene cache management
 - EUF toggle in Comparison
 - SMID/EUFID length validation

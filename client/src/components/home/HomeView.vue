@@ -3,7 +3,7 @@ import HomeBanner from '@/components/home/HomeBanner.vue'
 import HomeViews from '@/components/home/HomeViews.vue'
 import HomeIntro from '@/components/home/HomeIntro.vue'
 import HomeFeatures from '@/components/home/HomeFeatures.vue'
-import HomeRoadmap from '@/components/home/HomeRoadmap.vue'
+// import HomeRoadmap from '@/components/home/HomeRoadmap.vue'
 import HomeRelease from '@/components/home/HomeRelease.vue'
 import DefaultLayout from '@/components/layout/DefaultLayout.vue'
 </script>
@@ -15,6 +15,6 @@ import DefaultLayout from '@/components/layout/DefaultLayout.vue'
     <HomeIntro />
     <HomeFeatures />
     <HomeRelease />
-    <HomeRoadmap />
+    <!-- <HomeRoadmap /> -->
   </DefaultLayout>
 </template>
