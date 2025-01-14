@@ -52,8 +52,8 @@ Discussions = "https://github.com/dieterich-lab/scimodom/discussions"
 Documentation = "https://dieterich-lab.github.io/scimodom"
 
 [project.optional-dependencies]
-dev = ["pre-commit", "SQLAlchemy[mypy]"]
-tests = ["pytest", "pytest-cov", "pytest-depends", "pytest-mock", "pytest-freezegun", "pytest-datafiles"]
+dev = ["pre-commit", "SQLAlchemy[mypy]", "types-Flask-Cors", "types-requests"]
+tests = ["pytest", "pytest-cov", "pytest-depends", "pytest-mock", "pytest-freezer", "pytest-datafiles"]
 docs = [
   "ipykernel",
   "matplotlib",

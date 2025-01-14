@@ -66,7 +66,7 @@ class GeneService:
         :returns: List of genes
         :rtype: Iterable[str]
         """
-        result = set()
+        result: set[str] = set()
         for selection_id in selection_ids:
             try:
                 genes = self._file_service.get_gene_cache(selection_id)

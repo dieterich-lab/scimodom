@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/), and this 
 
 ## [Release candidate] - started 2025-01
 
+### Changed
+
+- dev and tests dependencies
+
 ## [3.1.0] - 2025-01-08
 
 ### Added

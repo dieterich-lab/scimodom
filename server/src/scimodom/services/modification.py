@@ -26,7 +26,15 @@ from scimodom.utils.specs.enums import AnnotationSource
 
 
 class ModificationService:
-    def __init__(self, session: Session, annotation_service: AnnotationService) -> None:
+    """Provide a service for modification-related queries.
+
+    :param session: SQLAlchemy ORM session
+    :type session: Session
+    :param annotation_service: Annotation service instance
+    :type annotation_service: AnnotationService
+    """
+
+    def __init__(self, session: Session, annotation_service: AnnotationService):
         self._session = session
         self._annotation_service = annotation_service
 
@@ -234,9 +242,11 @@ class ModificationService:
         )
 
     def _get_length(self, query, model) -> int:
-        return self._session.scalar(
-            select(func.count()).select_from(query.with_only_columns(model.id))
-        )
+        return self._session.execute(
+            select(func.count()).select_from(
+                query.with_only_columns(model.id).subquery()
+            )
+        ).scalar_one()
 
     @staticmethod
     def _get_base_search_query(isouter=False):

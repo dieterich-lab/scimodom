@@ -147,10 +147,14 @@ class UtilitiesService:
     def get_release_info(self):
         query = select(Data)
         sites = self._session.scalar(
-            select(func.count()).select_from(query.with_only_columns(Data.id))
+            select(func.count()).select_from(
+                query.with_only_columns(Data.id).subquery()
+            )
         )
         datasets = self._session.scalar(
-            select(func.count()).select_from(query.with_only_columns(Dataset.id))
+            select(func.count()).select_from(
+                query.with_only_columns(Dataset.id).subquery()
+            )
         )
         return {"sites": sites, "datasets": datasets}
 

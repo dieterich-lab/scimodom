@@ -206,7 +206,7 @@ def test_read_only_import_context(Session, setup):  # noqa
         assembly_id=1,
         is_liftover=False,
         seqids=["1"],
-        modification_names={"Y": "Y", "m5C": "m5C", "m6A": "m6A"},
+        modification_names={"Y": hash("Y"), "m5C": hash("m5C"), "m6A": hash("m6A")},
     )
 
 
@@ -222,7 +222,7 @@ def test_read_only_import_context_add_assembly(Session, setup):
         assembly_id=4,
         is_liftover=False,
         seqids=["1"],
-        modification_names={"Y": "Y", "m5C": "m5C", "m6A": "m6A"},
+        modification_names={"Y": hash("Y"), "m5C": hash("m5C"), "m6A": hash("m6A")},
     )
 
 

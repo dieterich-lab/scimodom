@@ -307,8 +307,9 @@ class ValidatorService:
         modification_names = (
             self._session.execute(select(Modomics.short_name)).scalars().all()
         )
+        # dict value (int) unused for read-only import context
         self._ro_context.modification_names = {
-            name: name for name in modification_names
+            name: hash(name) for name in modification_names
         }
 
     def _sanitize_import_context(self) -> None:
@@ -462,12 +463,11 @@ class ValidatorService:
 
 @cache
 def get_validator_service() -> ValidatorService:
-    """Helper function to set up an ValidatorService object by injecting its dependencies.
+    """Instantiate a ValidatorService object by injecting its dependencies.
 
     :returns: Import service instance
     :rtype: ValidatorService
     """
-
     return ValidatorService(
         session=get_session(),
         annotation_service=get_annotation_service(),
