@@ -126,8 +126,13 @@ const COLUMNS = [
 ]
 
 function getFileName() {
-  let stamp = new Date()
-  return 'scimodom_compare_' + stamp.toISOString().replace(/:/g, '')
+  return (
+    'scimodom_compare_' +
+    new Date()
+      .toISOString()
+      .replace(/:/g, '')
+      .replace(/[.]\d+Z/, '')
+  )
 }
 
 const onExport = () => {

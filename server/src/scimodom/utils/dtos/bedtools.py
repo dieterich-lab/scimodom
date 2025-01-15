@@ -14,7 +14,7 @@ class Bed6Record(BaseModel):
     chrom: Annotated[str, Field(min_length=1, max_length=128)]
     start: NonNegativInt
     end: NonNegativInt
-    name: Annotated[str, Field(min_length=1, max_length=32)]
+    name: Annotated[str, Field(min_length=1, max_length=128)]
     score: Score
     strand: Strand
 

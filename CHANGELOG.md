@@ -5,9 +5,15 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/), and this 
 
 ## [Release candidate] - started 2025-01
 
+### Fixed
+
+- ValidationError for IntersectResponse in `/api/v0/modification/target/RBP?` (Bed6Record DTO).
+- EUFID link in ModificationSiteTable.
+
 ### Changed
 
 - dev and tests dependencies
+- node/npm version
 
 ## [3.1.0] - 2025-01-08
 
