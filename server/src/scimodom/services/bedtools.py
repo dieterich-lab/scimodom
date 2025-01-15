@@ -298,9 +298,11 @@ class BedToolsService:
 
         def _get_gtf_attrs_by_name(feature):
             line = [
-                feature.attrs["gene_name"]
-                if "gene_name" in feature.attrs
-                else feature.attrs["gene_id"],
+                (
+                    feature.attrs["gene_name"]
+                    if "gene_name" in feature.attrs
+                    else feature.attrs["gene_id"]
+                ),
                 feature.start,
                 feature.end,
                 feature.chrom,
@@ -487,7 +489,9 @@ class BedToolsService:
         b_bedtool = self._get_comparison_record_to_bedtool(b_generator())
         bedtool = a_bedtool.subtract(b_bedtool, s=is_strand, sorted=is_sorted)
         for s in bedtool:
-            yield SubtractRecord(**self._get_comparison_record_from_bedtool(s).dict())
+            yield SubtractRecord(
+                **self._get_comparison_record_from_bedtool(s).model_dump()
+            )
 
     def intersect_bed6_records(
         self,

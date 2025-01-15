@@ -29,13 +29,14 @@ from scimodom.services.validator import (
     DatasetImportError,
 )
 from scimodom.utils.importer.bed_importer import (
-    RECORD_TYPE,
     Bed6Importer,
     EufImporter,
     BedImportTooManyErrors,
     BedImportEmptyFile,
 )
 from scimodom.utils.dtos.bedtools import (
+    EufRecord,
+    Bed6Record,
     IntersectRecord,
     ClosestRecord,
     SubtractRecord,
@@ -244,23 +245,25 @@ class _CompareContext:
 
     def _import_with_context(
         self,
-    ) -> (Generator[RECORD_TYPE, None, None], dict[str, str | int]):
+    ) -> tuple[Generator[EufRecord | Bed6Record, None, None], dict[str, str | int]]:
         local_context: dict[str, str | int] = {
             "eufid": "UPLOAD".ljust(Identifiers.EUFID.length)
         }
         if self._is_euf:
             try:
-                importer = EufImporter(
+                euf_importer = EufImporter(
                     stream=self._tmp_file_handle, source=self._upload_name
                 )
                 self._validator_service.create_read_only_import_context(
-                    importer, self._taxa_id
+                    euf_importer, self._taxa_id
                 )
                 context = self._validator_service.get_read_only_context()
                 if context.is_liftover:
                     local_context["eufid"] = "LIFTED".ljust(Identifiers.EUFID.length)
                 return (
-                    self._validator_service.get_validated_records(importer, context),
+                    self._validator_service.get_validated_records(
+                        euf_importer, context
+                    ),
                     local_context,
                 )
             except SpecsError as exc:
@@ -295,11 +298,11 @@ class _CompareContext:
                 )
                 raise ClientResponseException(500, message)
         else:
-            importer = Bed6Importer(
+            bed6_importer = Bed6Importer(
                 stream=self._tmp_file_handle, source=self._upload_name
             )
             local_context = {**local_context, "frequency": 1, "coverage": 0}
-            return importer.parse(), local_context
+            return bed6_importer.parse(), local_context
 
     def __exit__(self, exc_type, exc_value, traceback):
         if self._tmp_file_handle is not None:

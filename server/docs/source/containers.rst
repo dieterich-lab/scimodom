@@ -13,7 +13,7 @@ A container management CLI is required such as ``podman-compose`` or ``docker co
 Docker Swarm has not been tested and may not work. The following versions are known to work:
 
 - Podman version 4.3.1 with podman-compose version 1.0.3 on Debian 12
-- Docker version 27.2.0 with docker compose version 2.29.2 on Debian 12
+- Docker version 27.4.1 with docker compose version 2.32.1 on Debian 12
 
 Podman handles rootless containers.
 
@@ -23,8 +23,8 @@ Image building
 Node.js and npm are required to build the container images. Vue.js presently requires Node.js 16 or newer.
 The following versions are known to work:
 
-- Node.js version 18.19.0 on Debian 12
-- npm version 9.2.0 and 10.8.2 on Debian 12
+- Node.js version 18.19.0 and 22.13.0 on Debian 12
+- npm version 9.2.0, 10.8.2 (node 18.19.0) and 11.0.0 (node 22.13.0) on Debian 12
 
 General setup
 -------------

@@ -5,121 +5,55 @@ Draft or long-running issues, WIP, triage, and additional references or context 
 
 * TODO SCIMODOM DRAFT ISSUES
 
-** TODO MAINTENANCE [0/1]
+** TODO STYLE [0/9]
 
-- [ ] ~pre-commit run --all-files~ under server (.pre-commit-config.yaml) runs for all files incl. client.
-
-** TODO STYLE [11/23]
-
-- [ ] DEADLINE: <2024-09-30 Mon> To harmonize style across views, components, and presets (colours, behaviour, dark mode, /etc./).
-
-- [X] CascadeSelect /cf./ [[https://github.com/dieterich-lab/scimodom/issues/103][Cascade truncated.]]
-- [X] CascadeSelect "No available options" is not defined, /cf./ TreeSelect or Dropdown. Styling is different.
-- [X] In ~ProjectMetadata,vue~, some placeholders are grey, others are black/darker (resp. lighter in dark mode).
-- [-] Dark mode (specific issues)
-  - [ ] Logos are displayed in greyscale in dark mode, as invert also inverts the colors. Otherwise, we may have to use 2 logos,
-    or create SVGs.
-  - [X] ~DataTable~: ~stripedRows~ for dark mode.
+- [ ] Logos are displayed in ~dark:greyscale~ in dark mode; ~dark:invert~ only inverts the color.
+- [ ] Charts do not look great in dark mode.
 - [ ] ~VirtualScroll~ not working, see [[https://github.com/primefaces/primevue-tailwind/issues/108][Missing preset for VirtualScroller]] and [[https://github.com/primefaces/primevue-tailwind/issues/168][VirtualScroller not working with DataTabe.]]
-     As of v4.1.1, the new Tailwind styles have been rewritten using the preprocessor approach with ~@apply~ instead of pass-through.
-     As a result this issue is not relevant any more. We're using ~primevue@3.53.0~. Updating to latest version will most likely
-     break. See also https://tailwind.primevue.org/vite/.
+  As of v4.1.1, the new Tailwind styles have been rewritten using the preprocessor approach with ~@apply~ instead of pass-through.
+  We're currently using ~primevue@3.53.1~ and ~tailwindcss-primeui@0.3.4~. Updating to PrimeVue v4.2 will most likely
+  break the application, /cf./ https://tailwind.primevue.org/vite/.
 - [ ] Unpredictable color for ring (dark mode). This is an example of a more general problem.
   UiStyle ~inputTextDefaultClasses~ redefines the ring color /e.g./ inside ~InputText~ in ~FormTextInput.vue~, but when
   ~parent.instance.$name !== 'InputGroup'~ the default preset values somehow overwrite the style, even though the latter is
-  applied afterwards. When need to use ~:ptOptions="{ mergeProps: true }"~, because we don't want to rewrite the style entirely.
+  applied afterwards. When need to use ~:ptOptions="{ mergeProps: true }"~ because we don't want to rewrite the style entirely.
   Modifying a value in ~ui_style.ts~ works only temporarily or unpredictably, and /e.g./ adding ~!~ does not work, as
   it overwrites the ~errorClasses~. See [[https://github.com/tailwindlabs/tailwindcss/discussions/12733][Which bg color should be apply, when multiply bg-color class was appled to the same element?]]
-  for an explanation and possible ways to solve this.
-- [X] Placeholder text color ~TreeSelect~ /vs./ ~MultiSelect~.
-- [X] Default preset color is secondary for ~DataTable~, ~Paginator~, and ~tabView~. Why not use a local ~ptOptions~
-  with ~mergeSections="false"~? Else this has to be documented.
-- [ ] Use fill and stroke for svg/icons, instead of text color, see also [[https://github.com/dieterich-lab/scimodom/issues/64][Add icon to InputText not working]].
-- [X] Button presets adapted for /primary/ and /secondary/ by redefining the API for severity. Should we redefine the API
-  or add another option, or just leave it as is?
-- [ ] ~DataTable~ filters /e.g./ ~filterMatchModeDropdown~ show a mix of primary and default green colors (where is this
-  defined in presets? Can we use ~pt~?)
-- [-] [[https://github.com/dieterich-lab/scimodom/issues/18][Customize UI components]]: additional items
-  - [X] ~CardLink~ /vs./ PrimeVue ~Card~.
-  - [X] Clean ~SectionLayout~.
-  - [ ] Why ~SectionLayout~ with ~secondary="true"~ in dark mode have a white border at the top?
-- [ ] ~TreeSelect~, ~MultiSelect~, and ~Dropdown~ root class shape commented out, using local ~pt~, as I couldn't get it to work,
-  in particular in grid (Compare), but we should leave this untouched.
-- [X] (Browse) ~InputText~ and ~Dialog~ local ~pt~ has no effect with alpha modifier for secondary color using **Wind** preset.
-  Temporarily removed ~/50~ for ~dialog~ and ~inputtext~ (focus). Local ~pt~ description currently follows the **Lara** preset.
-- [X] To harmonize ~DataTable~ header across views.
+  for an explanation and possible ways to solve this. /cf./ above PrimeVue upgrade.
+- [ ] ~DataTable~ filters /e.g./ ~filterMatchModeDropdown~ show a mix of primary and default green colors.
+- [ ] Why does ~SectionLayout~ with ~secondary="true"~ has a white border at the top in dark mode?
 - [ ] Add p-float-label?
 - [ ] ~Divider~ styling, thickness and color.
-- [X] Custom style ~FormTextInput~ (class/style binding), incl.secondary colour for sign up.
-- [X] Form validation and warnings/messages styling/text for login/sign up/reset components.
-- [ ] Large numbers don't show nicely in the Search paginator.
-- [X] Outdated presets for Lara. Remove?
-- [ ] Add MeterGroup or ProgessBar for upload? See also [[https://github.com/dieterich-lab/scimodom/issues/94][Dataset upload progress]].
+- [ ] Add ~MeterGroup~ or ~ProgessBar~ for upload? See also [[https://github.com/dieterich-lab/scimodom/issues/94][Dataset upload progress]].
 
-** TODO PEP/TYPING [2/2]
+** TODO TESTS [1/2]
 
-- [X] [2024-02-03 Fri] Add missing stubs for flask-cors, requests, /etc./
-- [X] [2024-02-03 Fir] ~# type: ignore~ top level does not work for scimodom.api.models. File excluded:
-  [[file:~/prj/RMapDFGTRR319/repositories/scimodom/server/pyproject.toml::"scimodom.utils.models.py"]]
+- [X] update :: Warnings and deprecation summary.
+- [ ] refactor :: ~test_dataset~ and ~test_validator~ still depend on the importer, /cf./ mock importer in ~test_dataset_api~.
 
-** TODO TESTS [6/8]
-
-- [ ] warnings :: freezgun, pydantic
-
-- [X] refactor :: Use tests/fixtures throughout wherever possible. Some tests may still contain redundant locally defined fixtures.
-  ~conftest.py::data_path~ is only used by ~test_import_data~, this should be simplified /cf./ ~tool.pytest.ini_options~.
-- [ ] refactor :: ~test_ensembl~ subject to [[https://github.com/dieterich-lab/scimodom/issues/119][Annotation services]]. Currently it is not possible to fully isolate these tests.
-
-- [X] missing :: ~test_dataset~ does not test ~DatasetImportError~, ~SelectionNotFoundError~, ~DatasetExistsError~.
-- [X] missing :: Integration tests.
-- [X] missing :: Missing models in ~test_bedtools_dto~, ~test_project_dto~, /etc./
-- [X] missing :: ~test_bedtools~ has limited scope, some protected methods are not tested (isolation?). Everything
-  that touches annotation is not really tested (see related tests if testing could be reasonnably divided/isolated).
-
-- [X] EUFID length is not validated? See /e.g./ dataset fixture. Same for random SMIDs...
-
-** TODO GENERAL [1/11]
+** TODO GENERAL [1/7]
 
 - [ ] dependencies :: Pandas is used only in ~SetupService~.
 
-- [ ] refactor :: ~FileService~ "mixes" *os* and *pathlib*, and this also causes a number of typing errors; and there are some
-  methods that should be protected that are not. The "chain file constructor" should go to ~FileService~. Also now
-  the ~AssemblyFileType~ is problematic (type warnings). This should be addressed with refactoring of [[https://github.com/dieterich-lab/scimodom/issues/119][Annotation services]].
-- [ ] refactor :: Setup is not fully sorted: the case of import tables and ~IMPORT_DIR~, /cf./ [[https://github.com/dieterich-lab/scimodom/issues/126][startup]] and [[https://github.com/dieterich-lab/scimodom/issues/116][directory permission]],
-  is still to be addressed.
+- [ ] question :: Usage of Flask ~SESSION_COOKIE_SAMESITE~. Is ~None~ supposed to be a string or ~None~? And why not use default ~Lax~?
 
-- [ ] vars :: Usage of Flask ~SESSION_COOKIE_SAMESITE~. Is ~None~ supposed to be a string or ~None~? And why not use default ~Lax~?
-- [ ] vars :: Shouldn't default for ~is_strand~ be ~True~ in [[file:repositories/scimodom/server/src/scimodom/api/dataset.py]]? Also,
-  how do we handle undefined strand in general /e.g./ in comparisons?
-
-- [X] docs :: Update GitHub installation instructions, /e.g./ add instructions how to create project/data for testing, add dumps for testing,
-  import tables, /etc/. Some instructions are wrong, for instance the ~pip install~ command misses the "dot". How to mock login (login may be
-  tricky /e.g./ with google accounts)?
-
-- [ ] validation :: Project or dataset title is a ~VARCHAR(255)~. Form validation is done in the client, but should be systematically implemented
-  for the API (and include other fields with constraints, see also [[https://github.com/dieterich-lab/scimodom/issues/152][Not all API endpoints are fine]]).
-  The CLI validates title for dataset, but not for project, metadata, or batch.
-
-- [ ] forms :: When adding more than 1 metadata sheet, the assembly is reset, also resetting the model. This is not critical,
-  since the user is requested to confirm the assembly as input anyway, but maybe this can be simplified?
-- [ ] forms :: Add lazy validation to form fields, in particular for login/sign up? Check also strict, see https://github.com/jquense/yup
-- [ ] forms :: Do not load the full ~yup~ package. Customize validation (login /vs./ sign up) and revisit messages. See
-  /e.g./ https://tailwind.primevue.org/inputtext/#helptext. Classes are wrong, there is no ~p-error~, /etc./
-
-- [ ] store :: Import/use pinia before router. Options /vs./ Composition. Add pinia as argument to router ~beforeEach~. Check =ways-to-use-pinia=.
+- [X] Export file naming convention is inconsistent between Search, Browse, and Compare.
+- [ ] ~TaxaSelection~ has modification id props and watches it, but it never uses it?
+- [ ] The CJS build of Vite's Node API is deprecated, see [[https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated][Vite CJS node API deprecated]] for more details.
+- [ ] Error handling for data import remains somewhat inconsistent. The interface ~DatasetPostRequest~ defines what information is
+  transferred to the backend for data upload (management API). The ~source~ for upload is the full path to the temporary ~file_id~.
+  The ~error_summary~ (~BedImportTooManyErrors~) is defined by the ~TextFileReader.report_error~, and reports the full path to the
+  ~file_id~, which is irrelevant for the user in general. This is also used in Comparison (dataset API), where the actual file name
+  is available and used as a source, with useful information for the user. In handling other similar errors, the source is never
+  reported /e.g./ in the case of ~BedImportEmptyFile~, this is not shown in ~user_message~, but in ~message~. I don't know what are the
+  security implications in all cases.
+- [ ] On "auto log out" /e.g./ refresh, accessing URL via address, /etc./, unexpected behavior is sometimes observed, /e.g./ the
+  dialog box is not systematically showing up. The ~Not logged in.~ message at the top left is awkward.
 
 *** TODO FEATURE REQUEST [0/2]
 
 - [ ] Vueuse (title)
 - [ ] Loading bar at the top
-
-
-* SCIMODOM OPEN ISSUES
-
-** REFERENCES
-
-
-* SCIMODOM CLOSED ISSUES
 
 * LONG-TERM
 

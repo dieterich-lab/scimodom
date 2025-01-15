@@ -49,7 +49,7 @@ const onExport = () => {
 }
 
 const navigateTo = (eufid: string) => {
-  const { href } = router.resolve({ name: 'browse', params: { eufid: eufid } })
+  const { href } = router.resolve({ name: 'browse', params: { initialSearchString: eufid } })
   window.open(href, '_blank')
 }
 </script>

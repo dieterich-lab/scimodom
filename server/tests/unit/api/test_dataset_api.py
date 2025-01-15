@@ -153,7 +153,7 @@ class MockBedtoolsService:
             a=DEFAULT_COMPARISON_RECORD, b=DEFAULT_COMPARISON_RECORD, distance=50
         )
     ]
-    SUBTRACT_RESULT = [SubtractRecord(**DEFAULT_COMPARISON_RECORD.dict())]
+    SUBTRACT_RESULT = [SubtractRecord(**DEFAULT_COMPARISON_RECORD.model_dump())]
 
     @staticmethod
     def _log_operation(operation, a_records, b_records_list, is_strand):

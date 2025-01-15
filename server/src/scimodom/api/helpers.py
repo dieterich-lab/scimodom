@@ -101,7 +101,7 @@ class FileTooLargeException(ClientResponseException):
 
 def create_error_response(
     status_code: int, message: str, user_message: str | None = None
-) -> (dict[str, str], int):
+) -> tuple[dict[str, str], int]:
     """Construct an error response.
 
     :param status_code: HTTP status code
@@ -112,7 +112,7 @@ def create_error_response(
     This can be used e.g. to add context per endpoint, or
     intercept more complex error messages.
     :type error_message: str
-    :returns: Error response
+    :return: Error response
     :rtype: Tuple[dict[str, str], int]
     """
     json_response = {"message": message}
@@ -121,12 +121,12 @@ def create_error_response(
     return json_response, status_code
 
 
-def create_file_too_large_response(max_size: int) -> (dict[str, str], int):
+def create_file_too_large_response(max_size: int) -> tuple[dict[str, str], int]:
     """Construct an error response for file size.
 
     :param max_size: Allowed max. file size
     :type max_size: int
-    :returns: Error response
+    :return: Error response
     :rtype: Tuple[dict[str, str], int]
     """
     message = _get_file_too_large_message(max_size)
@@ -137,6 +137,14 @@ def create_file_too_large_response(max_size: int) -> (dict[str, str], int):
 
 
 def get_valid_dataset(dataset_id: str) -> Dataset:
+    """Get dataset.
+
+    :param dataset_id: Dataset ID (EUFID)
+    :type dataset_id: str
+    :raises ClientResponseException: If invalid query parameters.
+    :return: Dataset
+    :rtype: Dataset
+    """
     if not _is_valid_identifier(dataset_id, Identifiers.EUFID.length):
         raise ClientResponseException(400, "Invalid dataset ID")
     dataset_service = get_dataset_service()
@@ -146,7 +154,15 @@ def get_valid_dataset(dataset_id: str) -> Dataset:
         raise ClientResponseException(404, "Unknown dataset")
 
 
-def get_user_with_write_permission_on_dataset(dataset) -> User:
+def get_user_with_write_permission_on_dataset(dataset: Dataset) -> User:
+    """Get user.
+
+    :param dataset: Dataset
+    :type dataset: Dataset
+    :raises ClientResponseException: If invalid query parameters.
+    :return: User
+    :rtype: User
+    """
     email = get_jwt_identity()
     user_service = get_user_service()
     permission_service = get_permission_service()
@@ -161,7 +177,17 @@ def get_user_with_write_permission_on_dataset(dataset) -> User:
         raise ClientResponseException(401, "Not your dataset")
 
 
-def get_valid_bam_file(dataset, name) -> BamFile:
+def get_valid_bam_file(dataset: Dataset, name: str) -> BamFile:
+    """Get BAM file.
+
+    :param dataset: Dataset
+    :type dataset: Dataset
+    :param name: File name
+    :type name: str
+    :raises ClientResponseException: If invalid query parameters.
+    :return: BAM file
+    :rtype: BamFile
+    """
     if not VALID_FILENAME_REGEXP.match(name):
         raise ClientResponseException(400, "Invalid file name")
     file_service = get_file_service()
@@ -178,7 +204,8 @@ def get_valid_dataset_id_list_from_request_parameter(parameter: str) -> list[str
 
     :param parameter: Query parameter
     :type parameter: str
-    :returns: List of dataset ID(s)
+    :raises ClientResponseException: If invalid query parameters.
+    :return: List of dataset ID(s)
     :rtype: list[str]
     """
     as_list = get_unique_list_from_query_parameter(parameter, str)
@@ -207,7 +234,8 @@ def get_valid_tmp_file_id_from_request_parameter(
     :type parameter: str
     :param is_optional: True if parameter is required (Default: False)
     :type is_optional: bool
-    :returns: Uploaded/temporary file identifier or None
+    :raises ClientResponseException: If invalid query parameters.
+    :return: Uploaded/temporary file identifier or None
     :rtype: str | None
     """
     raw_id = request.args.get(parameter, type=str)
@@ -236,7 +264,7 @@ def get_valid_remote_file_name_from_request_parameter(
     :type parameter: str
     :param default: Default file name
     :type default: str
-    :returns: Uploaded/temporary file name
+    :return: Uploaded/temporary file name
     :rtype: str | None
     """
     raw = request.args.get(parameter, type=str)
@@ -257,7 +285,8 @@ def get_valid_boolean_from_request_parameter(
     parameter is None, and there is no default,
     a ClientResponseException is raised.
     :type default: bool | None
-    :returns: Boolean value
+    :raises ClientResponseException: If invalid query parameters.
+    :return: Boolean value
     :rtype: bool
     """
     raw_value = request.args.get(parameter, type=str)
@@ -278,18 +307,24 @@ def get_valid_boolean_from_request_parameter(
     )
 
 
-def validate_request_size(max_size) -> None:
+def validate_request_size(max_size: int) -> None:
+    """Validate request size.
+
+    :param max_size: Maximum size allowed.
+    :type max_size: int
+    :raises FileTooLargeException: If request exceeds maximum size.
+    """
     if request.content_length is not None and request.content_length > max_size:
-        message = f"File too large (max. {max_size} bytes)"
         raise FileTooLargeException(max_size)
 
 
 def get_valid_taxa_id(is_optional: bool = False) -> Optional[int]:
     """Get Taxa ID from query parameter.
 
-    :param is_optional: True if required (Default: False)
+    :param is_optional: True if not required (Default: False)
     :type is_optional: bool
-    :returns: Taxa ID or None
+    :raises ClientResponseException: If invalid query parameters.
+    :return: Taxa ID or None
     :rtype: int | None
     """
     taxa_id = request.args.get("taxaId", type=int)
@@ -325,6 +360,16 @@ def get_valid_targets_type(raw: str) -> TargetsFileType:
 
 
 def get_valid_coords(taxa_id: int, context: int = 0) -> tuple[str, int, int, Strand]:
+    """Get coordinates from query parameter.
+
+    :param taxa_id: Taxonomy ID
+    :type taxa_id: int
+    :param context: Number of bases to include in context around start-end.
+    :type context: int
+    :raises ClientResponseException: If invalid query parameters.
+    :return: Coordinates as (chrom, start, end, strand)
+    :rtype: (str, int, int, Strand)
+    """
     chrom = request.args.get("chrom", type=str)
     if chrom is None:
         raise ClientResponseException(400, "Invalid chrom")
@@ -337,8 +382,12 @@ def get_valid_coords(taxa_id: int, context: int = 0) -> tuple[str, int, int, Str
     strand = request.args.get("strand", default=".", type=str)
 
     assembly_service = get_assembly_service()
-    chroms = assembly_service.get_chroms(taxa_id)
-    if chrom not in [d["chrom"] for d in chroms]:
+    chrom_size: dict[str, int] = {
+        d["chrom"]: d["size"]
+        for d in assembly_service.get_chroms(taxa_id)
+        if d["chrom"] == chrom
+    }
+    if chrom not in chrom_size:
         raise ClientResponseException(
             404, f"Unrecognized chrom '{chrom}' for Taxa '{taxa_id}'"
         )
@@ -346,8 +395,7 @@ def get_valid_coords(taxa_id: int, context: int = 0) -> tuple[str, int, int, Str
         raise ClientResponseException(
             400, "Invalid coordinates: start must be smaller than end"
         )
-    chrom_size = [d for d in chroms if d["chrom"] == chrom][0]["size"]
-    if not end < chrom_size:
+    if not end < chrom_size[chrom]:
         raise ClientResponseException(
             400, "Invalid coordinates: end is greater than chrom size"
         )
@@ -361,8 +409,8 @@ def get_valid_coords(taxa_id: int, context: int = 0) -> tuple[str, int, int, Str
         if start < 0:
             start = 0
         end = end + context
-        if end > chrom_size:
-            end = chrom_size
+        if end > chrom_size[chrom]:
+            end = chrom_size[chrom]
 
     return chrom, start, end, strand_dto
 

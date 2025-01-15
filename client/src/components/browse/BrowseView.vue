@@ -63,8 +63,13 @@ function resetFilters() {
 }
 
 const getFileName = () => {
-  let stamp = new Date()
-  return 'scimodom_browse_' + stamp.toISOString().replace(/:/g, '')
+  return (
+    'scimodom_browse_' +
+    new Date()
+      .toISOString()
+      .replace(/:/g, '')
+      .replace(/[.]\d+Z/, '')
+  )
 }
 
 const onExport = () => {
