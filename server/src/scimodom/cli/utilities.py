@@ -1,6 +1,7 @@
 import click
 
 from sqlalchemy import select
+from sqlalchemy.exc import NoResultFound
 
 from scimodom.database.database import get_session
 from scimodom.database.models import Modomics, DetectionMethod, Dataset
@@ -68,7 +69,7 @@ def add_assembly_to_template_if_none(
             organism.taxa_id, organism.assembly_name, fail_safe=False
         )
         click.secho(
-            f"Updating project metadata template with assembly ID '{assembly.id}'... ",
+            f"updating project metadata template with assembly ID '{assembly.id}'... ",
             fg="yellow",
         )
         organism.assembly_id = assembly.id
@@ -76,17 +77,39 @@ def add_assembly_to_template_if_none(
         assembly_service.get_assembly_by_id(organism.assembly_id)
 
 
-def get_modomics_id(name):
-    return (
-        get_session()
-        .execute(select(Modomics.id).filter_by(short_name=name))
-        .scalar_one()
-    )
+def get_modomics_id(name) -> str:
+    """Retrieve MODOMICS ID from short name.
+
+    :param name: MODOMICS short name
+    :type name: str
+    :raises ValueError: If NoResultFound
+    :return: MODOMICS ID
+    :rtype: str
+    """
+    try:
+        return (
+            get_session()
+            .execute(select(Modomics.id).filter_by(short_name=name))
+            .scalar_one()
+        )
+    except NoResultFound:
+        raise ValueError(f"No such modification '{name}'.")
 
 
-def get_detection_id(name):
-    return (
-        get_session()
-        .execute(select(DetectionMethod.id).filter_by(meth=name))
-        .scalar_one()
-    )
+def get_detection_id(name) -> str:
+    """Retrieve detection method ID from name (meth).
+
+    :param name: Method name (meth)
+    :type name: str
+    :raises ValueError: If NoResultFound
+    :return: DetectionMethod ID
+    :rtype: str
+    """
+    try:
+        return (
+            get_session()
+            .execute(select(DetectionMethod.id).filter_by(meth=name))
+            .scalar_one()
+        )
+    except NoResultFound:
+        raise ValueError(f"No such detection method '{name}'.")

@@ -251,7 +251,7 @@ def add_selection(
         )
         metadata = ProjectMetaDataDto(
             rna=rna,
-            modomics_id=get_modomics_id(modification),
+            modomics_id=get_modomics_id(modification),  # TODO handle
             tech=technology,
             method_id=method_id,
             organism=organism,
