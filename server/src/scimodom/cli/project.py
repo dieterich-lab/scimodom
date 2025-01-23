@@ -3,7 +3,6 @@ import datetime
 
 import click
 from flask import Blueprint
-from pydantic import ValidationError
 from sqlalchemy.exc import NoResultFound
 
 from scimodom.cli.utilities import (
@@ -11,8 +10,9 @@ from scimodom.cli.utilities import (
     get_detection_id,
     get_modomics_id,
 )
-from scimodom.cli.dataset import delete_selection, get_selection_from_dataset
+from scimodom.database.models import Project
 from scimodom.services.assembly import AssemblyNotFoundError, get_assembly_service
+from scimodom.services.selection import get_selection_service
 from scimodom.services.dataset import get_dataset_service
 from scimodom.services.file import get_file_service
 from scimodom.services.permission import get_permission_service
@@ -162,13 +162,13 @@ def create_project_template(
 )
 @click.argument("request_uuid", type=click.STRING)
 @click.option(
-    "--skip-add-user",
+    "--add-user",
     is_flag=True,
     show_default=True,
     default=False,
-    help="Do not add user to project, otherwise user must exists.",
+    help="Add user to project. User must exists.",
 )
-def add_project(request_uuid: str, skip_add_user: bool):
+def add_project(request_uuid: str, add_user: bool):
     """Add a new project to the database.
 
     REQUEST_UUID is the UUID of a project request.
@@ -218,7 +218,7 @@ def add_project(request_uuid: str, skip_add_user: bool):
         )
         return
 
-    if not skip_add_user:
+    if add_user:
         username = project_template.contact_email
         click.secho(
             f"Adding user '{username}' to project '{smid}'...",
@@ -226,14 +226,8 @@ def add_project(request_uuid: str, skip_add_user: bool):
         )
         try:
             _add_user_to_project(username, smid)
-            click.secho("Added user to project.", fg="green")
-        except NoResultFound:
-            click.secho(
-                f"Failed to add user. No such SMID '{smid}'.",
-                fg="red",
-            )
-        except NoSuchUser as exc:
-            click.secho(f"Failed to add user. {exc}.", fg="red")
+        except NoSuchUser:
+            click.secho("No such user. Nothing will be done.", fg="red")
         except Exception as exc:
             click.secho(
                 f"Failed to add user. {exc}.",
@@ -282,27 +276,57 @@ def add_user(username, smid):
     "delete",
     epilog="Check docs at https://dieterich-lab.github.io/scimodom/flask.html.",
 )
-@click.option(
-    "-s",
-    "--selection",
-    default=[],
-    multiple=True,
-    required=False,
-    type=click.INT,
-    help="Selection ID(s) to delete. Repeat parameter to pass multiple selection IDs.",
-)
 @click.argument("smid", type=click.STRING)
-def delete(smid, selection):
-    """Delete a project and all associated
-    data from the database. If given, delete
-    selections (and gene cache) associated
-    with the project data. Selections
-    may be associated with other datasets,
-    delete at your own risk!
+def delete_project(smid: str):
+    """Delete a project and all associated data.
 
+    \b
     SMID is the Sci-ModoM project ID.
+    Delete from the following tables:
+    - selection (per dataset, if only associated with this project)
+    - data_annotation
+    - data
+    - dataset_modification_association
+    - bam_file
+    - dataset
+    - project_source
+    - user_project_association
+    - project
+    - project_contact
+
+    BAM files and gene cache associated with datasets belonging
+    to this project are deleted from the file system.
+    The project template metadata is deleted from the file system.
     """
-    delete_project(smid, selection)
+    project_service = get_project_service()
+    try:
+        project = project_service.get_by_id(smid)
+    except NoResultFound:
+        click.secho(f"No such project '{smid}'.", fg="red")
+        return
+
+    click.secho(
+        (
+            f"Deleting '{project.id}' with title '{project.title}' "
+            "including data associated with the following datasets: "
+        ),
+        fg="green",
+    )
+    for dataset in project.datasets:
+        click.secho(f"Dataset '{dataset.id}' with title '{dataset.title}'", fg="green")
+
+    click.secho("Continue [y/n]?", fg="green")
+    c = click.getchar()
+    if c not in ["y", "Y"]:
+        click.secho("Aborting!", fg="yellow")
+        return
+
+    try:
+        _remove_datasets_and_selections(project)
+        project_service.delete_project(project)
+    except Exception as exc:
+        click.secho(f"Failed to delete project {project.id}: {exc}", fg="red")
+        return
 
 
 def _create_project_template(
@@ -386,98 +410,20 @@ def _add_user_to_project(username: str, smid: str):
     permission_service.insert_into_user_project_association(user, smid)
 
 
-def delete_project(smid: str, selection_ids: list[int]) -> None:
-    """Provide a CLI function to delete a project
-    and all associated data.
-
-    Delete from the following tables:
-    - data_annotation
-    - data
-    - dataset_modification_association
-    - bam_file
-    - dataset
-    - project_source
-    - user_project_association
-    - project
-    - project_contact
-
-    BAM files associated with a dataset belonging
-    to this project are deleted from the file system.
-
-    If given, selection IDs are deleted and
-    gene cache files are removed.
-
-    :param smid: Project ID (SMID)
-    :type smid: str
-    :param selection_ids: List of selection IDs to delete,
-    at your own risk.
-    :type selection_ids: list[int]
-    """
-    project_service = get_project_service()
+def _remove_datasets_and_selections(project: Project):
+    selection_service = get_selection_service()
     dataset_service = get_dataset_service()
-    try:
-        project = project_service.get_by_id(smid)
-    except NoResultFound:
-        click.secho(f"No such Project '{smid}'.", fg="red")
-        return
-
     datasets = project.datasets
-    click.secho(
-        f"Deleting '{project.id}' with title '{project.title}' incl. data associated with the following datasets: ",
-        fg="green",
-    )
-    for dataset in datasets:
-        click.secho(f"Dataset '{dataset.id}' with title '{dataset.title}'", fg="green")
-    click.secho("Continue [y/n]?", fg="green")
-    c = click.getchar()
-    if c not in ["y", "Y"]:
-        return
-
     dataset_list = [dataset.id for dataset in datasets]
-    selection_dict = dict()
     for dataset in datasets:
         try:
-            for selection in get_selection_from_dataset(dataset):
-                selection_dict[selection.id] = selection
+            selection_service.delete_selections_by_dataset(dataset)
             dataset_service.delete_dataset(dataset)
             dataset_list.remove(dataset.id)
         except Exception as exc:
-            click.secho(f"Failed to delete Dataset '{dataset.id}': {exc}.", fg="red")
-            click.secho(
-                f"The following datasets were not deleted: {','.join(dataset_list)}.",
-                fg="red",
+            msg = (
+                f"Failure in handling Dataset '{dataset.id}'. "
+                f"Datasets '{','.join(dataset_list)}' were not deleted."
             )
-            click.secho(f"Project {project.id} will not be deleted.", fg="red")
-            return
-
-    try:
-        project_service.delete_project(project)
-    except Exception as exc:
-        click.secho(f"Failed to delete project '{smid}': {exc}.", fg="red")
-        return
-
-    for selection_id in selection_ids:
-        if selection_id not in selection_dict.keys():
-            click.secho(
-                "This selection does not appear to be associated with this project data... skipping!",
-                fg="yellow",
-            )
-            continue
-        selection = selection_dict[selection_id]
-        click.secho(
-            f"Are you sure you want to delete Selection '{selection.id}'?", fg="green"
-        )
-        click.secho("Continue [y/n]?", fg="green")
-        c = click.getchar()
-        if c not in ["y", "Y"]:
-            click.secho("Skipping...", fg="yellow")
-            continue
-        try:
-            delete_selection(selection)
-        except Exception as exc:
-            click.secho(
-                f"Failed to delete selection '{selection.id}': {exc}.", fg="red"
-            )
-            return
-
-    click.secho("...done deleting project and data!", fg="green")
+            exc.add_note(msg)
+            raise

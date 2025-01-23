@@ -12,7 +12,7 @@ from scimodom.database.database import make_session, init
 
 from scimodom.cli.assembly import add_assembly
 from scimodom.cli.annotation import add_annotation
-from scimodom.cli.dataset import add_dataset, add_all, add_selection
+from scimodom.cli.dataset import add_dataset, add_all
 from scimodom.cli.utilities import validate_dataset_title, upsert
 from scimodom.services.file import get_file_service
 from scimodom.services.setup import get_setup_service
@@ -66,8 +66,10 @@ def create_app():
     app.register_blueprint(user_api, url_prefix=USER_API_ROUTE)
 
     # CLI
+    from scimodom.cli.selection import selection_cli
     from scimodom.cli.project import project_cli
 
+    app.register_blueprint(selection_cli)
     app.register_blueprint(project_cli)
 
     jwt = JWTManager(app)
@@ -149,49 +151,6 @@ def create_app():
                 )
             kwargs = {"domain": domain, "name": name}
         add_annotation(taxid, annotation_source, **kwargs)
-
-    @app.cli.command(
-        "selection", epilog="Check docs at https://dieterich-lab.github.io/scimodom/."
-    )
-    @click.option(
-        "--rna",
-        required=True,
-        type=click.STRING,
-        help="Valid RNA type",
-    )
-    @click.option(
-        "--modification",
-        required=True,
-        type=click.STRING,
-        help="Modification (MODOMICS) short name.",
-    )
-    @click.option(
-        "--taxid",
-        required=True,
-        type=click.INT,
-        help="Valid Taxa ID.",
-    )
-    @click.option(
-        "--cto",
-        required=True,
-        type=click.STRING,
-        help="Cell/Tissue.",
-    )
-    @click.option(
-        "--method-id",
-        required=True,
-        type=click.STRING,
-        help="Method ID.",
-    )
-    @click.option(
-        "--technology",
-        required=True,
-        type=click.STRING,
-        help="Technology name.",
-    )
-    def selection(rna, modification, taxid, cto, method_id, technology):
-        """Add a new selection to the database."""
-        add_selection(rna, modification, taxid, cto, method_id, technology)
 
     @app.cli.command(
         "dataset", epilog="Check docs at https://dieterich-lab.github.io/scimodom/."

@@ -4,10 +4,16 @@ from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
 
 from scimodom.database.database import get_session
-from scimodom.database.models import Modomics, DetectionMethod, Dataset
+from scimodom.database.models import (
+    Dataset,
+    DetectionMethod,
+    Modomics,
+)
 from scimodom.services.assembly import AssemblyService
 from scimodom.services.setup import get_setup_service
-from scimodom.utils.dtos.project import ProjectOrganismDto
+from scimodom.utils.dtos.project import (
+    ProjectOrganismDto,
+)
 
 
 def upsert(init: bool, **kwargs) -> None:

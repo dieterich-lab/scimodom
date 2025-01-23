@@ -1,30 +1,25 @@
 from collections import defaultdict
 from pathlib import Path
 import re
-from typing import Iterator
 
 import click
 from sqlalchemy import select
-from sqlalchemy.exc import NoResultFound
-from sqlalchemy.orm import Session
 
 from scimodom.database.database import get_session
 from scimodom.database.models import (
-    Dataset,
-    Modification,
     DetectionTechnology,
     Organism,
-    Selection,
+    Modification,
 )
-from scimodom.cli.utilities import add_assembly_to_template_if_none, get_modomics_id
+from scimodom.cli.utilities import (
+    add_assembly_to_template_if_none,
+)
+
 from scimodom.services.assembly import AssemblyNotFoundError, get_assembly_service
 from scimodom.services.dataset import get_dataset_service
-from scimodom.services.file import get_file_service
 from scimodom.services.project import get_project_service
 from scimodom.services.sunburst import get_sunburst_service
 from scimodom.utils.dtos.project import (
-    ProjectMetaDataDto,
-    ProjectOrganismDto,
     ProjectTemplate,
 )
 from scimodom.utils.specs.enums import AnnotationSource
@@ -216,120 +211,6 @@ def add_all(
     click.secho("... done!", fg="green")
 
 
-def add_selection(
-    rna: str,
-    modification: str,
-    taxid: int,
-    cto: str,
-    method_id: str,
-    technology: str,
-) -> None:
-    """Provide a CLI function to add a new seletion.
-
-    :param rna: RNA type
-    :type rna: str
-    :param modification: MODOMICS short name
-    :type modification: str
-    :param taxid: Taxa ID
-    :type taxid: int
-    :param cto: Cell/tissue (cto)
-    :type cto: str
-    :param method_id: Method ID
-    :type method_id: str
-    :param technology: Technology (tech)
-    :type technology: str
-    """
-
-    click.secho("Adding new selection...", fg="green")
-    click.secho("Continue [y/n]?", fg="green")
-    c = click.getchar()
-    if c not in ["y", "Y"]:
-        return
-    try:
-        organism = ProjectOrganismDto(
-            taxa_id=taxid, cto=cto, assembly_name="assembly", assembly_id=None
-        )
-        metadata = ProjectMetaDataDto(
-            rna=rna,
-            modomics_id=get_modomics_id(modification),  # TODO handle
-            tech=technology,
-            method_id=method_id,
-            organism=organism,
-            note=None,
-        )
-    except Exception as exc:
-        click.secho(
-            f"Validation error, failed to create template: {exc}. Aborting!",
-            fg="red",
-        )
-        return
-
-    session = get_session()
-    modification_id = _add_modification_if_none(metadata, session)
-    organism_id = _add_organism_if_none(metadata, session)
-    technology_id = _add_technology_if_none(metadata, session)
-    selection_id = session.execute(
-        select(Selection.id).filter_by(
-            modification_id=modification_id,
-            organism_id=organism_id,
-            technology_id=technology_id,
-        )
-    ).scalar_one_or_none()
-    if selection_id:
-        click.secho(
-            "Selection already exists... Done!",
-            fg="green",
-        )
-        return
-
-    try:
-        selection = Selection(
-            modification_id=modification_id,
-            organism_id=organism_id,
-            technology_id=technology_id,
-        )
-        session.add(selection)
-        session.commit()
-        click.secho(
-            f"New selection '{selection.id}' added... Done!",
-            fg="green",
-        )
-    except Exception as exc:
-        click.secho(
-            f"Failed to add selection: {exc}. Aborting!",
-            fg="red",
-        )
-        session.rollback()
-
-
-def delete_selection(selection: Selection) -> None:
-    session = get_session()
-    file_service = get_file_service()
-    try:
-        session.delete(selection)
-        file_service.delete_gene_cache(selection.id)
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
-
-
-def get_selection_from_dataset(dataset: Dataset) -> Iterator[Selection]:
-    session = get_session()
-    modification_ids = [
-        association.modification_id for association in dataset.associations
-    ]
-    for modification_id in modification_ids:
-        selection = session.execute(
-            select(Selection).filter_by(
-                modification_id=modification_id,
-                organism_id=dataset.organism_id,
-                technology_id=dataset.technology_id,
-            )
-        ).scalar_one()
-        yield selection
-
-
 def _get_modification_ids(values):
     modification_ids = []
     for rna, modomics in values:
@@ -340,18 +221,6 @@ def _get_modification_ids(values):
         )
         modification_ids.append(modification_id)
     return modification_ids
-
-
-def _get_modification_id(metadata):
-    return (
-        get_session()
-        .execute(
-            select(Modification.id).filter_by(
-                rna=metadata.rna, modomics_id=metadata.modomics_id
-            )
-        )
-        .scalar_one()
-    )
 
 
 def _get_organism_id(organism):
@@ -374,40 +243,3 @@ def _get_technology_id(metadata):
         )
         .scalar_one()
     )
-
-
-def _add_modification_if_none(metadata: ProjectMetaDataDto, session: Session) -> int:
-    try:
-        modification_id = _get_modification_id(metadata)
-    except NoResultFound:
-        modification = Modification(rna=metadata.rna, modomics_id=metadata.modomics_id)
-        session.add(modification)
-        session.flush()
-        modification_id = modification.id
-    return modification_id
-
-
-def _add_organism_if_none(metadata: ProjectMetaDataDto, session: Session) -> int:
-    try:
-        organism_id = _get_organism_id(metadata.organism)
-    except NoResultFound:
-        organism = Organism(
-            cto=metadata.organism.cto, taxa_id=metadata.organism.taxa_id
-        )
-        session.add(organism)
-        session.flush()
-        organism_id = organism.id
-    return organism_id
-
-
-def _add_technology_if_none(metadata: ProjectMetaDataDto, session: Session) -> int:
-    try:
-        technology_id = _get_technology_id(metadata)
-    except NoResultFound:
-        technology = DetectionTechnology(
-            tech=metadata.tech, method_id=metadata.method_id
-        )
-        session.add(technology)
-        session.flush()
-        technology_id = technology.id
-    return technology_id

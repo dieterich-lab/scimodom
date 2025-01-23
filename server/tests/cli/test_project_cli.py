@@ -11,6 +11,13 @@ from scimodom.database.models import (
     Selection,
     UserProjectAssociation,
     User,
+    DataAnnotation,
+    Data,
+    DatasetModificationAssociation,
+    BamFile,
+    Dataset,
+    ProjectSource,
+    ProjectContact,
 )
 from scimodom.cli.project import project_cli
 from scimodom.services.annotation import AnnotationService
@@ -25,6 +32,7 @@ from scimodom.services.file import FileService
 from scimodom.services.mail import MailService
 from scimodom.services.permission import PermissionService
 from scimodom.services.project import ProjectService
+from scimodom.services.selection import SelectionService
 from scimodom.services.url import UrlService
 from scimodom.services.user import UserService
 from scimodom.services.validator import ValidatorService
@@ -116,6 +124,12 @@ def _get_bedtools_service(Session, tmp_path):
     return BedToolsService(tmp_path=Path(tmp_path, "t_temp"))
 
 
+def _get_gene_service(Session, tmp_path):
+    return GeneService(
+        session=Session(), file_service=_get_file_service(Session, tmp_path)
+    )
+
+
 def _get_annotation_service(Session, tmp_path):
     return AnnotationService(
         session=Session(),
@@ -128,9 +142,7 @@ def _get_annotation_service(Session, tmp_path):
                     file_service=_get_file_service(Session, tmp_path)
                 ),
                 web_service=WebService(),
-                gene_service=GeneService(
-                    session=Session(), file_service=_get_file_service(Session, tmp_path)
-                ),
+                gene_service=_get_gene_service(Session, tmp_path),
                 file_service=_get_file_service(Session, tmp_path),
             ),
         },
@@ -155,9 +167,17 @@ def _get_dataset_service(Session, tmp_path):
     )
 
 
+def _get_selection_service(Session, tmp_path):
+    return SelectionService(
+        session=Session(), gene_service=_get_gene_service(Session, tmp_path)
+    )
+
+
 def _get_project_service(Session, tmp_path):
     return ProjectService(
-        session=Session(), file_service=_get_file_service(Session, tmp_path)
+        session=Session(),
+        file_service=_get_file_service(Session, tmp_path),
+        selection_service=_get_selection_service(Session, tmp_path),
     )
 
 
@@ -189,6 +209,10 @@ def mock_services(mocker, Session, tmp_path):
     mocker.patch(
         "scimodom.cli.project.get_project_service",
         return_value=_get_project_service(Session, tmp_path),
+    )
+    mocker.patch(
+        "scimodom.cli.project.get_selection_service",
+        return_value=_get_selection_service(Session, tmp_path),
     )
     mocker.patch(
         "scimodom.cli.project.get_user_service",
@@ -334,7 +358,9 @@ def test_add_project(Session, test_runner, tmp_path, capsys, setup, mock_service
         session.add(User(email="test@email.de", state=UserState.active))
         session.commit()
 
-    result = test_runner.invoke(args=["project", "add", "XXXXXXXXXXXX"], input="y")
+    result = test_runner.invoke(
+        args=["project", "add", "XXXXXXXXXXXX", "--add-user"], input="y"
+    )
     # exceptions are handled gracefully so exit code will likely always be 0...
     assert result.exit_code == 0
     # result.stdout or output does not capture secho consistently...
@@ -343,11 +369,65 @@ def test_add_project(Session, test_runner, tmp_path, capsys, setup, mock_service
     project_template = d / f"{smid}.json"
 
     with Session() as session:
-        assert session.scalar(select(func.count()).select_from(Project)) == 1
         assert session.scalar(select(func.count()).select_from(Selection)) == 2
+        assert session.scalar(select(func.count()).select_from(Project)) == 1
         assert (
             session.scalar(select(func.count()).select_from(UserProjectAssociation))
             == 1
         )
     assert Path(request_template).exists() is False
     assert Path(project_template).exists() is True
+
+
+def test_delete_project(
+    Session, test_runner, tmp_path, bam_file, annotation, mock_services
+):
+    d = tmp_path / "t_data" / "metadata"
+    project_template = Path(d, "12345678.json")
+    project_template.touch()
+
+    d = tmp_path / "t_data" / "cache" / "gene" / "selection"
+    gene_cache = []
+    for r in range(1, 5):
+        p = Path(d, str(r))
+        p.touch()
+        gene_cache.append(p)
+
+    d = tmp_path / "t_data" / "bam_files"
+    bam_files = []
+    with Session() as session:
+        bam_storage = session.execute(select(BamFile.storage_file_name)).scalars().all()
+        for r in bam_storage:
+            p = Path(d, str(r))
+            p.touch()
+            bam_files.append(p)
+
+    result = test_runner.invoke(args=["project", "delete", "12345678"], input="y")
+    # exceptions are handled gracefully so exit code will likely always be 0...
+    assert result.exit_code == 0
+
+    with Session() as session:
+        assert session.scalar(select(func.count()).select_from(Selection)) == 0
+        assert session.scalar(select(func.count()).select_from(DataAnnotation)) == 0
+        assert session.scalar(select(func.count()).select_from(Data)) == 0
+        assert (
+            session.scalar(
+                select(func.count()).select_from(DatasetModificationAssociation)
+            )
+            == 1
+        )
+        assert session.scalar(select(func.count()).select_from(BamFile)) == 0
+        assert session.scalar(select(func.count()).select_from(Dataset)) == 1
+        assert session.scalar(select(func.count()).select_from(ProjectSource)) == 0
+        assert (
+            session.scalar(select(func.count()).select_from(UserProjectAssociation))
+            == 0
+        )
+        assert session.scalar(select(func.count()).select_from(Project)) == 1
+        assert session.scalar(select(func.count()).select_from(ProjectContact)) == 1
+
+    assert project_template.exists() is False
+    for p in gene_cache:
+        assert p.exists() is False
+    for p in bam_files:
+        assert p.exists() is False
