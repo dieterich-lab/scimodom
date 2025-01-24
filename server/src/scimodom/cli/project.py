@@ -152,7 +152,7 @@ def create_project_template(
         )
     except Exception as exc:  # OSError, ValidationError
         click.secho(
-            f"Failed to create template: {exc}.",
+            f"Failed to create template. {exc}.",
             fg="red",
         )
 
@@ -192,7 +192,7 @@ def add_project(request_uuid: str, add_user: bool):
             click.secho(
                 (
                     f"Failed to update template. No such assembly '{metadata.organism.assembly_name}'"
-                    f" for organism {metadata.organism.taxa_id}"
+                    f" for organism '{metadata.organism.taxa_id}'"
                 ),
                 fg="red",
             )
@@ -241,7 +241,7 @@ def add_project(request_uuid: str, add_user: bool):
 )
 @click.argument("username", type=click.STRING)
 @click.argument("smid", type=click.STRING)
-def add_user(username, smid):
+def add_user(username: str, smid: str):
     """Force add a user to a project. User must exists.
 
     \b
@@ -264,7 +264,7 @@ def add_user(username, smid):
             fg="red",
         )
     except NoSuchUser as exc:
-        click.secho(f"Failed to add user. {exc}.", fg="red")
+        click.secho(f"Cannot add user. {exc}.", fg="red")
     except Exception as exc:
         click.secho(
             f"Failed to add user. {exc}.",
@@ -313,7 +313,7 @@ def delete_project(smid: str):
         fg="green",
     )
     for dataset in project.datasets:
-        click.secho(f"Dataset '{dataset.id}' with title '{dataset.title}'", fg="green")
+        click.secho(f"Dataset '{dataset.id}' with title '{dataset.title}'.", fg="green")
 
     click.secho("Continue [y/n]?", fg="green")
     c = click.getchar()
@@ -325,7 +325,7 @@ def delete_project(smid: str):
         _remove_datasets_and_selections(project)
         project_service.delete_project(project)
     except Exception as exc:
-        click.secho(f"Failed to delete project {project.id}: {exc}", fg="red")
+        click.secho(f"Failed to delete project '{project.id}'. {exc}", fg="red")
         return
 
 

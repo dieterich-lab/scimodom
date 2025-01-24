@@ -47,6 +47,7 @@ class GeneService:
                 Dataset.technology_id == Selection.technology_id,
             )
             .filter(Data.dataset_id == Dataset.id)
+            .filter(Data.modification_id == Selection.modification_id)
             .filter(DataAnnotation.data_id == Data.id)
             .filter(GenomicAnnotation.id == DataAnnotation.gene_id)
         ).distinct()

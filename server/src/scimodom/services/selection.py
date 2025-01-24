@@ -124,8 +124,8 @@ class SelectionService:
                 self._session.flush()
 
                 logger.info(
-                    f"Flushed selection '{selection.id}' (modification, organism, technology) "
-                    f" = ({modification_id}, {organism_id}, {technology_id})."
+                    f"Flushed selection '{selection.id}' "
+                    f"(m={modification_id}, o={organism_id}, t={technology_id})."
                 )
 
     def _add_modification_if_none(self, metadata: ProjectMetaDataDto) -> int:
@@ -174,12 +174,24 @@ class SelectionService:
         return technology_id
 
     def _delete_selection(self, selection: Selection, is_cache_only: bool) -> None:
+        msg = (
+            f"Removing selection '{selection.id}' (m={selection.modification_id}, "
+            f"o={selection.organism_id}, t={selection.technology_id})..."
+        )
+
         try:
             self._gene_service.delete_gene_cache(selection.id)
-            if is_cache_only:
-                return
-            self._session.delete(selection)
-            self._session.commit()
+
+            msg = f"{msg}\n Deleted gene cache."
+
+            if not is_cache_only:
+                self._session.delete(selection)
+                self._session.commit()
+
+                msg = f"{msg}\n Deleted selection from the database."
+
+            logger.info(msg)
+
         except Exception:
             self._session.rollback()
             raise

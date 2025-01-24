@@ -6,15 +6,12 @@ from flask_jwt_extended import JWTManager
 from sqlalchemy.orm import scoped_session
 
 from scimodom.app_singleton import create_app_singleton
-from scimodom.cli.sunburst import update_sunburst_chart
 from scimodom.config import set_config_from_environment, get_config
 from scimodom.database.database import make_session, init
 
 from scimodom.cli.assembly import add_assembly
 from scimodom.cli.annotation import add_annotation
-from scimodom.cli.dataset import add_dataset, add_all
-from scimodom.cli.utilities import validate_dataset_title, upsert
-from scimodom.services.file import get_file_service
+from scimodom.cli.utilities import upsert
 from scimodom.services.setup import get_setup_service
 from scimodom.services.url import (
     API_PREFIX,
@@ -26,7 +23,6 @@ from scimodom.services.url import (
     TRANSFER_API_ROUTE,
     USER_API_ROUTE,
 )
-from scimodom.utils.dtos.project import ProjectTemplate
 from scimodom.utils.specs.enums import AnnotationSource
 
 
@@ -45,6 +41,7 @@ def create_app():
     setup_service = get_setup_service()
     setup_service.upsert_all()
 
+    # API
     from scimodom.frontend import frontend
     from scimodom.api.utilities import api
     from scimodom.api.bam_file import bam_file_api
@@ -68,9 +65,13 @@ def create_app():
     # CLI
     from scimodom.cli.selection import selection_cli
     from scimodom.cli.project import project_cli
+    from scimodom.cli.dataset import dataset_cli
+    from scimodom.cli.charts import charts_cli
 
     app.register_blueprint(selection_cli)
     app.register_blueprint(project_cli)
+    app.register_blueprint(dataset_cli)
+    app.register_blueprint(charts_cli)
 
     jwt = JWTManager(app)
 
@@ -153,125 +154,6 @@ def create_app():
         add_annotation(taxid, annotation_source, **kwargs)
 
     @app.cli.command(
-        "dataset", epilog="Check docs at https://dieterich-lab.github.io/scimodom/."
-    )
-    @click.argument("filename", type=click.Path(exists=True))
-    @click.argument("smid", type=click.STRING)
-    @click.argument("title", type=click.UNPROCESSED, callback=validate_dataset_title)
-    @click.option("--assembly", required=True, type=click.INT, help="Assembly ID.")
-    @click.option(
-        "--annotation",
-        required=True,
-        type=click.Choice(["ensembl", "gtrnadb"], case_sensitive=False),
-        help="Annotation source.",
-    )
-    @click.option(
-        "-m",
-        "--modification",
-        default=[],
-        multiple=True,
-        required=True,
-        type=click.INT,
-        help="Modification ID(s). Repeat parameter to pass multiple selection IDs.",
-    )
-    @click.option(
-        "-o",
-        "--organism",
-        default=None,
-        required=True,
-        type=click.INT,
-        help="Organism ID.",
-    )
-    @click.option(
-        "-t",
-        "--technology",
-        default=None,
-        required=True,
-        type=click.INT,
-        help="Technology ID.",
-    )
-    @click.option(
-        "--dry-run",
-        is_flag=True,
-        show_default=True,
-        default=False,
-        help="Validate import. No database change.",
-    )
-    @click.option(
-        "--eufid",
-        default=None,
-        required=False,
-        type=click.STRING,
-        help="Update data and data annotation records for existing dataset with the supplied EUFID instead of creating a new one.",
-    )
-    def dataset(
-        filename,
-        smid,
-        title,
-        assembly,
-        annotation,
-        modification,
-        organism,
-        technology,
-        dry_run,
-        eufid,
-    ):
-        """Add a new dataset to the database or update records for an existing dataset.
-
-        \b
-        FILENAME is the path to the bedRMod (EU-formatted) file.
-        SMID is the project ID to which this dataset is to be added.
-        TITLE is the title of this dataset. String must be quoted.
-        """
-        annotation_source = AnnotationSource(annotation)
-        add_dataset(
-            filename,
-            smid,
-            title,
-            assembly,
-            list(modification),
-            organism,
-            technology,
-            annotation_source,
-            dry_run_flag=dry_run,
-            eufid=eufid,
-        )
-
-    @app.cli.command(
-        "batch", epilog="Check docs at https://dieterich-lab.github.io/scimodom/."
-    )
-    @click.argument("input_directory", type=click.Path(exists=True))
-    @click.argument("request_uuids", nargs=-1, type=click.STRING)
-    @click.option(
-        "--annotation",
-        required=True,
-        type=click.Choice(["ensembl", "gtrnadb"], case_sensitive=False),
-        help="Annotation source.",
-    )
-    def batch(input_directory, request_uuids, annotation):
-        """Add projects and dataset in batch.
-        All dataset files must be under INPUT_DIRECTORY.
-        Implicitely assumed that all have the same annotation
-        source. There is no [--dry-run] option. This method cannot
-        be used to update records for existing datasets.
-
-        \b
-        INPUT_DIRECTORY is the path to bedRMod (EU-formatted) files.
-        REQUEST_UUIDS is the name (w/o extension) of one or more project templates.
-        """
-        annotation_source = AnnotationSource(annotation)
-        file_service = get_file_service()
-        project_template_list = []
-        for uuid in request_uuids:
-            with file_service.open_project_request_file(uuid) as fh:
-                project_template_raw = fh.read()
-            project_template = ProjectTemplate.model_validate_json(project_template_raw)
-            project_template_list.append(project_template)
-        add_all(
-            input_directory, project_template_list, request_uuids, annotation_source
-        )
-
-    @app.cli.command(
         "setup", epilog="Check docs at https://dieterich-lab.github.io/scimodom/."
     )
     @click.option(
@@ -294,17 +176,6 @@ def create_app():
         if not init:
             kwargs = {"table": table}
         upsert(init, **kwargs)
-
-    @app.cli.command(
-        "sunburst-update", epilog="Updates the cached data for the sunburst charts."
-    )
-    def sunburst_update_cli():
-        """Update the cached data for the sunburst charts.
-        This should be done after a dataset has been added.
-        Usually this is triggered automatically and executed
-        in the background.
-        """
-        update_sunburst_chart()
 
     @app.teardown_appcontext
     def cleanup(exception=None):
