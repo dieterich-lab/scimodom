@@ -78,20 +78,29 @@ class AssemblyService:
             select(AssemblyVersion.version_num)
         ).scalar_one()
 
-    def get_assembly_by_id(self, assembly_id: int) -> Assembly:
-        """Retrieve assembly.
+    def get_by_id(self, assembly_id: int) -> Assembly:
+        """Retrieve assembly by ID.
 
         :param assembly_id: Assembly ID
         :type assembly_id: int
-        :returns: Assembly instance
+        :return: Assembly
         :rtype: Assembly
-
-        :raises: AssemblyNotFoundError
         """
-        try:
-            return self._session.get_one(Assembly, assembly_id)
-        except NoResultFound:
-            raise AssemblyNotFoundError(f"No such assembly with ID: {assembly_id}.")
+        return self._session.get_one(Assembly, assembly_id)
+
+    def get_by_taxa_and_name(self, taxa_id: int, assembly_name: str) -> Assembly:
+        """Retrieve assembly by taxa ID and name.
+
+        :param taxa_id: Taxonomy ID
+        :type taxa_id: int
+        :param assembly_name: Assembly name
+        :type assembly_name: str
+        :returns: Assembly
+        :rtype: Assembly
+        """
+        return self._session.execute(
+            select(Assembly).filter_by(taxa_id=taxa_id, name=assembly_name)
+        ).scalar_one()
 
     def get_assembly_by_name(
         self, taxa_id: int, assembly_name: str, fail_safe: bool = True
@@ -165,10 +174,9 @@ class AssemblyService:
         :returns: Assembly name
         :rtype: str
         """
-        name = self._session.execute(
+        return self._session.execute(
             select(Assembly.name).filter_by(taxa_id=taxa_id, version=self._version)
         ).scalar_one()
-        return name
 
     def get_seqids(self, taxa_id: int) -> list[str]:
         """Return chromosomes for a given assembly as a list.
@@ -263,7 +271,8 @@ class AssemblyService:
         :param assembly_id: Assembly ID
         :type assembly_id: int
         """
-        assembly = self.get_assembly_by_id(assembly_id)
+        # TODO this should eventually be handled b the caller in the CLI
+        assembly = self.get_by_id(assembly_id)
         if not self.is_latest_assembly(assembly):
             raise AssemblyVersionError(
                 f"Mismatch between assembly version '{assembly.version}' and "

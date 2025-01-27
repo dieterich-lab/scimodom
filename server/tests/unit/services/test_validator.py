@@ -2,6 +2,7 @@ from collections import defaultdict, namedtuple
 from io import StringIO
 
 import pytest
+from sqlalchemy.exc import NoResultFound
 
 from scimodom.database.models import Assembly
 from scimodom.services.assembly import AssemblyNotFoundError, AssemblyAbortedError
@@ -48,11 +49,11 @@ class MockAssemblyService:
         self._allowed_assemblies = allowed_assemblies
         self._added_assembly: Assembly | None = None
 
-    def get_assembly_by_id(self, assembly_id: int) -> Assembly:
+    def get_by_id(self, assembly_id: int) -> Assembly:
         try:
             return self._assemblies_by_id[assembly_id]
         except KeyError:
-            raise AssemblyNotFoundError
+            raise NoResultFound
 
     def get_assembly_by_name(
         self, taxa_id: int, assembly_name: str, fail_safe: bool = True

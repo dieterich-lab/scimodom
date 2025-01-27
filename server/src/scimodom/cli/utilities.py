@@ -80,7 +80,8 @@ def add_assembly_to_template_if_none(
         )
         organism.assembly_id = assembly.id
     else:
-        assembly_service.get_assembly_by_id(organism.assembly_id)
+        # TODO handle NoResultFound
+        assembly_service.get_by_id(organism.assembly_id)
 
 
 def get_modomics_id(name) -> str:

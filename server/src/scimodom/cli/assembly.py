@@ -19,7 +19,7 @@ def add_assembly(**kwargs) -> None:
 
     assembly_id = kwargs.get("assembly_id", None)
     if assembly_id:
-        assembly = assembly_service.get_assembly_by_id(assembly_id)
+        assembly = assembly_service.get_by_id(assembly_id)
         click.secho(
             f"Preparing assembly for {assembly.name}...",
             fg="green",

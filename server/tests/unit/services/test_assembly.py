@@ -4,6 +4,7 @@ from typing import TextIO, BinaryIO
 
 import pytest
 from sqlalchemy import exists
+from sqlalchemy.exc import NoResultFound
 
 from scimodom.database.models import Assembly, AssemblyVersion
 from scimodom.services.assembly import (
@@ -118,9 +119,9 @@ def test_init(Session, file_service):
     assert service._version == "GcatSmFcytpU"
 
 
-def test_get_assembly_by_id(Session, file_service, setup):  # noqa
+def test_get_by_id(Session, file_service, setup):  # noqa
     service = _get_assembly_service(Session, file_service)
-    assembly = service.get_assembly_by_id(3)
+    assembly = service.get_by_id(3)
     assert assembly.name == "GRCh37"
     assert assembly.alt_name == "hg19"
     assert assembly.taxa_id == 9606
@@ -128,14 +129,27 @@ def test_get_assembly_by_id(Session, file_service, setup):  # noqa
     assert service._version == "GcatSmFcytpU"
 
 
-def test_get_assembly_by_id_fail(Session):
+def test_get_by_id_fail(Session):
     with Session() as session, session.begin():
         session.add(AssemblyVersion(version_num="GcatSmFcytpU"))
     service = _get_assembly_service(Session, file_service)
-    with pytest.raises(AssemblyNotFoundError) as exc:
-        service.get_assembly_by_id(99)
-    assert (str(exc.value)) == "No such assembly with ID: 99."
-    assert exc.type == AssemblyNotFoundError
+    with pytest.raises(NoResultFound):
+        service.get_by_id(1)
+
+
+def test_get_by_taxa_and_name(Session, file_service, setup):
+    service = _get_assembly_service(Session, file_service)
+    assembly = service.get_by_taxa_and_name(9606, "GRCh37")
+    assert assembly.id == 3
+    assert assembly.version == "J9dit7Tfc6Sb"
+
+
+def test_get_by_taxa_and_name_fail(Session):
+    with Session() as session, session.begin():
+        session.add(AssemblyVersion(version_num="GcatSmFcytpU"))
+    service = _get_assembly_service(Session, file_service)
+    with pytest.raises(NoResultFound):
+        service.get_by_taxa_and_name(9606, "GRCh37")
 
 
 def test_get_assemblies_by_taxa(Session, file_service, setup):  # noqa
@@ -156,7 +170,7 @@ def test_is_latest_assembly(
     assembly_id, is_latest, Session, file_service, setup
 ):  # noqa
     service = _get_assembly_service(Session, file_service)
-    assembly = service.get_assembly_by_id(assembly_id)
+    assembly = service.get_by_id(assembly_id)
     assert service.is_latest_assembly(assembly) == is_latest
 
 
@@ -186,7 +200,7 @@ def test_get_chroms(Session, file_service, setup):  # noqa
         assert chrom == expected_chrom
 
 
-def test_liftover(Session, file_service, setup):  # noqa
+def test_create_lifted_file(Session, file_service, setup):  # noqa
     file_service.files_by_name[
         "/data/assembly/9606/GRCh37/GRCh37_to_GRCh38.chain.gz"
     ] = BytesIO()
@@ -194,13 +208,13 @@ def test_liftover(Session, file_service, setup):  # noqa
     file_service.lines_by_name["to_be_lifted.bed"] = 3
     file_service.lines_by_name["lifted.bed"] = 3
     service = _get_assembly_service(Session, file_service)
-    assembly = service.get_assembly_by_id(3)
+    assembly = service.get_by_id(3)
     service.create_lifted_file(
         assembly, "to_be_lifted.bed", unmapped_file="unmapped.bed"
     )
 
 
-def test_liftover_fail_count(Session, file_service, setup):  # noqa
+def test_create_lifted_file_fail_count(Session, file_service, setup):  # noqa
     file_service.files_by_name[
         "/data/assembly/9606/GRCh37/GRCh37_to_GRCh38.chain.gz"
     ] = BytesIO()
@@ -208,7 +222,7 @@ def test_liftover_fail_count(Session, file_service, setup):  # noqa
     file_service.lines_by_name["to_be_lifted.bed"] = 3
     file_service.lines_by_name["lifted.bed"] = 2
     service = _get_assembly_service(Session, file_service)
-    assembly = service.get_assembly_by_id(3)
+    assembly = service.get_by_id(3)
     with pytest.raises(LiftOverError) as exc:
         service.create_lifted_file(
             assembly, "to_be_lifted.bed", unmapped_file="unmapped.bed"
@@ -219,7 +233,7 @@ def test_liftover_fail_count(Session, file_service, setup):  # noqa
     assert exc.type == LiftOverError
 
 
-def test_liftover_warning(Session, file_service, setup, caplog):  # noqa
+def test_create_lifted_file_warning(Session, file_service, setup, caplog):  # noqa
     file_service.files_by_name[
         "/data/assembly/9606/GRCh37/GRCh37_to_GRCh38.chain.gz"
     ] = BytesIO()
@@ -227,7 +241,7 @@ def test_liftover_warning(Session, file_service, setup, caplog):  # noqa
     file_service.lines_by_name["to_be_lifted.bed"] = 4
     file_service.lines_by_name["lifted.bed"] = 3
     service = _get_assembly_service(Session, file_service)
-    assembly = service.get_assembly_by_id(3)
+    assembly = service.get_by_id(3)
     service.create_lifted_file(
         assembly, "to_be_lifted.bed", unmapped_file="unmapped.bed"
     )
@@ -236,9 +250,9 @@ def test_liftover_warning(Session, file_service, setup, caplog):  # noqa
     ]
 
 
-def test_liftover_fail_version(Session, file_service, setup):  # noqa
+def test_create_lifted_file_fail_version(Session, file_service, setup):  # noqa
     service = _get_assembly_service(Session, file_service)
-    assembly = service.get_assembly_by_id(1)
+    assembly = service.get_by_id(1)
     with pytest.raises(AssemblyVersionError) as exc:
         service.create_lifted_file(assembly, "raw_file")
     assert (str(exc.value)) == "Cannot liftover for latest assembly."

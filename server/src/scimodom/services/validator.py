@@ -159,6 +159,8 @@ class ValidatorService:
         """
         self._sanitize_header(importer)
         self._sanitize_taxa_id(taxa_id)
+        # TODO handle exception for assembly by name
+        # add assembly if NoResultFound, but handle AssemblyNotFoundError
         try:
             assembly_name = self._read_header["assembly_name"]
             assembly = self._assembly_service.get_assembly_by_name(
@@ -288,7 +290,7 @@ class ValidatorService:
     def _sanitize_assembly(
         self, context: _ReadOnlyImportContext | _DatasetImportContext
     ) -> tuple[bool, list[str]]:
-        assembly = self._assembly_service.get_assembly_by_id(context.assembly_id)
+        assembly = self._assembly_service.get_by_id(context.assembly_id)
         assembly_name = self._read_header["assembly_name"]
         if assembly.name != assembly_name:
             raise DatasetHeaderError(
@@ -413,8 +415,8 @@ class ValidatorService:
 
     def _get_validated_taxa_id(self, assembly_id: int, organism_id: int) -> int:
         try:
-            assembly = self._assembly_service.get_assembly_by_id(assembly_id)
-        except AssemblyNotFoundError:
+            assembly = self._assembly_service.get_by_id(assembly_id)
+        except NoResultFound:
             raise DatasetImportError(f"No such assembly ID: {assembly_id}.")
         try:
             organism = self._get_organism(organism_id)
@@ -447,7 +449,7 @@ class ValidatorService:
                 if self._check_euf_record(record, importer, context):
                     yield record
 
-        assembly = self._assembly_service.get_assembly_by_id(context.assembly_id)
+        assembly = self._assembly_service.get_by_id(context.assembly_id)
         current_assembly_name = self._assembly_service.get_name_for_version(
             assembly.taxa_id
         )
