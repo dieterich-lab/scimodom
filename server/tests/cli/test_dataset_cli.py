@@ -148,18 +148,18 @@ EXPECTED_RECORDS = [
     ("1", 0, 5),
 ]
 
-EXPECTED_SEARCH_CHART = """[{"name": "Search", "children": [{"name": "m5C", "children": [{"name": "H. sapiens", "children": [{"name": "Cell type 1", "children": [{"name": "Technology 1", "size": 1}]}]}]}, {"name": "m6A", "children": [{"name": "H. sapiens", "children": [{"name": "Cell type 1", "children": [{"name": "Technology 1", "size": 4}]}]}]}]}]"""
-EXPECTED_BROWSE_CHART = """[{"name": "Browse", "children": [{"name": "m5C", "children": [{"name": "H. sapiens", "children": [{"name": "Cell type 1", "children": [{"name": "Technology 1", "size": 1}]}]}]}, {"name": "m6A", "children": [{"name": "H. sapiens", "children": [{"name": "Cell type 1", "children": [{"name": "Technology 1", "size": 1}]}]}]}]}]"""
+SEARCH_CHART = """[{"name": "Search", "children": [{"name": "m5C", "children": [{"name": "H. sapiens", "children": [{"name": "Cell type 1", "children": [{"name": "Technology 1", "size": 1}]}]}]}, {"name": "m6A", "children": [{"name": "H. sapiens", "children": [{"name": "Cell type 1", "children": [{"name": "Technology 1", "size": 4}]}]}]}]}]"""
+BROWSE_CHART = """[{"name": "Browse", "children": [{"name": "m5C", "children": [{"name": "H. sapiens", "children": [{"name": "Cell type 1", "children": [{"name": "Technology 1", "size": 1}]}]}]}, {"name": "m6A", "children": [{"name": "H. sapiens", "children": [{"name": "Cell type 1", "children": [{"name": "Technology 1", "size": 1}]}]}]}]}]"""
 EXPECTED_CHARTS = {
-    "search": EXPECTED_SEARCH_CHART,
-    "browse": EXPECTED_BROWSE_CHART,
+    "search": SEARCH_CHART,
+    "browse": BROWSE_CHART,
 }
 
-EXPECTED_SEARCH_CHART = """[{"name": "Search", "children": [{"name": "m5C", "children": [{"name": "H. sapiens", "children": [{"name": "Cell type 1", "children": [{"name": "Technology 1", "size": 1}]}]}]}, {"name": "m6A", "children": [{"name": "H. sapiens", "children": [{"name": "Cell type 1", "children": [{"name": "Technology 1", "size": 4}]}, {"name": "Cell type 2", "children": [{"name": "Technology 2", "size": 1}]}]}]}]}]"""
-EXPECTED_BROWSE_CHART = """[{"name": "Browse", "children": [{"name": "m5C", "children": [{"name": "H. sapiens", "children": [{"name": "Cell type 1", "children": [{"name": "Technology 1", "size": 1}]}]}]}, {"name": "m6A", "children": [{"name": "H. sapiens", "children": [{"name": "Cell type 1", "children": [{"name": "Technology 1", "size": 1}]}, {"name": "Cell type 2", "children": [{"name": "Technology 2", "size": 1}]}]}]}]}]"""
-EXPECTED_CHARTS_BATCH = {
-    "search": EXPECTED_SEARCH_CHART,
-    "browse": EXPECTED_BROWSE_CHART,
+SEARCH_CHART = """[{"name": "Search", "children": [{"name": "m5C", "children": [{"name": "H. sapiens", "children": [{"name": "Cell type 1", "children": [{"name": "Technology 1", "size": 1}]}]}]}, {"name": "m6A", "children": [{"name": "H. sapiens", "children": [{"name": "Cell type 1", "children": [{"name": "Technology 1", "size": 4}]}, {"name": "Cell type 2", "children": [{"name": "Technology 2", "size": 1}]}]}]}]}]"""
+BROWSE_CHART = """[{"name": "Browse", "children": [{"name": "m5C", "children": [{"name": "H. sapiens", "children": [{"name": "Cell type 1", "children": [{"name": "Technology 1", "size": 1}]}]}]}, {"name": "m6A", "children": [{"name": "H. sapiens", "children": [{"name": "Cell type 1", "children": [{"name": "Technology 1", "size": 1}]}, {"name": "Cell type 2", "children": [{"name": "Technology 2", "size": 1}]}]}]}]}]"""
+EXPECTED_CHARTS_IN_BATCH = {
+    "search": SEARCH_CHART,
+    "browse": BROWSE_CHART,
 }
 
 
@@ -313,28 +313,27 @@ def test_request(tmp_path):
 
 
 @pytest.fixture
-def dataset_runner():
+def test_runner():
     app = Flask(__name__)
     app.register_blueprint(dataset_cli)
-    yield app.test_cli_runner()
-
-
-@pytest.fixture
-def charts_runner():
-    app = Flask(__name__)
     app.register_blueprint(charts_cli)
     yield app.test_cli_runner()
 
 
 @pytest.fixture
-def mock_services(mocker, Session, tmp_path, charts_runner):
+def mock_services(mocker, Session, tmp_path, test_runner):
+    mocker.patch("scimodom.services.annotation.ensembl.Ensembl", MockEnsembl)
     mocker.patch(
         "scimodom.services.sunburst.get_file_service",
         return_value=_get_file_service(Session, tmp_path),
     )
     mocker.patch(
+        "scimodom.cli.charts.get_sunburst_service",
+        return_value=_get_sunburst_service(Session, tmp_path, test_runner),
+    )
+    mocker.patch(
         "scimodom.cli.dataset.get_sunburst_service",
-        return_value=_get_sunburst_service(Session, tmp_path, charts_runner),
+        return_value=_get_sunburst_service(Session, tmp_path, test_runner),
     )
     mocker.patch(
         "scimodom.cli.dataset.get_dataset_service",
@@ -352,7 +351,6 @@ def mock_services(mocker, Session, tmp_path, charts_runner):
         "scimodom.cli.dataset.get_file_service",
         return_value=_get_file_service(Session, tmp_path),
     )
-    mocker.patch("scimodom.services.annotation.ensembl.Ensembl", MockEnsembl)
 
 
 # tests
@@ -361,7 +359,7 @@ def mock_services(mocker, Session, tmp_path, charts_runner):
 @pytest.mark.datafiles(Path(DATA_DIR, "file1.bedrmod"))
 def test_add_dataset(
     Session,
-    dataset_runner,
+    test_runner,
     datafiles,
     selection,
     project,
@@ -392,7 +390,7 @@ def test_add_dataset(
     ]
 
     freezer.move_to("2024-06-20 12:00:00")
-    result = dataset_runner.invoke(args=args, input="y")
+    result = test_runner.invoke(args=args, input="y")
     # exceptions are handled gracefully so exit code will likely always be 0...
     assert result.exit_code == 0
     # result.stdout or output does not capture secho consistently...
@@ -441,7 +439,7 @@ def test_add_dataset(
 @pytest.mark.datafiles(Path(DATA_DIR, "file1.bedrmod"))
 def test_add_dataset_dry_run(
     Session,
-    dataset_runner,
+    test_runner,
     datafiles,
     selection,
     project,
@@ -473,7 +471,7 @@ def test_add_dataset_dry_run(
     ]
 
     freezer.move_to("2024-06-20 12:00:00")
-    result = dataset_runner.invoke(args=args, input="y")
+    result = test_runner.invoke(args=args, input="y")
     # exceptions are handled gracefully so exit code will likely always be 0...
     assert result.exit_code == 0
 
@@ -498,7 +496,7 @@ def test_add_dataset_dry_run(
 @pytest.mark.datafiles(Path(DATA_DIR, "file2.bedrmod"))
 def test_add_dataset_in_batch(
     Session,
-    dataset_runner,
+    test_runner,
     datafiles,
     selection,
     test_data,
@@ -515,7 +513,7 @@ def test_add_dataset_in_batch(
         "test_request",
     ]
 
-    result = dataset_runner.invoke(args=args)
+    result = test_runner.invoke(args=args)
     # exceptions are handled gracefully so exit code will likely always be 0...
     assert result.exit_code == 0
 
@@ -542,4 +540,4 @@ def test_add_dataset_in_batch(
     d = tmp_path / "t_data" / FileService.SUNBURST_CACHE_DEST
     for chart_type in SunburstChartType:
         with open(Path(d, f"{chart_type.value}.json")) as fh:
-            assert fh.read() == EXPECTED_CHARTS_BATCH[chart_type.value]
+            assert fh.read() == EXPECTED_CHARTS_IN_BATCH[chart_type.value]
