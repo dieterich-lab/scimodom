@@ -55,17 +55,48 @@ def test_annotation_source():
 
 
 def test_assembly_file_type():
-    assert AssemblyFileType.CHROM == AssemblyFileType("chrom.sizes")
     assert AssemblyFileType.INFO == AssemblyFileType("info.json")
     assert AssemblyFileType.RELEASE == AssemblyFileType("release.json")
-    assert AssemblyFileType.CHAIN == AssemblyFileType("__CHAIN__")
+    assert AssemblyFileType.CHROM == AssemblyFileType("chrom.sizes")
+    assert (
+        AssemblyFileType.CHAIN.value(source_assembly="source", target_assembly="target")
+        == "source_to_target.chain.gz"
+    )
     assert (
         AssemblyFileType.DNA.value(
             organism="organism", assembly="assembly", chrom="chrom"
         )
         == "organism.assembly.dna.chromosome.chrom.fa.gz"
     )
-    assert len(AssemblyFileType) == 5
+    assert (
+        AssemblyFileType.DNA_IDX.value(
+            organism="organism", assembly="assembly", chrom="chrom"
+        )
+        == "organism.assembly.dna.chromosome.chrom.fa.gz.fai"
+    )
+    assert (
+        AssemblyFileType.DNA_BGZ.value(
+            organism="organism", assembly="assembly", chrom="chrom"
+        )
+        == "organism.assembly.dna.chromosome.chrom.fa.gz.gzi"
+    )
+    assert AssemblyFileType.common() == (
+        AssemblyFileType.INFO,
+        AssemblyFileType.RELEASE,
+        AssemblyFileType.CHROM,
+    )
+    assert AssemblyFileType.fasta() == (
+        AssemblyFileType.DNA,
+        AssemblyFileType.DNA_IDX,
+        AssemblyFileType.DNA_BGZ,
+    )
+    assert AssemblyFileType.is_chain(AssemblyFileType.CHAIN) is True
+    assert AssemblyFileType.is_chain("test") is False
+    assert AssemblyFileType.is_fasta(AssemblyFileType.DNA) is True
+    assert AssemblyFileType.is_fasta(AssemblyFileType.DNA_IDX) is True
+    assert AssemblyFileType.is_fasta(AssemblyFileType.DNA_BGZ) is True
+    assert AssemblyFileType.is_fasta("test") is False
+    assert len(AssemblyFileType) == 7
 
 
 def test_targets_fie_type():

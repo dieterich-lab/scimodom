@@ -346,60 +346,65 @@ class FileService:
         self,
         taxa_id: int,
         file_type: AssemblyFileType,
+        assembly_name: str | None = None,
         chrom: str | None = None,
-        chain_file_name: str | None = None,
-        chain_assembly_name: str | None = None,
     ) -> Path:
         """Construct assembly-related file paths for a given organism.
 
         :param taxa_id: Taxa ID
         :type taxa_id: int
-        :param file_type: Type of assembly file (CHROM, INFO, RELEASE, CHAIN)
+        :param file_type: Type of assembly file
         :type file_type: AssemblyFileType
-        :param chrom: Only used if file_type is DNA
+        :param assembly_name: Assembly name. Required if file_type is CHAIN.
+        If None, it is inferred from the current assembly version.
+        :type assembly_name: str | None
+        :param chrom: Required if file_type is DNA
         :type chrom: str | None
-        :param chain_file_name: Only used if file_type is CHAIN - base chain file name
-        :type chain_file_name: str | None
-        :param chain_assembly_name: Only used if file_type is CHAIN - assembly name
-        :type chain_assembly_name: str | None
-        :returns: Full path to file
+        :raises ValueError: If missing arguments
+        :return: Full path to file
         :rtype: Path
         """
         file_name = file_type.value
-        assembly_name = self._get_current_assembly_name_from_taxa_id(taxa_id)
-        if file_type == AssemblyFileType.CHAIN:
-            if chain_file_name is None or chain_assembly_name is None:
-                raise ValueError("Missing chain_file_name and/or assembly_name!")
-            file_name = chain_file_name
-            assembly_name = chain_assembly_name
-        if file_type == AssemblyFileType.DNA:
+        current_assembly_name = self._get_current_assembly_name_from_taxa_id(taxa_id)
+        if AssemblyFileType.is_chain(file_type):
+            if assembly_name is None:
+                raise ValueError("Missing required assembly_name.")
+            file_name = file_type.value(
+                source_assembly=assembly_name,
+                target_assembly=current_assembly_name,
+            )
+            current_assembly_name = assembly_name
+        if AssemblyFileType.is_fasta(file_type):
             if chrom is None:
-                raise ValueError("Missing chrom!")
+                raise ValueError("Missing required chrom.")
             organism = self._get_dir_name_from_organism(
                 self._get_organism_from_taxa_id(taxa_id)
             )
             file_name = file_type.value(
-                organism=organism, assembly=assembly_name, chrom=chrom
+                organism=organism, assembly=current_assembly_name, chrom=chrom
             )
 
-        return Path(self._get_assembly_dir(taxa_id, assembly_name), file_name)
+        return Path(self._get_assembly_dir(taxa_id, current_assembly_name), file_name)
 
     def open_assembly_file(self, taxa_id: int, file_type: AssemblyFileType) -> TextIO:
-        """Opens an assembly file path for a given organism and returns a file for reading.
-        Chain files are not supported.
+        """Open an assembly file for reading.
 
         :param taxa_id: Taxa ID
         :type taxa_id: int
         :param file_type: Type of assembly file (CHROM, INFO, RELEASE, CHAIN)
         :type file_type: AssemblyFileType
+        :raises NotImplementedError: If chain file or FASTA.
+        :return: Open file handle for reading
+        :rtype: TextIO
         """
-        if file_type in [AssemblyFileType.CHAIN, AssemblyFileType.DNA]:
+        if AssemblyFileType.is_chain(file_type) or AssemblyFileType.is_fasta(file_type):
             raise NotImplementedError()
         path = self.get_assembly_file_path(taxa_id, file_type)
         return open(path)
 
     def create_assembly_file(self, taxa_id: int, file_type: AssemblyFileType) -> TextIO:
-        """Open an assembly file for writing for a given organism.
+        """Open an assembly file for writing.
+
         If missing, the parent directory is created.
         Chain files are not supported. Use create_chain_file() instead.
 
@@ -407,39 +412,38 @@ class FileService:
         :type taxa_id: int
         :param file_type: Type of assembly file (CHROM, INFO, RELEASE, CHAIN)
         :type file_type: AssemblyFileType
+        :raises NotImplementedError: If chain file or FASTA.
+        :return: Open file handle for writing
+        :rtype: TextIO
         """
-        if file_type in [AssemblyFileType.CHAIN, AssemblyFileType.DNA]:
+        if AssemblyFileType.is_chain(file_type) or AssemblyFileType.is_fasta(file_type):
             raise NotImplementedError()
         path = self.get_assembly_file_path(taxa_id, file_type)
         self._create_folder(path.parent)
         return open(path, "x", opener=write_opener)
 
-    def create_chain_file(
-        self, taxa_id: int, file_name: str, assembly_name
-    ) -> BinaryIO:
-        """Creates chain file for a given organism and returns a file handle to fill it.
+    def create_chain_file(self, taxa_id: int, assembly_name: str) -> BinaryIO:
+        """Create chain file for writing (binary mode).
+
         If missing, the parent directory is created.
 
         :param taxa_id: Taxa ID
         :type taxa_id: int
-        :param file_name: Chain file name
-        :type file_name: str
         :param assembly_name: Assembly name
         :type assembly_name: str
-        :returns: Writable file handle
+        :return: Open file handle for writing
         :rtype: BinaryIO
         """
         path = self.get_assembly_file_path(
             taxa_id,
             AssemblyFileType.CHAIN,
-            chain_file_name=file_name,
-            chain_assembly_name=assembly_name,
+            assembly_name=assembly_name,
         )
         self._create_folder(path.parent)
         return open(path, "xb", opener=write_opener)
 
     def delete_assembly(self, taxa_id: int, assembly_name: str) -> None:
-        """Remove assembly directory structure
+        """Remove assembly directory structure.
 
         :param taxa_id: Taxa ID
         :type taxa_id: int
@@ -448,15 +452,65 @@ class FileService:
         """
         rmtree(self._get_assembly_dir(taxa_id, assembly_name))
 
-    def check_if_assembly_exists(self, taxa_id: int, name: str) -> bool:
-        """Check if directory structure exists for a given assembly.
+    def check_if_assembly_exists(
+        self, taxa_id: int, assembly_name: str | None = None
+    ) -> bool:
+        """Check if directory structure and files exist for a given assembly.
+
+        File content is not validated.
 
         :param taxa_id: Taxa ID
         :type taxa_id: int
-        :param name: Assembly name
-        :type name: str
+        :param assembly_name: Assembly name. If None, it is inferred
+        from the current assembly version, and this determines which
+        files are checked.
+        :type assembly_name: str | None
         """
-        return self._get_assembly_dir(taxa_id, name).is_dir()
+        current_assembly_name = self._get_current_assembly_name_from_taxa_id(taxa_id)
+        # fail-safe
+        if assembly_name == current_assembly_name:
+            assembly_name = None
+
+        if assembly_name is not None:
+            if not self._get_assembly_dir(taxa_id, assembly_name).is_dir():
+                return False
+            else:
+                return self.get_assembly_file_path(
+                    taxa_id, AssemblyFileType.CHAIN, assembly_name=assembly_name
+                ).is_file()
+        else:
+            assembly_dir = self._get_assembly_dir(taxa_id, current_assembly_name)
+            if not assembly_dir.is_dir():
+                return False
+            else:
+                try:
+                    assembly_files = [
+                        self.get_assembly_file_path(taxa_id, file_type)
+                        for file_type in AssemblyFileType.common()
+                    ]
+
+                    with self.open_assembly_file(taxa_id, AssemblyFileType.CHROM) as fh:
+                        chroms = [line.split()[0] for line in fh.readlines()]
+                    for chrom in chroms:
+                        for file_type in AssemblyFileType.fasta():
+                            assembly_files.append(
+                                self.get_assembly_file_path(
+                                    taxa_id, file_type, chrom=chrom
+                                )
+                            )
+                    if all(p.is_file() for p in assembly_files):
+                        return True
+                    else:
+                        raise FileExistsError(
+                            f"Files exist for assembly '{current_assembly_name}'."
+                        )
+                except FileNotFoundError:
+                    if any(assembly_dir.iterdir()):
+                        raise FileExistsError(
+                            f"Files exist for assembly '{current_assembly_name}'."
+                        )
+                    else:
+                        return False
 
     @staticmethod
     def _get_dir_name_from_organism(organism) -> str:

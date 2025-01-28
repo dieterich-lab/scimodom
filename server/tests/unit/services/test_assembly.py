@@ -42,12 +42,15 @@ class MockFileService:
     def get_assembly_file_path(
         taxa_id: int,
         file_type: AssemblyFileType,
-        chain_file_name: str | None = None,
-        chain_assembly_name: str | None = None,
+        assembly_name: str | None = None,
     ) -> Path:
+        current_assembly_name = "GRCh38"
         if file_type == AssemblyFileType.CHAIN:
             return Path(
-                f"/data/assembly/{taxa_id}/{chain_assembly_name}/{chain_file_name}"
+                (
+                    f"/data/assembly/{taxa_id}/{assembly_name}/"
+                    f"{assembly_name}_to_{current_assembly_name}.chain.gz"
+                )
             )
         else:
             return Path(f"/data/assembly/{taxa_id}/{file_type.value}")
@@ -70,20 +73,21 @@ class MockFileService:
         self.files_by_name[name] = new_file
         return new_file
 
-    def create_chain_file(
-        self, taxa_id: int, file_name: str, assembly_name: str
-    ) -> BinaryIO:
+    def create_chain_file(self, taxa_id: int, assembly_name: str) -> BinaryIO:
         name = self.get_assembly_file_path(
             taxa_id,
             AssemblyFileType.CHAIN,
-            chain_file_name=file_name,
-            chain_assembly_name=assembly_name,
+            assembly_name=assembly_name,
         ).as_posix()
         new_file = MockBytesIO()
         self.files_by_name[name] = new_file
         return new_file
 
-    def check_if_assembly_exists(self, taxa_id: int, assembly_name: str) -> bool:
+    def check_if_assembly_exists(
+        self, taxa_id: int, assembly_name: str | None = None
+    ) -> bool:
+        if assembly_name is None:
+            assembly_name = "GRCh38"
         return (taxa_id, assembly_name) in self.existing_assemblies
 
     def delete_assembly(self, taxa_id: int, assembly_name: str):
@@ -471,13 +475,6 @@ def test_prepare_assembly_for_version_wrong_url(
     assert str(exc.value) == "Adding assembly for ID '1' aborted."
     assert exc.type == AssemblyAbortedError
     assert file_service.deleted_assemblies == [(9606, "GRCh38")]
-
-
-def test_get_chain_file_name():
-    assert (
-        AssemblyService._get_chain_file_name("GRCh37", "GRCh38")
-        == "GRCh37_to_GRCh38.chain.gz"
-    )
 
 
 def test_get_organism(Session, file_service, setup):

@@ -234,15 +234,10 @@ class AssemblyService:
         if self.is_latest_assembly(assembly):
             raise AssemblyVersionError("Cannot liftover for latest assembly.")
 
-        target_annotation_name = self.get_name_for_version(assembly.taxa_id)
-        chain_file_name = self._get_chain_file_name(
-            assembly.name, target_annotation_name
-        )
         chain_file = self._file_service.get_assembly_file_path(
             assembly.taxa_id,
             file_type=AssemblyFileType.CHAIN,
-            chain_file_name=chain_file_name,
-            chain_assembly_name=assembly.name,
+            assembly_name=assembly.name,
         )
 
         raw_lines = self._file_service.count_lines(raw_file)
@@ -261,6 +256,49 @@ class AssemblyService:
                 "Contact the system administrator if you have questions."
             )
         return self._file_service.open_file_for_reading(lifted_file)
+
+    def _add_assembly(self, taxa_id: int, assembly_name: str) -> Assembly:
+        """Add an assembly to the database if it does not exist.
+
+        Add the corresponding chain file to the current assembly
+        version.
+
+        :param taxa_id: Taxa ID
+        :type taxa_id: int
+        :param assembly_name: A valid assembly name
+        :type assembly_name: str
+        """
+
+        if self._file_service.check_if_assembly_exists(taxa_id, assembly_name):
+            raise AssemblyAbortedError(
+                f"Suspected data corruption for '{assembly_name}'. Files were found "
+                "on the system, but assembly does not exist in the database."
+            )
+
+        url = self._get_ensembl_chain_file_url(taxa_id, assembly_name)
+
+        logger.info(f"Setting up a new assembly for {assembly_name}...")
+        try:
+            with self._file_service.create_chain_file(taxa_id, assembly_name) as fh:
+                self._web_service.stream_request_to_file(url, fh)
+            version_nums = (
+                self._session.execute(select(func.distinct(Assembly.version)))
+                .scalars()
+                .all()
+            )
+            version_num = gen_short_uuid(Identifiers.ASSEMBLY.length, version_nums)
+            assembly = Assembly(
+                name=assembly_name, taxa_id=taxa_id, version=version_num
+            )
+            self._session.add(assembly)
+            self._session.commit()
+            return assembly
+        except Exception as exc:
+            self._session.rollback()
+            self._file_service.delete_assembly(taxa_id, assembly_name)
+            raise AssemblyAbortedError(
+                f"Adding assembly for '{assembly_name}' aborted."
+            ) from exc
 
     def prepare_assembly_for_version(self, assembly_id: int) -> None:
         """Prepare directories and files for the latest version.
@@ -299,47 +337,6 @@ class AssemblyService:
                 f"Adding assembly for ID '{assembly_id}' aborted."
             ) from exc
 
-    @staticmethod
-    def _get_chain_file_name(source_assembly_name, target_assembly_name):
-        return f"{source_assembly_name}_to_{target_assembly_name}.chain.gz"
-
-    def _add_assembly(self, taxa_id: int, assembly_name: str) -> Assembly:
-        if self._file_service.check_if_assembly_exists(taxa_id, assembly_name):
-            raise AssemblyAbortedError(
-                f"Suspected data corruption for '{assembly_name}'. Files were found "
-                "on the system, but assembly does not exist in the database."
-            )
-
-        chain_file_name = self._get_chain_file_name(
-            assembly_name, self.get_name_for_version(taxa_id)
-        )
-        url = self._get_ensembl_chain_file_url(taxa_id, chain_file_name)
-
-        logger.info(f"Setting up a new assembly for {assembly_name}...")
-        try:
-            with self._file_service.create_chain_file(
-                taxa_id, chain_file_name, assembly_name
-            ) as fh:
-                self._web_service.stream_request_to_file(url, fh)
-            version_nums = (
-                self._session.execute(select(func.distinct(Assembly.version)))
-                .scalars()
-                .all()
-            )
-            version_num = gen_short_uuid(Identifiers.ASSEMBLY.length, version_nums)
-            assembly = Assembly(
-                name=assembly_name, taxa_id=taxa_id, version=version_num
-            )
-            self._session.add(assembly)
-            self._session.commit()
-            return assembly
-        except Exception as exc:
-            self._session.rollback()
-            self._file_service.delete_assembly(taxa_id, assembly_name)
-            raise AssemblyAbortedError(
-                f"Adding assembly for '{assembly_name}' aborted."
-            ) from exc
-
     def _get_coord_system_versions(self, taxa_id: int) -> list[str]:
         with self._file_service.open_assembly_file(
             taxa_id, AssemblyFileType.INFO
@@ -347,7 +344,11 @@ class AssemblyService:
             info = json.load(fp)
         return info["coord_system_versions"]
 
-    def _get_ensembl_chain_file_url(self, taxa_id: int, chain_file_name):
+    def _get_ensembl_chain_file_url(self, taxa_id: int, assembly_name: str):
+        chain_file_name = AssemblyFileType.CHAIN.value(
+            source_assembly=assembly_name,
+            target_assembly=self.get_name_for_version(taxa_id),
+        )
         return urljoin(
             Ensembl.FTP.value,
             Ensembl.ASM_MAPPING.value,
