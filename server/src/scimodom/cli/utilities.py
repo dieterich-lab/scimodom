@@ -9,7 +9,7 @@ from scimodom.database.models import (
     DetectionMethod,
     Modomics,
 )
-from scimodom.services.assembly import AssemblyService
+from scimodom.services.assembly import AssemblyService, AssemblyNotFoundError
 from scimodom.services.setup import get_setup_service
 from scimodom.utils.dtos.project import (
     ProjectOrganismDto,
@@ -63,25 +63,30 @@ def add_assembly_to_template_if_none(
     """Add assembly to template.
 
     Assembly must exists, it is not created by default.
+    If assembly ID is provided, check that it exists
+    in the database.
 
     :param organism: Organism template
     :type organism: ProjectOrganismDto
     :param assembly_service: Assembly service
     :type assembly_service: AssemblyService
+    :raises AssemblyNotFoundError: If NoResultFound for assembly
     """
     click.secho("Checking if assembly ID is defined...", fg="green")
-    if organism.assembly_id is None:
-        assembly = assembly_service.get_assembly_by_name(
-            organism.taxa_id, organism.assembly_name, fail_safe=False
-        )
-        click.secho(
-            f"updating project metadata template with assembly ID '{assembly.id}'... ",
-            fg="yellow",
-        )
-        organism.assembly_id = assembly.id
-    else:
-        # TODO handle NoResultFound
-        assembly_service.get_by_id(organism.assembly_id)
+    try:
+        if organism.assembly_id is None:
+            assembly = assembly_service.get_by_taxa_and_name(
+                organism.taxa_id, organism.assembly_name
+            )
+            click.secho(
+                f"updating project metadata template with assembly ID '{assembly.id}'... ",
+                fg="yellow",
+            )
+            organism.assembly_id = assembly.id
+        else:
+            assembly_service.get_by_id(organism.assembly_id)
+    except NoResultFound:
+        raise AssemblyNotFoundError
 
 
 def get_modomics_id(name) -> str:

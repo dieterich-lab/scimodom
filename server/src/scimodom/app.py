@@ -9,7 +9,6 @@ from scimodom.app_singleton import create_app_singleton
 from scimodom.config import set_config_from_environment, get_config
 from scimodom.database.database import make_session, init
 
-from scimodom.cli.assembly import add_assembly
 from scimodom.cli.annotation import add_annotation
 from scimodom.cli.utilities import upsert
 from scimodom.services.setup import get_setup_service
@@ -63,54 +62,19 @@ def create_app():
     app.register_blueprint(user_api, url_prefix=USER_API_ROUTE)
 
     # CLI
+    from scimodom.cli.assembly import assembly_cli
     from scimodom.cli.selection import selection_cli
     from scimodom.cli.project import project_cli
     from scimodom.cli.dataset import dataset_cli
     from scimodom.cli.charts import charts_cli
 
+    app.register_blueprint(assembly_cli)
     app.register_blueprint(selection_cli)
     app.register_blueprint(project_cli)
     app.register_blueprint(dataset_cli)
     app.register_blueprint(charts_cli)
 
     jwt = JWTManager(app)
-
-    @app.cli.command(
-        "assembly", epilog="Check docs at https://dieterich-lab.github.io/scimodom/."
-    )
-    @click.option(
-        "--id",
-        default=None,
-        type=click.INT,
-        help="Assembly ID. Prepare a new assembly for the latest version. Assembly must exists. This parameter overrides all other options.",
-    )
-    @click.option(
-        "--name",
-        default=None,
-        type=click.STRING,
-        help="Assembly name. Add an alternative assembly to the database. This option must be used with [--taxid].",
-    )
-    @click.option(
-        "--taxid",
-        default=None,
-        type=click.INT,
-        help="Taxonomy ID. Add an alternative assembly to the database. This option must be used with [--name].",
-    )
-    def assembly(id, name, taxid):
-        """Prepare new assembly or add alternative assembly."""
-        if id:
-            kwargs = {"assembly_id": id}
-        else:
-            if not name:
-                raise NameError(
-                    "Name [--name] is not defined. It is required with [--taxid]."
-                )
-            if not taxid:
-                raise NameError(
-                    "Name [--taxid] is not defined. It is required with [--name]."
-                )
-            kwargs = {"assembly_name": name, "taxa_id": taxid}
-        add_assembly(**kwargs)
 
     @app.cli.command(
         "annotation", epilog="Check docs at https://dieterich-lab.github.io/scimodom/."

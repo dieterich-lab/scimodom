@@ -19,6 +19,36 @@ def _get_file_service(Session, tmp_path):
     )
 
 
+@pytest.fixture
+def assembly_dir(tmp_path):
+    # add empty assembly directory
+    for name in ["GRCh37", "GRCh38"]:
+        d = tmp_path / "t_data" / FileService.ASSEMBLY_DEST / "Homo_sapiens" / name
+        d.mkdir(parents=True, exist_ok=True)
+
+
+@pytest.fixture
+def assembly_files(tmp_path, assembly_dir):
+    # add assembly files
+    d = tmp_path / "t_data" / FileService.ASSEMBLY_DEST / "Homo_sapiens" / "GRCh38"
+    for file_type in AssemblyFileType.common():
+        Path(d, file_type.value).touch()
+    with open(d / AssemblyFileType.CHROM.value, "w") as fh:
+        fh.write("1\t248956422\n")
+    for file_type in AssemblyFileType.fasta():
+        Path(
+            d,
+            file_type.value(organism="Homo_sapiens", assembly="GRCh38", chrom=1),
+        ).touch()
+    d = tmp_path / "t_data" / FileService.ASSEMBLY_DEST / "Homo_sapiens" / "GRCh37"
+    Path(
+        d,
+        AssemblyFileType.CHAIN.value(
+            source_assembly="GRCh37", target_assembly="GRCh38"
+        ),
+    ).touch()
+
+
 # tests
 
 
@@ -112,7 +142,7 @@ def test_get_assembly_file_path_for_chain_fail(Session, tmp_path, setup):
     service = _get_file_service(Session, tmp_path)
     with pytest.raises(ValueError) as exc:
         assert service.get_assembly_file_path(9606, AssemblyFileType.CHAIN)
-    assert (str(exc.value)) == "Missing required assembly_name."
+    assert (str(exc.value)) == "Missing required parameter 'assembly_name'."
 
 
 def test_get_assembly_file_path_for_fasta(Session, tmp_path, setup):
@@ -132,7 +162,7 @@ def test_get_assembly_file_path_for_fasta_fail(Session, tmp_path, setup):
     service = _get_file_service(Session, tmp_path)
     with pytest.raises(ValueError) as exc:
         assert service.get_assembly_file_path(9606, AssemblyFileType.DNA)
-    assert (str(exc.value)) == "Missing required chrom."
+    assert (str(exc.value)) == "Missing required parameter 'chrom'."
 
 
 @pytest.mark.parametrize(
@@ -183,26 +213,21 @@ def test_create_chain_file(Session, tmp_path, setup):
         assert fh.read() == b"bla"
 
 
-def test_delete_current_assembly_and_check_if_exists(Session, tmp_path, setup):
+@pytest.mark.parametrize("name", ["GRCh38", "GRCh37"])
+def test_delete_assembly_and_check_if_exists(
+    Session, tmp_path, setup, assembly_files, name
+):
     service = _get_file_service(Session, tmp_path)
-    service.create_assembly_file(9606, AssemblyFileType.INFO)
-    service.create_assembly_file(9606, AssemblyFileType.RELEASE)
-    with service.create_assembly_file(9606, AssemblyFileType.CHROM) as fh:
-        fh.write("1\t248956422\n")
-    # TODO create fasta files
-    for file_type in AssemblyFileType.fasta():
-        service.get_assembly_file_path(9606, file_type, chrom="1").touch()
-    assert service.check_if_assembly_exists(9606) is True
-    service.delete_assembly(9606, "GRCh38")
-    assert service.check_if_assembly_exists(9606) is False
-
-
-def test_delete_assembly_and_check_if_exists(Session, tmp_path, setup):
-    service = _get_file_service(Session, tmp_path)
-    service.create_chain_file(9606, "GRCh37")
-    assert service.check_if_assembly_exists(9606, "GRCh37") is True
-    service.delete_assembly(9606, "GRCh37")
-    assert service.check_if_assembly_exists(9606, "GRCh37") is False
+    assert service.check_if_assembly_exists(9606, name) is True
+    service.delete_assembly(9606, name)
+    assert service.check_if_assembly_exists(9606, name) is False
+    # the other assembly should remain untouched
+    names = ["GRCh37", "GRCh38"]
+    if names.index(name) == 0:
+        other_name = names[1]
+    else:
+        other_name = names[0]
+    assert service.check_if_assembly_exists(9606, other_name) is True
 
 
 @pytest.mark.parametrize("name", [None, "GRCh37"])
@@ -212,26 +237,35 @@ def test_check_if_assembly_exists(Session, tmp_path, setup, name):
 
 
 @pytest.mark.parametrize("name", ["GRCh38", "GRCh37"])
-def test_check_if_assembly_exists_empty_directory(Session, tmp_path, setup, name):
+def test_check_if_assembly_exists_empty_directory(
+    Session, tmp_path, setup, assembly_dir, name
+):
     service = _get_file_service(Session, tmp_path)
-    service._get_assembly_dir(9606, name).mkdir(parents=True)
     assert service.check_if_assembly_exists(9606, name) is False
 
 
-def test_check_if_assembly_exists_fail_no_chrom(Session, tmp_path, setup):
+def test_check_if_assembly_exists_fail_no_chrom(
+    Session, tmp_path, setup, assembly_files
+):
+    d = tmp_path / "t_data" / FileService.ASSEMBLY_DEST / "Homo_sapiens" / "GRCh38"
+    Path(d / AssemblyFileType.CHROM.value).unlink()
     service = _get_file_service(Session, tmp_path)
-    service.create_chain_file(9606, "GRCh38")
     with pytest.raises(FileExistsError) as exc:
         service.check_if_assembly_exists(9606)
     assert str(exc.value) == "Files exist for assembly 'GRCh38'."
 
 
-def test_check_if_assembly_exists_fail_with_chrom(Session, tmp_path, setup):
+def test_check_if_assembly_exists_fail_with_chrom(
+    Session, tmp_path, setup, assembly_files
+):
+    d = tmp_path / "t_data" / FileService.ASSEMBLY_DEST / "Homo_sapiens" / "GRCh38"
+    Path(
+        d
+        / AssemblyFileType.DNA.value(
+            organism="Homo_sapiens", assembly="GRCh38", chrom=1
+        ),
+    ).unlink()
     service = _get_file_service(Session, tmp_path)
-    service.create_assembly_file(9606, AssemblyFileType.INFO)
-    service.create_assembly_file(9606, AssemblyFileType.RELEASE)
-    with service.create_assembly_file(9606, AssemblyFileType.CHROM) as fh:
-        fh.write("1\t248956422\n")
     with pytest.raises(FileExistsError) as exc:
         service.check_if_assembly_exists(9606)
     assert str(exc.value) == "Files exist for assembly 'GRCh38'."

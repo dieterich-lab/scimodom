@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import TextIO, BinaryIO
 
 import pytest
-from sqlalchemy import exists
+from sqlalchemy import exists, select, func
 from sqlalchemy.exc import NoResultFound
 
 from scimodom.database.models import Assembly, AssemblyVersion
@@ -45,7 +45,7 @@ class MockFileService:
         assembly_name: str | None = None,
     ) -> Path:
         current_assembly_name = "GRCh38"
-        if file_type == AssemblyFileType.CHAIN:
+        if AssemblyFileType.is_chain(file_type):
             return Path(
                 (
                     f"/data/assembly/{taxa_id}/{assembly_name}/"
@@ -58,7 +58,7 @@ class MockFileService:
     def open_assembly_file(
         self, taxa_id: int, file_type: AssemblyFileType
     ) -> MockStringIO | MockBytesIO:
-        if file_type == AssemblyFileType.CHAIN:
+        if AssemblyFileType.is_chain(file_type) or AssemblyFileType.is_fasta(file_type):
             raise NotImplementedError()
         name = self.get_assembly_file_path(taxa_id, file_type).as_posix()
         file = self.files_by_name[name]
@@ -66,7 +66,7 @@ class MockFileService:
         return file
 
     def create_assembly_file(self, taxa_id: int, file_type: AssemblyFileType) -> TextIO:
-        if file_type == AssemblyFileType.CHAIN:
+        if AssemblyFileType.is_chain(file_type) or AssemblyFileType.is_fasta(file_type):
             raise NotImplementedError()
         name = self.get_assembly_file_path(taxa_id, file_type).as_posix()
         new_file = MockStringIO()
@@ -213,8 +213,11 @@ def test_create_lifted_file(Session, file_service, setup):  # noqa
     file_service.lines_by_name["lifted.bed"] = 3
     service = _get_assembly_service(Session, file_service)
     assembly = service.get_by_id(3)
-    service.create_lifted_file(
-        assembly, "to_be_lifted.bed", unmapped_file="unmapped.bed"
+    assert (
+        service.create_lifted_file(
+            assembly, "to_be_lifted.bed", unmapped_file="unmapped.bed"
+        )
+        == "lifted.bed"
     )
 
 
@@ -263,7 +266,7 @@ def test_create_lifted_file_fail_version(Session, file_service, setup):  # noqa
     assert exc.type == AssemblyVersionError
 
 
-# test_add_assembly and test_prepare_assembly_for_version all implicitely
+# test_add_assembly and test_create_current all implicitly
 # test protected methods e.g. _handle_gene_build and _handle_release
 
 
@@ -279,84 +282,6 @@ INFO = """{
 \t\t"NCBI34"
 \t]
 }"""
-
-
-def test_get_assembly_by_name(Session, file_service, setup, mocker):  # noqa
-    mocker.patch("scimodom.services.assembly.Ensembl", MockEnsembl)
-    file_service.files_by_name["/data/assembly/9606/info.json"] = StringIO(INFO)
-    service = _get_assembly_service(
-        Session,
-        file_service,
-        url_to_data={
-            "https://ftp.ensembl.org/pub/release-110/assembly_chain/homo_sapiens/NCBI36_to_GRCh38.chain.gz": b"foo"
-        },
-    )
-    assembly = service.get_assembly_by_name(9606, "NCBI36")
-    with Session() as session:
-        assert session.query(
-            exists().where(Assembly.taxa_id == 9606, Assembly.name == "NCBI36")
-        ).scalar()
-        assert assembly.id == 4
-    file = file_service.files_by_name[
-        "/data/assembly/9606/NCBI36/NCBI36_to_GRCh38.chain.gz"
-    ]
-    assert file.final_content == b"foo"
-
-
-def test_get_assembly_by_name_exists(Session, file_service, setup):  # noqa
-    service = _get_assembly_service(Session, file_service)
-    assert service.get_assembly_by_name(9606, "GRCh37").id == 3
-
-
-def test_get_assembly_by_name_directory_exists(Session, file_service):
-    with Session() as session, session.begin():
-        version = AssemblyVersion(version_num="GcatSmFcytpU")
-        session.add(version)
-    file_service.existing_assemblies = [(9606, "GRCh37")]
-    # INFO is wrong for this assembly, but for testing this doesn't matter...
-    file_service.files_by_name["/data/assembly/9606/info.json"] = StringIO(INFO)
-    service = _get_assembly_service(Session, file_service)
-    with pytest.raises(AssemblyAbortedError) as exc:
-        service.get_assembly_by_name(9606, "GRCh37")
-    assert (
-        (str(exc.value))
-        == "Suspected data corruption for 'GRCh37'. Files were found on the system, but assembly does not exist in the database."
-    )
-
-
-def test_get_assembly_by_name_wrong_name(Session, file_service, setup):  # noqa
-    file_service.files_by_name["/data/assembly/9606/info.json"] = StringIO(INFO)
-    service = _get_assembly_service(Session, file_service)
-    with pytest.raises(AssemblyNotFoundError) as exc:
-        service.get_assembly_by_name(9606, "GRCH37")
-    assert (
-        (str(exc.value))
-        == "No such assembly 'GRCH37' for organism '9606'. Valid assemblies are: 'GRCh38 GRCh37 NCBI36 NCBI35 NCBI34'"
-    )
-    with Session() as session:
-        assert session.query(Assembly).count() == 3
-
-
-def test_get_assembly_by_name_wrong_url(Session, file_service, setup, mocker):  # noqa
-    mocker.patch("scimodom.services.assembly.Ensembl", MockEnsembl)
-    file_service.files_by_name["/data/assembly/9606/info.json"] = StringIO(INFO)
-    service = _get_assembly_service(Session, file_service)
-    with pytest.raises(AssemblyAbortedError) as exc:  # traceback MockHTTPError
-        service.get_assembly_by_name(9606, "NCBI36")
-    assert (str(exc.value)) == "Adding assembly for 'NCBI36' aborted."
-    assert file_service.deleted_assemblies == [(9606, "NCBI36")]
-    with Session() as session:
-        assert session.query(Assembly).count() == 3
-
-
-def test_get_assembly_by_name_not_found(Session, setup):  # noqa
-    service = _get_assembly_service(Session, file_service)
-    with pytest.raises(AssemblyNotFoundError) as exc:
-        service.get_assembly_by_name(9606, "NCBI36", fail_safe=False)
-    assert (str(exc.value)) == "No such assembly 'NCBI36' for organism '9606'."
-    with Session() as session:
-        assert session.query(Assembly).count() == 3
-
 
 EXAMPLE_GENE_BUILD_DATA = {
     "assembly_accession": "GCA_000001405.29",
@@ -395,7 +320,29 @@ EXPECTED_RELEASE_JSON = """{
 }"""
 
 
-def test_prepare_assembly_for_version(Session, file_service, setup, mocker):  # noqa
+def test_add_assembly(Session, file_service, setup, mocker):
+    mocker.patch("scimodom.services.assembly.Ensembl", MockEnsembl)
+    file_service.files_by_name["/data/assembly/9606/info.json"] = StringIO(INFO)
+    service = _get_assembly_service(
+        Session,
+        file_service,
+        url_to_data={
+            "https://ftp.ensembl.org/pub/release-110/assembly_chain/homo_sapiens/NCBI36_to_GRCh38.chain.gz": b"foo"
+        },
+    )
+    service.add_assembly(9606, "NCBI36")
+    with Session() as session:
+        assert session.scalar(select(func.count()).select_from(Assembly)) == 4
+        assert session.query(
+            exists().where(Assembly.taxa_id == 9606, Assembly.name == "NCBI36")
+        ).scalar()
+    file = file_service.files_by_name[
+        "/data/assembly/9606/NCBI36/NCBI36_to_GRCh38.chain.gz"
+    ]
+    assert file.final_content == b"foo"
+
+
+def test_add_current_assembly(Session, file_service, setup, mocker):
     mocker.patch("scimodom.services.assembly.Ensembl", MockEnsembl)
     service = _get_assembly_service(
         Session,
@@ -405,7 +352,9 @@ def test_prepare_assembly_for_version(Session, file_service, setup, mocker):  # 
             "http://jul2023.rest.ensembl.org/info/data": {"releases": [110]},
         },
     )
-    service.prepare_assembly_for_version(1)
+    service.add_assembly(9606, "GRCh38")
+    with Session() as session:
+        assert session.query(Assembly).count() == 3
     assert (
         file_service.files_by_name["/data/assembly/9606/chrom.sizes"].final_content
         == EXPECTED_CHROM_SIZES
@@ -420,15 +369,121 @@ def test_prepare_assembly_for_version(Session, file_service, setup, mocker):  # 
     )
 
 
-def test_prepare_assembly_for_version_wrong_version(
-    Session, file_service, setup
-):  # noqa
+def test_add_assembly_exist_in_database(Session, file_service, setup, mocker):
+    mocker.patch("scimodom.services.assembly.Ensembl", MockEnsembl)
+    file_service.files_by_name["/data/assembly/9606/info.json"] = StringIO(INFO)
+    service = _get_assembly_service(
+        Session,
+        file_service,
+        url_to_data={
+            "https://ftp.ensembl.org/pub/release-110/assembly_chain/homo_sapiens/GRCh37_to_GRCh38.chain.gz": b"foo"
+        },
+    )
+    service.add_assembly(9606, "GRCh37")
+    with Session() as session:
+        assert session.scalar(select(func.count()).select_from(Assembly)) == 3
+    file = file_service.files_by_name[
+        "/data/assembly/9606/GRCh37/GRCh37_to_GRCh38.chain.gz"
+    ]
+    assert file.final_content == b"foo"
+
+
+def test_add_assembly_exist_in_database_and_file_system(Session, file_service, setup):
+    file_service.existing_assemblies = [(9606, "GRCh37")]
+    service = _get_assembly_service(Session, file_service)
+    service.add_assembly(9606, "GRCh37")
+    with Session() as session:
+        assert session.query(Assembly).count() == 3
+
+
+def test_add_assembly_exist_in_file_system(Session, file_service):
+    with Session() as session, session.begin():
+        version = AssemblyVersion(version_num="GcatSmFcytpU")
+        session.add(version)
+    file_service.existing_assemblies = [(9606, "GRCh37")]
+    service = _get_assembly_service(Session, file_service)
+    with pytest.raises(NoResultFound) as exc:
+        service.add_assembly(9606, "GRCh37")
+    assert exc.exconly() == (
+        "sqlalchemy.exc.NoResultFound: No row was found when one was required\n"
+        "Files exists for 'GRCh37', but assembly is missing."
+    )
+
+
+def test_add_assembly_no_current(Session, file_service):
+    with Session() as session, session.begin():
+        version = AssemblyVersion(version_num="GcatSmFcytpU")
+        session.add(version)
+    service = _get_assembly_service(Session, file_service)
+    with pytest.raises(NoResultFound) as exc:
+        service.add_assembly(9606, "GRCh37")
+    assert exc.exconly() == (
+        "sqlalchemy.exc.NoResultFound: No row was found when one was required\n"
+        "Cannot add 'GRCh37' if current assembly is missing."
+    )
+
+
+def test_add_assembly_invalid_name(Session, file_service, setup, mocker):
+    file_service.files_by_name["/data/assembly/9606/info.json"] = StringIO(INFO)
+    service = _get_assembly_service(Session, file_service)
+    with pytest.raises(AssemblyNotFoundError) as exc:
+        service.add_assembly(9606, "NCBI33")
+    assert str(exc.value) == (
+        "No such assembly 'NCBI33' for organism '9606'. "
+        "Valid assemblies are: 'GRCh38 GRCh37 NCBI36 NCBI35 NCBI34'"
+    )
+    with Session() as session:
+        assert session.query(Assembly).count() == 3
+
+
+def test_add_assembly_wrong_url(Session, file_service, setup, mocker):  # noqa
+    mocker.patch("scimodom.services.assembly.Ensembl", MockEnsembl)
+    file_service.files_by_name["/data/assembly/9606/info.json"] = StringIO(INFO)
+    service = _get_assembly_service(Session, file_service)
+    with pytest.raises(AssemblyAbortedError) as exc:  # traceback MockHTTPError
+        service.add_assembly(9606, "NCBI36")
+    assert (str(exc.value)) == "Adding assembly for 'NCBI36' aborted."
+    assert file_service.deleted_assemblies == [(9606, "NCBI36")]
+    with Session() as session:
+        assert session.query(Assembly).count() == 3
+
+
+def test_create_current(Session, file_service, setup, mocker):
+    mocker.patch("scimodom.services.assembly.Ensembl", MockEnsembl)
+    service = _get_assembly_service(
+        Session,
+        file_service,
+        url_to_result={
+            "http://jul2023.rest.ensembl.org/info/assembly/homo_sapiens": EXAMPLE_GENE_BUILD_DATA,
+            "http://jul2023.rest.ensembl.org/info/data": {"releases": [110]},
+        },
+    )
+    assembly = service.get_by_id(1)
+    service.create_current(assembly)
+    with Session() as session:
+        assert session.query(Assembly).count() == 3
+    assert (
+        file_service.files_by_name["/data/assembly/9606/chrom.sizes"].final_content
+        == EXPECTED_CHROM_SIZES
+    )
+    assert (
+        file_service.files_by_name["/data/assembly/9606/info.json"].final_content
+        == EXPECTED_INFO_JSON
+    )
+    assert (
+        file_service.files_by_name["/data/assembly/9606/release.json"].final_content
+        == EXPECTED_RELEASE_JSON
+    )
+
+
+def test_create_current_wrong_version(Session, file_service, setup):  # noqa
     service = _get_assembly_service(
         Session,
         file_service,
     )
+    assembly = service.get_by_id(3)
     with pytest.raises(AssemblyVersionError) as exc:
-        service.prepare_assembly_for_version(3)
+        service.create_current(assembly)
     assert (
         (str(exc.value))
         == "Mismatch between assembly version 'J9dit7Tfc6Sb' and database version 'GcatSmFcytpU'."
@@ -436,17 +491,14 @@ def test_prepare_assembly_for_version_wrong_version(
     assert exc.type == AssemblyVersionError
 
 
-def test_prepare_assembly_for_version_directory_exists(
-    Session, file_service, setup
-):  # noqa
+def test_create_current_exist_in_file_system(Session, file_service, setup):  # noqa
     file_service.existing_assemblies = [(9606, "GRCh38")]
     service = _get_assembly_service(Session, file_service)
-    with pytest.raises(FileExistsError) as exc:
-        service.prepare_assembly_for_version(1)
-    assert (str(exc.value)) == "Assembly 'GRCh38' already exists (Taxa ID 9606)."
+    assembly = service.get_by_id(1)
+    service.create_current(assembly)
 
 
-def test_prepare_assembly_for_version_build_error(Session, file_service, setup, mocker):
+def test_create_current_build_error(Session, file_service, setup, mocker):
     mocker.patch("scimodom.services.assembly.Ensembl", MockEnsembl)
     service = _get_assembly_service(
         Session,
@@ -456,8 +508,9 @@ def test_prepare_assembly_for_version_build_error(Session, file_service, setup, 
             "http://jul2023.rest.ensembl.org/info/data": {"releases": [112]},
         },
     )
+    assembly = service.get_by_id(1)
     with pytest.raises(AssemblyVersionError) as exc:
-        service.prepare_assembly_for_version(1)
+        service.create_current(assembly)
     assert (
         str(exc.value)
     ) == "Mismatch between assembly GRCh38 and coord system version GRCh39."
@@ -465,13 +518,12 @@ def test_prepare_assembly_for_version_build_error(Session, file_service, setup, 
     assert file_service.deleted_assemblies == [(9606, "GRCh38")]
 
 
-def test_prepare_assembly_for_version_wrong_url(
-    Session, file_service, setup, mocker
-):  # noqa
+def test_create_current_wrong_url(Session, file_service, setup, mocker):  # noqa
     mocker.patch("scimodom.services.assembly.Ensembl", MockEnsembl)
     service = _get_assembly_service(Session, file_service)
+    assembly = service.get_by_id(1)
     with pytest.raises(AssemblyAbortedError) as exc:  # traceback MockHTTPError
-        service.prepare_assembly_for_version(1)
+        service.create_current(assembly)
     assert str(exc.value) == "Adding assembly for ID '1' aborted."
     assert exc.type == AssemblyAbortedError
     assert file_service.deleted_assemblies == [(9606, "GRCh38")]

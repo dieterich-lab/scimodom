@@ -358,7 +358,7 @@ class FileService:
         :param assembly_name: Assembly name. Required if file_type is CHAIN.
         If None, it is inferred from the current assembly version.
         :type assembly_name: str | None
-        :param chrom: Required if file_type is DNA
+        :param chrom: Required if file_type is DNA, DNA_IDX, or DNA_BGZ.
         :type chrom: str | None
         :raises ValueError: If missing arguments
         :return: Full path to file
@@ -368,7 +368,7 @@ class FileService:
         current_assembly_name = self._get_current_assembly_name_from_taxa_id(taxa_id)
         if AssemblyFileType.is_chain(file_type):
             if assembly_name is None:
-                raise ValueError("Missing required assembly_name.")
+                raise ValueError("Missing required parameter 'assembly_name'.")
             file_name = file_type.value(
                 source_assembly=assembly_name,
                 target_assembly=current_assembly_name,
@@ -376,7 +376,7 @@ class FileService:
             current_assembly_name = assembly_name
         if AssemblyFileType.is_fasta(file_type):
             if chrom is None:
-                raise ValueError("Missing required chrom.")
+                raise ValueError("Missing required parameter 'chrom'.")
             organism = self._get_dir_name_from_organism(
                 self._get_organism_from_taxa_id(taxa_id)
             )
@@ -391,10 +391,11 @@ class FileService:
 
         :param taxa_id: Taxa ID
         :type taxa_id: int
-        :param file_type: Type of assembly file (CHROM, INFO, RELEASE, CHAIN)
+        :param file_type: Type of assembly file (CHROM, INFO, RELEASE)
         :type file_type: AssemblyFileType
-        :raises NotImplementedError: If chain file or FASTA.
-        :return: Open file handle for reading
+        :raises NotImplementedError: If file_type is CHAIN,
+        DNA, DNA_IDX, DNA_BGZ.
+        :return: Opened file handle for reading
         :rtype: TextIO
         """
         if AssemblyFileType.is_chain(file_type) or AssemblyFileType.is_fasta(file_type):
@@ -410,10 +411,11 @@ class FileService:
 
         :param taxa_id: Taxa ID
         :type taxa_id: int
-        :param file_type: Type of assembly file (CHROM, INFO, RELEASE, CHAIN)
+        :param file_type: Type of assembly file (CHROM, INFO, RELEASE)
         :type file_type: AssemblyFileType
-        :raises NotImplementedError: If chain file or FASTA.
-        :return: Open file handle for writing
+        :raises NotImplementedError: If file_type is CHAIN,
+        DNA, DNA_IDX, DNA_BGZ.
+        :return: Opened file handle for writing
         :rtype: TextIO
         """
         if AssemblyFileType.is_chain(file_type) or AssemblyFileType.is_fasta(file_type):
@@ -431,7 +433,7 @@ class FileService:
         :type taxa_id: int
         :param assembly_name: Assembly name
         :type assembly_name: str
-        :return: Open file handle for writing
+        :return: Opened file handle for writing
         :rtype: BinaryIO
         """
         path = self.get_assembly_file_path(
@@ -465,6 +467,12 @@ class FileService:
         from the current assembly version, and this determines which
         files are checked.
         :type assembly_name: str | None
+        :raises FileExistsError: If the assembly directory is in a
+        corrupted state, i.e. files exist where none are expected,
+        or there are missing files.
+        :return: True if all required files exist, else False. An
+        empty assembly directory returns False.
+        :rtype: bool
         """
         current_assembly_name = self._get_current_assembly_name_from_taxa_id(taxa_id)
         # fail-safe

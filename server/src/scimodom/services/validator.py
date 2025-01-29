@@ -159,16 +159,20 @@ class ValidatorService:
         """
         self._sanitize_header(importer)
         self._sanitize_taxa_id(taxa_id)
-        # TODO handle exception for assembly by name
-        # add assembly if NoResultFound, but handle AssemblyNotFoundError
+        assembly_name = self._read_header["assembly_name"]
         try:
-            assembly_name = self._read_header["assembly_name"]
-            assembly = self._assembly_service.get_assembly_by_name(
+            assembly = self._assembly_service.get_by_taxa_and_name(
                 taxa_id, assembly_name
             )
-            kwargs = {**kwargs, "taxa_id": taxa_id, "assembly_id": assembly.id}
-        except AssemblyNotFoundError as exc:
-            raise DatasetImportError(exc)
+        except NoResultFound:
+            try:
+                self._assembly_service.add_assembly(taxa_id, assembly_name)
+                assembly = self._assembly_service.get_by_taxa_and_name(
+                    taxa_id, assembly_name
+                )
+            except AssemblyNotFoundError as exc:
+                raise DatasetImportError(exc)
+        kwargs = {**kwargs, "taxa_id": taxa_id, "assembly_id": assembly.id}
         self._ro_context = _ReadOnlyImportContext(**kwargs)
         self._sanitize_read_only_import_context()
 
