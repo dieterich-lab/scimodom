@@ -71,6 +71,7 @@ class Ensembl(Enum):
     ASM = "info/assembly"
     # current_assembly_chain
     ASM_MAPPING = f"release-{RELEASE}/assembly_chain"
+    FASTA = f"release-{RELEASE}/fasta"
 
 
 class AnnotationSource(Enum):
@@ -86,6 +87,10 @@ class AssemblyFileType(Enum):
     DNA = "{organism}.{assembly}.dna.chromosome.{chrom}.fa.gz".format
     DNA_IDX = "{organism}.{assembly}.dna.chromosome.{chrom}.fa.gz.fai".format
     DNA_BGZ = "{organism}.{assembly}.dna.chromosome.{chrom}.fa.gz.gzi".format
+
+    @staticmethod
+    def get_alt_name(name):
+        return name.replace("chromosome", "primary_assembly")
 
     @classmethod
     def common(cls):

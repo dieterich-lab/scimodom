@@ -213,6 +213,27 @@ def test_create_chain_file(Session, tmp_path, setup):
         assert fh.read() == b"bla"
 
 
+def test_create_and_delete_dna_sequence_file(Session, tmp_path, setup):
+    service = _get_file_service(Session, tmp_path)
+    with service.create_dna_sequence_file(9606, "1") as fh:
+        fh.write(b"bla")
+    path = Path(
+        tmp_path,
+        "t_data",
+        "assembly",
+        "Homo_sapiens",
+        "GRCh38",
+        AssemblyFileType.DNA.value(
+            organism="Homo_sapiens", assembly="GRCh38", chrom="1"
+        ),
+    )
+    with open(path, "rb") as fh:
+        assert fh.read() == b"bla"
+
+    service.delete_dna_sequence_file(9606, "1")
+    assert path.exists() is False
+
+
 @pytest.mark.parametrize("name", ["GRCh38", "GRCh37"])
 def test_delete_assembly_and_check_if_exists(
     Session, tmp_path, setup, assembly_files, name

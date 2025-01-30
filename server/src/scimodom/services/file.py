@@ -1,4 +1,5 @@
 import logging
+import gzip
 import os
 import re
 from fcntl import flock, LOCK_SH, LOCK_EX, LOCK_UN, LOCK_NB, lockf
@@ -6,7 +7,7 @@ from functools import cache
 from os import unlink, rename, makedirs, stat, close, umask, replace
 from os.path import join, exists, dirname, basename, isfile
 from pathlib import Path
-from shutil import rmtree
+from shutil import copyfileobj, rmtree
 from tempfile import mkstemp, NamedTemporaryFile
 from typing import (
     Optional,
@@ -23,6 +24,8 @@ from typing import (
 )
 from uuid import uuid4
 
+import pysam
+import pysam.samtools
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session
@@ -37,6 +40,7 @@ logger = logging.getLogger(__name__)
 
 
 DEFAULT_MODE = 0o660
+COPY_BUFSIZE = 128 * 1024
 
 
 def write_opener(path, flags):
@@ -98,14 +102,6 @@ class FileService:
         ]:
             self._create_folder(path)
 
-    @staticmethod
-    def _create_folder(path):
-        old_umask = umask(0o07)
-        try:
-            makedirs(path, mode=0o2770, exist_ok=True)
-        finally:
-            umask(old_umask)
-
     # General
 
     @staticmethod
@@ -121,6 +117,21 @@ class FileService:
                 if len(buffer) == 0:
                     return count
                 count += buffer.count("\n")
+
+    @staticmethod
+    def _create_folder(path) -> None:
+        old_umask = umask(0o07)
+        try:
+            makedirs(path, mode=0o2770, exist_ok=True)
+        finally:
+            umask(old_umask)
+
+    @staticmethod
+    def _gunzip(in_path: str | Path, out_path: str | Path) -> None:
+        with gzip.open(in_path, "rb") as fh_in:
+            with open(out_path, "wb") as fh_out:
+                copyfileobj(fh_in, fh_out, COPY_BUFSIZE)
+        Path(in_path).unlink()
 
     # Import
 
@@ -247,7 +258,7 @@ class FileService:
                     fp.write(data)
                 temporary_file_path = fp.name
             replace(temporary_file_path, final_file_path)
-        except IOError as e:
+        except IOError:
             if temporary_file_path is not None and isfile(temporary_file_path):
                 unlink(temporary_file_path)
 
@@ -349,7 +360,11 @@ class FileService:
         assembly_name: str | None = None,
         chrom: str | None = None,
     ) -> Path:
-        """Construct assembly-related file paths for a given organism.
+        """Construct an assembly file path for a given organism.
+
+        Provide a general constructor for all assembly file types.
+        Restricted interface methods are used to interact
+        with different file types (cf. below).
 
         :param taxa_id: Taxa ID
         :type taxa_id: int
@@ -407,7 +422,8 @@ class FileService:
         """Open an assembly file for writing.
 
         If missing, the parent directory is created.
-        Chain files are not supported. Use create_chain_file() instead.
+        For chain files, use create_chain_file().
+        For DNA sequence files, use create_dna_sequence_file().
 
         :param taxa_id: Taxa ID
         :type taxa_id: int
@@ -444,6 +460,65 @@ class FileService:
         self._create_folder(path.parent)
         return open(path, "xb", opener=write_opener)
 
+    def create_dna_sequence_file(self, taxa_id: int, chrom: str) -> BinaryIO:
+        """Create DNA sequence file for writing (binary mode).
+
+        If missing, the parent directory is created.
+
+        :param taxa_id: Taxa ID
+        :type taxa_id: int
+        :param chrom: Chromosome
+        :type chrom: str
+        :return: Opened file handle for writing
+        :rtype: BinaryIO
+        """
+        path = self.get_assembly_file_path(
+            taxa_id,
+            AssemblyFileType.DNA,
+            chrom=chrom,
+        )
+        self._create_folder(path.parent)
+        return open(path, "xb", opener=write_opener)
+
+    def delete_dna_sequence_file(
+        self, taxa_id: int, chrom: str, is_gz: bool = True
+    ) -> None:
+        """Delete DNA sequence, but not index files.
+
+        FileNotFoundError exceptions are ignored.
+
+        :param taxa_id: Taxa ID
+        :type taxa_id: int
+        :param chrom: Chromosome
+        :type chrom: str
+        :param is_gz: If True, delete the '.fa.gz',
+        else delete the '.fa' file. Default is True.
+        :type is_gz: bool
+        """
+        path = self.get_assembly_file_path(taxa_id, AssemblyFileType.DNA, chrom=chrom)
+        if not is_gz:
+            path = path.with_suffix("")
+        path.unlink(missing_ok=True)
+
+    def index_dna_sequence_file(self, taxa_id: int, chrom: str) -> None:
+        """Index a DNA sequence file.
+
+        :param taxa_id: Taxa ID
+        :type taxa_id: int
+        :param chrom: Chromosome
+        :type chrom: str
+        """
+        gz_dna_sequence_file = self.get_assembly_file_path(
+            taxa_id,
+            AssemblyFileType.DNA,
+            chrom=chrom,
+        )
+        dna_sequence_file = gz_dna_sequence_file.with_suffix("")
+        self._gunzip(gz_dna_sequence_file, dna_sequence_file)
+        pysam.tabix_compress(dna_sequence_file, gz_dna_sequence_file)
+        pysam.samtools.faidx(gz_dna_sequence_file.as_posix())
+        self.delete_dna_sequence_file(taxa_id, chrom, is_gz=False)
+
     def delete_assembly(self, taxa_id: int, assembly_name: str) -> None:
         """Remove assembly directory structure.
 
@@ -459,7 +534,8 @@ class FileService:
     ) -> bool:
         """Check if directory structure and files exist for a given assembly.
 
-        File content is not validated.
+        This is done heuristically depending on the assembly.
+        The file content is not validated.
 
         :param taxa_id: Taxa ID
         :type taxa_id: int

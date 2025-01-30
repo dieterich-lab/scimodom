@@ -4,6 +4,7 @@ from functools import cache
 from posixpath import join as urljoin
 from typing import Any, Sequence, TextIO
 
+from requests.exceptions import HTTPError
 from sqlalchemy import select, func
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session
@@ -292,6 +293,7 @@ class AssemblyService:
         try:
             self._handle_gene_build(assembly)
             self._handle_release(assembly)
+            # self._handle_dna_sequences(assembly)
         except AssemblyVersionError:
             self._file_service.delete_assembly(assembly.taxa_id, assembly.name)
             raise
@@ -354,6 +356,24 @@ class AssemblyService:
             chain_file_name,
         )
 
+    def _get_ensembl_dna_sequence_url(
+        self, taxa_id: int, assembly_name: str, chrom: str, is_alt: bool = False
+    ):
+        organism = (self._get_organism_for_ensembl_url(taxa_id),)
+        seq_file_name = AssemblyFileType.DNA.value(
+            organism=organism.capitalize(), assembly=assembly_name, chrom=chrom
+        )
+        if is_alt:
+            seq_file_name = AssemblyFileType.get_alt_name(seq_file_name)
+
+        return urljoin(
+            Ensembl.FTP.value,
+            Ensembl.FASTA.value,
+            "dna",
+            organism,
+            seq_file_name,
+        )
+
     def _get_organism_for_ensembl_url(self, taxa_id: int):
         organism = self._get_organism(taxa_id)
         return ("_".join(organism.split())).lower()
@@ -371,7 +391,7 @@ class AssemblyService:
         ).scalar_one()
         return organism
 
-    def _handle_release(self, assembly):
+    def _handle_release(self, assembly: Assembly):
         url = urljoin(
             Ensembl.REST.value,
             Ensembl.DATA.value,
@@ -415,6 +435,29 @@ class AssemblyService:
             assembly.taxa_id, AssemblyFileType.INFO
         ) as fh:
             json.dump(gene_build, fh, indent="\t")
+
+    def _handle_dna_sequences(self, assembly: Assembly):
+        chroms = self.get_seqids(assembly.taxa_id)
+        for chrom in chroms:
+            url = self._get_ensembl_dna_sequence_url(
+                assembly.taxa_id, assembly.name, chrom
+            )
+            try:
+                with self._file_service.create_dna_sequence_file(
+                    assembly.taxa_id, chrom
+                ) as fh:
+                    self._web_service.stream_request_to_file(url, fh)
+            except HTTPError:
+                # chromosome -> primary_assembly
+                self._file_service.delete_dna_sequence_file(assembly.taxa_id, chrom)
+                url = self._get_ensembl_dna_sequence_url(
+                    assembly.taxa_id, assembly.name, chrom, is_alt=True
+                )
+                with self._file_service.create_dna_sequence_file(
+                    assembly.taxa_id, chrom
+                ) as fh:
+                    self._web_service.stream_request_to_file(url, fh)
+            self._file_service.index_dna_sequence_file(assembly.taxa_id, chrom)
 
 
 @cache

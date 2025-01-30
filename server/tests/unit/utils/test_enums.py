@@ -46,6 +46,8 @@ def test_ensembl():
     assert Ensembl.DATA.value == "info/data"
     assert Ensembl.ASM.value == "info/assembly"
     assert Ensembl.ASM_MAPPING.value == f"release-{CURRENT_RELEASE}/assembly_chain"
+    assert Ensembl.FASTA.value == f"release-{CURRENT_RELEASE}/fasta"
+    assert len(Ensembl) == 8
 
 
 def test_annotation_source():
@@ -67,6 +69,14 @@ def test_assembly_file_type():
             organism="organism", assembly="assembly", chrom="chrom"
         )
         == "organism.assembly.dna.chromosome.chrom.fa.gz"
+    )
+    assert (
+        AssemblyFileType.get_alt_name(
+            AssemblyFileType.DNA.value(
+                organism="organism", assembly="assembly", chrom="chrom"
+            )
+        )
+        == "organism.assembly.dna.primary_assembly.chrom.fa.gz"
     )
     assert (
         AssemblyFileType.DNA_IDX.value(
