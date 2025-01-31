@@ -1,36 +1,14 @@
-from datetime import datetime
 from pathlib import Path
-import re
 
 import pytest
 from flask import Flask
-from sqlalchemy import func, select
 
-from scimodom.database.models import (
-    DataAnnotation,
-    Data,
-    DatasetModificationAssociation,
-    Dataset,
-    GenomicAnnotation,
-    Project,
-)
+from scimodom.database.models import Assembly
 from scimodom.cli.assembly import assembly_cli
-from scimodom.cli.charts import charts_cli
-from scimodom.services.annotation import AnnotationService
-from scimodom.services.annotation.ensembl import EnsemblAnnotationService
 from scimodom.services.assembly import AssemblyService
-from scimodom.services.bedtools import BedToolsService
-from scimodom.services.data import DataService
-from scimodom.services.dataset import DatasetService
 from scimodom.services.external import ExternalService
-from scimodom.services.gene import GeneService
 from scimodom.services.file import FileService
-from scimodom.services.project import ProjectService
-from scimodom.services.selection import SelectionService
-from scimodom.services.sunburst import SunburstService
-from scimodom.services.validator import ValidatorService
 from scimodom.services.web import WebService
-from scimodom.utils.specs.enums import AnnotationSource, SunburstChartType
 from tests.mocks.enums import MockEnsembl
 
 
@@ -72,9 +50,29 @@ def mock_services(mocker, Session, tmp_path):
 
 
 # tests
+# Success relies on successful download from Ensembl;
+# the test asserts if files are there, but not their content.
+# DO NOT run this test under the test suite!
 
 
-def test_add_assembly(Session, test_runner, setup, mock_services):
+def test_add_assembly(Session, tmp_path, test_runner, setup, mock_services):
     result = test_runner.invoke(args=["assembly", "add", "1"], input="y")
     # exceptions are handled gracefully so exit code will likely always be 0...
     assert result.exit_code == 0
+
+    with Session() as session:
+        assert session.query(Assembly).count() == 6
+
+    d = tmp_path / "t_data" / FileService.ASSEMBLY_DEST / "Homo_sapiens"
+    for assembly in ["GRCh37", "NCBI34", "NCBI35", "NCBI36"]:
+        assert Path(d, assembly, f"{assembly}_to_GRCh38.chain.gz").is_file()
+    chroms = [str(c) for c in range(1, 23)]
+    chroms.extend(["X", "Y", "MT"])
+    for chrom in chroms:
+        for ext in ["", ".fai", ".gzi"]:
+            assert Path(
+                d, "GRCh38", f"Homo_sapiens.GRCh38.dna.chromosome.{chrom}.fa.gz{ext}"
+            ).is_file()
+    assert Path(d, "GRCh38", "info.json").is_file()
+    assert Path(d, "GRCh38", "release.json").is_file()
+    assert Path(d, "GRCh38", "chrom.sizes").is_file()

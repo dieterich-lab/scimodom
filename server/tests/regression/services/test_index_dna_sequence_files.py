@@ -30,6 +30,7 @@ def test_index_dna_sequence_file(Session, datafiles, tmp_path, test_data, setup)
     d = tmp_path / "t_data" / FileService.ASSEMBLY_DEST / "Homo_sapiens" / "GRCh38"
     filen = "Homo_sapiens.GRCh38.dna.chromosome.1.fa.gz"
     Path(datafiles, filen).rename(d / filen)
+
     file_service = _get_file_service(Session, tmp_path)
     file_service.index_dna_sequence_file(9606, "1")
 

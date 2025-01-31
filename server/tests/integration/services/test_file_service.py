@@ -213,7 +213,7 @@ def test_create_chain_file(Session, tmp_path, setup):
         assert fh.read() == b"bla"
 
 
-def test_create_and_delete_dna_sequence_file(Session, tmp_path, setup):
+def test_create_dna_sequence_file(Session, tmp_path, setup):
     service = _get_file_service(Session, tmp_path)
     with service.create_dna_sequence_file(9606, "1") as fh:
         fh.write(b"bla")
@@ -230,7 +230,26 @@ def test_create_and_delete_dna_sequence_file(Session, tmp_path, setup):
     with open(path, "rb") as fh:
         assert fh.read() == b"bla"
 
-    service.delete_dna_sequence_file(9606, "1")
+
+def test_create_dna_sequence_file_fail(Session, tmp_path, setup):
+    service = _get_file_service(Session, tmp_path)
+    try:
+        with service.create_dna_sequence_file(9606, "1") as fh:
+            fh.write(b"bla")
+            raise Exception
+    except Exception:
+        pass
+
+    path = Path(
+        tmp_path,
+        "t_data",
+        "assembly",
+        "Homo_sapiens",
+        "GRCh38",
+        AssemblyFileType.DNA.value(
+            organism="Homo_sapiens", assembly="GRCh38", chrom="1"
+        ),
+    )
     assert path.exists() is False
 
 

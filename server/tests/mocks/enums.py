@@ -11,3 +11,4 @@ class MockEnsembl(Enum):
     ASM = "info/assembly"
     # current_assembly_chain
     ASM_MAPPING = f"release-{RELEASE}/assembly_chain"
+    FASTA = f"release-{RELEASE}/fasta"

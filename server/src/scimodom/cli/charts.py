@@ -24,7 +24,8 @@ def sunburst_update():
         sunburst_service = get_sunburst_service()
         sunburst_service.do_background_update()
     except SunburstUpdateAlreadyRunning:
-        click.secho("Nothing to do - already running,", fg="yellow")
+        click.secho("Nothing to do - already running.", fg="yellow")
+        return
     except Exception as exc:
         click.secho(f"Failed to update sunburst charts. {exc}", fg="red")
         raise click.Abort()

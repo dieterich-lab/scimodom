@@ -2,6 +2,7 @@ import logging
 import gzip
 import os
 import re
+from contextlib import contextmanager
 from fcntl import flock, LOCK_SH, LOCK_EX, LOCK_UN, LOCK_NB, lockf
 from functools import cache
 from os import unlink, rename, makedirs, stat, close, umask, replace
@@ -52,14 +53,32 @@ def write_opener(path, flags):
 
 
 class SunburstUpdateAlreadyRunning(Exception):
+    """Exception for handling running chart updates."""
+
     pass
 
 
 class FileTooLarge(Exception):
+    """Exception for handling large files."""
+
     pass
 
 
 class FileService:
+    """Provide a service to interact with the file system.
+
+    :param session: SQLAlchemy ORM session
+    :type session: Session
+    :param data_path: Path to DATA directory
+    :type data_path: str | Path
+    :param temp_path: Path to TMP directory
+    :param temp_path: str | Path
+    :param upload_path: Path to UPLOAD directory
+    :param upload_path: str | Path
+    :param import_path: Path to IMPORT directory
+    :param import_path: str | Path
+    """
+
     BUFFER_SIZE = 1024 * 1024
     VALID_FILE_ID_REGEXP = re.compile(r"\A[a-zA-Z0-9_-]{1,256}\Z")
 
@@ -106,10 +125,24 @@ class FileService:
 
     @staticmethod
     def open_file_for_reading(path: str | Path) -> TextIO:
+        """Open a file for reading.
+
+        :param path: File path
+        :type path: str | Path
+        :return: Opened file handle for reading
+        :rtype: TextIO
+        """
         return open(path, "r")
 
     @staticmethod
     def count_lines(path: str | Path) -> int:
+        """Count lines in a file.
+
+        :param path: File path
+        :type path: str | Path
+        :return: Number of lines.
+        :rtype: bool
+        """
         count = 0
         with open(path) as fp:
             while True:
@@ -127,18 +160,42 @@ class FileService:
             umask(old_umask)
 
     @staticmethod
-    def _gunzip(in_path: str | Path, out_path: str | Path) -> None:
+    @contextmanager
+    def _safe_create_file(path: Path, *args, **kwargs) -> None:
+        try:
+            with open(path, *args, **kwargs) as fh:
+                yield fh
+        except Exception:
+            path.unlink(missing_ok=True)
+            raise
+
+    @staticmethod
+    def _gunzip(in_path: Path, out_path: Path) -> None:
         with gzip.open(in_path, "rb") as fh_in:
             with open(out_path, "wb") as fh_out:
                 copyfileobj(fh_in, fh_out, COPY_BUFSIZE)
-        Path(in_path).unlink()
+        in_path.unlink()
 
     # Import
 
     def check_import_file(self, name: str) -> bool:
+        """Check if import file exists.
+
+        :param name: File name
+        :type name: str
+        :return: True if file exists, else False.
+        :rtype: bool
+        """
         return Path(self._import_path, name).is_file()
 
-    def open_import_file(self, name: str):
+    def open_import_file(self, name: str) -> TextIO:
+        """Import file for reading.
+
+        :param name: File name
+        :type name: str
+        :return: Opened file handle for reading
+        :rtype: TextIO
+        """
         return open(Path(self._import_path, name))
 
     # Annotation incl. extended annotations (miRNA targets, RBP binding sites, etc.)
@@ -232,22 +289,27 @@ class FileService:
         """
         return Path(self._get_motif_cache_dir(), f"{motif}.PWM.png")
 
-    def _get_gene_cache_dir(self) -> Path:
-        return Path(self._data_path, self.GENE_CACHE_DEST)
-
-    def _get_motif_cache_dir(self) -> Path:
-        return Path(self._data_path, self.MOTIF_CACHE_DEST)
-
-    def _get_sunburst_cache_dir(self) -> Path:
-        return Path(self._data_path, self.SUNBURST_CACHE_DEST)
-
     def open_sunburst_cache(self, name: str) -> TextIO:
+        """Open a sunburst file for reading.
+
+        :param name: File name
+        :type name: str
+        :returns: Opened file handle for reading
+        :rtype: TextIO
+        """
         file_path = Path(self._get_sunburst_cache_dir(), f"{name}.json")
         return open(file_path)
 
     def update_sunburst_cache(
         self, name: str, generator: Generator[str, None, None]
     ) -> None:
+        """Update a sunburst file content.
+
+        :param name: File name
+        :type name: str
+        :param generator: Content to be written to file.
+        :type generator: Generator
+        """
         final_file_path = Path(self._get_sunburst_cache_dir(), f"{name}.json")
         try:
             temporary_file_path = None
@@ -263,7 +325,9 @@ class FileService:
                 unlink(temporary_file_path)
 
     def run_sunburst_update(self, do_it: Callable[[], None]) -> None:
-        """This function will run the routine passed as long as someone
+        """Perform a sunburst update.
+
+        This function will run the routine passed as long as someone
         requests it. If another processes is already executing this routine,
         the duty is passed to that processes. This case is signalled
         by raising a SunburstUpdateAlreadyRunning exception.
@@ -274,6 +338,9 @@ class FileService:
         place is used to signal that another run is required. Everyone may
         touch the marker. Only the instance holding the lock may remove it.
         By removing it, the active instance promises to do another run.
+
+        :param do_it: Callable to perform the update
+        :type do_it: Callable
         """
         lock_file = Path(self._get_sunburst_cache_dir(), "lock")
         update_marker = Path(self._get_sunburst_cache_dir(), "update_marker")
@@ -287,6 +354,15 @@ class FileService:
                 update_marker.unlink()
                 do_it()
             lockf(fh, LOCK_UN)
+
+    def _get_gene_cache_dir(self) -> Path:
+        return Path(self._data_path, self.GENE_CACHE_DEST)
+
+    def _get_motif_cache_dir(self) -> Path:
+        return Path(self._data_path, self.MOTIF_CACHE_DEST)
+
+    def _get_sunburst_cache_dir(self) -> Path:
+        return Path(self._data_path, self.SUNBURST_CACHE_DEST)
 
     # Project related
 
@@ -464,6 +540,7 @@ class FileService:
         """Create DNA sequence file for writing (binary mode).
 
         If missing, the parent directory is created.
+        If fails, the file is deleted.
 
         :param taxa_id: Taxa ID
         :type taxa_id: int
@@ -478,30 +555,13 @@ class FileService:
             chrom=chrom,
         )
         self._create_folder(path.parent)
-        return open(path, "xb", opener=write_opener)
-
-    def delete_dna_sequence_file(
-        self, taxa_id: int, chrom: str, is_gz: bool = True
-    ) -> None:
-        """Delete DNA sequence, but not index files.
-
-        FileNotFoundError exceptions are ignored.
-
-        :param taxa_id: Taxa ID
-        :type taxa_id: int
-        :param chrom: Chromosome
-        :type chrom: str
-        :param is_gz: If True, delete the '.fa.gz',
-        else delete the '.fa' file. Default is True.
-        :type is_gz: bool
-        """
-        path = self.get_assembly_file_path(taxa_id, AssemblyFileType.DNA, chrom=chrom)
-        if not is_gz:
-            path = path.with_suffix("")
-        path.unlink(missing_ok=True)
+        return self._safe_create_file(path, "xb", opener=write_opener)
 
     def index_dna_sequence_file(self, taxa_id: int, chrom: str) -> None:
         """Index a DNA sequence file.
+
+        Use pysam (tabix for bgzip,
+        samtools for faidx).
 
         :param taxa_id: Taxa ID
         :type taxa_id: int
@@ -517,7 +577,7 @@ class FileService:
         self._gunzip(gz_dna_sequence_file, dna_sequence_file)
         pysam.tabix_compress(dna_sequence_file, gz_dna_sequence_file)
         pysam.samtools.faidx(gz_dna_sequence_file.as_posix())
-        self.delete_dna_sequence_file(taxa_id, chrom, is_gz=False)
+        dna_sequence_file.unlink()
 
     def delete_assembly(self, taxa_id: int, assembly_name: str) -> None:
         """Remove assembly directory structure.
@@ -794,6 +854,11 @@ class FileService:
 
 @cache
 def get_file_service() -> FileService:
+    """Instantiate a FileService object by injecting its dependencies.
+
+    :returns: File service instance
+    :rtype: FileService
+    """
     config = get_config()
     return FileService(
         get_session(),

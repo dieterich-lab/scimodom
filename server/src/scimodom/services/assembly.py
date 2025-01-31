@@ -293,7 +293,7 @@ class AssemblyService:
         try:
             self._handle_gene_build(assembly)
             self._handle_release(assembly)
-            # self._handle_dna_sequences(assembly)
+            self._handle_dna_sequences(assembly)
         except AssemblyVersionError:
             self._file_service.delete_assembly(assembly.taxa_id, assembly.name)
             raise
@@ -359,7 +359,7 @@ class AssemblyService:
     def _get_ensembl_dna_sequence_url(
         self, taxa_id: int, assembly_name: str, chrom: str, is_alt: bool = False
     ):
-        organism = (self._get_organism_for_ensembl_url(taxa_id),)
+        organism = self._get_organism_for_ensembl_url(taxa_id)
         seq_file_name = AssemblyFileType.DNA.value(
             organism=organism.capitalize(), assembly=assembly_name, chrom=chrom
         )
@@ -369,8 +369,8 @@ class AssemblyService:
         return urljoin(
             Ensembl.FTP.value,
             Ensembl.FASTA.value,
-            "dna",
             organism,
+            "dna",
             seq_file_name,
         )
 
@@ -449,7 +449,6 @@ class AssemblyService:
                     self._web_service.stream_request_to_file(url, fh)
             except HTTPError:
                 # chromosome -> primary_assembly
-                self._file_service.delete_dna_sequence_file(assembly.taxa_id, chrom)
                 url = self._get_ensembl_dna_sequence_url(
                     assembly.taxa_id, assembly.name, chrom, is_alt=True
                 )
@@ -462,7 +461,7 @@ class AssemblyService:
 
 @cache
 def get_assembly_service() -> AssemblyService:
-    """Provide helper function to set up an AssemblyService.
+    """Instantiate an AssemblyService object by injecting its dependencies.
 
     :returns: Assembly service instance
     :rtype: AssemblyService

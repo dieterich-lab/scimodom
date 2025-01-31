@@ -79,20 +79,21 @@ def add_selection(
             f"Failed to add selection (invalid input value). {exc}.",
             fg="red",
         )
-        return
+        raise click.Abort()
 
     click.secho("Adding new selection...", fg="green")
     click.secho("Continue [y/n]?", fg="green")
     c = click.getchar()
     if c not in ["y", "Y"]:
-        click.secho("Aborting!", fg="yellow")
+        click.secho("Aborted!", fg="yellow")
         return
 
     try:
         selection_service.create_selection([metadata])
-        click.secho("Added selection.", fg="green")
+        click.secho("   ... added selection.", fg="green")
     except Exception as exc:
         click.secho(
             f"Failed to add selection. {exc}.",
             fg="red",
         )
+        raise click.Abort()

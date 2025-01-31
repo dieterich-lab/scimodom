@@ -112,16 +112,18 @@ def add_dataset(
 
     colour = "green"
     msg = f"Adding dataset '{title}' to project with SMID '{smid}'... "
+    succes_msg = "created"
     if dry_run:
         msg = f"DRY RUN: {msg}"
         colour = "cyan"
     elif eufid is not None:
         msg = f"Updating data records for dataset '{eufid}'..."
+        succes_msg = "updated"
     click.secho(msg, fg=colour)
     click.secho("Continue [y/n]?", fg=colour)
     c = click.getchar()
     if c not in ["y", "Y"]:
-        click.secho("Aborting!", fg="yellow")
+        click.secho("Aborted!", fg="yellow")
         return
 
     try:
@@ -141,7 +143,7 @@ def add_dataset(
                 eufid=eufid,
             )
         click.secho(
-            f"Created or updated dataset with EUFID: '{eufid}'.",
+            f"   ... {succes_msg} dataset with EUFID: '{eufid}'.",
             fg=colour,
         )
     except Exception as exc:
@@ -149,17 +151,19 @@ def add_dataset(
             f"Failed to create or update dataset. {exc}.",
             fg="red",
         )
-        return
+        raise click.Abort()
 
     if not dry_run:
         try:
             click.secho("Triggering charts update in the background ...", fg="green")
             _so_sunburst_update()
+            click.secho("   ... done!", fg="green")
         except Exception as exc:
             click.secho(
                 f"Failed to update charts. {exc}.",
                 fg="red",
             )
+            raise click.Abort()
 
 
 @dataset_cli.cli.command(
@@ -199,6 +203,8 @@ def add_dataset_in_batch(input_directory: str, request_uuid: str, annotation: st
     project_service = get_project_service()
     dataset_service = get_dataset_service()
 
+    click.secho(f"Adding project and datasets for {request_uuid} ...", fg="green")
+
     try:
         filename_modification_association = defaultdict(list)
         project_template = _validate_input(request_uuid)
@@ -208,12 +214,6 @@ def add_dataset_in_batch(input_directory: str, request_uuid: str, annotation: st
             filename_modification_association[filename].append(
                 (metadata.rna, metadata.modomics_id)
             )
-    except Exception as exc:
-        click.secho(
-            f"Failed to validate project request. {exc}.",
-            fg="red",
-        )
-        return
     except AssemblyNotFoundError:
         click.secho(
             (
@@ -222,12 +222,18 @@ def add_dataset_in_batch(input_directory: str, request_uuid: str, annotation: st
             ),
             fg="red",
         )
-        return
+        raise click.Abort()
+    except Exception as exc:
+        click.secho(
+            f"Failed to validate project request. {exc}.",
+            fg="red",
+        )
+        raise click.Abort()
 
     try:
         smid = project_service.create_project(project_template, request_uuid)
         click.secho(
-            f"Created project with SMID: '{smid}'.",
+            f"   ... created project with SMID: '{smid}'...",
             fg="green",
         )
     except Exception as exc:
@@ -235,7 +241,7 @@ def add_dataset_in_batch(input_directory: str, request_uuid: str, annotation: st
             f"Failed to create project. {exc}.",
             fg="red",
         )
-        return
+        raise click.Abort()
 
     visited = set()
     for metadata in project_template.metadata:
@@ -264,7 +270,7 @@ def add_dataset_in_batch(input_directory: str, request_uuid: str, annotation: st
                     annotation_source=annotation_source,
                 )
             click.secho(
-                f"Created dataset with EUFID: '{eufid}'.",
+                f"   ... created dataset with EUFID: '{eufid}'...",
                 fg="green",
             )
         except Exception as exc:
@@ -273,15 +279,18 @@ def add_dataset_in_batch(input_directory: str, request_uuid: str, annotation: st
                 fg="red",
             )
             continue
+    click.secho("   ... done.", fg="green")
 
     try:
         click.secho("Triggering charts update in the background ...", fg="green")
         _so_sunburst_update()
+        click.secho("   ... done.", fg="green")
     except Exception as exc:
         click.secho(
             f"Failed to update charts. {exc}.",
             fg="red",
         )
+        raise click.Abort()
 
 
 def _so_sunburst_update():

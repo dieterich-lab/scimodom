@@ -39,7 +39,7 @@ from scimodom.services.validator import ValidatorService
 from scimodom.services.web import WebService
 from scimodom.utils.specs.enums import AnnotationSource, UserState
 
-DATA_DIR = Path(Path(__file__).parent, "data")
+DATA_DIR = Path(Path(__file__).parent.parent, "data")
 
 
 JSON_TEMPLATE = """

@@ -34,7 +34,7 @@ from scimodom.utils.specs.enums import AnnotationSource, SunburstChartType
 from tests.mocks.enums import MockEnsembl
 
 
-DATA_DIR = Path(Path(__file__).parent, "data")
+DATA_DIR = Path(Path(__file__).parent.parent, "data")
 
 
 PROJECT_BATCH_REQUEST = """

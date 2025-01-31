@@ -150,7 +150,11 @@ class ValidatorService:
         To be used for importing data when writing
         to the database is not intended. This is used
         e.g. to import data for the Comparison View.
-        Assemblies are added on the fly.
+
+        Assemblies are added on the fly, in the unlikely
+        case that one is missing. This should not happen
+        in general, and in particular this should not happen
+        for the current assembly.
 
         :param importer: BED importer
         :type importer: EufImporter

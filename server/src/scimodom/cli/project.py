@@ -118,7 +118,7 @@ def create_project_template(
     click.secho("Continue [y/n]?", fg="green")
     c = click.getchar()
     if c not in ["y", "Y"]:
-        click.secho("Aborting!", fg="yellow")
+        click.secho("Aborted!", fg="yellow")
         return
 
     try:
@@ -137,7 +137,7 @@ def create_project_template(
             use_method_ids,
         )
         click.secho(
-            f"Created request with ID: '{uuid}'.",
+            f"   ... created request with ID: '{uuid}'.",
             fg="green",
         )
     except KeyError as exc:
@@ -145,16 +145,19 @@ def create_project_template(
             f"Failed to create template (malformed DATASET_CSV). Missing header {exc}.",
             fg="red",
         )
+        raise click.Abort()
     except ValueError as exc:
         click.secho(
             f"Failed to create template (DATASET_CSV has unexpected values). {exc}.",
             fg="red",
         )
+        raise click.Abort()
     except Exception as exc:  # OSError, ValidationError
         click.secho(
             f"Failed to create template. {exc}.",
             fg="red",
         )
+        raise click.Abort()
 
 
 @project_cli.cli.command(
@@ -183,7 +186,7 @@ def add_project(request_uuid: str, add_user: bool):
         project_template = ProjectTemplate.model_validate_json(project_template_raw)
     except Exception as exc:  # OSError, ValidationError
         click.secho(f"Failed to read template. {exc}.", fg="red")
-        return
+        raise click.Abort()
 
     for metadata in project_template.metadata:
         try:
@@ -196,19 +199,19 @@ def add_project(request_uuid: str, add_user: bool):
                 ),
                 fg="red",
             )
-            return
+            raise click.Abort()
 
     click.secho(f"Adding project {project_template.title}...", fg="green")
     click.secho("Continue [y/n]?", fg="green")
     c = click.getchar()
     if c not in ["y", "Y"]:
-        click.secho("Aborting!", fg="yellow")
+        click.secho("Aborted!", fg="yellow")
         return
 
     try:
         smid = project_service.create_project(project_template, request_uuid)
         click.secho(
-            f"Created project with SMID: '{smid}'.",
+            f"   ... created project with SMID: '{smid}'.",
             fg="green",
         )
     except Exception as exc:
@@ -216,7 +219,7 @@ def add_project(request_uuid: str, add_user: bool):
             f"Failed to create project. {exc}.",
             fg="red",
         )
-        return
+        raise click.Abort()
 
     if add_user:
         username = project_template.contact_email
@@ -226,13 +229,16 @@ def add_project(request_uuid: str, add_user: bool):
         )
         try:
             _add_user_to_project(username, smid)
+            click.secho("   ... added user.", fg="green")
         except NoSuchUser:
             click.secho("No such user. Nothing will be done.", fg="red")
+            return
         except Exception as exc:
             click.secho(
                 f"Failed to add user. {exc}.",
                 fg="red",
             )
+            raise click.Abort()
 
 
 @project_cli.cli.command(
@@ -252,24 +258,27 @@ def add_user(username: str, smid: str):
     click.secho("Continue [y/n]?", fg="green")
     c = click.getchar()
     if c not in ["y", "Y"]:
-        click.secho("Aborting!", fg="yellow")
+        click.secho("Aborted!", fg="yellow")
         return
 
     try:
         _add_user_to_project(username, smid)
-        click.secho("Added user to project.", fg="green")
+        click.secho("   ... user added.", fg="green")
     except NoResultFound:
         click.secho(
             f"Failed to add user. No such SMID '{smid}'.",
             fg="red",
         )
+        raise click.Abort()
     except NoSuchUser as exc:
         click.secho(f"Cannot add user. {exc}.", fg="red")
+        raise click.Abort()
     except Exception as exc:
         click.secho(
             f"Failed to add user. {exc}.",
             fg="red",
         )
+        raise click.Abort()
 
 
 @project_cli.cli.command(
@@ -303,7 +312,7 @@ def delete_project(smid: str):
         project = project_service.get_by_id(smid)
     except NoResultFound:
         click.secho(f"No such project '{smid}'.", fg="red")
-        return
+        raise click.Abort()
 
     click.secho(
         (
@@ -313,20 +322,23 @@ def delete_project(smid: str):
         fg="green",
     )
     for dataset in project.datasets:
-        click.secho(f"Dataset '{dataset.id}' with title '{dataset.title}'.", fg="green")
+        click.secho(
+            f"Dataset '{dataset.id}' with title '{dataset.title}'...", fg="green"
+        )
 
     click.secho("Continue [y/n]?", fg="green")
     c = click.getchar()
     if c not in ["y", "Y"]:
-        click.secho("Aborting!", fg="yellow")
+        click.secho("Aborted!", fg="yellow")
         return
 
     try:
         _remove_datasets_and_selections(project)
         project_service.delete_project(project)
+        click.secho("   ... deleted project", fg="green")
     except Exception as exc:
         click.secho(f"Failed to delete project '{project.id}'. {exc}", fg="red")
-        return
+        raise click.Abort()
 
 
 def _create_project_template(

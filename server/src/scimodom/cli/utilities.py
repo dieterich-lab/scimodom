@@ -10,44 +10,9 @@ from scimodom.database.models import (
     Modomics,
 )
 from scimodom.services.assembly import AssemblyService, AssemblyNotFoundError
-from scimodom.services.setup import get_setup_service
 from scimodom.utils.dtos.project import (
     ProjectOrganismDto,
 )
-
-
-def upsert(init: bool, **kwargs) -> None:
-    """Provide a CLI function for the SetupService.
-
-    Upsert a given table, or all default tables (defined
-    in the config).
-
-    :param init: Upsert all default tables (same as start-up)
-    :type init: bool
-    """
-    setup_service = get_setup_service()
-    if init:
-        setup_service.upsert_all()
-    else:
-        file_name = kwargs.get("table")
-        if file_name is None:
-            click.secho(
-                "'NoneType' object is not a valid argument for [--table].", fg="red"
-            )
-            return
-        valid_names = setup_service.get_valid_import_file_names()
-        if file_name not in valid_names:
-            v = ", ".join(valid_names)
-            click.secho(f"The [--table] argument needs a valid name ({v}).", fg="red")
-            return
-
-        click.secho(setup_service.get_upsert_message(file_name), fg="green")
-        click.secho("Continue [y/n]?", fg="green")
-        c = click.getchar()
-        if c not in ["y", "Y"]:
-            return
-        setup_service.upsert_one(file_name)
-    click.secho("Successfully performed INSERT... ON DUPLICATE KEY UPDATE.", fg="green")
 
 
 def validate_dataset_title(ctx, param, value):

@@ -5,7 +5,7 @@ import pytest
 from sqlalchemy.exc import NoResultFound
 
 from scimodom.database.models import Assembly
-from scimodom.services.assembly import AssemblyNotFoundError, AssemblyAbortedError
+from scimodom.services.assembly import AssemblyNotFoundError
 from scimodom.services.validator import (
     _DatasetImportContext,
     _ReadOnlyImportContext,
@@ -47,7 +47,6 @@ class MockAssemblyService:
         self._assemblies_by_id = assemblies_by_id
         self._assemblies_by_name = assemblies_by_name
         self._allowed_assemblies = allowed_assemblies
-        # self._added_assembly: Assembly | None = None
 
     def get_by_id(self, assembly_id: int) -> Assembly:
         try:
@@ -66,7 +65,7 @@ class MockAssemblyService:
             self.get_by_taxa_and_name(taxa_id, assembly_name)
         except NoResultFound:
             if self._allowed_assemblies is None:
-                raise AssemblyAbortedError
+                raise Exception
             else:
                 if assembly_name in self._allowed_assemblies[taxa_id]:
                     assembly = Assembly(
@@ -75,7 +74,6 @@ class MockAssemblyService:
                         taxa_id=taxa_id,
                         version="NFrsaxAU9UjS",
                     )
-                    # self._added_assembly = assembly
                     self._assemblies_by_id.update({4: assembly})
                     self._assemblies_by_name[assembly.taxa_id].update(
                         {assembly.name: assembly}
@@ -237,7 +235,7 @@ def test_read_only_import_context_invalid_assembly(Session, setup):
     service = _get_validator_service(
         Session(), allowed_assemblies={9606: ["GRCh37", "GRCh38"]}
     )
-    with pytest.raises(DatasetImportError) as exc:
+    with pytest.raises(DatasetImportError):
         service.create_read_only_import_context(importer=importer, taxa_id=9606)
 
 
