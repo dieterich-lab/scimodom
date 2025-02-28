@@ -23,6 +23,7 @@ from scimodom.services.file import get_file_service
 from scimodom.services.project import get_project_service
 from scimodom.services.sunburst import get_sunburst_service
 from scimodom.utils.dtos.project import (
+    ProjectMetaDataDto,
     ProjectTemplate,
 )
 from scimodom.utils.specs.enums import AnnotationSource
@@ -197,7 +198,6 @@ def add_dataset_in_batch(input_directory: str, request_uuid: str, annotation: st
     REQUEST_UUID is the name (w/o extension) of a project
     template, presumably obtained by running "flask project create-template".
     """
-    regexp = re.compile(r"(file=)(.*),\s*(title=)(.*)")
     annotation_source = AnnotationSource(annotation)
     assembly_service = get_assembly_service()
     project_service = get_project_service()
@@ -210,7 +210,7 @@ def add_dataset_in_batch(input_directory: str, request_uuid: str, annotation: st
         project_template = _validate_input(request_uuid)
         for metadata in project_template.metadata:
             add_assembly_to_template_if_none(metadata.organism, assembly_service)
-            filename = regexp.search(metadata.note).group(2).strip()
+            filename, title = _get_filename_and_title(metadata)
             filename_modification_association[filename].append(
                 (metadata.rna, metadata.modomics_id)
             )
@@ -245,9 +245,8 @@ def add_dataset_in_batch(input_directory: str, request_uuid: str, annotation: st
 
     visited = set()
     for metadata in project_template.metadata:
-        filename = regexp.search(metadata.note).group(2).strip()
+        filename, title = _get_filename_and_title(metadata)
         file_path = Path(input_directory, filename)
-        title = regexp.search(metadata.note).group(4).strip()
         if filename in visited:
             continue
         visited.add(filename)
@@ -291,6 +290,19 @@ def add_dataset_in_batch(input_directory: str, request_uuid: str, annotation: st
             fg="red",
         )
         raise click.Abort()
+
+
+def _get_filename_and_title(metadata: ProjectMetaDataDto) -> tuple[str, str]:
+    regexp = re.compile(r"(?:file=)(?P<file>.*),\s*(?:title=)(?P<title>.*)")
+    if metadata.note is None:
+        raise Exception(
+            "'note' must be str with format 'file=filename.bedrmod, title=title'"
+        )
+    m = regexp.match(metadata.note)
+    if m is not None:
+        return m["file"].strip(), m["title"].strip()
+    else:
+        raise Exception("Unable to match 'file' or 'title' from 'note'.")
 
 
 def _so_sunburst_update():

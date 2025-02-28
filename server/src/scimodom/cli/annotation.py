@@ -46,7 +46,7 @@ def add_annotation(taxa_id: int, source: AnnotationSource, **kwargs) -> None:
         click.secho("   ... done!", fg="green")
     except FileExistsError:
         click.secho(
-            "Directory exists, but no annotation... check for data corruption. Aborting!",
+            "Directory exists, but no annotation... check for data corruption!",
             fg="red",
         )
         raise click.Abort()

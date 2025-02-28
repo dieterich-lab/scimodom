@@ -358,8 +358,16 @@ def _create_project_template(
     project_service = get_project_service()
 
     metadata_list = []
-    with open(dataset_csv, "r") as fh:
-        for row in csv.DictReader(fh):
+    with open(dataset_csv, "r", newline="") as fh:
+        reader = csv.DictReader(fh)
+        rows = [
+            {
+                k.strip(): (v.strip() if isinstance(v, str) else v)
+                for k, v in row.items()
+            }
+            for row in reader
+        ]
+        for row in rows:
             organism = ProjectOrganismDto(
                 taxa_id=row["taxa_id"],
                 cto=row["cto"],

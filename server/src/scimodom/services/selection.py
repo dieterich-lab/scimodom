@@ -180,9 +180,11 @@ class SelectionService:
         )
 
         try:
-            self._gene_service.delete_gene_cache(selection.id)
-
-            msg = f"{msg}\n Deleted gene cache."
+            try:
+                self._gene_service.delete_gene_cache(selection.id)
+                msg = f"{msg}\n Deleted gene cache."
+            except FileNotFoundError:
+                msg = f"{msg}\n Gene cache not found."
 
             if not is_cache_only:
                 self._session.delete(selection)
