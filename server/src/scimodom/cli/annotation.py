@@ -19,7 +19,7 @@ annotation_cli = Blueprint("annotation", __name__)
     type=click.Choice(["ensembl", "gtrnadb"], case_sensitive=False),
     help="Annotation source.",
 )
-def add_annotation(taxa_id: int, source: AnnotationSource, **kwargs) -> None:
+def add_annotation(taxa_id: int, source: str, **kwargs) -> None:
     """Add annotations.
 
     Annotation must exists in the database (only latest version allowed).
@@ -33,7 +33,7 @@ def add_annotation(taxa_id: int, source: AnnotationSource, **kwargs) -> None:
         click.secho("Not Implemented...", fg="red")
         raise click.Abort()
 
-    click.secho(f"Preparing {source.value} annotation for {taxa_id}...", fg="green")
+    click.secho(f"Preparing {source} annotation for {taxa_id}...", fg="green")
     click.secho("Continue [y/n]?", fg="green")
     c = click.getchar()
     if c not in ["y", "Y"]:
