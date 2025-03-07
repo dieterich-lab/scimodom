@@ -1,7 +1,6 @@
 from datetime import datetime, timezone
 from functools import cache
 import logging
-import re
 from typing import List, Dict, Optional, TextIO
 
 from sqlalchemy import select, func, delete

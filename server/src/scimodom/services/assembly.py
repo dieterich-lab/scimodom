@@ -4,6 +4,7 @@ from functools import cache
 from posixpath import join as urljoin
 from typing import Any, Sequence, TextIO
 
+from requests.exceptions import HTTPError
 from sqlalchemy import select, func
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session
@@ -37,14 +38,17 @@ class AssemblyVersionError(Exception):
 
 
 class AssemblyAbortedError(Exception):
-    """Exception for handling general errors associated with
-    preparing/adding assemblies e.g. request streaming, etc."""
+    """Exception for handling assembly creation.
+
+    Handle general errors associated with adding or
+    creating assemblies e.g. request streaming, etc.
+    """
 
     pass
 
 
 class LiftOverError(Exception):
-    """Exception for handling too many unmapped records during liftover."""
+    """Exception for handling errors in liftover."""
 
     pass
 
@@ -78,59 +82,29 @@ class AssemblyService:
             select(AssemblyVersion.version_num)
         ).scalar_one()
 
-    def get_assembly_by_id(self, assembly_id: int) -> Assembly:
-        """Retrieve assembly.
+    def get_by_id(self, assembly_id: int) -> Assembly:
+        """Retrieve assembly by ID.
 
         :param assembly_id: Assembly ID
         :type assembly_id: int
-        :returns: Assembly instance
+        :return: Assembly
         :rtype: Assembly
-
-        :raises: AssemblyNotFoundError
         """
-        try:
-            return self._session.get_one(Assembly, assembly_id)
-        except NoResultFound:
-            raise AssemblyNotFoundError(f"No such assembly with ID: {assembly_id}.")
+        return self._session.get_one(Assembly, assembly_id)
 
-    def get_assembly_by_name(
-        self, taxa_id: int, assembly_name: str, fail_safe: bool = True
-    ) -> Assembly:
-        """Retrieve assembly by name.
-
-        If not found, add it to the database, unless fail_safe is False,
-        in which case raises AssemblyNotFoundError. The 'assembly_name'
-        must be a valid Ensembl assembly.
+    def get_by_taxa_and_name(self, taxa_id: int, assembly_name: str) -> Assembly:
+        """Retrieve assembly by taxa ID and name.
 
         :param taxa_id: Taxonomy ID
         :type taxa_id: int
         :param assembly_name: Assembly name
         :type assembly_name: str
-        :param fail_safe: If True (default), add assembly if not found.
-        :type fail_safe: bool
-        :returns: Newly created or existing assembly
+        :returns: Assembly
         :rtype: Assembly
-
-        :raises: AssemblyNotFoundError
         """
-        try:
-            assembly = self._session.execute(
-                select(Assembly).filter_by(taxa_id=taxa_id, name=assembly_name)
-            ).scalar_one()
-            return assembly
-        except NoResultFound:
-            if fail_safe:
-                valid_assembly_names = self._get_coord_system_versions(taxa_id)
-                if assembly_name not in valid_assembly_names:
-                    raise AssemblyNotFoundError(
-                        f"No such assembly '{assembly_name}' for organism '{taxa_id}'. "
-                        f"Valid assemblies are: '{' '.join(valid_assembly_names)}'"
-                    )
-                return self._add_assembly(taxa_id, assembly_name)
-            else:
-                raise AssemblyNotFoundError(
-                    f"No such assembly '{assembly_name}' for organism '{taxa_id}'."
-                )
+        return self._session.execute(
+            select(Assembly).filter_by(taxa_id=taxa_id, name=assembly_name)
+        ).scalar_one()
 
     def get_assemblies_by_taxa(self, taxa_id: int) -> Sequence[Assembly]:
         """Retrieve all assemblies for a given organism.
@@ -165,10 +139,9 @@ class AssemblyService:
         :returns: Assembly name
         :rtype: str
         """
-        name = self._session.execute(
+        return self._session.execute(
             select(Assembly.name).filter_by(taxa_id=taxa_id, version=self._version)
         ).scalar_one()
-        return name
 
     def get_seqids(self, taxa_id: int) -> list[str]:
         """Return chromosomes for a given assembly as a list.
@@ -226,15 +199,10 @@ class AssemblyService:
         if self.is_latest_assembly(assembly):
             raise AssemblyVersionError("Cannot liftover for latest assembly.")
 
-        target_annotation_name = self.get_name_for_version(assembly.taxa_id)
-        chain_file_name = self._get_chain_file_name(
-            assembly.name, target_annotation_name
-        )
         chain_file = self._file_service.get_assembly_file_path(
             assembly.taxa_id,
             file_type=AssemblyFileType.CHAIN,
-            chain_file_name=chain_file_name,
-            chain_assembly_name=assembly.name,
+            assembly_name=assembly.name,
         )
 
         raw_lines = self._file_service.count_lines(raw_file)
@@ -254,76 +222,121 @@ class AssemblyService:
             )
         return self._file_service.open_file_for_reading(lifted_file)
 
-    def prepare_assembly_for_version(self, assembly_id: int) -> None:
-        """Prepare directories and files for the latest version.
+    def add_assembly(self, taxa_id: int, assembly_name: str) -> None:
+        """Add an assembly to the database if it does not exist.
 
-        This method does not update the database, i.e.
-        the assembly must exists.
+        Create the directory structure, and add the corresponding
+        files.
 
-        :param assembly_id: Assembly ID
-        :type assembly_id: int
+        The current assembly must exist in the database, but
+        any other assembly may or may not exist. No other assumptions
+        are made on the caller: the assembly is created if it does
+        not exist, but the state of the database must be consistent
+        with the content of the file system for the given assembly.
+
+        :param taxa_id: Taxa ID
+        :type taxa_id: int
+        :param assembly_name: A valid assembly name. If the
+        assembly already exists, nothing is done.
+        :type assembly_name: str
+        :raises NoResultFound: If a required assembly is missing.
+        :raises AssemblyNotFoundError: If 'assembly_name' is not valid.
         """
-        assembly = self.get_assembly_by_id(assembly_id)
+        if self._file_service.check_if_assembly_exists(taxa_id, assembly_name):
+            try:
+                self.get_by_taxa_and_name(taxa_id, assembly_name)
+                return
+            except NoResultFound as exc:
+                msg = f"Files exists for '{assembly_name}', but assembly is missing."
+                exc.add_note(msg)
+                raise
+
+        try:
+            current_assembly_name = self.get_name_for_version(taxa_id)
+            if assembly_name == current_assembly_name:
+                assembly = self.get_by_taxa_and_name(taxa_id, assembly_name)
+                self.create_current(assembly)
+                return
+        except NoResultFound as exc:
+            msg = f"Cannot add '{assembly_name}' if current assembly is missing."
+            exc.add_note(msg)
+            raise
+
+        valid_assembly_names = self.get_coord_system_versions(taxa_id)
+        if assembly_name not in valid_assembly_names:
+            raise AssemblyNotFoundError(
+                f"No such assembly '{assembly_name}' for organism '{taxa_id}'. "
+                f"Valid assemblies are: '{' '.join(valid_assembly_names)}'"
+            )
+        self._create_version(taxa_id, assembly_name)
+
+    def create_current(self, assembly: Assembly) -> None:
+        """Create directory and files for the current assembly version.
+
+        :param assembly: Current assembly
+        :type assembly: Assembly
+        :raises AssemblyVersionError: If not current version.
+        :raises AssemblyAbortedError: If fail to create files.
+        :raises Exception: Unhandled exceptions
+        """
         if not self.is_latest_assembly(assembly):
             raise AssemblyVersionError(
                 f"Mismatch between assembly version '{assembly.version}' and "
                 f"database version '{self._version}'."
             )
 
-        logger.info(f"Setting up assembly {assembly.name} for current version...")
-
-        # TODO
         if self._file_service.check_if_assembly_exists(assembly.taxa_id, assembly.name):
-            raise FileExistsError(
-                f"Assembly '{assembly.name}' already exists (Taxa ID {assembly.taxa_id})."
-            )
+            return
+
+        logger.info(f"Setting up assembly {assembly.name} for current version...")
 
         try:
             self._handle_gene_build(assembly)
             self._handle_release(assembly)
+            self._handle_dna_sequences(assembly)
         except AssemblyVersionError:
             self._file_service.delete_assembly(assembly.taxa_id, assembly.name)
             raise
         except Exception as exc:
             self._file_service.delete_assembly(assembly.taxa_id, assembly.name)
             raise AssemblyAbortedError(
-                f"Adding assembly for ID '{assembly_id}' aborted."
+                f"Adding assembly for ID '{assembly.id}' aborted."
             ) from exc
 
-    @staticmethod
-    def _get_chain_file_name(source_assembly_name, target_assembly_name):
-        return f"{source_assembly_name}_to_{target_assembly_name}.chain.gz"
+    def get_coord_system_versions(self, taxa_id: int) -> list[str]:
+        """Retrieve valid assemblies for a given taxa ID.
 
-    def _add_assembly(self, taxa_id: int, assembly_name: str) -> Assembly:
-        if self._file_service.check_if_assembly_exists(taxa_id, assembly_name):
-            raise AssemblyAbortedError(
-                f"Suspected data corruption for '{assembly_name}'. Files were found "
-                "on the system, but assembly does not exist in the database."
-            )
+        :param taxa_id: Taxonomy ID
+        :type taxa_id: int
+        :return: Valid assembly names
+        :rtype: list[str]
+        """
+        with self._file_service.open_assembly_file(
+            taxa_id, AssemblyFileType.INFO
+        ) as fp:
+            info = json.load(fp)
+        return info["coord_system_versions"]
 
-        chain_file_name = self._get_chain_file_name(
-            assembly_name, self.get_name_for_version(taxa_id)
-        )
-        url = self._get_ensembl_chain_file_url(taxa_id, chain_file_name)
-
+    def _create_version(self, taxa_id: int, assembly_name: str) -> None:
         logger.info(f"Setting up a new assembly for {assembly_name}...")
         try:
-            with self._file_service.create_chain_file(
-                taxa_id, chain_file_name, assembly_name
-            ) as fh:
+            url = self._get_ensembl_chain_file_url(taxa_id, assembly_name)
+            with self._file_service.create_chain_file(taxa_id, assembly_name) as fh:
                 self._web_service.stream_request_to_file(url, fh)
-            version_nums = (
-                self._session.execute(select(func.distinct(Assembly.version)))
-                .scalars()
-                .all()
-            )
-            version_num = gen_short_uuid(Identifiers.ASSEMBLY.length, version_nums)
-            assembly = Assembly(
-                name=assembly_name, taxa_id=taxa_id, version=version_num
-            )
-            self._session.add(assembly)
-            self._session.commit()
-            return assembly
+            try:
+                self.get_by_taxa_and_name(taxa_id, assembly_name)
+            except NoResultFound:
+                version_nums = (
+                    self._session.execute(select(func.distinct(Assembly.version)))
+                    .scalars()
+                    .all()
+                )
+                version_num = gen_short_uuid(Identifiers.ASSEMBLY.length, version_nums)
+                assembly = Assembly(
+                    name=assembly_name, taxa_id=taxa_id, version=version_num
+                )
+                self._session.add(assembly)
+                self._session.commit()
         except Exception as exc:
             self._session.rollback()
             self._file_service.delete_assembly(taxa_id, assembly_name)
@@ -331,19 +344,34 @@ class AssemblyService:
                 f"Adding assembly for '{assembly_name}' aborted."
             ) from exc
 
-    def _get_coord_system_versions(self, taxa_id: int) -> list[str]:
-        with self._file_service.open_assembly_file(
-            taxa_id, AssemblyFileType.INFO
-        ) as fp:
-            info = json.load(fp)
-        return info["coord_system_versions"]
-
-    def _get_ensembl_chain_file_url(self, taxa_id: int, chain_file_name):
+    def _get_ensembl_chain_file_url(self, taxa_id: int, assembly_name: str):
+        chain_file_name = AssemblyFileType.CHAIN.value(
+            source_assembly=assembly_name,
+            target_assembly=self.get_name_for_version(taxa_id),
+        )
         return urljoin(
             Ensembl.FTP.value,
             Ensembl.ASM_MAPPING.value,
             self._get_organism_for_ensembl_url(taxa_id),
             chain_file_name,
+        )
+
+    def _get_ensembl_dna_sequence_url(
+        self, taxa_id: int, assembly_name: str, chrom: str, is_alt: bool = False
+    ):
+        organism = self._get_organism_for_ensembl_url(taxa_id)
+        seq_file_name = AssemblyFileType.DNA.value(
+            organism=organism.capitalize(), assembly=assembly_name, chrom=chrom
+        )
+        if is_alt:
+            seq_file_name = AssemblyFileType.get_alt_name(seq_file_name)
+
+        return urljoin(
+            Ensembl.FTP.value,
+            Ensembl.FASTA.value,
+            organism,
+            "dna",
+            seq_file_name,
         )
 
     def _get_organism_for_ensembl_url(self, taxa_id: int):
@@ -363,7 +391,7 @@ class AssemblyService:
         ).scalar_one()
         return organism
 
-    def _handle_release(self, assembly):
+    def _handle_release(self, assembly: Assembly):
         url = urljoin(
             Ensembl.REST.value,
             Ensembl.DATA.value,
@@ -408,10 +436,32 @@ class AssemblyService:
         ) as fh:
             json.dump(gene_build, fh, indent="\t")
 
+    def _handle_dna_sequences(self, assembly: Assembly):
+        chroms = self.get_seqids(assembly.taxa_id)
+        for chrom in chroms:
+            url = self._get_ensembl_dna_sequence_url(
+                assembly.taxa_id, assembly.name, chrom
+            )
+            try:
+                with self._file_service.create_dna_sequence_file(
+                    assembly.taxa_id, chrom
+                ) as fh:
+                    self._web_service.stream_request_to_file(url, fh)
+            except HTTPError:
+                # chromosome -> primary_assembly
+                url = self._get_ensembl_dna_sequence_url(
+                    assembly.taxa_id, assembly.name, chrom, is_alt=True
+                )
+                with self._file_service.create_dna_sequence_file(
+                    assembly.taxa_id, chrom
+                ) as fh:
+                    self._web_service.stream_request_to_file(url, fh)
+            self._file_service.index_dna_sequence_file(assembly.taxa_id, chrom)
+
 
 @cache
 def get_assembly_service() -> AssemblyService:
-    """Provide helper function to set up an AssemblyService.
+    """Instantiate an AssemblyService object by injecting its dependencies.
 
     :returns: Assembly service instance
     :rtype: AssemblyService

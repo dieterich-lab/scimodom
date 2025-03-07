@@ -1,5 +1,4 @@
-from pathlib import Path
-from typing import BinaryIO
+from typing import Any, BinaryIO
 
 
 class MockHTTPError(Exception):
@@ -10,7 +9,7 @@ class MockWebService:
     def __init__(
         self,
         url_to_result: dict[str, dict] | None = None,
-        url_to_data: list[str] | None = None,
+        url_to_data: dict[str, Any] | None = None,
     ):
         self._url_to_result = {} if url_to_result is None else url_to_result
         self._url_to_data = {} if url_to_data is None else url_to_data

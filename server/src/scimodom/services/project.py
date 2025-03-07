@@ -11,15 +11,12 @@ from scimodom.database.models import (
     Project,
     ProjectSource,
     ProjectContact,
-    Modification,
-    DetectionTechnology,
-    Organism,
-    Selection,
     User,
     UserProjectAssociation,
 )
 from scimodom.services.file import FileService, get_file_service
-from scimodom.utils.dtos.project import ProjectTemplate, ProjectMetaDataDto
+from scimodom.services.selection import SelectionService, get_selection_service
+from scimodom.utils.dtos.project import ProjectTemplate
 from scimodom.utils.specs.enums import Identifiers
 from scimodom.utils.utils import gen_short_uuid
 
@@ -33,16 +30,22 @@ class DuplicateProjectError(Exception):
 
 
 class ProjectService:
-    def __init__(self, session: Session, file_service: FileService) -> None:
+    def __init__(
+        self,
+        session: Session,
+        file_service: FileService,
+        selection_service: SelectionService,
+    ) -> None:
         self._session = session
         self._file_service = file_service
+        self._selection_service = selection_service
 
     def create_project_request(self, project_template: ProjectTemplate) -> str:
-        """Project request constructor.
+        """Provide a project request constructor.
 
         :param project_template: Validated project template
         :type project_template: ProjectTemplate
-        :returns: UUID of request
+        :return: UUID of request
         :rtype: str
         """
         uuid = gen_short_uuid(24, [])
@@ -51,10 +54,12 @@ class ProjectService:
         return uuid
 
     def get_by_id(self, smid: str) -> Project:
-        """Retrieve project by SMID
+        """Retrieve project by SMID.
 
         :param smid: SMID
         :type smid: str
+        :return: Project
+        :rtype: Project
         """
         return self._session.get_one(Project, smid)
 
@@ -62,12 +67,11 @@ class ProjectService:
         """Retrieve all projects.
 
         :param user: Optionally restricts the
-        results based on projects assotiated with a user.
+        results based on projects associated with a user.
         :type user: User
-        :returns: Query result
+        :return: Query result
         :rtype: list of dict
         """
-
         query = (
             select(
                 Project.id.label("project_id"),
@@ -98,18 +102,21 @@ class ProjectService:
     def create_project(
         self, project_template: ProjectTemplate, request_uuid: str
     ) -> str:
-        """Project constructor.
+        """Provide a project constructor.
 
         :param project_template: Validated project template
         :type project_template: ProjectTemplate
         :param request_uuid: UUID of request (original template)
         :type request_uuid: str
-        :returns: Newly created project SMID
+        :raises Exception: If fail to create project
+        :return: Newly created project SMID
         :rtype: str
         """
         try:
             self._validate_entry(project_template)
-            self._add_selection_if_none(project_template)
+            self._selection_service.create_selection(
+                project_template.metadata, is_flush_only=True
+            )
             smid = self._add_project(project_template)
             self._write_project_template(project_template, smid, request_uuid)
             self._session.commit()
@@ -119,10 +126,11 @@ class ProjectService:
             raise
 
     def delete_project(self, project: Project) -> None:
-        """Delete a project and all associated data. There
-        must be no conflicting foreign key constraints
+        """Delete a project and all associated data.
+
+        NOTE: There must be no conflicting FK constraints
         (not using ON DELETE CASCADE), i.e. dataset and
-        associated data must be deleted first.
+        associated data must first be deleted.
 
         Delete from the following tables:
         - project_source
@@ -132,6 +140,8 @@ class ProjectService:
 
         :param smid: Project instance
         :type smid: Project
+        :raises Exception: If fail to delete project, project source,
+        project contact, user project association, or metadata files.
         """
         try:
             self._session.execute(
@@ -192,76 +202,6 @@ class ProjectService:
                 f"Suspected duplicate project with SMID '{smid}' and title '{project_template.title}'."
             )
 
-    def _add_selection_if_none(self, project_template: ProjectTemplate) -> None:
-        # no upsert, add only if on_conflict_do_nothing?
-        for metadata in project_template.metadata:
-            modification_id = self._add_modification_if_none(metadata)
-            organism_id = self._add_organism_if_none(metadata)
-            technology_id = self._add_technology_if_none(metadata)
-            selection_id = self._session.execute(
-                select(Selection.id).filter_by(
-                    modification_id=modification_id,
-                    organism_id=organism_id,
-                    technology_id=technology_id,
-                )
-            ).scalar_one_or_none()
-            if not selection_id:
-                logger.info(
-                    f"Adding selection ID ({modification_id}, {organism_id}, {technology_id})"
-                )
-                selection = Selection(
-                    modification_id=modification_id,
-                    organism_id=organism_id,
-                    technology_id=technology_id,
-                )
-                self._session.add(selection)
-                self._session.flush()
-
-    def _add_modification_if_none(self, metadata: ProjectMetaDataDto) -> int:
-        modification_id = self._session.execute(
-            select(Modification.id).filter_by(
-                rna=metadata.rna, modomics_id=metadata.modomics_id
-            )
-        ).scalar_one_or_none()
-        if not modification_id:
-            modification = Modification(
-                rna=metadata.rna, modomics_id=metadata.modomics_id
-            )
-            self._session.add(modification)
-            self._session.flush()
-            modification_id = modification.id
-        return modification_id
-
-    def _add_organism_if_none(self, metadata: ProjectMetaDataDto) -> int:
-        organism_id = self._session.execute(
-            select(Organism.id).filter_by(
-                cto=metadata.organism.cto, taxa_id=metadata.organism.taxa_id
-            )
-        ).scalar_one_or_none()
-        if not organism_id:
-            organism = Organism(
-                cto=metadata.organism.cto, taxa_id=metadata.organism.taxa_id
-            )
-            self._session.add(organism)
-            self._session.flush()
-            organism_id = organism.id
-        return organism_id
-
-    def _add_technology_if_none(self, metadata: ProjectMetaDataDto) -> int:
-        technology_id = self._session.execute(
-            select(DetectionTechnology.id).filter_by(
-                tech=metadata.tech, method_id=metadata.method_id
-            )
-        ).scalar_one_or_none()
-        if not technology_id:
-            technology = DetectionTechnology(
-                tech=metadata.tech, method_id=metadata.method_id
-            )
-            self._session.add(technology)
-            self._session.flush()
-            technology_id = technology.id
-        return technology_id
-
     def _add_contact_if_none(self, project_template: ProjectTemplate) -> int:
         contact_id = self._session.execute(
             select(ProjectContact.id).filter_by(
@@ -318,9 +258,13 @@ class ProjectService:
 
 @cache
 def get_project_service():
-    """Helper function to set up a ProjectService object by injecting its dependencies.
+    """Instantiate a ProjectService object by injecting its dependencies.
 
     :returns: Project service instance
     :rtype: ProjectService
     """
-    return ProjectService(session=get_session(), file_service=get_file_service())
+    return ProjectService(
+        session=get_session(),
+        file_service=get_file_service(),
+        selection_service=get_selection_service(),
+    )

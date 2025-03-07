@@ -71,6 +71,7 @@ class Ensembl(Enum):
     ASM = "info/assembly"
     # current_assembly_chain
     ASM_MAPPING = f"release-{RELEASE}/assembly_chain"
+    FASTA = f"release-{RELEASE}/fasta"
 
 
 class AnnotationSource(Enum):
@@ -79,11 +80,33 @@ class AnnotationSource(Enum):
 
 
 class AssemblyFileType(Enum):
-    CHROM = "chrom.sizes"
     INFO = "info.json"
     RELEASE = "release.json"
-    CHAIN = "__CHAIN__"
+    CHROM = "chrom.sizes"
+    CHAIN = "{source_assembly}_to_{target_assembly}.chain.gz".format
     DNA = "{organism}.{assembly}.dna.chromosome.{chrom}.fa.gz".format
+    DNA_IDX = "{organism}.{assembly}.dna.chromosome.{chrom}.fa.gz.fai".format
+    DNA_BGZ = "{organism}.{assembly}.dna.chromosome.{chrom}.fa.gz.gzi".format
+
+    @staticmethod
+    def get_alt_name(name):
+        return name.replace("chromosome", "primary_assembly")
+
+    @classmethod
+    def common(cls):
+        return cls.INFO, cls.RELEASE, cls.CHROM
+
+    @classmethod
+    def fasta(cls):
+        return cls.DNA, cls.DNA_IDX, cls.DNA_BGZ
+
+    @classmethod
+    def is_chain(cls, file_type):
+        return file_type == cls.CHAIN
+
+    @classmethod
+    def is_fasta(cls, file_type):
+        return file_type in cls.fasta()
 
 
 class TargetsFileType(Enum):

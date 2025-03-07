@@ -54,20 +54,6 @@ class MockGeneService:
 
 class MockFileService:
     @staticmethod
-    def get_assembly_file_path(
-        taxa_id: int,
-        file_type: AssemblyFileType,
-        chain_file_name: str | None = None,
-        chain_assembly_name: str | None = None,
-    ) -> Path:
-        if file_type == AssemblyFileType.CHAIN:
-            return Path(
-                f"/data/assembly/{taxa_id}/{chain_assembly_name}/{chain_file_name}"
-            )
-        else:
-            return Path(f"/data/assembly/{taxa_id}/{file_type.value}")
-
-    @staticmethod
     def get_annotation_dir(taxa_id):
         if taxa_id == 9606:
             assembly = "GRCh38"

@@ -1,0 +1,13 @@
+#fileformat=bedRModv1.8
+#organism=9606
+#modification_type=RNA
+#assembly=GRCh38
+#annotation_source=Annotation source
+#annotation_version=Annotation version
+#sequencing_platform=Sequencing platform
+#basecalling=
+#bioinformatics_workflow=Workflow for CLI test
+#experiment=Description of experiment for CLI test.
+#external_source=
+#chrom	chromstart	chromEnd	name	score	strand	thickstart	thickEnd	itermRgb	coverage	frequency
+1	65420	65421	m6A	1	+	65420	65421	0,0,0	1	1

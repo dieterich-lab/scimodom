@@ -2,9 +2,10 @@ from collections import defaultdict, namedtuple
 from io import StringIO
 
 import pytest
+from sqlalchemy.exc import NoResultFound
 
 from scimodom.database.models import Assembly
-from scimodom.services.assembly import AssemblyNotFoundError, AssemblyAbortedError
+from scimodom.services.assembly import AssemblyNotFoundError
 from scimodom.services.validator import (
     _DatasetImportContext,
     _ReadOnlyImportContext,
@@ -46,38 +47,40 @@ class MockAssemblyService:
         self._assemblies_by_id = assemblies_by_id
         self._assemblies_by_name = assemblies_by_name
         self._allowed_assemblies = allowed_assemblies
-        self._added_assembly: Assembly | None = None
 
-    def get_assembly_by_id(self, assembly_id: int) -> Assembly:
+    def get_by_id(self, assembly_id: int) -> Assembly:
         try:
             return self._assemblies_by_id[assembly_id]
         except KeyError:
-            raise AssemblyNotFoundError
+            raise NoResultFound
 
-    def get_assembly_by_name(
-        self, taxa_id: int, assembly_name: str, fail_safe: bool = True
-    ) -> Assembly:
+    def get_by_taxa_and_name(self, taxa_id: int, assembly_name: str) -> Assembly:
         try:
             return self._assemblies_by_name[taxa_id][assembly_name]
         except KeyError:
-            if fail_safe:
-                if self._allowed_assemblies is None:
-                    raise AssemblyAbortedError
-                else:
-                    if assembly_name in self._allowed_assemblies[taxa_id]:
-                        assembly = Assembly(
-                            id=4,
-                            name=assembly_name,
-                            taxa_id=taxa_id,
-                            version="NFrsaxAU9UjS",
-                        )
-                        self._added_assembly = assembly
-                        self._assemblies_by_id.update({4: assembly})
-                        return assembly
-                    else:
-                        raise AssemblyNotFoundError
+            raise NoResultFound
+
+    def add_assembly(self, taxa_id: int, assembly_name: str) -> None:
+        try:
+            self.get_by_taxa_and_name(taxa_id, assembly_name)
+        except NoResultFound:
+            if self._allowed_assemblies is None:
+                raise Exception
             else:
-                raise AssemblyNotFoundError
+                if assembly_name in self._allowed_assemblies[taxa_id]:
+                    assembly = Assembly(
+                        id=4,
+                        name=assembly_name,
+                        taxa_id=taxa_id,
+                        version="NFrsaxAU9UjS",
+                    )
+                    self._assemblies_by_id.update({4: assembly})
+                    self._assemblies_by_name[assembly.taxa_id].update(
+                        {assembly.name: assembly}
+                    )
+                    return
+                else:
+                    raise AssemblyNotFoundError
 
     def is_latest_assembly(self, assembly: Assembly) -> bool:  # noqa
         return self._is_latest
@@ -226,21 +229,13 @@ def test_read_only_import_context_add_assembly(Session, setup):
     )
 
 
-def test_read_only_import_context_wrong_assembly(Session, setup):
+def test_read_only_import_context_invalid_assembly(Session, setup):
     euf_file = GOOD_EUF_FILE.replace(r"#assembly=GRCh38", r"#assembly=NCBI36")
     importer = EufImporter(stream=StringIO(euf_file), source="test")
     service = _get_validator_service(
         Session(), allowed_assemblies={9606: ["GRCh37", "GRCh38"]}
     )
     with pytest.raises(DatasetImportError):
-        service.create_read_only_import_context(importer=importer, taxa_id=9606)
-
-
-def test_read_only_import_context_add_assembly_fail(Session, setup):
-    euf_file = GOOD_EUF_FILE.replace(r"#assembly=GRCh38", r"#assembly=NCBI36")
-    importer = EufImporter(stream=StringIO(euf_file), source="test")
-    service = _get_validator_service(Session())
-    with pytest.raises(AssemblyAbortedError):
         service.create_read_only_import_context(importer=importer, taxa_id=9606)
 
 

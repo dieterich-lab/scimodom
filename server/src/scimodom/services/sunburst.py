@@ -23,6 +23,14 @@ from scimodom.utils.specs.enums import SunburstChartType
 
 
 class SunburstService:
+    """Utility class to update and retrieve Sunburst charts data.
+
+    :param session: SQLAlchemy ORM session
+    :type session: Session
+    :param file_service: File service instance
+    :type file_service: FileService
+    """
+
     def __init__(
         self,
         session: Session,
@@ -31,7 +39,21 @@ class SunburstService:
         self._session = session
         self._file_service = file_service
 
+    @staticmethod
+    def trigger_background_update() -> None:
+        """Trigger update in the background using the CLI."""
+        run(["flask", "--app", "scimodom.app", "charts", "sunburst-update"])
+
     def open_json(self, chart_type: SunburstChartType) -> TextIO:
+        """Open a chart json data file.
+
+        Attempt to create file if does not exist.
+
+        :param chart_type: Chart type
+        :type chart_type: SunburstChartType
+        :return: Opened file handle for reading
+        :rtype: TextIO
+        """
         try:
             return self._file_service.open_sunburst_cache(chart_type.value)
         except FileNotFoundError:
@@ -39,6 +61,13 @@ class SunburstService:
             return self._file_service.open_sunburst_cache(chart_type.value)
 
     def update_cache(self, chart_type: SunburstChartType) -> None:
+        """Update Sunburst charts data.
+
+        Generate content, and pass it to the FileService.
+
+        :param chart_type: Chart type
+        :type chart_type: SunburstChartType
+        """
         query = self._get_query(chart_type)
         result = self._session.execute(query).fetchall()
         json_data = self._get_data_from_result(chart_type, result)
@@ -48,6 +77,15 @@ class SunburstService:
             yield as_string
 
         self._file_service.update_sunburst_cache(chart_type.value, generator())
+
+    def do_background_update(self):
+        """Provide the actual background update method."""
+
+        def update_all():
+            for chart_type in SunburstChartType:
+                self.update_cache(chart_type)
+
+        self._file_service.run_sunburst_update(update_all)
 
     @staticmethod
     def _get_data_from_result(chart_type, result):
@@ -128,20 +166,14 @@ class SunburstService:
             Modomics.short_name, Taxa.short_name, Organism.cto, DetectionTechnology.tech
         )
 
-    @staticmethod
-    def trigger_background_update():
-        run(["flask", "--app", "scimodom.app", "sunburst-update"])
-
-    def do_background_update(self):
-        def update_all():
-            for chart_type in SunburstChartType:
-                self.update_cache(chart_type)
-
-        self._file_service.run_sunburst_update(update_all)
-
 
 @cache
 def get_sunburst_service() -> SunburstService:
+    """Instantiate a SunburstService object by injecting its dependencies.
+
+    :returns: Sunburst service instance
+    :rtype: SunburstService
+    """
     return SunburstService(
         session=get_session(),
         file_service=get_file_service(),

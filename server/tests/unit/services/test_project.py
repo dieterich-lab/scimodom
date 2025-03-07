@@ -6,12 +6,9 @@ import pytest
 from sqlalchemy import func, select
 
 from scimodom.database.models import (
-    Modification,
-    DetectionTechnology,
     Project,
     ProjectSource,
     ProjectContact,
-    Selection,
     User,
     UserProjectAssociation,
 )
@@ -65,13 +62,25 @@ class MockFileService:
         return Path(self._get_project_metadata_dir(), "project_requests")
 
 
+class MockSelectionService:
+    def __init__(self):
+        pass
+
+    def create_selection(
+        self, metadata: list[ProjectMetaDataDto], is_flush_only: bool = False
+    ) -> None:  # noqa
+        pass
+
+
 @pytest.fixture
 def file_service():
     yield MockFileService()
 
 
 def _get_project_service(Session, file_service):
-    return ProjectService(Session(), file_service=file_service)  # noqa
+    return ProjectService(
+        Session(), file_service=file_service, selection_service=MockSelectionService()
+    )  # noqa
 
 
 PROJECT = ProjectTemplate(
@@ -163,12 +172,56 @@ def test_create_project_request(Session, file_service):
     )
 
 
-def test_project_validate_entry(Session, file_service):
+def test_get_by_id(Session, file_service, project):
     service = _get_project_service(Session, file_service)
-    assert service._validate_entry(PROJECT) is None
+    project = service.get_by_id("12345678")
+    assert project.title == "Project Title"
+    assert project.date_added == datetime(2024, 6, 17, 12, 0, 0)
+    assert len(project.sources) == 2
 
 
-def test_project_validate_existing_entry(Session, file_service):
+def test_get_projects(Session, file_service, project):
+    with Session() as session:
+        user = session.get_one(User, 1)
+    service = _get_project_service(Session, file_service)
+    user_project = service.get_projects(user=user)
+    assert len(user_project) == 1
+    assert user_project[0]["project_id"] == "12345678"
+    assert user_project[0]["contact_name"] == "Contact Name"
+    # all projects
+    assert len(service.get_projects()) == 2
+
+
+def test_create_project(Session, file_service, setup, freezer):
+    freezer.move_to("2024-06-20 12:00:00")
+    service = _get_project_service(Session, file_service)
+    smid = service.create_project(PROJECT, "abcdef123456")
+    assert (
+        file_service.files_by_name[f"/data/metadata/{smid}.json"].final_content
+        == EXPECTED_PROJECT_TEMPLATE
+    )
+    assert file_service.deleted_requests == [
+        "/data/metadata/project_requests/abcdef123456.json"
+    ]
+
+    with Session() as session:
+        project = session.get_one(Project, smid)
+        assert project.title == "Title"
+        assert project.summary == "Summary"
+        assert project.date_published == datetime(2024, 1, 1)
+        assert project.date_added == datetime(2024, 6, 20, 12, 0, 0)
+        contact = session.get_one(ProjectContact, project.contact_id)
+        assert contact.contact_name == "Contact Name"
+        assert contact.contact_institution == "Contact Institution"
+        assert contact.contact_email == "email@example.com"
+        source = session.execute(select(ProjectSource)).scalars().all()
+        assert len(source) == 1
+        assert source[0].project_id == smid
+        assert source[0].doi == "DOI"
+        assert source[0].pmid == 12345678
+
+
+def test_create_project_existing_entry(Session, file_service):
     smid = "12345678"
     with Session() as session, session.begin():
         contact = ProjectContact(
@@ -192,109 +245,31 @@ def test_project_validate_existing_entry(Session, file_service):
 
     service = _get_project_service(Session, file_service)
     with pytest.raises(DuplicateProjectError) as exc:
-        service._validate_entry(PROJECT)
+        service.create_project(PROJECT, "abcdef123456")
     assert (
         str(exc.value)
         == "Suspected duplicate project with SMID '12345678' and title 'Title'."
     )
 
+    assert file_service.files_by_name == {}
+    assert file_service.deleted_projects == []
 
-def test_project_add_selection(Session, file_service, setup):  # noqa
-    expected_records = [(1, 1, 1, 1), (2, 2, 2, 1)]
-    with Session() as session, session.begin():
-        service = _get_project_service(Session, file_service)
-        service._add_selection_if_none(PROJECT)
-        records = session.execute(select(Selection)).scalars().all()
-        records = [
-            (r.id, r.modification_id, r.organism_id, r.technology_id) for r in records
-        ]
-        assert records == expected_records
+    with Session() as session:
+        assert session.scalar(select(func.count()).select_from(Project)) == 1
+        assert session.scalar(select(func.count()).select_from(ProjectSource)) == 1
+        assert session.scalar(select(func.count()).select_from(ProjectContact)) == 1
 
 
-def test_project_add_selection_exists(Session, file_service, setup):
-    with Session() as session, session.begin():
-        technology = DetectionTechnology(method_id="0ee048bc", tech="Tech-seq")
-        session.add(technology)
-        session.flush()
-        selection = Selection(
-            modification_id=1, organism_id=1, technology_id=technology.id
-        )
-        session.add(selection)
-        session.flush()
-
-        service = _get_project_service(Session, file_service)
-        service._add_selection_if_none(PROJECT)
-
-    expected_records = [(1, 1, 1, 1), (2, 2, 2, 1)]
-    with Session() as session, session.begin():
-        records = session.execute(select(Selection)).scalars().all()
-        records = [
-            (r.id, r.modification_id, r.organism_id, r.technology_id) for r in records
-        ]
-        assert records == expected_records
-
-
-def test_project_add_modification(Session, file_service, setup):
-    with Session() as session, session.begin():
-        modification = Modification(modomics_id="2000000006A", rna="WTS")
-        session.add(modification)
-        session.commit()
-
-    service = _get_project_service(Session, file_service)
-    for metadata, expected_modification_id in zip(PROJECT.metadata, [1, 2]):
-        assert service._add_modification_if_none(metadata) == expected_modification_id
-
-
-def test_project_add_technology(Session, file_service, setup):
-    service = _get_project_service(Session, file_service)
-    for metadata in PROJECT.metadata:
-        assert service._add_technology_if_none(metadata) == 1
-
-
-def test_project_add_organism(Session, file_service, setup):
-    service = _get_project_service(Session, file_service)
-    for metadata, expected_organism_id in zip(PROJECT.metadata, [1, 2]):
-        assert service._add_organism_if_none(metadata) == expected_organism_id
-
-
-def test_project_add_contact(Session, file_service):
+def test_create_project_existing_contact(Session, file_service, setup):
     with Session() as session, session.begin():
         contact = ProjectContact(
-            contact_name="Another contact Name",
+            contact_name="Contact Name",
             contact_institution="Contact Institution",
-            contact_email="another_email@example.com",
+            contact_email="email@example.com",
         )
         session.add(contact)
         session.commit()
 
-    service = _get_project_service(Session, file_service)
-    assert service._add_contact_if_none(PROJECT) == 2
-
-
-def test_project_add_project(Session, file_service, setup, freezer):
-    with Session() as session, session.begin():
-        freezer.move_to("2024-06-20 12:00:00")
-        service = _get_project_service(Session, file_service)
-        smid = service._add_project(PROJECT)
-
-    with Session() as session, session.begin():
-        project = session.get_one(Project, smid)
-        assert project.title == "Title"
-        assert project.summary == "Summary"
-        assert project.date_published == datetime(2024, 1, 1)
-        assert project.date_added == datetime(2024, 6, 20, 12, 0, 0)
-        contact = session.get_one(ProjectContact, project.contact_id)
-        assert contact.contact_name == "Contact Name"
-        assert contact.contact_institution == "Contact Institution"
-        assert contact.contact_email == "email@example.com"
-        source = session.execute(select(ProjectSource)).scalars().all()
-        assert len(source) == 1
-        assert source[0].project_id == smid
-        assert source[0].doi == "DOI"
-        assert source[0].pmid == 12345678
-
-
-def test_create_project(Session, file_service, setup):
     service = _get_project_service(Session, file_service)
     smid = service.create_project(PROJECT, "abcdef123456")
     assert (
@@ -305,26 +280,10 @@ def test_create_project(Session, file_service, setup):
         "/data/metadata/project_requests/abcdef123456.json"
     ]
 
-
-def test_project_get_by_id(Session, file_service, setup):
-    service = _get_project_service(Session, file_service)
-    smid = service._add_project(PROJECT)
-    project = service.get_by_id(smid)
-    assert project.id == smid
-    assert project.title == "Title"
-    assert project.summary == "Summary"
-
-
-def test_query_projects(Session, file_service, project):
     with Session() as session:
-        user = session.get_one(User, 1)
-    service = _get_project_service(Session, file_service)
-    user_project = service.get_projects(user=user)
-    assert len(user_project) == 1
-    assert user_project[0]["project_id"] == "12345678"
-    assert user_project[0]["contact_name"] == "Contact Name"
-    # all projects
-    assert len(service.get_projects()) == 2
+        assert session.scalar(select(func.count()).select_from(Project)) == 1
+        assert session.scalar(select(func.count()).select_from(ProjectSource)) == 1
+        assert session.scalar(select(func.count()).select_from(ProjectContact)) == 1
 
 
 def test_delete_project(Session, project, file_service):

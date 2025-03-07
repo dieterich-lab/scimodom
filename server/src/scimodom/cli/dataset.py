@@ -1,22 +1,22 @@
 from collections import defaultdict
 from pathlib import Path
 import re
-from typing import Iterator
 
 import click
+from flask import Blueprint
 from sqlalchemy import select
-from sqlalchemy.exc import NoResultFound
-from sqlalchemy.orm import Session
 
 from scimodom.database.database import get_session
 from scimodom.database.models import (
-    Dataset,
-    Modification,
     DetectionTechnology,
     Organism,
-    Selection,
+    Modification,
 )
-from scimodom.cli.utilities import add_assembly_to_template_if_none, get_modomics_id
+from scimodom.cli.utilities import (
+    add_assembly_to_template_if_none,
+    validate_dataset_title,
+)
+
 from scimodom.services.assembly import AssemblyNotFoundError, get_assembly_service
 from scimodom.services.dataset import get_dataset_service
 from scimodom.services.file import get_file_service
@@ -24,310 +24,298 @@ from scimodom.services.project import get_project_service
 from scimodom.services.sunburst import get_sunburst_service
 from scimodom.utils.dtos.project import (
     ProjectMetaDataDto,
-    ProjectOrganismDto,
     ProjectTemplate,
 )
 from scimodom.utils.specs.enums import AnnotationSource
 
 
+dataset_cli = Blueprint("dataset", __name__)
+
+
+@dataset_cli.cli.command(
+    "add",
+    epilog="Check docs at https://dieterich-lab.github.io/scimodom/flask.html.",
+)
+@click.argument("filename", type=click.Path(exists=True))
+@click.argument("smid", type=click.STRING)
+@click.argument("title", type=click.UNPROCESSED, callback=validate_dataset_title)
+@click.option(
+    "--assembly-id", required=True, type=click.INT, help="Assembly ID (from database)."
+)
+@click.option(
+    "--annotation",
+    required=True,
+    type=click.Choice(["ensembl", "gtrnadb"], case_sensitive=False),
+    help="Annotation source.",
+)
+@click.option(
+    "-m",
+    "--modification-ids",
+    default=[],
+    multiple=True,
+    required=True,
+    type=click.INT,
+    help=("Modification ID(s) (from database). Repeat to pass multiple selection IDs."),
+)
+@click.option(
+    "-o",
+    "--organism-id",
+    default=None,
+    required=True,
+    type=click.INT,
+    help="Organism ID (from database).",
+)
+@click.option(
+    "-t",
+    "--technology-id",
+    default=None,
+    required=True,
+    type=click.INT,
+    help="Technology ID (from database).",
+)
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    show_default=True,
+    default=False,
+    help="Validate import. No database change. Overrides [--eufid].",
+)
+@click.option(
+    "--eufid",
+    default=None,
+    required=False,
+    type=click.STRING,
+    help=(
+        "Update data and data annotation records for existing dataset "
+        "with the supplied EUFID instead of creating a new one."
+    ),
+)
 def add_dataset(
-    file_source: str,
+    filename: str,
     smid: str,
     title: str,
     assembly_id: int,
-    modification_ids: list[int],
+    annotation: str,
+    modification_ids: tuple[int],
     organism_id: int,
     technology_id: int,
-    annotation_source: AnnotationSource,
-    dry_run_flag: bool = False,
-    eufid: str | None = None,
+    dry_run: bool,
+    eufid: str | None,
 ) -> None:
-    """Provide a CLI function to add a new dataset or update
-    data and annotation records an existing dataset.
+    """Add a new dataset or update records for an existing dataset.
 
-    :param file_source: Dataset file.
-    :type file_source: str
-    :param smid: SMID (project must exist).
-    :type smid: str
-    :param title: Dataset title
-    :type title: str
-    :param assembly_id: Assembly ID
-    :type assembly_id: int
-    :param modification_ids: Modification ID(s) (RNA type, modomics ID)
-    :type modification_ids: list of int
-    :param technology_id: Technology ID (method ID, technology)
-    :type technology_id: int
-    :param organism_id: Organism ID (taxa ID, cto)
-    :type organism_id: int
-    :param annotation_source: Annotation source
-    :type annotation_source: AnnotationSource
-    :param dry_run_flag: Dry run flag. Default is False.
-    :type dry_run_flag: bool, optional
-    :param eufid: EUFID ID for which to update data and data annotation records. Default is None.
-    :type eufid: str, optional
+    \b
+    FILENAME is the path to the bedRMod (EU-formatted) file.
+    SMID is the project ID to which this dataset is to be added.
+    TITLE is the title of this dataset. String must be quoted.
     """
     dataset_service = get_dataset_service()
 
     colour = "green"
     msg = f"Adding dataset '{title}' to project with SMID '{smid}'... "
-    if dry_run_flag:
+    succes_msg = "created"
+    if dry_run:
         msg = f"DRY RUN: {msg}"
-        colour = "yellow"
+        colour = "cyan"
     elif eufid is not None:
         msg = f"Updating data records for dataset '{eufid}'..."
+        succes_msg = "updated"
     click.secho(msg, fg=colour)
     click.secho("Continue [y/n]?", fg=colour)
     c = click.getchar()
     if c not in ["y", "Y"]:
+        click.secho("Aborted!", fg="yellow")
         return
 
     try:
-        click.secho("Created or updated dataset ...", fg=colour)
-        with open(file_source) as fp:
+        annotation_source = AnnotationSource(annotation)
+        with open(filename) as fp:
             eufid = dataset_service.import_dataset(
                 fp,
-                source=file_source,
+                source=filename,
                 smid=smid,
                 title=title,
                 assembly_id=assembly_id,
-                modification_ids=modification_ids,
+                modification_ids=list(modification_ids),
                 organism_id=organism_id,
                 technology_id=technology_id,
                 annotation_source=annotation_source,
-                dry_run_flag=dry_run_flag,
+                dry_run_flag=dry_run,
                 eufid=eufid,
             )
-        click.secho(f"    ... done (EUFID '{eufid}').", fg=colour)
+        click.secho(
+            f"   ... {succes_msg} dataset with EUFID: '{eufid}'.",
+            fg=colour,
+        )
     except Exception as exc:
-        click.secho("    ... FAILED!", fg="red")
-        click.secho(f"Failed to create or update dataset: {exc}... Aborting!", fg="red")
-        return
-    _so_sunburst_update()
+        click.secho(
+            f"Failed to create or update dataset. {exc}.",
+            fg="red",
+        )
+        raise click.Abort()
+
+    if not dry_run:
+        try:
+            click.secho("Triggering charts update in the background ...", fg="green")
+            _so_sunburst_update()
+            click.secho("   ... done!", fg="green")
+        except Exception as exc:
+            click.secho(
+                f"Failed to update charts. {exc}.",
+                fg="red",
+            )
+            raise click.Abort()
+
+
+@dataset_cli.cli.command(
+    "batch", epilog="Check docs at https://dieterich-lab.github.io/scimodom/flask.html."
+)
+@click.argument("input_directory", type=click.Path(exists=True))
+@click.argument("request_uuid", type=click.STRING)
+@click.option(
+    "--annotation",
+    required=True,
+    type=click.Choice(["ensembl", "gtrnadb"], case_sensitive=False),
+    help="Annotation source.",
+)
+def add_dataset_in_batch(input_directory: str, request_uuid: str, annotation: str):
+    """Add one project and all its datasets in batch w/o confirmation.
+
+    All dataset files must be under INPUT_DIRECTORY, and
+    must have the same annotation source. Providing files
+    with different sources may not result in failure, but
+    will lead to spurious database records.
+
+    The "note" from the metadata template must contain the
+    dataset file name and title as follows:
+    'file=filename.bedrmod, title=title'.
+
+    There is no [--dry-run] option.
+    This method cannot be used to update records for existing datasets.
+
+    \b
+    INPUT_DIRECTORY is the path to bedRMod (EU-formatted) files.
+    REQUEST_UUID is the name (w/o extension) of a project
+    template, presumably obtained by running "flask project create-template".
+    """
+    annotation_source = AnnotationSource(annotation)
+    assembly_service = get_assembly_service()
+    project_service = get_project_service()
+    dataset_service = get_dataset_service()
+
+    click.secho(f"Adding project and datasets for {request_uuid} ...", fg="green")
+
+    try:
+        filename_modification_association = defaultdict(list)
+        project_template = _validate_input(request_uuid)
+        for metadata in project_template.metadata:
+            add_assembly_to_template_if_none(metadata.organism, assembly_service)
+            filename, title = _get_filename_and_title(metadata)
+            filename_modification_association[filename].append(
+                (metadata.rna, metadata.modomics_id)
+            )
+    except AssemblyNotFoundError:
+        click.secho(
+            (
+                f"Failed to update template. No such assembly '{metadata.organism.assembly_name}'"
+                f" for organism '{metadata.organism.taxa_id}'"
+            ),
+            fg="red",
+        )
+        raise click.Abort()
+    except Exception as exc:
+        click.secho(
+            f"Failed to validate project request. {exc}.",
+            fg="red",
+        )
+        raise click.Abort()
+
+    try:
+        smid = project_service.create_project(project_template, request_uuid)
+        click.secho(
+            f"   ... created project with SMID: '{smid}'...",
+            fg="green",
+        )
+    except Exception as exc:
+        click.secho(
+            f"Failed to create project. {exc}.",
+            fg="red",
+        )
+        raise click.Abort()
+
+    visited = set()
+    for metadata in project_template.metadata:
+        filename, title = _get_filename_and_title(metadata)
+        file_path = Path(input_directory, filename)
+        if filename in visited:
+            continue
+        visited.add(filename)
+        modification_ids = _get_modification_ids(
+            filename_modification_association[filename]
+        )
+        organism_id = _get_organism_id(metadata.organism)
+        technology_id = _get_technology_id(metadata)
+        try:
+            with open(file_path) as fp:
+                eufid = dataset_service.import_dataset(
+                    fp,
+                    source=file_path.as_posix(),
+                    smid=smid,
+                    title=title,
+                    assembly_id=metadata.organism.assembly_id,
+                    modification_ids=modification_ids,
+                    organism_id=organism_id,
+                    technology_id=technology_id,
+                    annotation_source=annotation_source,
+                )
+            click.secho(
+                f"   ... created dataset with EUFID: '{eufid}'...",
+                fg="green",
+            )
+        except Exception as exc:
+            click.secho(
+                f"Failed to create dataset. {exc}... Skipping!",
+                fg="red",
+            )
+            continue
+    click.secho("   ... done.", fg="green")
+
+    try:
+        click.secho("Triggering charts update in the background ...", fg="green")
+        _so_sunburst_update()
+        click.secho("   ... done.", fg="green")
+    except Exception as exc:
+        click.secho(
+            f"Failed to update charts. {exc}.",
+            fg="red",
+        )
+        raise click.Abort()
+
+
+def _get_filename_and_title(metadata: ProjectMetaDataDto) -> tuple[str, str]:
+    regexp = re.compile(r"(?:file=)(?P<file>.*),\s*(?:title=)(?P<title>.*)")
+    if metadata.note is None:
+        raise Exception(
+            "'note' must be str with format 'file=filename.bedrmod, title=title'"
+        )
+    m = regexp.match(metadata.note)
+    if m is not None:
+        return m["file"].strip(), m["title"].strip()
+    else:
+        raise Exception("Unable to match 'file' or 'title' from 'note'.")
 
 
 def _so_sunburst_update():
-    click.secho("Triggering sunburst update in the background ...", fg="green")
     sunburst_service = get_sunburst_service()
     sunburst_service.trigger_background_update()
 
 
-def add_all(
-    input_directory: Path,
-    project_templates: list[ProjectTemplate],
-    request_uuids: list[str],
-    annotation_source: AnnotationSource,
-) -> None:
-    """Provide a CLI function to batch add projects and dataset.
-
-    The "note" from the metadata template must contain the
-    dataset file name and title as follows:
-    'file=filename.bedrmod, title=title'. All dataset
-    files must be under 'input_directory'. All datasets must
-    be annotated using the same annotation source.
-
-    :param input_directory: Directory where data files are located.
-    :type input_directory: Path
-    :param project_templates: A list of project templates - templates
-    must be located under the application project_requests directory.
-    :type project_templates: list of ProjectTemplate
-    :param request_uuids: Original request UUIDs
-    :type request_uuids: list[str]
-    :param annotation_source: Annotation source
-    :type annotation_source: AnnotationSource
-    """
-    regexp = re.compile(r"(file=)(.*),\s*(title=)(.*)")
-    project_service = get_project_service()
-    dataset_service = get_dataset_service()
-    assembly_service = get_assembly_service()
-
-    valid_templates = {}
-    for project_template, request_uuid in zip(project_templates, request_uuids):
-        valid_metadata = []
-        valid_filenames = defaultdict(list)
-        for metadata in project_template.metadata:
-            filename = regexp.search(metadata.note).group(2).strip()
-            try:
-                add_assembly_to_template_if_none(metadata.organism, assembly_service)
-                valid_metadata.append(metadata)
-                valid_filenames[filename].append((metadata.rna, metadata.modomics_id))
-            except AssemblyNotFoundError:
-                click.secho(
-                    f"No such assembly '{metadata.organism.assembly_id}'... skipping '{filename}'!",
-                    fg="red",
-                )
-                continue
-        project_template.metadata = valid_metadata
-        if len(valid_metadata) == 0:
-            click.secho(
-                f"No valid dataset... skipping '{project_template.title}'!",
-                fg="red",
-            )
-            continue
-        click.secho(f"Adding project {project_template.title}...", fg="green")
-        try:
-            smid = project_service.create_project(project_template, request_uuid)
-            click.secho(
-                f"Created project with SMID '{smid}'... done!",
-                fg="green",
-            )
-            valid_templates[smid] = (project_template, valid_filenames)
-        except Exception as exc:
-            click.secho(
-                f"Failed to create project: {exc}... skipping {project_template.title}!",
-                fg="red",
-            )
-            continue
-
-    visited = set()
-    for smid, (project, filenames) in valid_templates.items():
-        for metadata in project.metadata:
-            filename = regexp.search(metadata.note).group(2).strip()
-            file_path = Path(input_directory, filename)
-            title = regexp.search(metadata.note).group(4).strip()
-            if filename in visited:
-                continue
-            visited.add(filename)
-            modification_ids = _get_modification_ids(filenames[filename])
-            organism_id = _get_organism_id(metadata.organism)
-            technology_id = _get_technology_id(metadata)
-            try:
-                with open(file_path) as fp:
-                    eufid = dataset_service.import_dataset(
-                        fp,
-                        source=file_path.as_posix(),
-                        smid=smid,
-                        title=title,
-                        assembly_id=metadata.organism.assembly_id,
-                        modification_ids=modification_ids,
-                        organism_id=organism_id,
-                        technology_id=technology_id,
-                        annotation_source=annotation_source,
-                    )
-                click.secho(
-                    f"Created dataset with EUFID '{eufid}' for project with SMID '{smid}'...",
-                    fg="green",
-                )
-            except Exception as exc:
-                click.secho(
-                    f"Failed to create dataset: {exc}... skipping {filename}!", fg="red"
-                )
-                continue
-    _so_sunburst_update()
-    click.secho("... done!", fg="green")
-
-
-def add_selection(
-    rna: str,
-    modification: str,
-    taxid: int,
-    cto: str,
-    method_id: str,
-    technology: str,
-) -> None:
-    """Provide a CLI function to add a new seletion.
-
-    :param rna: RNA type
-    :type rna: str
-    :param modification: MODOMICS short name
-    :type modification: str
-    :param taxid: Taxa ID
-    :type taxid: int
-    :param cto: Cell/tissue (cto)
-    :type cto: str
-    :param method_id: Method ID
-    :type method_id: str
-    :param technology: Technology (tech)
-    :type technology: str
-    """
-
-    click.secho("Adding new selection...", fg="green")
-    click.secho("Continue [y/n]?", fg="green")
-    c = click.getchar()
-    if c not in ["y", "Y"]:
-        return
-    try:
-        organism = ProjectOrganismDto(
-            taxa_id=taxid, cto=cto, assembly_name="assembly", assembly_id=None
-        )
-        metadata = ProjectMetaDataDto(
-            rna=rna,
-            modomics_id=get_modomics_id(modification),
-            tech=technology,
-            method_id=method_id,
-            organism=organism,
-            note=None,
-        )
-    except Exception as exc:
-        click.secho(
-            f"Validation error, failed to create template: {exc}. Aborting!",
-            fg="red",
-        )
-        return
-
-    session = get_session()
-    modification_id = _add_modification_if_none(metadata, session)
-    organism_id = _add_organism_if_none(metadata, session)
-    technology_id = _add_technology_if_none(metadata, session)
-    selection_id = session.execute(
-        select(Selection.id).filter_by(
-            modification_id=modification_id,
-            organism_id=organism_id,
-            technology_id=technology_id,
-        )
-    ).scalar_one_or_none()
-    if selection_id:
-        click.secho(
-            "Selection already exists... Done!",
-            fg="green",
-        )
-        return
-
-    try:
-        selection = Selection(
-            modification_id=modification_id,
-            organism_id=organism_id,
-            technology_id=technology_id,
-        )
-        session.add(selection)
-        session.commit()
-        click.secho(
-            f"New selection '{selection.id}' added... Done!",
-            fg="green",
-        )
-    except Exception as exc:
-        click.secho(
-            f"Failed to add selection: {exc}. Aborting!",
-            fg="red",
-        )
-        session.rollback()
-
-
-def delete_selection(selection: Selection) -> None:
-    session = get_session()
+def _validate_input(uuid: str) -> ProjectTemplate:
     file_service = get_file_service()
-    try:
-        session.delete(selection)
-        file_service.delete_gene_cache(selection.id)
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
-
-
-def get_selection_from_dataset(dataset: Dataset) -> Iterator[Selection]:
-    session = get_session()
-    modification_ids = [
-        association.modification_id for association in dataset.associations
-    ]
-    for modification_id in modification_ids:
-        selection = session.execute(
-            select(Selection).filter_by(
-                modification_id=modification_id,
-                organism_id=dataset.organism_id,
-                technology_id=dataset.technology_id,
-            )
-        ).scalar_one()
-        yield selection
+    with file_service.open_project_request_file(uuid) as fh:
+        project_template_raw = fh.read()
+        project_template = ProjectTemplate.model_validate_json(project_template_raw)
+    return project_template
 
 
 def _get_modification_ids(values):
@@ -340,18 +328,6 @@ def _get_modification_ids(values):
         )
         modification_ids.append(modification_id)
     return modification_ids
-
-
-def _get_modification_id(metadata):
-    return (
-        get_session()
-        .execute(
-            select(Modification.id).filter_by(
-                rna=metadata.rna, modomics_id=metadata.modomics_id
-            )
-        )
-        .scalar_one()
-    )
 
 
 def _get_organism_id(organism):
@@ -374,40 +350,3 @@ def _get_technology_id(metadata):
         )
         .scalar_one()
     )
-
-
-def _add_modification_if_none(metadata: ProjectMetaDataDto, session: Session) -> int:
-    try:
-        modification_id = _get_modification_id(metadata)
-    except NoResultFound:
-        modification = Modification(rna=metadata.rna, modomics_id=metadata.modomics_id)
-        session.add(modification)
-        session.flush()
-        modification_id = modification.id
-    return modification_id
-
-
-def _add_organism_if_none(metadata: ProjectMetaDataDto, session: Session) -> int:
-    try:
-        organism_id = _get_organism_id(metadata.organism)
-    except NoResultFound:
-        organism = Organism(
-            cto=metadata.organism.cto, taxa_id=metadata.organism.taxa_id
-        )
-        session.add(organism)
-        session.flush()
-        organism_id = organism.id
-    return organism_id
-
-
-def _add_technology_if_none(metadata: ProjectMetaDataDto, session: Session) -> int:
-    try:
-        technology_id = _get_technology_id(metadata)
-    except NoResultFound:
-        technology = DetectionTechnology(
-            tech=metadata.tech, method_id=metadata.method_id
-        )
-        session.add(technology)
-        session.flush()
-        technology_id = technology.id
-    return technology_id

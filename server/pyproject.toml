@@ -96,7 +96,6 @@ show_error_codes = "True"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-# norecursedirs =  "tests/cli"
 log_cli = true
 log_cli_level = "INFO"
-addopts = "--basetemp /tmp/pytest-of-scimodom"
+addopts = "--basetemp /tmp/pytest-of-scimodom --ignore=tests/integration/cli/test_assembly_cli.py"

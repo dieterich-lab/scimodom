@@ -1,12 +1,14 @@
 import logging
+import gzip
 import os
 import re
+from contextlib import contextmanager
 from fcntl import flock, LOCK_SH, LOCK_EX, LOCK_UN, LOCK_NB, lockf
 from functools import cache
 from os import unlink, rename, makedirs, stat, close, umask, replace
 from os.path import join, exists, dirname, basename, isfile
 from pathlib import Path
-from shutil import rmtree
+from shutil import copyfileobj, rmtree
 from tempfile import mkstemp, NamedTemporaryFile
 from typing import (
     Optional,
@@ -23,6 +25,8 @@ from typing import (
 )
 from uuid import uuid4
 
+import pysam
+import pysam.samtools
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session
@@ -37,6 +41,7 @@ logger = logging.getLogger(__name__)
 
 
 DEFAULT_MODE = 0o660
+COPY_BUFSIZE = 128 * 1024
 
 
 def write_opener(path, flags):
@@ -48,14 +53,32 @@ def write_opener(path, flags):
 
 
 class SunburstUpdateAlreadyRunning(Exception):
+    """Exception for handling running chart updates."""
+
     pass
 
 
 class FileTooLarge(Exception):
+    """Exception for handling large files."""
+
     pass
 
 
 class FileService:
+    """Provide a service to interact with the file system.
+
+    :param session: SQLAlchemy ORM session
+    :type session: Session
+    :param data_path: Path to DATA directory
+    :type data_path: str | Path
+    :param temp_path: Path to TMP directory
+    :param temp_path: str | Path
+    :param upload_path: Path to UPLOAD directory
+    :param upload_path: str | Path
+    :param import_path: Path to IMPORT directory
+    :param import_path: str | Path
+    """
+
     BUFFER_SIZE = 1024 * 1024
     VALID_FILE_ID_REGEXP = re.compile(r"\A[a-zA-Z0-9_-]{1,256}\Z")
 
@@ -98,22 +121,28 @@ class FileService:
         ]:
             self._create_folder(path)
 
-    @staticmethod
-    def _create_folder(path):
-        old_umask = umask(0o07)
-        try:
-            makedirs(path, mode=0o2770, exist_ok=True)
-        finally:
-            umask(old_umask)
-
     # General
 
     @staticmethod
     def open_file_for_reading(path: str | Path) -> TextIO:
+        """Open a file for reading.
+
+        :param path: File path
+        :type path: str | Path
+        :return: Opened file handle for reading
+        :rtype: TextIO
+        """
         return open(path, "r")
 
     @staticmethod
     def count_lines(path: str | Path) -> int:
+        """Count lines in a file.
+
+        :param path: File path
+        :type path: str | Path
+        :return: Number of lines.
+        :rtype: bool
+        """
         count = 0
         with open(path) as fp:
             while True:
@@ -122,12 +151,51 @@ class FileService:
                     return count
                 count += buffer.count("\n")
 
+    @staticmethod
+    def _create_folder(path) -> None:
+        old_umask = umask(0o07)
+        try:
+            makedirs(path, mode=0o2770, exist_ok=True)
+        finally:
+            umask(old_umask)
+
+    @staticmethod
+    @contextmanager
+    def _safe_create_file(path: Path, *args, **kwargs) -> None:
+        try:
+            with open(path, *args, **kwargs) as fh:
+                yield fh
+        except Exception:
+            path.unlink(missing_ok=True)
+            raise
+
+    @staticmethod
+    def _gunzip(in_path: Path, out_path: Path) -> None:
+        with gzip.open(in_path, "rb") as fh_in:
+            with open(out_path, "wb") as fh_out:
+                copyfileobj(fh_in, fh_out, COPY_BUFSIZE)
+        in_path.unlink()
+
     # Import
 
     def check_import_file(self, name: str) -> bool:
+        """Check if import file exists.
+
+        :param name: File name
+        :type name: str
+        :return: True if file exists, else False.
+        :rtype: bool
+        """
         return Path(self._import_path, name).is_file()
 
-    def open_import_file(self, name: str):
+    def open_import_file(self, name: str) -> TextIO:
+        """Import file for reading.
+
+        :param name: File name
+        :type name: str
+        :return: Opened file handle for reading
+        :rtype: TextIO
+        """
         return open(Path(self._import_path, name))
 
     # Annotation incl. extended annotations (miRNA targets, RBP binding sites, etc.)
@@ -221,22 +289,27 @@ class FileService:
         """
         return Path(self._get_motif_cache_dir(), f"{motif}.PWM.png")
 
-    def _get_gene_cache_dir(self) -> Path:
-        return Path(self._data_path, self.GENE_CACHE_DEST)
-
-    def _get_motif_cache_dir(self) -> Path:
-        return Path(self._data_path, self.MOTIF_CACHE_DEST)
-
-    def _get_sunburst_cache_dir(self) -> Path:
-        return Path(self._data_path, self.SUNBURST_CACHE_DEST)
-
     def open_sunburst_cache(self, name: str) -> TextIO:
+        """Open a sunburst file for reading.
+
+        :param name: File name
+        :type name: str
+        :returns: Opened file handle for reading
+        :rtype: TextIO
+        """
         file_path = Path(self._get_sunburst_cache_dir(), f"{name}.json")
         return open(file_path)
 
     def update_sunburst_cache(
         self, name: str, generator: Generator[str, None, None]
     ) -> None:
+        """Update a sunburst file content.
+
+        :param name: File name
+        :type name: str
+        :param generator: Content to be written to file.
+        :type generator: Generator
+        """
         final_file_path = Path(self._get_sunburst_cache_dir(), f"{name}.json")
         try:
             temporary_file_path = None
@@ -247,12 +320,14 @@ class FileService:
                     fp.write(data)
                 temporary_file_path = fp.name
             replace(temporary_file_path, final_file_path)
-        except IOError as e:
+        except IOError:
             if temporary_file_path is not None and isfile(temporary_file_path):
                 unlink(temporary_file_path)
 
     def run_sunburst_update(self, do_it: Callable[[], None]) -> None:
-        """This function will run the routine passed as long as someone
+        """Perform a sunburst update.
+
+        This function will run the routine passed as long as someone
         requests it. If another processes is already executing this routine,
         the duty is passed to that processes. This case is signalled
         by raising a SunburstUpdateAlreadyRunning exception.
@@ -263,6 +338,9 @@ class FileService:
         place is used to signal that another run is required. Everyone may
         touch the marker. Only the instance holding the lock may remove it.
         By removing it, the active instance promises to do another run.
+
+        :param do_it: Callable to perform the update
+        :type do_it: Callable
         """
         lock_file = Path(self._get_sunburst_cache_dir(), "lock")
         update_marker = Path(self._get_sunburst_cache_dir(), "update_marker")
@@ -276,6 +354,15 @@ class FileService:
                 update_marker.unlink()
                 do_it()
             lockf(fh, LOCK_UN)
+
+    def _get_gene_cache_dir(self) -> Path:
+        return Path(self._data_path, self.GENE_CACHE_DEST)
+
+    def _get_motif_cache_dir(self) -> Path:
+        return Path(self._data_path, self.MOTIF_CACHE_DEST)
+
+    def _get_sunburst_cache_dir(self) -> Path:
+        return Path(self._data_path, self.SUNBURST_CACHE_DEST)
 
     # Project related
 
@@ -346,100 +433,154 @@ class FileService:
         self,
         taxa_id: int,
         file_type: AssemblyFileType,
+        assembly_name: str | None = None,
         chrom: str | None = None,
-        chain_file_name: str | None = None,
-        chain_assembly_name: str | None = None,
     ) -> Path:
-        """Construct assembly-related file paths for a given organism.
+        """Construct an assembly file path for a given organism.
+
+        Provide a general constructor for all assembly file types.
+        Restricted interface methods are used to interact
+        with different file types (cf. below).
 
         :param taxa_id: Taxa ID
         :type taxa_id: int
-        :param file_type: Type of assembly file (CHROM, INFO, RELEASE, CHAIN)
+        :param file_type: Type of assembly file
         :type file_type: AssemblyFileType
-        :param chrom: Only used if file_type is DNA
+        :param assembly_name: Assembly name. Required if file_type is CHAIN.
+        If None, it is inferred from the current assembly version.
+        :type assembly_name: str | None
+        :param chrom: Required if file_type is DNA, DNA_IDX, or DNA_BGZ.
         :type chrom: str | None
-        :param chain_file_name: Only used if file_type is CHAIN - base chain file name
-        :type chain_file_name: str | None
-        :param chain_assembly_name: Only used if file_type is CHAIN - assembly name
-        :type chain_assembly_name: str | None
-        :returns: Full path to file
+        :raises ValueError: If missing arguments
+        :return: Full path to file
         :rtype: Path
         """
         file_name = file_type.value
-        assembly_name = self._get_current_assembly_name_from_taxa_id(taxa_id)
-        if file_type == AssemblyFileType.CHAIN:
-            if chain_file_name is None or chain_assembly_name is None:
-                raise ValueError("Missing chain_file_name and/or assembly_name!")
-            file_name = chain_file_name
-            assembly_name = chain_assembly_name
-        if file_type == AssemblyFileType.DNA:
+        current_assembly_name = self._get_current_assembly_name_from_taxa_id(taxa_id)
+        if AssemblyFileType.is_chain(file_type):
+            if assembly_name is None:
+                raise ValueError("Missing required parameter 'assembly_name'.")
+            file_name = file_type.value(
+                source_assembly=assembly_name,
+                target_assembly=current_assembly_name,
+            )
+            current_assembly_name = assembly_name
+        if AssemblyFileType.is_fasta(file_type):
             if chrom is None:
-                raise ValueError("Missing chrom!")
+                raise ValueError("Missing required parameter 'chrom'.")
             organism = self._get_dir_name_from_organism(
                 self._get_organism_from_taxa_id(taxa_id)
             )
             file_name = file_type.value(
-                organism=organism, assembly=assembly_name, chrom=chrom
+                organism=organism, assembly=current_assembly_name, chrom=chrom
             )
 
-        return Path(self._get_assembly_dir(taxa_id, assembly_name), file_name)
+        return Path(self._get_assembly_dir(taxa_id, current_assembly_name), file_name)
 
     def open_assembly_file(self, taxa_id: int, file_type: AssemblyFileType) -> TextIO:
-        """Opens an assembly file path for a given organism and returns a file for reading.
-        Chain files are not supported.
+        """Open an assembly file for reading.
 
         :param taxa_id: Taxa ID
         :type taxa_id: int
-        :param file_type: Type of assembly file (CHROM, INFO, RELEASE, CHAIN)
+        :param file_type: Type of assembly file (CHROM, INFO, RELEASE)
         :type file_type: AssemblyFileType
+        :raises NotImplementedError: If file_type is CHAIN,
+        DNA, DNA_IDX, DNA_BGZ.
+        :return: Opened file handle for reading
+        :rtype: TextIO
         """
-        if file_type in [AssemblyFileType.CHAIN, AssemblyFileType.DNA]:
+        if AssemblyFileType.is_chain(file_type) or AssemblyFileType.is_fasta(file_type):
             raise NotImplementedError()
         path = self.get_assembly_file_path(taxa_id, file_type)
         return open(path)
 
     def create_assembly_file(self, taxa_id: int, file_type: AssemblyFileType) -> TextIO:
-        """Open an assembly file for writing for a given organism.
+        """Open an assembly file for writing.
+
         If missing, the parent directory is created.
-        Chain files are not supported. Use create_chain_file() instead.
+        For chain files, use create_chain_file().
+        For DNA sequence files, use create_dna_sequence_file().
 
         :param taxa_id: Taxa ID
         :type taxa_id: int
-        :param file_type: Type of assembly file (CHROM, INFO, RELEASE, CHAIN)
+        :param file_type: Type of assembly file (CHROM, INFO, RELEASE)
         :type file_type: AssemblyFileType
+        :raises NotImplementedError: If file_type is CHAIN,
+        DNA, DNA_IDX, DNA_BGZ.
+        :return: Opened file handle for writing
+        :rtype: TextIO
         """
-        if file_type in [AssemblyFileType.CHAIN, AssemblyFileType.DNA]:
+        if AssemblyFileType.is_chain(file_type) or AssemblyFileType.is_fasta(file_type):
             raise NotImplementedError()
         path = self.get_assembly_file_path(taxa_id, file_type)
         self._create_folder(path.parent)
         return open(path, "x", opener=write_opener)
 
-    def create_chain_file(
-        self, taxa_id: int, file_name: str, assembly_name
-    ) -> BinaryIO:
-        """Creates chain file for a given organism and returns a file handle to fill it.
+    def create_chain_file(self, taxa_id: int, assembly_name: str) -> BinaryIO:
+        """Create chain file for writing (binary mode).
+
         If missing, the parent directory is created.
 
         :param taxa_id: Taxa ID
         :type taxa_id: int
-        :param file_name: Chain file name
-        :type file_name: str
         :param assembly_name: Assembly name
         :type assembly_name: str
-        :returns: Writable file handle
+        :return: Opened file handle for writing
         :rtype: BinaryIO
         """
         path = self.get_assembly_file_path(
             taxa_id,
             AssemblyFileType.CHAIN,
-            chain_file_name=file_name,
-            chain_assembly_name=assembly_name,
+            assembly_name=assembly_name,
         )
         self._create_folder(path.parent)
         return open(path, "xb", opener=write_opener)
 
+    def create_dna_sequence_file(self, taxa_id: int, chrom: str) -> BinaryIO:
+        """Create DNA sequence file for writing (binary mode).
+
+        If missing, the parent directory is created.
+        If fails, the file is deleted.
+
+        :param taxa_id: Taxa ID
+        :type taxa_id: int
+        :param chrom: Chromosome
+        :type chrom: str
+        :return: Opened file handle for writing
+        :rtype: BinaryIO
+        """
+        path = self.get_assembly_file_path(
+            taxa_id,
+            AssemblyFileType.DNA,
+            chrom=chrom,
+        )
+        self._create_folder(path.parent)
+        return self._safe_create_file(path, "xb", opener=write_opener)
+
+    def index_dna_sequence_file(self, taxa_id: int, chrom: str) -> None:
+        """Index a DNA sequence file.
+
+        Use pysam (tabix for bgzip,
+        samtools for faidx).
+
+        :param taxa_id: Taxa ID
+        :type taxa_id: int
+        :param chrom: Chromosome
+        :type chrom: str
+        """
+        gz_dna_sequence_file = self.get_assembly_file_path(
+            taxa_id,
+            AssemblyFileType.DNA,
+            chrom=chrom,
+        )
+        dna_sequence_file = gz_dna_sequence_file.with_suffix("")
+        self._gunzip(gz_dna_sequence_file, dna_sequence_file)
+        pysam.tabix_compress(dna_sequence_file, gz_dna_sequence_file)
+        pysam.samtools.faidx(gz_dna_sequence_file.as_posix())
+        dna_sequence_file.unlink()
+
     def delete_assembly(self, taxa_id: int, assembly_name: str) -> None:
-        """Remove assembly directory structure
+        """Remove assembly directory structure.
 
         :param taxa_id: Taxa ID
         :type taxa_id: int
@@ -448,15 +589,72 @@ class FileService:
         """
         rmtree(self._get_assembly_dir(taxa_id, assembly_name))
 
-    def check_if_assembly_exists(self, taxa_id: int, name: str) -> bool:
-        """Check if directory structure exists for a given assembly.
+    def check_if_assembly_exists(
+        self, taxa_id: int, assembly_name: str | None = None
+    ) -> bool:
+        """Check if directory structure and files exist for a given assembly.
+
+        This is done heuristically depending on the assembly.
+        The file content is not validated.
 
         :param taxa_id: Taxa ID
         :type taxa_id: int
-        :param name: Assembly name
-        :type name: str
+        :param assembly_name: Assembly name. If None, it is inferred
+        from the current assembly version, and this determines which
+        files are checked.
+        :type assembly_name: str | None
+        :raises FileExistsError: If the assembly directory is in a
+        corrupted state, i.e. files exist where none are expected,
+        or there are missing files.
+        :return: True if all required files exist, else False. An
+        empty assembly directory returns False.
+        :rtype: bool
         """
-        return self._get_assembly_dir(taxa_id, name).is_dir()
+        current_assembly_name = self._get_current_assembly_name_from_taxa_id(taxa_id)
+        # fail-safe
+        if assembly_name == current_assembly_name:
+            assembly_name = None
+
+        if assembly_name is not None:
+            if not self._get_assembly_dir(taxa_id, assembly_name).is_dir():
+                return False
+            else:
+                return self.get_assembly_file_path(
+                    taxa_id, AssemblyFileType.CHAIN, assembly_name=assembly_name
+                ).is_file()
+        else:
+            assembly_dir = self._get_assembly_dir(taxa_id, current_assembly_name)
+            if not assembly_dir.is_dir():
+                return False
+            else:
+                try:
+                    assembly_files = [
+                        self.get_assembly_file_path(taxa_id, file_type)
+                        for file_type in AssemblyFileType.common()
+                    ]
+
+                    with self.open_assembly_file(taxa_id, AssemblyFileType.CHROM) as fh:
+                        chroms = [line.split()[0] for line in fh.readlines()]
+                    for chrom in chroms:
+                        for file_type in AssemblyFileType.fasta():
+                            assembly_files.append(
+                                self.get_assembly_file_path(
+                                    taxa_id, file_type, chrom=chrom
+                                )
+                            )
+                    if all(p.is_file() for p in assembly_files):
+                        return True
+                    else:
+                        raise FileExistsError(
+                            f"Files exist for assembly '{current_assembly_name}'."
+                        )
+                except FileNotFoundError:
+                    if any(assembly_dir.iterdir()):
+                        raise FileExistsError(
+                            f"Files exist for assembly '{current_assembly_name}'."
+                        )
+                    else:
+                        return False
 
     @staticmethod
     def _get_dir_name_from_organism(organism) -> str:
@@ -656,6 +854,11 @@ class FileService:
 
 @cache
 def get_file_service() -> FileService:
+    """Instantiate a FileService object by injecting its dependencies.
+
+    :returns: File service instance
+    :rtype: FileService
+    """
     config = get_config()
     return FileService(
         get_session(),
