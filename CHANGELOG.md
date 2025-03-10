@@ -3,7 +3,22 @@
 All notable changes to scimodom will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/), and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Release candidate] - started 2025-01
+## [Release candidate] - started 2025-03
+
+## [4.0.0] - 2025-03-10
+
+### Fixed
+
+- Gene cache query missing filter for modification.
+
+### Changed
+
+- CLI
+- Documentation
+
+### Added
+
+- CLI tests
 
 ## [3.1.1] - 2025-01-15
 
