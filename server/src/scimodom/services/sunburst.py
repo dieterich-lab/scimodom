@@ -1,7 +1,7 @@
 from collections import defaultdict
 from functools import cache
 from json import dumps
-from subprocess import run
+from subprocess import Popen
 from typing import TextIO
 
 from sqlalchemy import select, func
@@ -42,7 +42,7 @@ class SunburstService:
     @staticmethod
     def trigger_background_update() -> None:
         """Trigger update in the background using the CLI."""
-        run(["flask", "--app", "scimodom.app", "charts", "sunburst-update"])
+        Popen(["flask", "--app", "scimodom.app", "charts", "sunburst-update"])
 
     def open_json(self, chart_type: SunburstChartType) -> TextIO:
         """Open a chart json data file.
