@@ -5,6 +5,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/), and this 
 
 ## [Release candidate] - started 2025-03
 
+## [4.0.1] - 2025-03-26
+
+### Fixed
+
+- #165.
+
 ## [4.0.0] - 2025-03-10
 
 ### Fixed
