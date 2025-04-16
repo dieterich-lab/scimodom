@@ -151,7 +151,8 @@ class ProjectService:
                 delete(UserProjectAssociation).filter_by(project_id=project.id)
             )
             contact = self._session.get_one(ProjectContact, project.contact_id)
-            if len(contact.projects) == 1:
+            projects = contact.projects
+            if len(projects) == 1 and projects[0].id == project.id:
                 self._session.delete(contact)
             self._session.delete(project)
             self._file_service.delete_project_metadata_file(project.id)

@@ -225,12 +225,12 @@ def add_project(request_uuid: str, add_user: bool):
     if add_user:
         username = project_template.contact_email
         click.secho(
-            f"Adding user '{username}' to project '{smid}'...",
+            f"Adding user '{username}' to project '{smid}' if new...",
             fg="green",
         )
         try:
             _add_user_to_project(username, smid)
-            click.secho("   ... added user.", fg="green")
+            click.secho("   ... done.", fg="green")
         except NoSuchUser:
             click.secho("No such user. Nothing will be done.", fg="red")
             return
@@ -255,7 +255,10 @@ def add_user(username: str, smid: str):
     USERNAME is the user email.
     SMID is the project ID to which this user is to be associated.
     """
-    click.secho(f"Adding user '{username}' to project '{smid}'...", fg="green")
+    click.secho(
+        f"Adding user '{username}' to project '{smid}'. If exists, nothing is done...",
+        fg="green",
+    )
     click.secho("Continue [y/n]?", fg="green")
     c = click.getchar()
     if c not in ["y", "Y"]:
@@ -264,7 +267,7 @@ def add_user(username: str, smid: str):
 
     try:
         _add_user_to_project(username, smid)
-        click.secho("   ... user added.", fg="green")
+        click.secho("   ... done.", fg="green")
     except NoResultFound:
         click.secho(
             f"Failed to add user. No such SMID '{smid}'.",
