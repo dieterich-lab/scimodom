@@ -42,6 +42,11 @@ def selection(Session, setup):  # noqa
         organism_id=organism1.id,
         technology_id=technology2.id,
     )
+    selection5 = Selection(
+        modification_id=modification2.id,
+        organism_id=organism2.id,
+        technology_id=technology2.id,
+    )
 
-    session.add_all([selection1, selection2, selection3, selection4])
+    session.add_all([selection1, selection2, selection3, selection4, selection5])
     session.commit()

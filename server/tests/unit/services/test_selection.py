@@ -75,7 +75,7 @@ def test_create_selection_exist(Session, selection, caplog):
         assert (
             session.scalar(select(func.count()).select_from(DetectionTechnology)) == 2
         )
-        assert session.scalar(select(func.count()).select_from(Selection)) == 4
+        assert session.scalar(select(func.count()).select_from(Selection)) == 5
 
     assert caplog.messages == []
 
@@ -90,7 +90,9 @@ def test_delete_selections_by_dataset(Session, dataset):
         assert (
             session.scalar(select(func.count()).select_from(DetectionTechnology)) == 2
         )
-        assert set(session.execute(select(Selection.id)).scalars().all()) == set([3, 4])
+        assert set(session.execute(select(Selection.id)).scalars().all()) == set(
+            [3, 4, 5]
+        )
 
 
 def test_delete_selections_by_dataset_cache_only(Session, project, dataset):
@@ -127,5 +129,5 @@ def test_delete_selections_by_dataset_cache_only(Session, project, dataset):
             session.scalar(select(func.count()).select_from(DetectionTechnology)) == 2
         )
         assert set(session.execute(select(Selection.id)).scalars().all()) == set(
-            [1, 3, 4]
+            [1, 3, 4, 5]
         )

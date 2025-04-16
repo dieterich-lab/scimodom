@@ -9,6 +9,7 @@ from scimodom.cli.utilities import (
     add_assembly_to_template_if_none,
     get_detection_id,
     get_modomics_id,
+    trigger_sunburst_update,
 )
 from scimodom.database.models import Project
 from scimodom.services.assembly import AssemblyNotFoundError, get_assembly_service
@@ -338,6 +339,17 @@ def delete_project(smid: str):
         click.secho("   ... deleted project", fg="green")
     except Exception as exc:
         click.secho(f"Failed to delete project '{project.id}'. {exc}", fg="red")
+        raise click.Abort()
+
+    try:
+        click.secho("Triggering charts update in the background ...", fg="green")
+        trigger_sunburst_update()
+        click.secho("   ... done.", fg="green")
+    except Exception as exc:
+        click.secho(
+            f"Failed to update charts. {exc}.",
+            fg="red",
+        )
         raise click.Abort()
 
 
