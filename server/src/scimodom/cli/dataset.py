@@ -15,13 +15,13 @@ from scimodom.database.models import (
 from scimodom.cli.utilities import (
     add_assembly_to_template_if_none,
     validate_dataset_title,
+    trigger_sunburst_update,
 )
 
 from scimodom.services.assembly import AssemblyNotFoundError, get_assembly_service
 from scimodom.services.dataset import get_dataset_service
 from scimodom.services.file import get_file_service
 from scimodom.services.project import get_project_service
-from scimodom.services.sunburst import get_sunburst_service
 from scimodom.utils.dtos.project import (
     ProjectMetaDataDto,
     ProjectTemplate,
@@ -157,7 +157,7 @@ def add_dataset(
     if not dry_run:
         try:
             click.secho("Triggering charts update in the background ...", fg="green")
-            _so_sunburst_update()
+            trigger_sunburst_update()
             click.secho("   ... done!", fg="green")
         except Exception as exc:
             click.secho(
@@ -282,7 +282,7 @@ def add_dataset_in_batch(input_directory: str, request_uuid: str, annotation: st
 
     try:
         click.secho("Triggering charts update in the background ...", fg="green")
-        _so_sunburst_update()
+        trigger_sunburst_update()
         click.secho("   ... done.", fg="green")
     except Exception as exc:
         click.secho(
@@ -303,11 +303,6 @@ def _get_filename_and_title(metadata: ProjectMetaDataDto) -> tuple[str, str]:
         return m["file"].strip(), m["title"].strip()
     else:
         raise Exception("Unable to match 'file' or 'title' from 'note'.")
-
-
-def _so_sunburst_update():
-    sunburst_service = get_sunburst_service()
-    sunburst_service.trigger_background_update()
 
 
 def _validate_input(uuid: str) -> ProjectTemplate:

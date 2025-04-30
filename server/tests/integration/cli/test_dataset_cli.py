@@ -332,7 +332,7 @@ def mock_services(mocker, Session, tmp_path, test_runner):
         return_value=_get_sunburst_service(Session, tmp_path, test_runner),
     )
     mocker.patch(
-        "scimodom.cli.dataset.get_sunburst_service",
+        "scimodom.cli.utilities.get_sunburst_service",
         return_value=_get_sunburst_service(Session, tmp_path, test_runner),
     )
     mocker.patch(

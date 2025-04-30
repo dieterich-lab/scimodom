@@ -38,7 +38,7 @@ class Modomics(Base):
     id: Mapped[str] = mapped_column(
         String(128), primary_key=True, autoincrement=False
     )  # MODOMICS code
-    reference_id: Mapped[int]  # nullable=False, unique=True MODOMICS database id
+    reference_id: Mapped[int] = mapped_column(nullable=False, unique=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
     short_name: Mapped[str] = mapped_column(String(32), nullable=False, unique=True)
     moiety: Mapped[str] = mapped_column(String(32), nullable=False)
@@ -454,18 +454,6 @@ class DataAnnotation(Base):
     inst_data: Mapped["Data"] = relationship(back_populates="annotations")
 
 
-class Sprinzl(Base):
-    """Sprinzl tRNA position numbering"""
-
-    __tablename__ = "sprinzl"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    data_id: Mapped[int] = mapped_column(ForeignKey("data.id"), index=True)
-    position: Mapped[str] = mapped_column(String(32), nullable=False)
-
-    __table_args__ = (UniqueConstraint(data_id, position),)
-
-
 class User(Base):
     __tablename__ = "user"
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -490,3 +478,5 @@ class UserProjectAssociation(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), index=True)
     project_id: Mapped[str] = mapped_column(ForeignKey("project.id"), index=True)
+
+    __table_args__ = (UniqueConstraint(user_id, project_id),)

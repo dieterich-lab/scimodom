@@ -45,19 +45,21 @@ const validationSchema = object({
     .max(320, 'At most 320 characters allowed!'),
   title: string().required('Title is required!').max(255, 'At most 255 characters allowed!'),
   summary: string().required('Summary is required!'),
-  date_published: date(),
+  date_published: date()
+    .nullable()
+    .transform((_, originalValue) => (originalValue instanceof Date ? originalValue : null)),
   external_sources: array().of(
     object().shape({
       doi: string()
         .max(255, 'At most 255 characters allowed!')
         .matches(/^10\./, { message: 'DOI must start with "10."!' })
         .nullable()
-        .transform((_, val) => (val !== '' ? val : null)),
+        .transform((_, originalValue) => (originalValue !== '' ? originalValue : null)),
       pmid: number()
         .integer()
         .typeError('PMID must be a number!')
         .nullable()
-        .transform((_, val) => (val !== '' ? Number(val) : null))
+        .transform((_, originalValue) => (originalValue !== '' ? Number(originalValue) : null))
     })
   )
 })

@@ -120,7 +120,7 @@ def test_get_selection(Session, utilities_service: UtilitiesService, selection):
         "selection_id": 1,
     }
     selections = utilities_service.get_selections()
-    assert len(selections) == 4
+    assert len(selections) == 5
     assert selections[0] == expected_selection
 
 

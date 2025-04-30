@@ -1,6 +1,6 @@
 from functools import cache
 
-from sqlalchemy import select, and_
+from sqlalchemy import select, exists, and_
 from sqlalchemy.orm import Session
 
 import logging
@@ -43,6 +43,16 @@ class PermissionService:
         this must be done before calling this function.
         :type project_id: str
         """
+        is_found = self._session.query(
+            exists().where(
+                UserProjectAssociation.user_id == user.id,
+                UserProjectAssociation.project_id == project_id,
+            )
+        ).scalar()
+        if is_found:
+            logger.info(f"User {user.email} already associated with {project_id}")
+            return
+
         permission = UserProjectAssociation(user_id=user.id, project_id=project_id)
 
         logger.info(f"Adding user {user.email} to {project_id}")

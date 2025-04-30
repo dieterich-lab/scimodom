@@ -10,6 +10,7 @@ from scimodom.database.models import (
     Modomics,
 )
 from scimodom.services.assembly import AssemblyService, AssemblyNotFoundError
+from scimodom.services.sunburst import get_sunburst_service
 from scimodom.utils.dtos.project import (
     ProjectOrganismDto,
 )
@@ -90,3 +91,9 @@ def get_detection_id(name) -> str:
         )
     except NoResultFound:
         raise ValueError(f"No such detection method '{name}'.")
+
+
+def trigger_sunburst_update() -> None:
+    """Trigger Sunburst charts background update."""
+    sunburst_service = get_sunburst_service()
+    sunburst_service.trigger_background_update()

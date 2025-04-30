@@ -19,6 +19,7 @@ from scimodom.database.models import (
     ProjectSource,
     ProjectContact,
 )
+from scimodom.cli.charts import charts_cli
 from scimodom.cli.project import project_cli
 from scimodom.services.annotation import AnnotationService
 from scimodom.services.annotation.ensembl import EnsemblAnnotationService
@@ -33,11 +34,12 @@ from scimodom.services.mail import MailService
 from scimodom.services.permission import PermissionService
 from scimodom.services.project import ProjectService
 from scimodom.services.selection import SelectionService
+from scimodom.services.sunburst import SunburstService
 from scimodom.services.url import UrlService
 from scimodom.services.user import UserService
 from scimodom.services.validator import ValidatorService
 from scimodom.services.web import WebService
-from scimodom.utils.specs.enums import AnnotationSource, UserState
+from scimodom.utils.specs.enums import AnnotationSource, UserState, SunburstChartType
 
 DATA_DIR = Path(Path(__file__).parent.parent, "data")
 
@@ -83,6 +85,23 @@ JSON_TEMPLATE = """
 """
 
 
+SEARCH_CHART = """[{"name": "Search", "children": []}]"""
+BROWSE_CHART = """[{"name": "Browse", "children": [{"name": "m5C", "children": [{"name": "H. sapiens", "children": [{"name": "Cell type 2", "children": [{"name": "Technology 2", "size": 1}]}]}]}]}]"""
+EXPECTED_CHARTS = {
+    "search": SEARCH_CHART,
+    "browse": BROWSE_CHART,
+}
+
+
+class MockSunburstService(SunburstService):
+    def __init__(self, session, file_service, cli_runner) -> None:
+        self._cli_runner = cli_runner
+        super().__init__(session, file_service)
+
+    def trigger_background_update(self):
+        self._cli_runner.invoke(args=["charts", "sunburst-update"])
+
+
 def _get_permission_service(Session):
     return PermissionService(Session())
 
@@ -94,6 +113,14 @@ def _get_file_service(Session, tmp_path):
         temp_path=Path(tmp_path, "t_temp"),
         upload_path=Path(tmp_path, "t_upload"),
         import_path=Path(tmp_path, "t_import"),
+    )
+
+
+def _get_sunburst_service(Session, tmp_path, cli_runner):
+    return MockSunburstService(
+        session=Session(),
+        file_service=_get_file_service(Session, tmp_path),
+        cli_runner=cli_runner,
     )
 
 
@@ -185,11 +212,24 @@ def _get_project_service(Session, tmp_path):
 def test_runner():
     app = Flask(__name__)
     app.register_blueprint(project_cli)
+    app.register_blueprint(charts_cli)
     yield app.test_cli_runner()
 
 
 @pytest.fixture
-def mock_services(mocker, Session, tmp_path):
+def mock_services(mocker, Session, tmp_path, test_runner):
+    mocker.patch(
+        "scimodom.services.sunburst.get_file_service",
+        return_value=_get_file_service(Session, tmp_path),
+    )
+    mocker.patch(
+        "scimodom.cli.charts.get_sunburst_service",
+        return_value=_get_sunburst_service(Session, tmp_path, test_runner),
+    )
+    mocker.patch(
+        "scimodom.cli.utilities.get_sunburst_service",
+        return_value=_get_sunburst_service(Session, tmp_path, test_runner),
+    )
     mocker.patch(
         "scimodom.cli.project.get_assembly_service",
         return_value=_get_assembly_service(Session, tmp_path),
@@ -407,7 +447,7 @@ def test_delete_project(
     assert result.exit_code == 0
 
     with Session() as session:
-        assert session.scalar(select(func.count()).select_from(Selection)) == 0
+        assert session.scalar(select(func.count()).select_from(Selection)) == 1
         assert session.scalar(select(func.count()).select_from(DataAnnotation)) == 0
         assert session.scalar(select(func.count()).select_from(Data)) == 0
         assert (
@@ -431,3 +471,8 @@ def test_delete_project(
         assert p.exists() is False
     for p in bam_files:
         assert p.exists() is False
+    # charts update is triggered first upon deletion
+    d = tmp_path / "t_data" / FileService.SUNBURST_CACHE_DEST
+    for chart_type in SunburstChartType:
+        with open(Path(d, f"{chart_type.value}.json")) as fh:
+            assert fh.read() == EXPECTED_CHARTS[chart_type.value]

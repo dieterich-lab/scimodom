@@ -30,6 +30,20 @@ Production setup
 
 The recommended way to run Sci-ModoM in production is to use Podman to create, manage, and deploy the application and the database containers, see `Container setup <https://dieterich-lab.github.io/scimodom/containers.html>`_ for details.
 
+Production hints
+^^^^^^^^^^^^^^^^
+
+Worker was sent SIGKILL! Perhaps out of memory?
+"""""""""""""""""""""""""""""""""""""""""""""""
+This may be the underlying cause of a ``Failed to post dataset: HTTP status 500``, *cf.* :issue:`169`. Adjust default settings in the *.env* file, *e.g.*
+
+.. code-block:: bash
+
+    HTTP_WORKER_PROCESSES=16
+    HTTP_WORKER_TIMEOUT=900
+
+See `env_example <https://github.com/dieterich-lab/scimodom/blob/master/server/env_example>`_.
+
 Development setup
 -----------------
 
@@ -199,6 +213,8 @@ To execute the tests, run under the *server* directory:
 .. code-block:: bash
 
   pytest tests
+
+This uses ``--ignore=tests/integration/cli/test_assembly_cli.py``. This integration test validates assembly creation by downloading data from Ensembl and takes several minutes to complete.
 
 Test automation
 """""""""""""""

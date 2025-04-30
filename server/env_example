@@ -13,6 +13,10 @@ DB_IMAGE_NAME=scimodom_db:latest
 APP_IMAGE_NAME=scimodom_app:latest
 
 # Used for pre/post restore scripts.
+# This uses the default <compose_folder>_<service_name>_<increment_number_of_containers_with_same_name>
+# where <service_name> is from docker-compose.yml or docker-compose-db-only.yml, allowing to easily configure
+# separate deployment directories.
+# Note: naming convention may differ between Docker/Podman compose versions, e.g. dash (-) instead of underscore (_).
 DB_CONTAINER_NAME=docker-scimodom_db-1
 
 # The parameters below are only used inside the containers.

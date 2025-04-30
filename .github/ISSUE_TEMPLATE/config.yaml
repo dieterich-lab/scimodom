@@ -1,1 +1,5 @@
 blank_issues_enabled: false
+contact_links:
+  - name: Questions and help
+    url: https://dieterich-lab.github.io/scimodom/
+    about: This issue tracker is not for support questions. Consult the documentation.

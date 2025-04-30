@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "scimodom"
 description = "Sci-ModoM: The database of transcriptome-wide high-throughput RNA modification sites. Backend."
 readme = "README.md"
-license = { text = "GNU AGPL" }
+license = { file = "LICENSE" }
 authors = [{ name = "Etienne Boileau" }]
 maintainers = [
   { name = "Etienne Boileau", email = "boileau@uni-heidelberg.de" }
@@ -16,7 +16,7 @@ keywords = [
 ]
 # See https://pypi.python.org/pypi?%3Aaction=list_classifiers
 classifiers = [
-  "Development Status :: 1 - Planning",
+  "Development Status :: 5 - Production/Stable",
   "Framework :: Flask",
   "Intended Audience :: Science/Research",
   "Topic :: Scientific/Engineering :: Bio-Informatics",
@@ -63,7 +63,8 @@ docs = [
   "sphinx_rtd_theme",
   "furo",
   "sphinx-argparse",
-  "sphinx-copybutton"
+  "sphinx-copybutton",
+  "sphinx-issues"
 ]
 
 [tool.setuptools.dynamic]

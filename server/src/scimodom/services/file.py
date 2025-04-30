@@ -84,7 +84,6 @@ class FileService:
 
     ANNOTATION_DEST: ClassVar[str] = "annotation"
     GENE_CACHE_DEST: ClassVar[Path] = Path("cache", "gene", "selection")
-    MOTIF_CACHE_DEST: ClassVar[Path] = Path("cache", "motifs", "PWMs_logo")
     SUNBURST_CACHE_DEST: ClassVar[Path] = Path("cache", "sunburst")
     ASSEMBLY_DEST: ClassVar[str] = "assembly"
     METADATA_DEST: ClassVar[str] = "metadata"
@@ -115,7 +114,6 @@ class FileService:
             self._get_annotation_parent_dir(),
             self._get_assembly_parent_dir(),
             self._get_gene_cache_dir(),
-            self._get_motif_cache_dir(),
             self._get_sunburst_cache_dir(),
             self._get_bam_files_parent_dir(),
         ]:
@@ -281,14 +279,6 @@ class FileService:
         path = Path(self._get_gene_cache_dir(), str(selection_id))
         path.unlink()
 
-    def get_motif_logo(self, motif: str) -> Path:
-        """Retrieve the logo for motif.
-
-        :param motif: Motif ID
-        :type motif: str
-        """
-        return Path(self._get_motif_cache_dir(), f"{motif}.PWM.png")
-
     def open_sunburst_cache(self, name: str) -> TextIO:
         """Open a sunburst file for reading.
 
@@ -357,9 +347,6 @@ class FileService:
 
     def _get_gene_cache_dir(self) -> Path:
         return Path(self._data_path, self.GENE_CACHE_DEST)
-
-    def _get_motif_cache_dir(self) -> Path:
-        return Path(self._data_path, self.MOTIF_CACHE_DEST)
 
     def _get_sunburst_cache_dir(self) -> Path:
         return Path(self._data_path, self.SUNBURST_CACHE_DEST)

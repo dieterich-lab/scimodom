@@ -3,21 +3,27 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Sci-ModoM: The quantitative database of transcriptome-wide high-throughput RNA modification sites
-=================================================================================================
+Sci-ModoM Documentation
+=======================
 
-Introduction
-------------
+Release v\ |version|.
 
-`Sci-ModoM <https://scimodom.dieterichlab.org>`_ is a quantitative database of RNA modifications dedicated to novel assays that provide transcriptome-wide information at single-base resolution.
+Sci-ModoM is a quantitative database of RNA modifications dedicated to novel assays that provide transcriptome-wide information at single-base resolution.
 
-The user guide is primarily intended to serve as a maintainer's documentation and to assist developers in familiarizing with the data model. It also serves
-as a detailed resource for users who need in-depth information.
-
-This is the official documentation for the bedRMod format specification.
+This user guide is primarily intended to serve as a maintainer's documentation, but it also serves as a detailed resource for users who need in-depth information. It contains information and examples how to use the bedRMod format.
 
 .. toctree::
    :maxdepth: 2
 
    scimodom
+   project
    bedrmod
+
+.. toctree::
+    :hidden:
+    :caption: Links
+
+    GitHub source <https://github.com/dieterich-lab/scimodom>
+    Issue tracker <https://github.com/dieterich-lab/scimodom/issues>
+    Sci-ModoM <https://scimodom.dieterichlab.org>
+    euf-specs <https://dieterich-lab.github.io/euf-specs>

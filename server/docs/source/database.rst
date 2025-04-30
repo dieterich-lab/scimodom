@@ -200,3 +200,15 @@ with the database model.
 
 
 .. _data_model:
+
+Database schema
+---------------
+
+One way to get the database schema is to
+
+.. code-block:: bash
+
+  # get a shell in the running container...
+  podman exec -it docker_scimodom_db_dev_1 bash
+  # ... and dump the schema
+  mariadb-dump -u root -p --no-data scimodom > backup/schema.sql
