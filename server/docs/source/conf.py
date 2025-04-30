@@ -6,10 +6,13 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = "Sci-ModoM"
-copyright = "2023, Etienne Boileau"
+import scimodom
+
+project = "Sci-ModoM Docs"
+copyright = "2023 under the terms of the GNU AGPLv3+ License."
 author = "Etienne Boileau"
-release = "3.0.0"
+version = scimodom.__version__
+release = scimodom.__version__
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -19,8 +22,9 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinxarg.ext",
     "sphinx_copybutton",
+    "sphinx_issues",
 ]
-
+issues_github_path = "dieterich-lab/scimodom"
 templates_path = ["_templates"]
 exclude_patterns = []
 
@@ -29,8 +33,10 @@ exclude_patterns = []
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = "furo"
+html_title = ""
 html_static_path = ["_static"]
 html_theme_options = {
     "light_logo": "logo.png",
     "dark_logo": "logo_dark.png",
 }
+html_favicon = "_static/favicon.ico"

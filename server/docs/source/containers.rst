@@ -104,7 +104,7 @@ And to stop:
 Development setup
 -----------------
 
-The database can be run using a container and connected with the application running locally by using *docker-compose-db-only.yml*. The *.env* file needs a few variables only, see `env_example <https://github.com/dieterich-lab/scimodom/blob/7d4dad0f69c5c7d9988d5dcc9c51eba4ddfdc61b/server/env_example>`_ (database only).
+The database can be run using a container and connected with the application running locally by using *docker-compose-db-only.yml*. The *.env* file needs a few variables only, see `env_example <https://github.com/dieterich-lab/scimodom/blob/master/server/env_example>`_ (database only).
 
 Set up the local directories
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -171,9 +171,4 @@ To directly connect to the database:
   podman exec -it docker_scimodom_db_1 mariadb -u root -p scimodom
 
 
-Use the password found in *secrets/mariadb-root*. Also podman-compose/docker-compose
-may be used. In case of the 'db-only' DEV setup one may do this:
-
-.. code-block:: bash
-
-  docker podman-compose -f docker-compose-db-only.yml  exec scimodom_db_dev mariadb -u root -p scimodom
+Use the password found in *secrets/mariadb-root*.

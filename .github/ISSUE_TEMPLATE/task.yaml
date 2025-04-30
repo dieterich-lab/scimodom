@@ -12,11 +12,11 @@ body:
       value: |
         Why do we need to do this? Is this related to the design of the app, the data model, BE, or FE?
     validations:
-      required: false
+      required: true
   - type: textarea
     id: tasks
     attributes:
       label: A clear and concise description of todo items.
       description: Describe what is to be done.
     validations:
-      required: true
+      required: false

@@ -40,18 +40,17 @@ body:
       options:
         - Firefox
         - Chrome
-        - Safari
-        - Microsoft Edge
         - Other
     validations:
-      required: true
+      required: false
   - type: dropdown
     id: version
     attributes:
       label: What version of Sci-ModoM were you using?
       multiple: true
       options:
+        - latest release
         - master
-        - dev
+        - branch (specify above)
     validations:
-      required: true
+      required: false
