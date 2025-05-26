@@ -32,6 +32,7 @@ dependencies = [
   "Flask",
   "Flask-Cors",
   "Flask-JWT-Extended",
+  "click<8.2.0",
   "mysqlclient",
   "numpy<2",
   "pandas",
