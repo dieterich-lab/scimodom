@@ -1,6 +1,10 @@
 import { createApp } from 'vue'
 import App from '@/App.vue'
 
+import { VueCookieNext } from 'vue-cookie-next'
+import { createPinia } from 'pinia'
+import router from '@/router'
+
 // PrimeVue
 import PrimeVue from 'primevue/config'
 import ConfirmationService from 'primevue/confirmationservice'
@@ -12,15 +16,11 @@ import ToastService from 'primevue/toastservice'
 import '@/assets/style/index.css'
 import 'primeicons/primeicons.css'
 // presets
-import WindScm from '@/presets/windscm'
-
-import { VueCookieNext } from 'vue-cookie-next'
-import { createPinia } from 'pinia'
-import router from '@/router'
+import PrimeVuePT from '@/presets/primevue/pt'
 
 const app = createApp(App)
 
-app.use(PrimeVue, { unstyled: true, pt: WindScm, ripple: true })
+app.use(PrimeVue, { unstyled: true, pt: PrimeVuePT, ripple: true })
 app.use(ToastService)
 app.use(ConfirmationService)
 app.use(DialogService)

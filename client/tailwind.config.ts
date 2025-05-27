@@ -1,6 +1,4 @@
 /** @type {import('tailwindcss').Config} */
-import tailwindcssPrimeui from 'tailwindcss-primeui'
-
 module.exports = {
   content: [
     'index.html',
@@ -10,7 +8,6 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // alpha value spec? 'rgb(var(--color) / <alpha-value>)'
         'primary-50': 'rgb(var(--primary-50))',
         'primary-100': 'rgb(var(--primary-100))',
         'primary-200': 'rgb(var(--primary-200))',
@@ -66,5 +63,5 @@ module.exports = {
       }
     }
   },
-  plugins: [tailwindcssPrimeui]
+  plugins: []
 }
