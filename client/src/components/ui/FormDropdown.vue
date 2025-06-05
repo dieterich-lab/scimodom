@@ -1,10 +1,10 @@
 <script setup lang="ts" generic="T">
 import { useId } from 'vue'
-import Dropdown, { type DropdownProps } from 'primevue/dropdown'
+import Select, { type SelectProps } from 'primevue/select'
 import { DEFAULT_STYLE, type FormFieldProps, type FormFieldWrapperProps } from '@/utils/ui_style'
 import FormFieldWrapper from '@/components/ui/FormFieldWrapper.vue'
 
-interface Props extends DropdownProps, FormFieldProps {
+interface Props extends SelectProps, FormFieldProps {
   options: T[]
 }
 
@@ -16,7 +16,7 @@ defineEmits<{
 
 const model = defineModel<T>()
 const fieldId = useId()
-const dropdownProps: DropdownProps = { ...props }
+const selectProps: SelectProps = { ...props }
 const wrapperProps: FormFieldWrapperProps = { ...props, fieldId }
 </script>
 <template>
@@ -25,8 +25,8 @@ const wrapperProps: FormFieldWrapperProps = { ...props, fieldId }
       <slot></slot>
     </template>
     <template v-slot:field>
-      <Dropdown
-        v-bind="dropdownProps"
+      <Select
+        v-bind="selectProps"
         v-model="model"
         :id="fieldId"
         :class="error ? props.uiStyle.errorClasses : ''"

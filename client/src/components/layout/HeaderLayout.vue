@@ -100,7 +100,7 @@ function getUserName() {
       :class="[
         isDev
           ? 'p-1 bg-gradient-to-r from-red-300 from-10% to-red-800 to-100%'
-          : 'p-1 bg-gradient-to-r from-gg-2 from-10% via-gg-1 via-40% via-gb-2 via-60% to-gb-4 to-100%'
+          : 'p-1 bg-gradient-to-r from-gradient-green-2 from-10% via-gradient-green-1 via-40% via-gradient-blue-2 via-60% to-gradient-blue-4 to-100%'
       ]"
     ></div>
     <div class="mx-auto w-full max-w-screen-2xl p-2 py-6 lg:py-8 flex flex-wrap items-center">

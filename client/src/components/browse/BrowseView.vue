@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { FilterMatchMode, FilterOperator } from 'primevue/api'
+import { FilterMatchMode, FilterOperator } from '@primevue/core/api'
 import Divider from 'primevue/divider'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'

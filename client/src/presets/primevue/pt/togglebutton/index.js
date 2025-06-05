@@ -12,7 +12,7 @@ export default {
       'select-none'
     ]
   },
-  box: ({ props }) => ({
+  content: ({ props }) => ({
     class: [
       // Alignments
       'items-center inline-flex flex-1 text-center align-bottom justify-center',
@@ -47,39 +47,59 @@ export default {
         'cursor-pointer': !props.disabled,
         'opacity-60 select-none pointer-events-none cursor-default': props.disabled
       }
+
+      // 'peer',
+      // // Size
+      // 'w-full ',
+      // 'h-full',
+      // // Position
+      // 'absolute',
+      // 'top-0 left-0',
+      // 'z-10',
+      // // Spacing
+      // 'p-0',
+      // 'm-0',
+      // // Shape
+      // 'opacity-0',
+      // 'rounded-md',
+      // 'outline-none',
+      // 'border border-surface-200 dark:border-surface-700',
+      // // Misc
+      // 'appareance-none',
+      // 'cursor-pointer'
     ]
   }),
   label: {
     class: 'font-semibold text-center w-full'
   },
-  input: {
-    class: [
-      'peer',
+  //   input: {
+  //       class: [
+  //           'peer',
 
-      // Size
-      'w-full ',
-      'h-full',
+  //           // Size
+  //           'w-full ',
+  //           'h-full',
 
-      // Position
-      'absolute',
-      'top-0 left-0',
-      'z-10',
+  //           // Position
+  //           'absolute',
+  //           'top-0 left-0',
+  //           'z-10',
 
-      // Spacing
-      'p-0',
-      'm-0',
+  //           // Spacing
+  //           'p-0',
+  //           'm-0',
 
-      // Shape
-      'opacity-0',
-      'rounded-md',
-      'outline-none',
-      'border border-surface-200 dark:border-surface-700',
+  //           // Shape
+  //           'opacity-0',
+  //           'rounded-md',
+  //           'outline-none',
+  //           'border border-surface-200 dark:border-surface-700',
 
-      // Misc
-      'appareance-none',
-      'cursor-pointer'
-    ]
-  },
+  //           // Misc
+  //           'appareance-none',
+  //     'cursor-pointer'
+  //   ]
+  // },
   icon: {
     class: [' mr-2', 'text-surface-700 dark:text-white/80']
   }

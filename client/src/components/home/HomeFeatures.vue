@@ -12,8 +12,8 @@ import SectionLayout from '@/components/layout/SectionLayout.vue'
         Sci-ModoM is under active development.
       </p>
       <div class="grid grid-cols-3 gap-2">
-        <div class="grid-cols-12 md:grid-cols-4 mb-4 px-5">
-          <span class="p-3 shadow-2 mb-3 inline-block justify-center" style="rounded-xl">
+        <div class="mb-4 px-5">
+          <span class="p-3 shadow-2 mb-3 inline-block rounded-xl">
             <i class="pi pi-file-export text-4xl text-primary-500 dark:text-secondary-500"></i>
           </span>
           <div class="text-900 text-xl mb-3 font-medium dark:text-white/80">Data format</div>
@@ -29,8 +29,8 @@ import SectionLayout from '@/components/layout/SectionLayout.vue'
             format.
           </span>
         </div>
-        <div class="col-12 md:col-4 mb-4 px-5">
-          <span class="p-3 shadow-2 mb-3 inline-block surface-card" style="border-radius: 10px">
+        <div class="mb-4 px-5">
+          <span class="p-3 shadow-2 mb-3 inline-block rounded-xl">
             <i class="pi pi-database text-4xl text-primary-500 dark:text-secondary-500"></i>
           </span>
           <div class="text-900 text-xl mb-3 font-medium dark:text-white/80">Database</div>
@@ -39,8 +39,8 @@ import SectionLayout from '@/components/layout/SectionLayout.vue'
             data encompassing a wide range of modifications, technologies, and species.
           </span>
         </div>
-        <div class="col-12 md:col-4 mb-4 px-5">
-          <span class="p-3 shadow-2 mb-3 inline-block surface-card" style="border-radius: 10px">
+        <div class="mb-4 px-5">
+          <span class="p-3 shadow-2 mb-3 inline-block rounded-xl">
             <i class="pi pi-chart-bar text-4xl text-primary-500 dark:text-secondary-500"></i>
           </span>
           <div class="text-900 text-xl mb-3 font-medium dark:text-white/80">Tools</div>
@@ -48,8 +48,8 @@ import SectionLayout from '@/components/layout/SectionLayout.vue'
             Search and compare modifications across datasets. Annotation, interactome.
           </span>
         </div>
-        <div class="col-12 md:col-4 mb-4 px-5">
-          <span class="p-3 shadow-2 mb-3 inline-block surface-card" style="border-radius: 10px">
+        <div class="mb-4 px-5">
+          <span class="p-3 shadow-2 mb-3 inline-block rounded-xl">
             <i class="pi pi-users text-4xl text-primary-500 dark:text-secondary-500"></i>
           </span>
           <div class="text-900 text-xl mb-3 font-medium dark:text-white/80">Access</div>
@@ -58,8 +58,8 @@ import SectionLayout from '@/components/layout/SectionLayout.vue'
             management and data upload.</span
           >
         </div>
-        <div class="col-12 md:col-4 mb-4 px-5">
-          <span class="p-3 shadow-2 mb-3 inline-block surface-card" style="border-radius: 10px">
+        <div class="mb-4 px-5">
+          <span class="p-3 shadow-2 mb-3 inline-block rounded-xl">
             <i class="pi pi-comments text-4xl text-primary-500 dark:text-secondary-500"></i>
           </span>
           <div class="text-900 text-xl mb-3 font-medium dark:text-white/80">Support</div>
@@ -81,8 +81,8 @@ import SectionLayout from '@/components/layout/SectionLayout.vue'
             with your feedback, request, or questions.
           </span>
         </div>
-        <div class="col-12 md:col-4 md:mb-4 mb-0 px-3">
-          <span class="p-3 shadow-2 mb-3 inline-block surface-card" style="border-radius: 10px">
+        <div class="mb-4 px-5">
+          <span class="p-3 shadow-2 mb-3 inline-block rounded-xl">
             <i class="pi pi-list text-4xl text-primary-500 dark:text-secondary-500"></i>
           </span>
           <div class="text-900 text-xl mb-3 font-medium dark:text-white/80">More...</div>

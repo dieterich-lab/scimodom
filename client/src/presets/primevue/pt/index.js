@@ -6,7 +6,6 @@ import cascadeselect from './cascadeselect'
 import datatable from './datatable'
 import dialog from './dialog'
 import divider from './divider'
-import dropdown from './dropdown'
 import fileupload from './fileupload'
 import inputmask from './inputmask'
 import inputnumber from './inputnumber'
@@ -20,6 +19,7 @@ import progressbar from './progressbar'
 import progressspinner from './progressspinner'
 import radiobutton from './radiobutton'
 import ripple from './ripple'
+import select from './select'
 import selectbutton from './selectbutton'
 import stepper from './stepper'
 import tabview from './tabview'
@@ -42,7 +42,6 @@ export default {
   datatable,
   dialog,
   divider,
-  dropdown,
   fileupload,
   inputmask,
   inputnumber,
@@ -55,6 +54,7 @@ export default {
   progressbar,
   progressspinner,
   radiobutton,
+  select,
   selectbutton,
   stepper,
   tabview,

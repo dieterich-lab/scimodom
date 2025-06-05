@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import Dropdown from 'primevue/dropdown'
+import Select from 'primevue/select'
 import { type ModificationType, modificationTypeSelectionCache } from '@/services/selection'
 import { type CascadeItem, getOptionsForPrimvueCascadeSelect } from '@/utils/primevue'
 
@@ -28,7 +28,7 @@ onMounted(async () => {
 })
 </script>
 <template>
-  <Dropdown
+  <Select
     @change="$emit('change', $event.value)"
     v-model="model"
     :options="options"

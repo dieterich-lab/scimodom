@@ -2,7 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { type Modomics, modomicsCache } from '@/services/modomics'
 import { GENERIC_FIELD_DEFAULTS, type GenericFieldProps } from '@/utils/ui_style'
-import Dropdown, { type DropdownChangeEvent } from 'primevue/dropdown'
+import Select, { type SelectChangeEvent } from 'primevue/select'
 
 const props = withDefaults(defineProps<GenericFieldProps>(), GENERIC_FIELD_DEFAULTS)
 
@@ -20,12 +20,12 @@ onMounted(() => {
   })
 })
 
-function change(event: DropdownChangeEvent) {
+function change(event: SelectChangeEvent) {
   emit('change', event.value)
 }
 </script>
 <template>
-  <Dropdown
+  <Select
     v-model="model"
     :id="id"
     :options="options"

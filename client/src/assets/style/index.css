@@ -1,71 +1,63 @@
-@layer tailwind-base, tailwind-utilities;
+@import 'tailwindcss';
 
-@layer tailwind-base {
-  @tailwind base;
-  @layer base {
-    :root {
-      /* preset primary color */
-      --primary-50: 229 245 234; /* #e5f5ea */
-      --primary-100: 192 231 202; /* #c0e7ca */
-      --primary-200: 151 215 169; /* #97d7a9 */
-      --primary-300: 106 200 134; /* #6ac886 */
-      --primary-400: 67 188 108; /* #43bc6c */
-      --primary-500: 0 176 82; /* #00b052 RMap green */
-      --primary-600: 0 161 73; /* #00a149 */
-      --primary-700: 0 143 61; /* #008f3d */
-      --primary-800: 0 126 50; /* #007e32 */
-      --primary-900: 0 95 29; /* #005f1d */
-      --primary-950: 0 70 20; /* #004716 */
-      /* preset secondary color */
-      --secondary-50: 232 248 255; /* #e8f8ff */
-      --secondary-100: 224 244 253; /* #e0f4fd */
-      --secondary-200: 175 226 248; /* #afe2f8 */
-      --secondary-300: 122 207 244; /* #7acff4 */
-      --secondary-400: 67 188 239; /* #43bcef */
-      --secondary-500: 2 174 237; /* #02aeed RMaP blue */
-      --secondary-600: 0 160 234; /* #00a0ea */
-      --secondary-700: 0 147 219; /* #0093db */
-      --secondary-800: 0 128 200; /* #0080c8 */
-      --secondary-900: 0 111 180; /* #006fb4 */
-      --secondary-950: 0 81 147; /* #005093 */
-      /* preset surface */
-      --surface-0: 255 255 255;
-      --surface-50: 248 250 252;
-      --surface-100: 241 245 249;
-      --surface-200: 226 232 240;
-      --surface-300: 203 213 225;
-      --surface-400: 148 163 184;
-      --surface-500: 100 116 139;
-      --surface-600: 71 85 105;
-      --surface-700: 45 55 72;
-      --surface-800: 30 41 59;
-      --surface-900: 15 23 42;
-      --surface-950: 3 6 23;
-      /* gradient RMaP  */
-      --gradient-green-1: 114 191 132; /* #72bf84 */
-      --gradient-green-2: 94 156 108; /* #5e9c6c */
-      --gradient-green-3: 73 122 84; /* #497a54 */
-      --gradient-green-4: 42 69 48; /* #2a4530 */
-      --gradient-blue-1: 139 201 242; /* #8bc9f2 */
-      --gradient-blue-2: 90 167 231; /* #5aa7e7 */
-      --gradient-blue-3: 36 135 219; /* #2487db */
-      --gradient-blue-4: 0 81 158; /* #00519e */
-    }
-    @font-face {
-      font-family: 'ham';
-      font-weight: 400;
-      font-style: normal;
-      font-display: auto;
-      unicode-range: U+000-5FF;
-      src:
-        local('ham'),
-        url('@/assets/fonts/ham.woff') format('woff');
-    }
-  }
+@font-face {
+  font-family: 'ham';
+  font-weight: 400;
+  font-style: normal;
+  font-display: auto;
+  unicode-range: U+000-5FF;
+  src:
+    local('ham'),
+    url('@/assets/fonts/ham.woff') format('woff');
 }
 
-@layer tailwind-utilities {
-  @tailwind components;
-  @tailwind utilities;
-  @tailwind variants;
+@theme {
+  /* preset primary color */
+  --color-primary-50: rgb(229, 245, 234); /* #e5f5ea */
+  --color-primary-100: rgb(192, 231, 202); /* #c0e7ca */
+  --color-primary-200: rgb(151, 215, 169); /* #97d7a9 */
+  --color-primary-300: rgb(106, 200, 134); /* #6ac886 */
+  --color-primary-400: rgb(67, 188, 108); /* #43bc6c */
+  --color-primary-500: rgb(0, 176, 82); /* #00b052 RMap green */
+  --color-primary-600: rgb(0, 161, 73); /* #00a149 */
+  --color-primary-700: rgb(0, 143, 61); /* #008f3d */
+  --color-primary-800: rgb(0, 126, 50); /* #007e32 */
+  --color-primary-900: rgb(0, 95, 29); /* #005f1d */
+  --color-primary-950: rgb(0, 70, 20); /* #004716 */
+  /* preset secondary color */
+  --color-secondary-50: rgb(232, 248, 255); /* #e8f8ff */
+  --color-secondary-100: rgb(224, 244, 253); /* #e0f4fd */
+  --color-secondary-200: rgb(175, 226, 248); /* #afe2f8 */
+  --color-secondary-300: rgb(122, 207, 244); /* #7acff4 */
+  --color-secondary-400: rgb(67, 188, 239); /* #43bcef */
+  --color-secondary-500: rgb(2, 174, 237); /* #02aeed RMaP blue */
+  --color-secondary-600: rgb(0, 160, 234); /* #00a0ea */
+  --color-secondary-700: rgb(0, 147, 219); /* #0093db */
+  --color-secondary-800: rgb(0, 128, 200); /* #0080c8 */
+  --color-secondary-900: rgb(0, 111, 180); /* #006fb4 */
+  --color-secondary-950: rgb(0, 81, 147); /* #005093 */
+  /* preset surface */
+  --color-surface-0: rgb(255, 255, 255);
+  --color-surface-50: rgb(248, 250, 252);
+  --color-surface-100: rgb(241, 245, 249);
+  --color-surface-200: rgb(226, 232, 240);
+  --color-surface-300: rgb(203, 213, 225);
+  --color-surface-400: rgb(148, 163, 184);
+  --color-surface-500: rgb(100, 116, 139);
+  --color-surface-600: rgb(71, 85, 105);
+  --color-surface-700: rgb(45, 55, 72);
+  --color-surface-800: rgb(30, 41, 59);
+  --color-surface-900: rgb(15, 23, 42);
+  --color-surface-950: rgb(3, 6, 23);
+  /* gradient RMaP  */
+  --color-gradient-green-1: rgb(114, 191, 132); /* #72bf84 */
+  --color-gradient-green-2: rgb(94, 156, 108); /* #5e9c6c */
+  --color-gradient-green-3: rgb(73, 122, 84); /* #497a54 */
+  --color-gradient-green-4: rgb(42, 69, 48); /* #2a4530 */
+  --color-gradient-blue-1: rgb(139, 201, 242); /* #8bc9f2 */
+  --color-gradient-blue-2: rgb(90, 167, 231); /* #5aa7e7 */
+  --color-gradient-blue-3: rgb(36, 135, 219); /* #2487db */
+  --color-gradient-blue-4: rgb(0, 81, 158); /* #00519e */
+  /* fonts */
+  --font-ham: ham;
 }

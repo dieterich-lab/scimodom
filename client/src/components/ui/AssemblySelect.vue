@@ -3,7 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { useDialogState } from '@/stores/DialogState'
 import { type Assembly, getAssembliesByTaxaId } from '@/services/assembly'
 import { type GenericFieldProps, GENERIC_FIELD_DEFAULTS } from '@/utils/ui_style'
-import Dropdown, { type DropdownChangeEvent } from 'primevue/dropdown'
+import Select, { type SelectChangeEvent } from 'primevue/select'
 import { trashRequestErrors } from '@/services/API'
 
 interface Props extends GenericFieldProps {
@@ -42,12 +42,12 @@ watch(
   { immediate: true }
 )
 
-function change(event: DropdownChangeEvent) {
+function change(event: SelectChangeEvent) {
   emit('change', event.value)
 }
 </script>
 <template>
-  <Dropdown
+  <Select
     v-model="model"
     :id="id"
     :options="options"

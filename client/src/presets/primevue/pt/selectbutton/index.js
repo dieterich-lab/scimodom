@@ -2,50 +2,46 @@ export default {
   root: ({ props }) => ({
     class: [
       'shadow-sm',
-      { 'opacity-60 select-none pointer-events-none cursor-default': props.disabled }
+      props.disabled ? 'opacity-60 select-none pointer-events-none cursor-default' : ''
     ]
   }),
-  button: ({ context }) => ({
-    class: [
-      'relative',
-      // Font
-      'text-sm',
-      'leading-none',
-
-      // Flex Alignment
-      'inline-flex items-center align-bottom text-center',
-
-      // Spacing
-      'px-2.5 py-1.5',
-
-      // Shape
-      'ring-1 ring-secondary-500 dark:ring-secondary-400',
-      'first:rounded-l-md first:rounded-tr-none first:rounded-br-none',
-      'last:rounded-tl-none last:rounded-bl-none last:rounded-r-md ',
-
-      // Color
-      {
-        'bg-surface-0 dark:bg-surface-800': !context.active,
-        'border-secondary-500 dark:border-secondary-400': !context.active,
-        'text-secondary-500 dark:text-secondary-400': !context.active,
-        'bg-secondary-500 dark:bg-secondary-400': context.active,
-        'text-white dark:text-surface-900': context.active
-      },
-
-      // States
-      'focus:outline-none focus:outline-offset-0 focus:ring-secondary-500 dark:focus:ring-secondary-400 focus:z-10',
-      { 'opacity-60 select-none pointer-events-none cursor-default': context.disabled },
-
-      // Transition
-      'transition duration-200',
-
-      // Misc
-      'cursor-pointer select-none overflow-hidden'
-    ]
-  }),
-  label: {
-    class: 'font-semibold'
-  }
+  pcToggleButton: ({ props }) => ({
+    content: {
+      class: [
+        // 'relative',
+        // // Font
+        // 'text-sm',
+        // 'leading-none',
+        // // Flex Alignment
+        // 'inline-flex items-center align-bottom text-center',
+        // // Spacing
+        // 'px-2.5 py-1.5',
+        // // Shape
+        // 'ring-1 ring-secondary-500 dark:ring-secondary-400',
+        // 'first:rounded-l-md first:rounded-tr-none first:rounded-br-none',
+        // 'last:rounded-tl-none last:rounded-bl-none last:rounded-r-md ',
+        // Color
+        // {
+        //   'bg-red-500 dark:bg-secondary-400 text-white dark:text-surface-900': props.modelValue,
+        //   'bg-surface-0 dark:bg-surface-800 border-secondary-500 dark:border-secondary-400 text-secondary-500 dark:text-secondary-400':
+        //     !props.modelValue
+        // },
+        props.modelValue
+          ? 'bg-secondary-500 dark:bg-secondary-400 text-white dark:text-surface-900'
+          : 'bg-surface-0 dark:bg-surface-800 border-secondary-500 dark:border-secondary-400 text-secondary-500 dark:text-secondary-400'
+        // States
+        // 'focus:outline-none focus:outline-offset-0 focus:ring-secondary-500 dark:focus:ring-secondary-400 focus:z-10',
+        // props.disabled ? 'opacity-60 select-none pointer-events-none cursor-default' : '',
+        // // Transition
+        // 'transition duration-200',
+        // // Misc
+        // 'cursor-pointer select-none overflow-hidden'
+      ]
+    },
+    label: {
+      class: 'font-semibold'
+    }
+  })
 }
 
 // export default {

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import Dropdown from 'primevue/dropdown'
+import Select from 'primevue/select'
 import { useDialogState } from '@/stores/DialogState'
 import { type Chrom, getChromsByTaxaId } from '@/services/chrom'
-import type { DropdownChangeEvent } from 'primevue/dropdown'
+import type { SelectChangeEvent } from 'primevue/select'
 import { trashRequestErrors } from '@/services/API'
 
 const props = withDefaults(
@@ -26,7 +26,7 @@ const dialogState = useDialogState()
 const model = defineModel<Chrom>()
 const chroms = ref<Chrom[]>([])
 
-function change(e: DropdownChangeEvent) {
+function change(e: SelectChangeEvent) {
   emit('change', e.value)
 }
 
@@ -47,7 +47,7 @@ watch(
 )
 </script>
 <template>
-  <Dropdown
+  <Select
     @change="change"
     v-model="model"
     :options="chroms"

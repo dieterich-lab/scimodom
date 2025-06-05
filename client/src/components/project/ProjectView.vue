@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 import Divider from 'primevue/divider'
 import Stepper from 'primevue/stepper'
-import StepperPanel from 'primevue/stepperpanel'
+import StepPanels from 'primevue/steppanels'
 
 import ProjectInfoTab, { type ProjectInfoTabModel } from '@/components/project/ProjectInfoTab.vue'
 import ProjectMetaDataTab, {
@@ -55,7 +55,7 @@ const accessToken = useAccessToken()
         </p>
         <Stepper v-model:activeStep="active">
           <!-- ProjectForm  -->
-          <StepperPanel>
+          <StepPanels>
             <template #header="{ index }">
               <span
                 :class="[
@@ -73,9 +73,9 @@ const accessToken = useAccessToken()
             <template #content="{ nextCallback }">
               <ProjectInfoTab :nextCallback="nextCallback" v-model="projectInfoData" />
             </template>
-          </StepperPanel>
+          </StepPanels>
           <!-- ProjectMetadata  -->
-          <StepperPanel>
+          <StepPanels>
             <template #header="{ index }">
               <span
                 :class="[
@@ -97,9 +97,9 @@ const accessToken = useAccessToken()
                 v-model="projectMetaData"
               />
             </template>
-          </StepperPanel>
+          </StepPanels>
           <!-- Submission  -->
-          <StepperPanel>
+          <StepPanels>
             <template #header="{ index }">
               <span
                 :class="[
@@ -117,7 +117,7 @@ const accessToken = useAccessToken()
             <template #content>
               <ProjectSubmissionTab :data="projectData" />
             </template>
-          </StepperPanel>
+          </StepPanels>
         </Stepper>
       </SectionLayout>
     </div>

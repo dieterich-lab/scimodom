@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import Dropdown from 'primevue/dropdown'
+import Select from 'primevue/select'
 import { onMounted, ref } from 'vue'
 import DatasetItem from '@/components/ui/DatasetItem.vue'
 import {
@@ -45,7 +45,7 @@ onMounted(() => {
 })
 </script>
 <template>
-  <Dropdown
+  <Select
     v-model="model"
     :options="datasets"
     filter
@@ -65,5 +65,5 @@ onMounted(() => {
     <template #option="slotProps">
       <DatasetItem :dataset="slotProps.option" />
     </template>
-  </Dropdown>
+  </Select>
 </template>

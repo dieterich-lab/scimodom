@@ -22,6 +22,7 @@ function getClasses(): string | undefined {
 </template>
 
 <style scoped>
+@import '../../assets/style/index.css';
 .section {
   @apply p-[calc(2%+25px)] relative w-full flex-1 bg-transparent dark:bg-surface-900;
 }
