@@ -220,7 +220,7 @@ def test_annotate_data_using_ensembl(tmp_path):
 )
 def test_get_fasta(datafiles, strand, base, tmp_path):
     record = [
-        Bed6Record(chrom="1", start=386, end=387, name="m5C", score=0, strand=strand)
+        Bed6Record(chrom="1", start=386, end=387, name="m5C", score=1, strand=strand)
     ]
     expected_fasta_lines = [f">1:386-387({strand.value})", base]
     bedtools_service = _get_bedtools_service(tmp_path)

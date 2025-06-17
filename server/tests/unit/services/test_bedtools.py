@@ -81,7 +81,7 @@ def test_get_bed6_record_to_bedtool():
                 start=1031,
                 end=1032,
                 name="Y",
-                score=0,
+                score=1,
                 strand=Strand.REVERSE,
             ),
         ]
@@ -90,7 +90,7 @@ def test_get_bed6_record_to_bedtool():
     # All features have chrom, start, stop, name, score, and strand attributes.
     # Note that start and stop are integers, while everything else (including score) is a string.
     # https://daler.github.io/pybedtools/intervals.html
-    expected_records = [(1031, "0", "-"), (1043431, "190", "+")]
+    expected_records = [(1031, "1", "-"), (1043431, "190", "+")]
     for record, expected_record in zip(bedtool, expected_records):
         assert record.chrom == "1"
         assert record.start == expected_record[0]
@@ -117,11 +117,11 @@ def test_get_comparison_record_to_bedtool():
                 start=1031,
                 end=1032,
                 name="Y",
-                score=0,
+                score=1,
                 strand=Strand.FORWARD,
                 eufid="iMuwPsi24Yka",
                 coverage=57,
-                frequency=1,
+                frequency=10,
             ),
         ]
     )
@@ -129,7 +129,7 @@ def test_get_comparison_record_to_bedtool():
     # All features have chrom, start, stop, name, score, and strand attributes.
     # Note that start and stop are integers, while everything else (including score) is a string.
     # https://daler.github.io/pybedtools/intervals.html
-    expected_records = [(1031, "0", "1"), (1043431, "190", "19")]
+    expected_records = [(1031, "1", "10"), (1043431, "190", "19")]
     for record, expected_record in zip(bedtool, expected_records):
         assert record.chrom == "1"
         assert record.start == expected_record[0]
@@ -153,7 +153,7 @@ def test_create_temp_file_from_records(bedtools_service):
         assert fp.read() == EXPECTED_BED_FILE
 
 
-EXPECTED_EUF_FILE = """1\t0\t1\tname\t0\t.\t0\t1\t0,0,0\t10\t5
+EXPECTED_EUF_FILE = """1\t0\t1\tname\t1\t.\t0\t1\t0,0,0\t10\t5.5
 """
 
 
@@ -165,13 +165,13 @@ def test_create_temp_euf_file(bedtools_service):
                 start=0,
                 end=1,
                 name="name",
-                score=0,
+                score=1,
                 strand=".",
                 thick_start=0,
                 thick_end=1,
                 item_rgb="0,0,0",
                 coverage=10,
-                frequency=5,
+                frequency=5.5,
             ),
         ]
     )

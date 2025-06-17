@@ -41,14 +41,14 @@ import img2 from '@/assets/images/docs/about2.png'
     </p>
     <p class="indent-4 text-lg leading-relaxed mt-2 mb-2">
       Query RNA modification sites according to RNA type, species, technology, and genomic features
-      (<span class="italic">Search</span>). Modifications are identifed using their
+      (<span class="italic">Search</span>). Modifications are identified using their
       <a
         href="https://genesilico.pl/modomics/"
         class="text-primary-500 hover:text-secondary-500"
         rel="noopener noreferrer"
         target="_blank"
       >
-        Modomics
+        MODOMICS
       </a>
       short name. The classification of detection technologies is based on the underlying assay,
       <span class="italic">e.g.</span>

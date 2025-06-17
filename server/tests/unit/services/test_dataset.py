@@ -87,7 +87,7 @@ class MockValidatorService:
         kwargs = {**kwargs, "taxa_id": 9606}
         self._context = _DatasetImportContext(**kwargs)
         self._context.selection_ids = [1]
-        self._context.modification_names = {"m6A": 1}
+        self._context.modification_names = {"m6A": {"short_name": "m6A", "id": 1}}
 
         read_header = {}
         for header_tag, internal_name in EUF_HEADERS.items():
@@ -111,9 +111,10 @@ def _get_dataset_service(session):
     )
 
 
-GOOD_EUF_FILE = """#fileformat=bedRModv1.8
+GOOD_EUF_FILE = """#fileformat=bedRModvXX
 #organism=9606
 #modification_type=RNA
+#modification_names=m6A:m6A:A
 #assembly=GRCh38
 #annotation_source=Annotation
 #annotation_version=Version

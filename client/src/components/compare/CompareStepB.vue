@@ -97,7 +97,7 @@ watch(
       <InputText
         v-model="uploadedFileName"
         :disabled="true"
-        placeholder="filename.bed or filename.bedrmod"
+        placeholder="filename.bed, filename.bedrmod or filename.bedmethyl"
         class="col-span-2 w-full"
       >
         Dataset file
@@ -107,7 +107,7 @@ watch(
           mode="basic"
           customUpload
           @uploader="uploader"
-          accept="text/plain,.bed,.bedrmod"
+          accept="text/plain,.bed,.bed6,.bedrmod,.bedmethyl"
           :auto="true"
           chooseLabel="Select a file"
           class="w-[8rem]"

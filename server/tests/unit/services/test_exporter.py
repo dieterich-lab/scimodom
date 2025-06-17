@@ -12,9 +12,10 @@ def test_exporter(Session, dataset):  # noqa
 
     assert (
         content
-        == """#fileformat=bedRModv1.8
+        == """#fileformat=bedRModv2
 #organism=9606
 #modification_type=RNA
+#modification_names=m5C:m5C:C,m6A:m6A:A
 #assembly=GRCh38
 #annotation_source=Ensembl
 #annotation_version=110
@@ -23,9 +24,9 @@ def test_exporter(Session, dataset):  # noqa
 #bioinformatics_workflow=wf1
 #experiment=experiment 1
 #external_source=ext. source 1
-#internal_source=EUFID:dataset_id01 SMID:12345678
+#source=EUFID:dataset_id01,SMID:12345678
 #chrom\tchromStart\tchromEnd\tname\tscore\tstrand\tthickStart\tthickEnd\titemRgb\tcoverage\tfrequency
-17\t100001\t100002\tm6A\t1000\t+\t100001\t100002\t128,128,0\t43\t100
-Y\t200001\t200002\tm5C\t900\t-\t200001\t200002\t0,0,128\t44\t99
+17\t100001\t100002\tm6A\t1000\t+\t100001\t100002\t128,128,0\t43\t100.00
+Y\t200001\t200002\tm5C\t900\t-\t200001\t200002\t0,0,128\t44\t99.00
 """
     )

@@ -174,7 +174,7 @@ function selectTechnology(data: Technology) {
         <FormTempFileUploader
           v-model:file-id="file_id"
           label="Dataset file"
-          accept="text/plain,.bed,.bedrmod"
+          accept="text/plain,.bed,.bedrmod,.bedmethyl"
           :error="errors.file_id"
           :maxFileSize="MAX_UPLOAD_SIZE"
         />
