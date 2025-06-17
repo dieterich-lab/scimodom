@@ -73,7 +73,7 @@
         rel="noopener noreferrer"
         target="_blank"
       >
-        Modomics </a
+        MODOMICS </a
       >.
     </p>
     <p class="indent-4 text-lg underline underline-offset-8 decoration-gb-4/25 font-semibold">

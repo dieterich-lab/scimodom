@@ -1,21 +1,22 @@
+from decimal import Decimal
 from typing import Annotated, Optional, Self
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, NonNegativeInt, PositiveInt, Field, model_validator
 
 from scimodom.utils.specs.enums import Strand
 
-NonNegativInt = Annotated[int, Field(ge=0)]
-Score = Annotated[int, Field(ge=0, le=1000)]
-PositivePercentInt = Annotated[int, Field(gt=0, le=100)]
+# sqlalchemy.Numeric(precision=5, scale=2, asdecimal=True)
+NonNegativePercent = Annotated[Decimal, Field(ge=0, le=100)]
+
 DatasetId = Annotated[str, Field(min_length=12, max_length=12)]
 
 
 class Bed6Record(BaseModel):
     chrom: Annotated[str, Field(min_length=1, max_length=128)]
-    start: NonNegativInt
-    end: NonNegativInt
+    start: NonNegativeInt
+    end: NonNegativeInt
     name: Annotated[str, Field(min_length=1, max_length=128)]
-    score: Score
+    score: PositiveInt
     strand: Strand
 
     @model_validator(mode="after")
@@ -28,11 +29,11 @@ class Bed6Record(BaseModel):
 
 
 class EufRecord(Bed6Record):
-    thick_start: NonNegativInt
-    thick_end: NonNegativInt
+    thick_start: NonNegativeInt
+    thick_end: NonNegativeInt
     item_rgb: str
-    coverage: NonNegativInt
-    frequency: PositivePercentInt
+    coverage: PositiveInt
+    frequency: NonNegativePercent
 
     @model_validator(mode="after")
     def check_thick_start_end(self) -> Self:
@@ -44,8 +45,8 @@ class EufRecord(Bed6Record):
 
 
 class ComparisonRecord(Bed6Record):
-    coverage: NonNegativInt
-    frequency: PositivePercentInt
+    coverage: PositiveInt
+    frequency: NonNegativePercent
     eufid: DatasetId
 
 
@@ -66,12 +67,12 @@ class ClosestRecord(BaseModel):
 
 class GenomicAnnotationRecord(BaseModel):
     id: Annotated[str, Field(min_length=1, max_length=128)]
-    annotation_id: NonNegativInt
+    annotation_id: NonNegativeInt
     name: Optional[Annotated[str, Field(min_length=1, max_length=128)]] = None
     biotype: Optional[Annotated[str, Field(min_length=1, max_length=255)]] = None
 
 
 class DataAnnotationRecord(BaseModel):
     gene_id: Annotated[str, Field(min_length=1, max_length=128)]
-    data_id: NonNegativInt
+    data_id: NonNegativeInt
     feature: Annotated[str, Field(min_length=1, max_length=32)]

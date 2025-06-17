@@ -20,18 +20,18 @@ EufFields = namedtuple("EufFields", "start end coverage frequency")
 @pytest.mark.parametrize(
     "fields",
     [
-        Bed6Fields(1, 1, 2, "m6A", 0, Strand.FORWARD),
-        Bed6Fields("1", 2, 1, "m6A", 0, Strand.FORWARD),
-        Bed6Fields("1", -1, 2, "m6A", 0, Strand.FORWARD),
+        Bed6Fields(1, 1, 2, "m6A", 1, Strand.FORWARD),
+        Bed6Fields("1", 2, 1, "m6A", 1, Strand.FORWARD),
+        Bed6Fields("1", -1, 2, "m6A", 1, Strand.FORWARD),
         Bed6Fields(
             "1",
             1,
             2,
             "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-            0,
+            1,
             Strand.FORWARD,
         ),
-        Bed6Fields("1", 1, 2, "m6A", 1001, Strand.FORWARD),
+        Bed6Fields("1", 1, 2, "m6A", 0, Strand.FORWARD),
         Bed6Fields("1", 1, 2, "m6A", 1000, "s"),
     ],
 )
@@ -50,11 +50,10 @@ def test_bed6_record(fields):
 @pytest.mark.parametrize(
     "fields",
     [
-        EufFields(-1, 2, 0, 100),
-        EufFields(2, 1, 0, 100),
+        EufFields(-1, 2, 10, 100),
+        EufFields(2, 1, 10, 100),
         EufFields(1, 2, 0.5, 100),
-        EufFields(1, 2, 0, 0.5),
-        EufFields(1, 2, 0, 500),
+        EufFields(1, 2, 10, 500),
     ],
 )
 def test_euf_record(fields):
@@ -64,7 +63,7 @@ def test_euf_record(fields):
             start=1,
             end=100,
             name="m6A",
-            score=0,
+            score=1,
             strand="+",
             thick_start=fields.start,
             thick_end=fields.end,
@@ -81,10 +80,10 @@ def test_comparison_record():
             start=10,
             end=20,
             name="m6A",
-            score=0,
+            score=10,
             strand=Strand.FORWARD,
             eufid="X",
-            coverage=0,
+            coverage=10,
             frequency=100,
         )
 

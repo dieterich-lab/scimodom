@@ -1,6 +1,7 @@
-#fileformat=bedRModv1.8
+#fileformat=bedRModv2
 #organism=9606
 #modification_type=RNA
+#modification_names=m6A:m6A:A,m:m5C:C
 #assembly=GRCh38
 #annotation_source=Annotation source
 #annotation_version=Annotation version
@@ -13,5 +14,5 @@
 1	65420	65421	m6A	1	+	65420	65421	0,0,0	1	1
 1	65565	65566	m6A	2	+	65565	65566	0,0,0	2	2
 1	71500	71501	m6A	3	+	71500	71501	0,0,0	3	3
-1	65580	65581	m5C	4	+	65580	65581	0,0,0	4	4
+1	65580	65581	m	4	+	65580	65581	0,0,0	4	4
 1	0	1	m6A	5	+	0	1	0,0,0	5	5

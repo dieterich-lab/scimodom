@@ -66,9 +66,10 @@ FEATURES = {
 }
 
 EUF_FILE = """
-#fileformat=bedRModv1.8
+#fileformat=bedRModv2
 #organism=9606
 #modification_type=RNA
+#modification_names=a:m6A:A
 #assembly=GRCh38
 #annotation_source=Annotation
 #annotation_version=Version
@@ -78,11 +79,11 @@ EUF_FILE = """
 #experiment=Description of experiment for integration test.
 #external_source=
 #chrom\tchromstart\tchromEnd\tname\tscore\tstrand\tthickstart\tthickEnd\titermRgb\tcoverage\tfrequency
-1\t65420\t65421\tm6A\t1\t+\t65420\t65421\t0,0,0\t1\t1
-1\t65565\t65566\tm6A\t2\t+\t65565\t65566\t0,0,0\t2\t2
-1\t71500\t71501\tm6A\t3\t+\t71500\t71501\t0,0,0\t3\t3
-1\t65580\t65581\tm6A\t4\t+\t65580\t65581\t0,0,0\t4\t4
-1\t0\t1\tm6A\t5\t+\t0\t1\t0,0,0\t5\t5
+1\t65420\t65421\ta\t1\t+\t65420\t65421\t0,0,0\t1\t1
+1\t65565\t65566\ta\t2\t+\t65565\t65566\t0,0,0\t2\t2
+1\t71500\t71501\ta\t3\t+\t71500\t71501\t0,0,0\t3\t3
+1\t65580\t65581\ta\t4\t+\t65580\t65581\t0,0,0\t4\t4
+1\t0\t1\ta\t5\t+\t0\t1\t0,0,0\t5\t5
 """
 
 

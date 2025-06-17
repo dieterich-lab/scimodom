@@ -53,7 +53,7 @@ const COLUMNS = [
     header: 'Score',
     exportHeader: 'score_ref',
     sortable: true,
-    tooltip: '-log10(p) or 0 if undefined'
+    tooltip: 'Valid coverage'
   },
   { field: 'a.strand', header: 'Strand', exportHeader: 'strand_ref', sortable: false, tooltip: '' },
   {
@@ -67,8 +67,7 @@ const COLUMNS = [
     field: 'a.coverage',
     header: 'Coverage',
     exportHeader: 'coverage_ref',
-    sortable: true,
-    tooltip: '0 if not available'
+    sortable: true
   },
   {
     field: 'a.frequency',
@@ -92,7 +91,7 @@ const COLUMNS = [
     header: 'Score',
     exportHeader: 'score',
     sortable: true,
-    tooltip: '-log10(p) or 0 if undefined'
+    tooltip: 'Valid coverage'
   },
   { field: 'b.strand', header: 'Strand', exportHeader: 'strand', sortable: false, tooltip: '' },
   {
@@ -107,7 +106,7 @@ const COLUMNS = [
     header: 'Coverage',
     exportHeader: 'coverage',
     sortable: true,
-    tooltip: '0 if not available'
+    tooltip: 'Coverage or 1 for BED6'
   },
   {
     field: 'b.frequency',
@@ -163,11 +162,13 @@ async function loadData(
   switch (operation) {
     case ComparisonOperation.intersect: {
       const raw = await intersect(params, dialogState)
-      return raw.map((x) => getComparisonDisplayRecord(x.a, x.b))
+      return raw.map((x) => getComparisonDisplayRecord(x.a, x.b, { isEUF: params.euf }))
     }
     case ComparisonOperation.closest: {
       const raw = await closest(params, dialogState)
-      return raw.map((x) => getComparisonDisplayRecord(x.a, x.b, x.distance))
+      return raw.map((x) =>
+        getComparisonDisplayRecord(x.a, x.b, { distance: x.distance, isEUF: params.euf })
+      )
     }
     case ComparisonOperation.subtract: {
       const raw = await subtract(params, dialogState)
