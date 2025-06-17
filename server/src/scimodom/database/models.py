@@ -1,7 +1,9 @@
 from datetime import datetime
+from decimal import Decimal
 from typing import List, Optional
 
 from sqlalchemy import (
+    Numeric,
     String,
     Text,
     DateTime,
@@ -42,6 +44,7 @@ class Modomics(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
     short_name: Mapped[str] = mapped_column(String(32), nullable=False, unique=True)
     moiety: Mapped[str] = mapped_column(String(32), nullable=False)
+    reference_nucleobase: Mapped[str] = mapped_column(String(32), nullable=False)
 
     modifications: Mapped[List["Modification"]] = relationship(
         back_populates="inst_modomics"
@@ -376,7 +379,7 @@ class Data(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     dataset_id: Mapped[str] = mapped_column(ForeignKey("dataset.id"), index=True)
-    modification_id: Mapped[str] = mapped_column(
+    modification_id: Mapped[int] = mapped_column(
         ForeignKey("modification.id"), index=True
     )
     # bedRMod fields - order must match bedRMod columns?
@@ -390,18 +393,28 @@ class Data(Base):
     thick_end: Mapped[int] = mapped_column(nullable=False)
     item_rgb: Mapped[str] = mapped_column(String(128), nullable=False)
     coverage: Mapped[int] = mapped_column(nullable=False, index=True)
-    frequency: Mapped[int] = mapped_column(nullable=False, index=True)
+    frequency: Mapped[Decimal] = mapped_column(
+        Numeric(5, 2, asdecimal=True), nullable=False, index=True
+    )
 
     __table_args__ = (
+        UniqueConstraint(
+            dataset_id,
+            modification_id,
+            chrom,
+            start,
+            end,
+            strand,
+            name="uq_data_records",
+        ),
         Index("idx_data_sort", "chrom", "start", "end"),
         CheckConstraint("start >= 0", name="start"),
         CheckConstraint("start < end", name="start_end"),
         CheckConstraint("thick_start >= 0", name="tstart"),
         CheckConstraint("thick_start < thick_end", name="tstart_end"),
-        CheckConstraint("score >= 0", name="score"),
-        CheckConstraint("score <= 1000", name="score_max"),
-        CheckConstraint("coverage >= 0", name="cov_strict"),
-        CheckConstraint("frequency > 0", name="freq_strict"),
+        CheckConstraint("score > 0", name="score_strict"),
+        CheckConstraint("coverage > 0", name="cov_strict"),
+        CheckConstraint("frequency >= 0", name="freq_min"),
         CheckConstraint("frequency <= 100", name="freq_max"),
     )
 

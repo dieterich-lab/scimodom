@@ -166,15 +166,11 @@ function onOverlay(record: Modification) {
     </Column>
     <Column field="score" :sortable="true">
       <template #header>
-        <span v-tooltip.top="'-log10(p) or 0 if undefined'">Score</span>
+        <span v-tooltip.top="'Valid coverage'">Score</span>
       </template>
     </Column>
     <Column field="strand" header="Strand"></Column>
-    <Column field="coverage" :sortable="true">
-      <template #header>
-        <span v-tooltip.top="'0 if not available'">Coverage</span>
-      </template>
-    </Column>
+    <Column field="coverage" header="Coverage" :sortable="true"></Column>
     <Column field="frequency" :sortable="true">
       <template #header>
         <span v-tooltip.top="'Modification stoichiometry'">Frequency</span>

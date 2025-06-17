@@ -206,7 +206,7 @@ class BedToolsService:
                         record.thick_end,
                         record.item_rgb,
                         record.coverage,
-                        record.frequency,
+                        str(record.frequency),
                     ]
                 )
 
@@ -625,7 +625,7 @@ class BedToolsService:
                         record.strand.value,
                         record.eufid,
                         record.coverage,
-                        record.frequency,
+                        str(record.frequency),
                     ]
                 )
 

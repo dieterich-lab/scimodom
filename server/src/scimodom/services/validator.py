@@ -2,9 +2,10 @@ from dataclasses import dataclass, field
 from functools import cache
 import logging
 import re
+import csv
 from typing import Generator
 
-from sqlalchemy import select, func, exists
+from sqlalchemy import select, func, exists, distinct
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session
 
@@ -45,7 +46,7 @@ class _ReadOnlyImportContext:
 
     is_liftover: bool = False
     seqids: list[str] = field(default_factory=list)
-    modification_names: dict[str, int] = field(default_factory=dict)
+    modification_names: dict[str, dict[str, str | int]] = field(default_factory=dict)
 
 
 @dataclass(kw_only=True)
@@ -125,6 +126,9 @@ class ValidatorService:
     """
 
     FILE_FORMAT_VERSION_REGEXP = re.compile(r".*?([0-9.]+)\Z")
+    MODIFICATION_NAMES_REGEXP = re.compile(
+        r"^([A-Za-z0-9]+):([A-Za-z0-9_\-\(\)\+,']+):([A-Za-z]+)$"
+    )
 
     def __init__(
         self,
@@ -141,6 +145,7 @@ class ValidatorService:
         self._ro_context: _ReadOnlyImportContext
         self._context: _DatasetImportContext
         self._read_header: dict[str, str]
+        self._name_map: dict[str, dict[str, str]]
 
     def create_read_only_import_context(
         self, importer: EufImporter, taxa_id: int, **kwargs
@@ -262,6 +267,12 @@ class ValidatorService:
         if record.name not in context.modification_names:
             importer.report_error(f"Unrecognized name: {record.name}.")
             return False
+        if record.thick_start != record.start or record.thick_end != record.end:
+            importer.report_error(
+                "Invalid coordinates: thickStart and thickEnd must be identical "
+                "to chromStart and chromEnd respectively."
+            )
+            return False
         return True
 
     def _sanitize_header(
@@ -286,7 +297,35 @@ class ValidatorService:
             if header_tag in EUF_REQUIRED_HEADERS and value == "":
                 raise SpecsError(f"Required header '{header_tag}' is empty.")
             read_header[internal_name] = value
+
         self._read_header = read_header
+        self._sanitize_modification_names()
+
+    def _sanitize_modification_names(self) -> None:
+        short_names = self._get_modification_names()
+        reference_bases = self._get_reference_bases()
+        reference_bases.append("T")
+        modification_names = next(
+            csv.reader(
+                [self._read_header["modification_names"]], delimiter=",", quotechar='"'
+            )
+        )
+        name_map = {}
+        for name in modification_names:
+            match = self.MODIFICATION_NAMES_REGEXP.match(name)
+            if match is None:
+                raise SpecsError("Failed to parse 'modification_names' from header.")
+            name, short_name, primary_base = match.groups()
+            if short_name not in short_names:
+                raise SpecsError(f"Unrecognized short name: {short_name}.")
+            if primary_base not in reference_bases:
+                if primary_base.upper() not in reference_bases:
+                    raise SpecsError(f"Unrecognized primary base: {primary_base}.")
+            name_map[short_name] = {
+                "name": name,
+                "primary_base": primary_base,
+            }
+        self._name_map = name_map
 
     def _sanitize_taxa_id(self, input_taxa_id: int) -> None:
         taxa_id = self._read_header["taxa_id"]
@@ -314,12 +353,13 @@ class ValidatorService:
         self._ro_context.is_liftover, self._ro_context.seqids = self._sanitize_assembly(
             self._ro_context
         )
-        modification_names = (
-            self._session.execute(select(Modomics.short_name)).scalars().all()
-        )
         # dict value (int) unused for read-only import context
         self._ro_context.modification_names = {
-            name: hash(name) for name in modification_names
+            name_map["name"]: {
+                "short_name": short_name,
+                "id": hash(short_name),
+            }
+            for short_name, name_map in self._name_map.items()
         }
 
     def _sanitize_import_context(self) -> None:
@@ -348,26 +388,36 @@ class ValidatorService:
             raise DatasetImportError("Repeated modification IDs.")
         for mid in self._context.modification_ids:
             try:
-                mname = self._modification_id_to_name(mid)
-                self._context.modification_names[mname] = mid
+                short_name = self._modification_id_to_name(mid)
+                name_map = self._name_map[short_name]
+                self._context.modification_names[name_map["name"]] = {
+                    "short_name": short_name,
+                    "id": mid,
+                }
             except NoResultFound:
                 raise DatasetImportError(f"No such modification ID: {mid}.")
+            except KeyError:
+                raise DatasetImportError(
+                    f"Expected '{short_name}' for short name; missing from 'modification_names'."
+                )
         if not self._annotation_service.check_annotation_source(
             self._context.annotation_source, self._context.modification_ids
         ):
             raise DatasetImportError("Inconsistent source!")
 
     def _sanitize_selection_ids(self) -> None:
-        """Retrieve and validate selection IDs associated with a
-        dataset. Depending on the choice of modification_id(s),
+        """Retrieve and validate selection IDs associated with a dataset.
+
+        NOTE: Depending on the choice of modification_id(s),
         organism_id, and technology_id, a selection_id may
         or may not exists in the database.
         """
-        for mname, mid in self._context.modification_names.items():
+        for _, name_map in self._context.modification_names.items():
+            short_name = name_map["short_name"]
             try:
                 selection_id = self._session.execute(
                     select(Selection.id).filter_by(
-                        modification_id=mid,
+                        modification_id=name_map["id"],
                         technology_id=self._context.technology_id,
                         organism_id=self._context.organism_id,
                     )
@@ -377,7 +427,7 @@ class ValidatorService:
                 technology = self._get_technology(self._context.technology_id)
                 organism = self._get_organism(self._context.organism_id)
                 raise SelectionNotFoundError(
-                    f"No such selection with {mname}, {technology.tech}, and "
+                    f"No such selection with {short_name}, {technology.tech}, and "
                     f"{organism.cto} ({organism.taxa_id})."
                 )
 
@@ -414,6 +464,16 @@ class ValidatorService:
             .join(Modification, Modomics.modifications)
             .where(Modification.id == idx)
         ).scalar_one()
+
+    def _get_modification_names(self) -> list[str]:
+        return self._session.execute(select(Modomics.short_name)).scalars().all()
+
+    def _get_reference_bases(self) -> list[str]:
+        return (
+            self._session.execute(select(distinct(Modomics.reference_nucleobase)))
+            .scalars()
+            .all()
+        )
 
     def _get_technology(self, idx: int) -> DetectionTechnology:
         return self._session.get_one(DetectionTechnology, idx)
@@ -462,13 +522,18 @@ class ValidatorService:
             assembly.taxa_id
         )
         logger.info(
-            f"Lifting over dataset from {assembly.name} to {current_assembly_name}..."
+            f"Lifting over from {assembly.name} to {current_assembly_name}. "
+            "Overwriting thick coordinates with new start and end values."
         )
         raw_file = self._bedtools_service.create_temp_euf_file(generator())
-        with self._assembly_service.create_lifted_file(assembly, raw_file) as fp:
-            lifted_importer = EufImporter(stream=fp, source=fp.name)
-            for lifted_record in self._do_direct_import(lifted_importer, context):
-                yield lifted_record
+        with self._assembly_service.create_lifted_file(assembly, raw_file) as fh:
+            lifted_importer = EufImporter(stream=fh, source=fh.name)
+            for lifted_record in lifted_importer.parse():
+                # CrossMap updates “chrom”, “start”, “end”, and “strand” only
+                lifted_record.thick_start = lifted_record.start
+                lifted_record.thick_end = lifted_record.end
+                if self._check_euf_record(lifted_record, lifted_importer, context):
+                    yield lifted_record
 
 
 @cache

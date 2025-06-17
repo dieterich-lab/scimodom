@@ -60,7 +60,7 @@ def test_gene_cache(Session, project, annotation):
             start=20652450,
             end=20652451,
             name="m6A",
-            score=0,
+            score=1,
             strand="-",
             thick_start=20652450,
             thick_end=20652451,

@@ -1,6 +1,7 @@
-#fileformat=bedRModv1.8
+#fileformat=bedRModv2
 #organism=9606
 #modification_type=RNA
+#modification_names=a:m6A:A
 #assembly=GRCh38
 #annotation_source=Annotation source
 #annotation_version=Annotation version
@@ -10,4 +11,4 @@
 #experiment=Description of experiment for CLI test.
 #external_source=
 #chrom	chromstart	chromEnd	name	score	strand	thickstart	thickEnd	itermRgb	coverage	frequency
-1	65420	65421	m6A	1	+	65420	65421	0,0,0	1	1
+1	65420	65421	a	1	+	65420	65421	0,0,0	1	1

@@ -77,8 +77,8 @@ import img6 from '@/assets/images/docs/management6.png'
     <Message severity="warn" :closable="false"
       >bedRMod uses a 0-based, half-open coordinate system. If you use a 1-based index, no errors
       will be reported, but all your modification sites will be
-      <span class="italic">off-by-one</span>!</Message
-    >
+      <span class="italic">off-by-one</span>!
+    </Message>
     <p class="indent-4 text-lg leading-relaxed mt-2 mb-2">
       Data must be formatted according to the latest
       <a
@@ -101,7 +101,10 @@ import img6 from '@/assets/images/docs/management6.png'
       <ul class="list-disc">
         <li>wrong format for chromosome (1st column)</li>
         <li>too many contigs/scaffolds (only chromosomes are used)</li>
-        <li>wrong modification name (4th column)</li>
+        <li>
+          wrong modification name (4th column) or mismatch between name and header
+          (modification_names)
+        </li>
         <li>
           mismatch between the modification name (4th column) and modification chosen at upload
         </li>
@@ -111,6 +114,11 @@ import img6 from '@/assets/images/docs/management6.png'
         </li>
       </ul>
     </div>
+    <p class="indent-4 text-lg leading-relaxed mt-2 mb-2">
+      If you get a general <span class="italic">HTTP status 500</span> error, it is likely that your
+      data contains duplicate records. It is your responsibility to provide a coherent and
+      well-annotated bedRMod file.
+    </p>
     <p class="indent-4 text-lg leading-relaxed mt-2 mb-2">
       If you get a <span class="italic">Liftover failed</span> error, it is likely that your data
       could not be lifted over (too many unmapped records). Since your data has by then been

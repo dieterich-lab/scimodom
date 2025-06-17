@@ -1,3 +1,10 @@
+"""
+NOTE: this mostly tests parsing of records; the importer is agnostic to
+the content of the header, and only gather key, pair values when present
+(cf. validator for header validation). The test EUF files below can have
+any header (i.e. not even satisfying the latest specs) or no header.
+"""
+
 import logging
 from io import StringIO
 
@@ -11,6 +18,7 @@ from scimodom.utils.importer.bed_importer import (
 )
 from scimodom.utils.specs.enums import Strand
 
+
 EUF_FILE = """#fileformat=bedRModv1.8
 #organism=10090
 #modification_type=RNA
@@ -23,9 +31,9 @@ EUF_FILE = """#fileformat=bedRModv1.8
 #experiment=
 #external_source=GEO;GSE123456
 #chrom\tchromStart\tchromEnd\tname\tscore\tstrand\tthickStart\tthickEnd\titemRgb\tcoverage\tfrequency
-1\t3528091\t3528092\tm6A\t1000\t+\t3457868\t3457869\t0,205,0\t31\t78
-1\t3528096\t3528097\tm6A\t1000\t+\t3457873\t3457874\t0,205,0\t6\t16
-1\t3528107\t3528108\tm6A\t1000\t+\t3457884\t3457885\t0,205,0\t5\t24
+1\t3528091\t3528092\tm6A\t1000\t+\t3528091\t3528092\t0,205,0\t31\t78
+1\t3528096\t3528097\tm6A\t1000\t+\t3528096\t3528097\t0,205,0\t6\t16
+1\t3528107\t3528108\tm6A\t1000\t+\t3528107\t3528108\t0,205,0\t5\t24
 """
 
 
@@ -43,9 +51,9 @@ def test_euf_import():
 
 
 BAD_EUF_FILE = """#chrom\tchromStart\tchromEnd\tname\tscore\tstrand\tthickStart\tthickEnd\titemRgb\tcoverage\tfrequency
-1\t3528091\t3528092\tm6A\t1000\t+\t3457868\t3457869\t0,205,0\t31
-1\t3528096\t3528097\tm6A\t1000\t*\t3457873\t3457874\t0,205,0\t6\t16
-1\t3528107\t3528108\tm6A\t1000\t+\t3457884\t3457885\t0,205,0\t5\t24
+1\t3528091\t3528092\tm6A\t1000\t+\t3528091\t3528092\t0,205,0\t31
+1\t3528096\t3528097\tm6A\t1000\t*\t3528096\t3528097\t0,205,0\t6\t16
+1\t3528107\t3528108\tm6A\t1000\t+\t3528107\t3528108\t0,205,0\t5\t24
 """
 
 

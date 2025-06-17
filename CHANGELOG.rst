@@ -7,6 +7,26 @@ The format is based on `Keep a Changelog <http://keepachangelog.com>`_, and this
 [Unreleased] - 2025-05
 """"""""""""""""""""""
 
+**Fixed**
+
+- Liftover of thick coordinates :issue:`122`
+- Add unique constraint to data records
+- OverflowError :issue:`180`
+
+**Changed**
+
+- Update to euf-specs v2 :issue:`167`, :issue:`175`
+- Database migration :issue:`167`
+- Display of missing coverage and frequency for BED6
+
+**Added**
+
+- Validation of thick coordinates for import (not in DTOs or ORM models)
+
+**Removed**
+
+- Offending datasets (Nm-Mut-seq, m7G-seq)
+
 [4.0.2] - 2025-04-30
 """"""""""""""""""""
 

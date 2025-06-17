@@ -301,7 +301,7 @@ class _CompareContext:
             bed6_importer = Bed6Importer(
                 stream=self._tmp_file_handle, source=self._upload_name
             )
-            local_context = {**local_context, "frequency": 1, "coverage": 0}
+            local_context = {**local_context, "frequency": 1, "coverage": 1}
             return bed6_importer.parse(), local_context
 
     def __exit__(self, exc_type, exc_value, traceback):

@@ -3,6 +3,7 @@ import type { EufRecord } from '@/utils/bed6'
 import type { Dataset } from '@/services/dataset'
 import type { UploadedFile } from '@/services/dataset_upload'
 import type { ComparisonParams } from '@/services/comparison'
+import { isReactive } from 'vue'
 
 interface UploadDescriptor extends UploadedFile {
   isEUF: boolean
@@ -77,6 +78,11 @@ interface ComparisonDisplayRecord {
   distance: string
 }
 
+interface ComparisonDisplayOptions {
+  distance?: number
+  isEUF?: boolean
+}
+
 const NULL_COMPARISON_RECORD: ComparisonRecordString = {
   chrom: '',
   start: '',
@@ -92,16 +98,17 @@ const NULL_COMPARISON_RECORD: ComparisonRecordString = {
 function getComparisonDisplayRecord(
   a?: EufRecord,
   b?: EufRecord,
-  distance?: number
+  options: ComparisonDisplayOptions = {}
 ): ComparisonDisplayRecord {
+  const { distance, isEUF = true } = options
   return {
-    a: recordToStrings(a),
-    b: recordToStrings(b),
+    a: recordToStrings(a, true),
+    b: recordToStrings(b, isEUF),
     distance: distance !== undefined ? `${distance}` : ''
   }
 }
 
-function recordToStrings(x?: EufRecord): ComparisonRecordString {
+function recordToStrings(x?: EufRecord, isEUF: boolean): ComparisonRecordString {
   if (x === undefined) {
     return NULL_COMPARISON_RECORD
   }
@@ -111,8 +118,8 @@ function recordToStrings(x?: EufRecord): ComparisonRecordString {
     end: `${x.end}`,
     score: `${x.score}`,
     strand: `${x.strand}`,
-    coverage: `${x.coverage}`,
-    frequency: `${x.frequency}`
+    coverage: isEUF ? `${x.coverage}` : '',
+    frequency: isEUF ? `${x.frequency}` : ''
   }
 }
 

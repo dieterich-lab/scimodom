@@ -253,13 +253,14 @@ class DatasetService:
 
     @staticmethod
     def _get_data_record(record: EufRecord, context: _DatasetImportContext):
+        modification_names = context.modification_names.get(record.name)
         return Data(
             dataset_id=context.eufid,
-            modification_id=context.modification_names.get(record.name),
+            modification_id=modification_names.get("id"),
             chrom=record.chrom,
             start=record.start,
             end=record.end,
-            name=record.name,
+            name=modification_names.get("short_name"),
             score=record.score,
             strand=record.strand,
             thick_start=record.thick_start,

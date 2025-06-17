@@ -37,11 +37,43 @@ test('getComparisonDisplayRecord full', () => {
       score: 11,
       eufid: 'abcd12345xyz'
     },
-    55
+    { distance: 55 }
   )
   expect(r.a.coverage).toBe('99')
   expect(r.b.eufid).toBe('abcd12345xyz')
+  expect(r.b.frequency).toBe('60')
   expect(r.distance).toBe('55')
+})
+
+test('getComparisonDisplayRecord bed6', () => {
+  const r = getComparisonDisplayRecord(
+    {
+      chrom: 'chrom1',
+      start: 100,
+      end: 199,
+      strand: '+',
+      name: 'name1',
+      coverage: 99,
+      frequency: 50,
+      score: 10,
+      eufid: 'abcd1234edgh'
+    },
+    {
+      chrom: 'chrom1',
+      start: 200,
+      end: 299,
+      strand: '-',
+      name: 'name1',
+      coverage: 98,
+      frequency: 60,
+      score: 11,
+      eufig: 'UPLOAD'
+    },
+    { isEUF: false }
+  )
+  expect(r.a.frequency).toBe('50')
+  expect(r.b.coverage).toBe('')
+  expect(r.b.frequency).toBe('')
 })
 
 function getDataset(index: number): Dataset {
@@ -73,7 +105,7 @@ test('getCompareParams - upload', () => {
       remainingDatasets: []
     },
     {
-      name: 'fil1.bedrmod',
+      name: 'file1.bedrmod',
       id: 'fileId1',
       isEUF: true
     },
@@ -85,7 +117,7 @@ test('getCompareParams - upload', () => {
   expect(result).toStrictEqual({
     reference: ['d1', 'd2'],
     upload: 'fileId1',
-    upload_name: 'fil1.bedrmod',
+    upload_name: 'file1.bedrmod',
     strand: false,
     euf: true,
     taxaId: 7

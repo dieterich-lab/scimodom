@@ -77,8 +77,8 @@ def _get_dummy_data_record(dataset_id, data_id):
         name="Y",
         score=1000,
         strand=Strand.FORWARD,
-        thick_start=100101,
-        thick_end=100201,
+        thick_start=100001,
+        thick_end=120000,
         item_rgb="128,128,0",
         coverage=43,
         frequency=100,
@@ -200,7 +200,7 @@ class MockBed6Importer:
     RESULT_AS_COMPARISON = [
         ComparisonRecord(
             **x.__dict__,
-            coverage=0,
+            coverage=1,
             frequency=1,
             eufid="UPLOAD".ljust(Identifiers.EUFID.length),
         )
@@ -221,12 +221,12 @@ class MockEufImporter:
         EufRecord(
             chrom="EUF",
             start=102,
-            end=303,
+            end=103,
             name="abc",
             score=11,
             strand=Strand.REVERSE,
-            thick_start=150,
-            thick_end=250,
+            thick_start=102,
+            thick_end=103,
             item_rgb="0,0,0",
             coverage=50,
             frequency=80,

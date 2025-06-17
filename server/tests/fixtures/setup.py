@@ -24,6 +24,7 @@ def setup(Session):
             name="N6-methyladenosine",
             short_name="m6A",
             moiety="nucleoside",
+            reference_nucleobase="A",
             reference_id=96,
         ),
         Modomics(
@@ -31,6 +32,7 @@ def setup(Session):
             name="5-methylcytidine",
             short_name="m5C",
             moiety="nucleoside",
+            reference_nucleobase="C",
             reference_id=18,
         ),
         Modomics(
@@ -38,6 +40,7 @@ def setup(Session):
             name="pseudouridine",
             short_name="Y",
             moiety="nucleoside",
+            reference_nucleobase="U",
             reference_id=118,
         ),
     ]

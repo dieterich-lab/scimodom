@@ -6,12 +6,13 @@ import re
 from functools import cache
 from typing import Generator
 
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session
 
 from scimodom.database.database import get_session
 from scimodom.database.models import (
+    Modomics,
     Dataset,
     Data,
     Assembly,
@@ -58,13 +59,6 @@ class Exporter:
             yield line.encode("utf-8")
 
     def _get_assembly(self, taxa_id) -> str:
-        """Retrieve the current assembly for this Taxa ID.
-
-        :param taxa_id: Taxa ID
-        :type taxa_id: int
-        :returns: Assembly name
-        :rtype: str
-        """
         return self._session.execute(
             select(Assembly.name)
             .join(AssemblyVersion, Assembly.version == AssemblyVersion.version_num)
@@ -72,13 +66,6 @@ class Exporter:
         ).scalar_one()
 
     def _get_annotation_version(self, taxa_id) -> int:
-        """Retrieve the current annotation for this Taxa ID.
-
-        :param taxa_id: Taxa ID
-        :type taxa_id: int
-        :returns: Annotation release
-        :rtype: int
-        """
         # TODO: annotation source
         return self._session.execute(
             select(Annotation.release)
@@ -88,16 +75,26 @@ class Exporter:
             .where(Annotation.taxa_id == taxa_id, Annotation.source == "ensembl")
         ).scalar_one()
 
-    def _generate_header(self, dataset: Dataset):
-        """Generate dataset header.
+    def _get_modification_names(self, dataset: Dataset) -> str:
+        short_names = self._session.scalars(
+            select(func.distinct(Data.name)).where(Data.dataset_id == dataset.id)
+        ).all()
+        parts = [
+            (
+                f"{name}:{name}:"
+                f"{self._session.scalar(select(Modomics.reference_nucleobase).where(Modomics.short_name == name))}"
+            )
+            for name in sorted(short_names)
+        ]
+        return ",".join(parts)
 
-        :param dataset: Dataset
-        :type dataset: Dataset
-        """
+    def _generate_header(self, dataset: Dataset) -> Generator[str, None, None]:
         yield f"#fileformat=bedRModv{self.VERSION}\n"  # noqa
         taxa_id = dataset.inst_organism.taxa_id
         yield f"#organism={taxa_id}\n"
         yield f"#modification_type={dataset.modification_type}\n"
+        modification_names = self._get_modification_names(dataset)
+        yield f"#modification_names={modification_names}\n"
         assembly = self._get_assembly(taxa_id)
         yield f"#assembly={assembly}\n"
         yield "#annotation_source=Ensembl\n"
@@ -108,15 +105,10 @@ class Exporter:
         yield f"#bioinformatics_workflow={_or_default(dataset.bioinformatics_workflow, '')}\n"
         yield f"#experiment={_or_default(dataset.experiment, '')}\n"
         yield f"#external_source={_or_default(dataset.external_source, '')}\n"
-        yield f"#internal_source=EUFID:{dataset.id} SMID:{dataset.project_id}\n"
+        yield f"#source=EUFID:{dataset.id},SMID:{dataset.project_id}\n"
         yield "#chrom\tchromStart\tchromEnd\tname\tscore\tstrand\tthickStart\tthickEnd\titemRgb\tcoverage\tfrequency\n"
 
     def _generate_records(self, dataset: Dataset):
-        """Generate data records.
-
-        :param dataset: Dataset
-        :type dataset: Dataset
-        """
         for data in self._session.scalars(
             select(Data).where(Data.dataset_id == dataset.id)
         ):
