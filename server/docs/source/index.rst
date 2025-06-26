@@ -10,12 +10,14 @@ Release v\ |version|.
 
 Sci-ModoM is a quantitative database of RNA modifications dedicated to novel assays that provide transcriptome-wide information at single-base resolution.
 
-This user guide is primarily intended to serve as a maintainer's documentation, but it also serves as a detailed resource for users who need in-depth information. It contains information and examples how to use the bedRMod format.
+This user guide is primarily intended to serve as a maintainer's documentation, but it also serves as a detailed resource for users who need in-depth information.
+It includes a REST API documentation with an interactive interface. It also contains information and examples how to use the bedRMod format.
 
 .. toctree::
    :maxdepth: 2
 
    scimodom
+   api
    project
    bedrmod
 

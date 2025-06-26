@@ -292,7 +292,7 @@ def test_create_lifted_file_warning(Session, file_service, setup, caplog):  # no
         assembly, "to_be_lifted.bed", unmapped_file="unmapped.bed"
     )
     assert caplog.messages == [
-        "1 records could not be mapped... Contact the system administrator if you have questions."
+        "1 records could not be mapped... Contact our support team if you have questions."
     ]
 
 

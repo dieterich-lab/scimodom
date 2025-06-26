@@ -157,7 +157,7 @@ class AssemblyService:
             lines = fp.readlines()
         return [line.split()[0] for line in lines]
 
-    def get_chroms(self, taxa_id: int) -> list[dict[str, Any]]:
+    def get_chroms(self, taxa_id: int) -> list[dict[str, str | int]]:
         """Return chrom.sizes for the latest database version.
 
         :param taxa_id: Taxonomy ID
@@ -218,7 +218,7 @@ class AssemblyService:
         if unmapped_lines > 0:
             logger.warning(
                 f"{unmapped_lines} records could not be mapped... "
-                "Contact the system administrator if you have questions."
+                "Contact our support team if you have questions."
             )
         return self._file_service.open_file_for_reading(lifted_file)
 

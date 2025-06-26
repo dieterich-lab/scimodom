@@ -5,29 +5,39 @@ from datetime import datetime, timezone
 from io import StringIO
 from typing import Iterable, TextIO
 
-from flask import Blueprint, request, Response
-from flask_cors import cross_origin
+from flask import Blueprint, Response
 from pydantic import BaseModel
 
-from scimodom.services.annotation import RNA_TYPE_TO_ANNOTATION_SOURCE_MAP
-from scimodom.services.modification import get_modification_service
+from scimodom.services.annotation import AnnotationService
+from scimodom.services.modification import (
+    MultiSortError,
+    get_modification_service,
+)
 from scimodom.api.helpers import (
     ClientResponseException,
+    get_optional_str,
     get_positive_int,
-    get_valid_coords,
-    get_valid_targets_type,
-    get_valid_taxa_id,
-    get_response_from_pydantic_object,
     get_non_negative_int,
     get_optional_positive_int,
     get_optional_non_negative_int,
-    validate_rna_type,
-    get_unique_list_from_query_parameter,
+    validate_chrom,
+    get_valid_rna_type,
+    get_optional_valid_biotypes,
+    get_optional_valid_features,
+    get_valid_taxa_id,
+    get_valid_coords,
+    get_valid_target_type,
+    get_valid_selections,
+    get_response_from_pydantic_object,
+    get_optional_list,
 )
 from scimodom.services.bedtools import BedToolsService, get_bedtools_service
 from scimodom.utils.dtos.bedtools import Bed6Record
 from scimodom.services.file import get_file_service
-from scimodom.utils.specs.enums import Strand, AssemblyFileType
+from scimodom.utils.specs.enums import (
+    Strand,
+    AssemblyFileType,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -53,76 +63,125 @@ FIELDS_TO_CSV_HEADER_MAP = {
 
 
 @dataclass
-class GeneSearch:
-    gene_filter: list[str]
-    chrom_filter: str | None = None
-    chrom_start_filter: int | None = None
-    chrom_end_filter: int | None = None
+class SearchQueryParams:
+    """DTO for Search query parameters."""
+
+    gene_name: str | None
+    biotypes: list[str]
+    features: list[str]
+    chrom: str | None = None
+    chrom_start: int | None = None
+    chrom_end: int | None = None
 
 
 class IntersectResponse(BaseModel):
+    """DTO for BED6 records."""
+
     records: list[Bed6Record]
 
 
-@modification_api.route("/query", defaults={"by_gene": None}, methods=["GET"])
-@modification_api.route("/query/<by_gene>")
-@cross_origin(supports_credentials=True)
-def get_modifications_as_json(by_gene):
-    """Search view API."""
+@modification_api.get("/records")
+def get_modification_records():
+    """Get modifications (data records).
+
+    :param request: The request with search parameters.
+    :return: JSON array with modifications incl. selected
+    bedRMod fields (data), annotation, etc.
+    :statuscode 200: OK
+    :statuscode 400: Bad request - invalid request, syntax
+    :statuscode 404: Not found - semantic validation
+    :statuscode 500: Internal Server Error
+    :statuscode 501: Not Implemented (TODO MS14)
+    """
     try:
-        data = _get_modifications_for_request(by_gene)
-    except ClientResponseException as e:
-        return e.response_tuple
-    for r in data["records"]:
-        r["strand"] = r["strand"].value
-    return data
+        by_gene = get_optional_str("by") == "gene"
+        records = _get_modification_records(by_gene)
+    except ClientResponseException as exc:
+        return exc.response_tuple
+
+    if get_optional_str("format") == "csv":
+        records_as_csv = _get_csv_from_modification_records(records["records"])
+        now = datetime.now(timezone.utc)
+        file_name = now.strftime("scimodom_search_%Y-%m-%dT%H%M%S.csv")
+        return Response(
+            response=records_as_csv,
+            mimetype="text/csv",
+            headers={"Content-Disposition": f'attachment; filename="{file_name}"'},
+        )
+
+    records["records"] = [
+        {**r, "strand": r["strand"].value} for r in records["records"]
+    ]
+    return records
 
 
-@modification_api.route("/csv", defaults={"by_gene": None}, methods=["GET"])
-@modification_api.route("/csv/<by_gene>")
-@cross_origin(supports_credentials=True)
-def get_modifications_as_csv(by_gene):
+@modification_api.get("/records/summary")
+def get_modification_records_summary():
+    """Get count of modifications (data records).
+
+    :return: JSON object with number of records
+    :statuscode 200: OK
+    :statuscode 500: Internal Server Error
+    """
+    return {
+        "count": get_modification_service().get_modification_records_count(),
+    }
+
+
+@modification_api.get("/sites")
+def get_modification_sites():
+    """Get modifications per site.
+
+    :param request: The request with search parameters.
+    :return: JSON object with all metadata associated with
+    a modification site.
+    :statuscode 200: OK
+    :statuscode 400: Bad request - invalid request, syntax
+    :statuscode 404: Not found - semantic validation
+    :statuscode 500: Internal Server Error
+    """
     try:
-        data = _get_modifications_for_request(by_gene)
-    except ClientResponseException as e:
-        return e.response_tuple
-    records_as_csv = _get_csv_from_modifications_records(data["records"])
-    now = datetime.now(timezone.utc)
-    file_name = now.strftime("scimodom_search_%Y-%m-%dT%H%M%S.csv")
-    return Response(
-        response=records_as_csv,
-        mimetype="text/csv",
-        headers={"Content-Disposition": f'attachment; filename="{file_name}"'},
-    )
-
-
-@modification_api.route("/sitewise", methods=["GET"])
-@cross_origin(supports_credentials=True)
-def get_modification_sitewise():
-    """Get information related to a modification site."""
-    try:
-        taxa_id = get_valid_taxa_id()
-        chrom, start, end, _ = get_valid_coords(taxa_id)
-    except ClientResponseException as e:
-        return e.response_tuple
+        chrom, start, end, _ = get_valid_coords()
+    except ClientResponseException as exc:
+        return exc.response_tuple
 
     modification_service = get_modification_service()
-    response = modification_service.get_modification_site(chrom, start, end)
-    response["records"] = [
-        {**r, "strand": r["strand"].value} for r in response["records"]
+    records = modification_service.get_modification_site(chrom, start, end)
+    records["records"] = [
+        {**r, "strand": r["strand"].value} for r in records["records"]
     ]
-    return response
+    return records
 
 
-@modification_api.route("/genomic-context/<context>", methods=["GET"])
-@cross_origin(supports_credentials=True)
-def get_genomic_sequence_context(context):
-    """Get sequence context for a modification site."""
+@modification_api.get("/sites/summary")
+def get_modification_sites_summary():
+    """Get count of modifications sites.
+
+    :return: JSON object with number of sites
+    :statuscode 200: OK
+    :statuscode 500: Internal Server Error
+    """
+    return {
+        "count": get_modification_service().get_modification_sites_count(),
+    }
+
+
+@modification_api.get("/sites/context")
+def get_modification_site_context():
+    """Get sequence context for a modification site.
+
+    :param request: The request with search parameters.
+    :statuscode 200: OK
+    :statuscode 400: Bad request - invalid request, syntax
+    :statuscode 404: Not found - semantic validation
+    :statuscode 500: Internal Server Error
+    """
     try:
         taxa_id = get_valid_taxa_id()
-        coords = get_valid_coords(taxa_id, context=int(context))
-    except ClientResponseException as e:
-        return e.response_tuple
+        context = get_non_negative_int("window")
+        coords = get_valid_coords(context=context)
+    except ClientResponseException as exc:
+        return exc.response_tuple
 
     bedtools_service = get_bedtools_service()
     file_service = get_file_service()
@@ -136,26 +195,32 @@ def get_genomic_sequence_context(context):
         sequence = file_service.read_sequence_context(seq_file)
     except FileNotFoundError:
         logger.warning(
-            f"API not implemented for Taxa ID '{taxa_id}': silently returning empty context!"
+            f"Not implemented for taxon '{taxa_id}': returning empty context!"
         )
         sequence = ""
     return {"context": sequence}
 
 
-@modification_api.route("/target/<target_type>", methods=["GET"])
-@cross_origin(supports_credentials=True)
-def get_modification_targets(target_type):
-    """Get information related to miRNA target and
-    RBP binding sites that may be affected by a
-    modification site."""
+@modification_api.get("/sites/targets")
+def get_modification_targets():
+    """Get targets affected by a modification.
+
+    Targets can be e.g. miRNA targets or RBP binding sites
+
+    :param request: The request with search parameters.
+    :statuscode 200: OK
+    :statuscode 400: Bad request - invalid request, syntax
+    :statuscode 404: Not found - semantic validation
+    :statuscode 500: Internal Server Error
+    """
     try:
-        with _ModificationContext(target_type) as ctx:
+        with _ModificationContext() as ctx:
             records = ctx.bedtools_service.intersect_bed6_records(
                 ctx.records, ctx.stream, is_strand=ctx.is_strand
             )
             return get_response_from_pydantic_object(IntersectResponse(records=records))
-    except ClientResponseException as e:
-        return e.response_tuple
+    except ClientResponseException as exc:
+        return exc.response_tuple
 
 
 class _ModificationContext:
@@ -166,11 +231,11 @@ class _ModificationContext:
         is_strand: bool
         stream: TextIO
 
-    def __init__(self, target_type: str):
-        self._target_type = get_valid_targets_type(target_type)
+    def __init__(self):
+        self._target_type = get_valid_target_type()
         self._is_strand = True
         self._taxa_id = get_valid_taxa_id()
-        self._coords = get_valid_coords(self._taxa_id)
+        self._coords = get_valid_coords()
 
     def __enter__(self) -> Ctx:
         file_service = get_file_service()
@@ -181,7 +246,7 @@ class _ModificationContext:
             )
         except FileNotFoundError:
             logger.warning(
-                f"API not implemented for Taxa ID '{self._taxa_id}': silently returning empty response!"
+                f"Not implemented for taxon '{self._taxa_id}': returning empty response!"
             )
             temp_file = bedtools_service.create_temp_file_from_records([], sort=False)
             self._annotation_targets_file = file_service.open_file_for_reading(
@@ -216,40 +281,61 @@ def _get_bed6_records_from_request(
     ]
 
 
-def _get_modifications_for_request(by_gene):
+def _get_modification_records(by_gene: bool):
     modification_service = get_modification_service()
-    # TODO: chrom validation, cf. get_valid_coords
-    if by_gene:
-        gene_or_chrom = _get_gene_or_chrom_required()
-        return modification_service.get_modifications_by_gene(
-            annotation_source=_get_annotation_source(),
-            taxa_id=get_valid_taxa_id(),
-            gene_filter=gene_or_chrom.gene_filter,
-            chrom=gene_or_chrom.chrom_filter,
-            chrom_start=gene_or_chrom.chrom_start_filter,
-            chrom_end=gene_or_chrom.chrom_end_filter,
-            first_record=get_optional_non_negative_int("firstRecord"),
-            max_records=get_optional_positive_int("maxRecords"),
-            multi_sort=_get_multi_sort(),
-        )
-    else:
-        return modification_service.get_modifications_by_source(
-            annotation_source=_get_annotation_source(),
-            modification_id=get_non_negative_int("modification"),
-            organism_id=get_non_negative_int("organism"),
-            technology_ids=_get_technology_ids(),
-            taxa_id=get_valid_taxa_id(),
-            gene_filter=_get_gene_filters(),
-            chrom=request.args.get("chrom", type=str),
-            chrom_start=get_optional_non_negative_int("chromStart"),
-            chrom_end=get_optional_positive_int("chromEnd"),
-            first_record=get_optional_non_negative_int("firstRecord"),
-            max_records=get_optional_positive_int("maxRecords"),
-            multi_sort=_get_multi_sort(),
-        )
+
+    rna_type = get_valid_rna_type()
+    taxa_id = get_valid_taxa_id()
+
+    # TODO MS14
+    try:
+        annotation_source = AnnotationService.get_annotation_source(rna_type)
+    except NotImplementedError:
+        raise ClientResponseException(501, f"rnaType '{rna_type}' not implemented")
+
+    search_query_params = _get_valid_search_query_params(taxa_id, by_gene)
+    multi_sort = get_optional_list("multiSort", str)
+    first_record = get_optional_non_negative_int("firstRecord")
+    max_records = get_optional_positive_int("maxRecords")
+
+    try:
+        if by_gene:
+            return modification_service.get_modifications_by_gene(
+                annotation_source=annotation_source,
+                taxa_id=taxa_id,
+                gene_name=search_query_params.gene_name,
+                biotypes=search_query_params.biotypes,
+                features=search_query_params.features,
+                chrom=search_query_params.chrom,
+                chrom_start=search_query_params.chrom_start,
+                chrom_end=search_query_params.chrom_end,
+                first_record=first_record,
+                max_records=max_records,
+                multi_sort=multi_sort,
+            )
+        else:
+            modification_id, organism_id, technology_ids = get_valid_selections()
+            return modification_service.get_modifications_by_source(
+                annotation_source=annotation_source,
+                modification_id=modification_id,
+                organism_id=organism_id,
+                technology_ids=technology_ids,
+                taxa_id=taxa_id,
+                gene_name=search_query_params.gene_name,
+                biotypes=search_query_params.biotypes,
+                features=search_query_params.features,
+                chrom=search_query_params.chrom,
+                chrom_start=search_query_params.chrom_start,
+                chrom_end=search_query_params.chrom_end,
+                first_record=first_record,
+                max_records=max_records,
+                multi_sort=multi_sort,
+            )
+    except MultiSortError as exc:
+        raise ClientResponseException(400, str(exc))
 
 
-def _get_csv_from_modifications_records(records):
+def _get_csv_from_modification_records(records):
     as_text = StringIO()
     writer = DictWriter(
         as_text, fieldnames=FIELDS_TO_CSV_HEADER_MAP.values(), dialect="excel"
@@ -262,56 +348,50 @@ def _get_csv_from_modifications_records(records):
     return as_text.getvalue()
 
 
-def _get_annotation_source():
-    rna_type = request.args.get("rnaType", type=str)
-    validate_rna_type(rna_type)
-    return RNA_TYPE_TO_ANNOTATION_SOURCE_MAP[rna_type]
+def _get_valid_search_query_params(
+    taxa_id: int,
+    by_gene: bool,
+) -> SearchQueryParams:
+    gene_name = get_optional_str("geneName")
+    chrom = get_optional_str("chrom")
+    chrom_start = get_optional_non_negative_int("chromStart")
+    chrom_end = get_optional_positive_int("chromEnd")
 
-
-# TODO: for mod, org, and tech, we should in fact check that they exists in the DB...
-def _get_technology_ids():
-    raw = get_unique_list_from_query_parameter("technology", int)
-    if raw is None:
-        return []
-    for i in raw:
-        if i < 0:
-            raise ClientResponseException(400, "Invalid technology ID")
-    return raw
-
-
-def _get_gene_filters():
-    raw = get_unique_list_from_query_parameter("geneFilter", str)
-    if raw is None:
-        return []
-    return raw
-
-
-def _get_gene_or_chrom_required() -> GeneSearch:
-    gene = get_unique_list_from_query_parameter("geneFilter", str)
-    if gene:
-        return GeneSearch(gene_filter=gene)
-    else:
-        chrom = request.args.get("chrom", type=str)
-        if not chrom:
-            raise ClientResponseException(400, "Gene or chromosome is required")
-        return GeneSearch(
-            gene_filter=[],
-            chrom_filter=chrom,
-            chrom_start_filter=get_non_negative_int("chromStart"),
-            chrom_end_filter=get_positive_int("chromEnd"),
+    if gene_name is not None and chrom is not None:
+        raise ClientResponseException(
+            400,
+            "Too many parameters: use 'geneName' xor 'chrom'",
         )
 
-
-def _get_multi_sort(url_split: str = "%2B"):
-    raw = get_unique_list_from_query_parameter("multiSort", str)
-    if raw is None or (len(raw) == 1 and raw[0] == ""):
-        return []
-    for i in raw:
-        field, direction = i.split(url_split)
-        if field not in ["chrom", "score", "start", "coverage", "frequency"]:
-            raise ClientResponseException(400, "Invalid table sort (multiSort) field")
-        if direction not in ["desc", "asc"]:
+    if chrom is None:
+        if chrom_start is not None or chrom_end is not None:
             raise ClientResponseException(
-                400, "Invalid table sort (multiSort) direction"
+                400,
+                "Unused parameters: 'chromStart' and 'chromEnd' require 'chrom'",
             )
-    return raw
+    else:
+        if chrom_end is not None and chrom_start is None:
+            raise ClientResponseException(
+                400,
+                "Unused parameter: 'chromEnd' requires 'chromStart'",
+            )
+        if by_gene:
+            chrom_start = get_non_negative_int("chromStart")
+            chrom_end = get_positive_int("chromEnd")
+
+        validate_chrom(taxa_id, chrom, chrom_start, chrom_end)
+
+    if by_gene and gene_name is None and chrom is None:
+        raise ClientResponseException(
+            400,
+            "Missing required parameter: 'geneName' xor 'chrom'",
+        )
+
+    return SearchQueryParams(
+        gene_name,
+        get_optional_valid_biotypes(),
+        get_optional_valid_features(),
+        chrom,
+        chrom_start,
+        chrom_end,
+    )

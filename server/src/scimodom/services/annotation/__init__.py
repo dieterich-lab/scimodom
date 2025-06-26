@@ -30,12 +30,14 @@ from scimodom.utils.specs.enums import AnnotationSource
 logger = logging.getLogger(__name__)
 
 
+# TODO MS14
+# defined independently from scalars(select(RNAType)).all()
 RNA_TYPE_TO_ANNOTATION_SOURCE_MAP = {
     "WTS": AnnotationSource.ENSEMBL,
     "tRNA": AnnotationSource.GTRNADB,
 }
 
-# TODO, cf. #119, #149
+# TODO MS14 cf. #119, #149
 BIOTYPES = {
     "IG_C_gene": "Ig coding",
     "IG_D_gene": "Ig coding",
@@ -176,6 +178,12 @@ class AnnotationService:
         self._session = session
         self._services_by_annotation_source = services_by_annotation_source
 
+    @staticmethod
+    def get_annotation_source(rna_type: str) -> AnnotationSource:
+        if rna_type not in RNA_TYPE_TO_ANNOTATION_SOURCE_MAP:
+            raise NotImplementedError
+        return RNA_TYPE_TO_ANNOTATION_SOURCE_MAP[rna_type]
+
     def check_annotation_source(
         self, annotation_source: AnnotationSource, modification_ids: list[int]
     ) -> bool:
@@ -226,11 +234,7 @@ class AnnotationService:
         )
 
     def get_features_by_rna_type(self, rna_type: str) -> list[str]:
-        if rna_type not in RNA_TYPE_TO_ANNOTATION_SOURCE_MAP:
-            raise NotImplementedError(
-                f"The RNA type '{rna_type}' is not yet implemented."
-            )
-        annotation_source = RNA_TYPE_TO_ANNOTATION_SOURCE_MAP[rna_type]
+        annotation_source = self.get_annotation_source(rna_type)
         features = self.get_features(annotation_source)
         return sorted(
             [*features["conventional"].values(), *features["extended"].values()]

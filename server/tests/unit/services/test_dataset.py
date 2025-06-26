@@ -141,6 +141,11 @@ def test_dataset_get_by_id(Session, dataset):  # noqa
     assert d1.date_added == datetime(2024, 10, 21, 8, 10, 27)
 
 
+def test_get_dataset_count(Session, dataset):
+    service = _get_dataset_service(Session())
+    assert service.get_dataset_count() == 4
+
+
 def test_get_datasets(Session, project, dataset):  # noqa
     service = _get_dataset_service(Session())
     datasets = service.get_datasets()

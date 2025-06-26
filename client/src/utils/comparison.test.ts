@@ -85,7 +85,7 @@ test('getCompareParams - upload', () => {
   expect(result).toStrictEqual({
     reference: ['d1', 'd2'],
     upload: 'fileId1',
-    upload_name: 'fil1.bedrmod',
+    uploadName: 'fil1.bedrmod',
     strand: false,
     euf: true,
     taxaId: 7

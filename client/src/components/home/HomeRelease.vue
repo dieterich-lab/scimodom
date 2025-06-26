@@ -1,22 +1,23 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import SunburstChart from '@/components/ui/SunburstChart.vue'
-import { HTTP } from '@/services/API.js'
+import { trashRequestErrors } from '@/services/API.js'
 import SectionLayout from '@/components/layout/SectionLayout.vue'
+import { useDialogState } from '@/stores/DialogState'
+import { getDatasetSummary } from '@/services/dataset'
+import { getSitesSummary } from '@/services/modification'
 
+const dialogState = useDialogState()
 const sites = ref()
 const datasets = ref()
 
-// clean this, and fetch annotation (DB) release info
 onMounted(() => {
-  HTTP.get('/release')
-    .then(function (response) {
-      sites.value = response.data.sites
-      datasets.value = response.data.datasets
+  Promise.all([getSitesSummary(dialogState), getDatasetSummary(dialogState)])
+    .then(([modificationSummary, datasetSummary]) => {
+      sites.value = modificationSummary.count
+      datasets.value = datasetSummary.count
     })
-    .catch((error) => {
-      console.log(error)
-    })
+    .catch((e) => trashRequestErrors(e))
 })
 </script>
 

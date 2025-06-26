@@ -13,7 +13,10 @@ from scimodom.database.models import (
     GenomicAnnotation,
     Organism,
 )
-from scimodom.services.modification import ModificationService
+from scimodom.services.modification import (
+    ModificationService,
+    MultiSortError,
+)
 from scimodom.utils.specs.enums import Strand, AnnotationSource
 
 Coord = namedtuple("Coord", "chrom start end")
@@ -229,16 +232,70 @@ def _get_modification_service(session):
 # tests
 
 
+def test_get_modification_records_count(Session, dataset):
+    modification_service = _get_modification_service(Session())
+    assert modification_service.get_modification_records_count() == 7
+
+
+def test_get_modification_sites_count(Session, dataset):
+    modification_service = _get_modification_service(Session())
+    assert modification_service.get_modification_sites_count() == 6
+
+
 @pytest.mark.parametrize(
-    "technology_ids,coord,gene_filter,multi_sort,first_record,max_records,expected_records,total",
+    "multi_sort,message",
     [
-        ([1], Coord(None, 0, None), [], [], 0, 10, [RECORDS[4]], 1),
-        ([1, 2], Coord(None, 0, None), [], [], 0, 10, RECORDS[:5], 5),
-        ([1, 2], Coord("1", 20000000, 30000000), [], [], 0, 10, [RECORDS[0]], 1),
+        (["star+asc"], "Invalid sort column: 'star'"),
+        (["start+ascending"], "Invalid sort direction: 'ascending'"),
+    ],
+)
+def test_get_multi_sort_fail(Session, mocker, annotation, multi_sort, message):
+    modification_service = _get_modification_service(Session())
+    # patch base query, cf. #154
+    mocker.patch.object(
+        modification_service, "_get_base_search_query", _mock_get_base_search_query
+    )
+    query = modification_service._get_base_search_query()
+    with pytest.raises(MultiSortError) as exc:
+        modification_service._get_multi_sort(query, multi_sort)
+    assert (str(exc.value)) == message
+    assert exc.type == MultiSortError
+
+
+@pytest.mark.parametrize(
+    "technology_ids,coord,gene_name,biotypes,features,multi_sort,first_record,max_records,expected_records,total",
+    [
+        ([1], Coord(None, 0, None), None, [], [], [], 0, 10, [RECORDS[4]], 1),
         (
             [1, 2],
             Coord(None, 0, None),
-            ["gene_name%2BGENE1%2BstartsWith", "feature%2BCDS%2Bin"],
+            None,
+            [],
+            [],
+            [],
+            0,
+            10,
+            RECORDS[:5],
+            5,
+        ),
+        (
+            [1, 2],
+            Coord("1", 20000000, 30000000),
+            None,
+            [],
+            [],
+            [],
+            0,
+            10,
+            [RECORDS[0]],
+            1,
+        ),
+        (
+            [1, 2],
+            Coord(None, 0, None),
+            "GENE1",
+            [],
+            ["CDS"],
             [],
             0,
             10,
@@ -248,7 +305,9 @@ def _get_modification_service(session):
         (
             [1, 2],
             Coord(None, 0, None),
-            ["gene_biotype%2BlncRNA%2Bin"],
+            None,
+            ["lncRNA"],
+            [],
             [],
             0,
             10,
@@ -258,8 +317,10 @@ def _get_modification_service(session):
         (
             [1, 2],
             Coord(None, 0, None),
+            None,
             [],
-            ["chrom%2Bdesc"],
+            [],
+            ["chrom+desc"],
             0,
             10,
             [RECORDS[4], RECORDS[0], RECORDS[1], RECORDS[2], RECORDS[3]],
@@ -268,20 +329,71 @@ def _get_modification_service(session):
         (
             [1, 2],
             Coord(None, 0, None),
+            None,
             [],
-            ["coverage%2Bdesc", "frequency%2Bdesc"],
+            [],
+            ["coverage+desc", "frequency+desc"],
             0,
             10,
             [RECORDS[0], RECORDS[1], RECORDS[2], RECORDS[4], RECORDS[3]],
             5,
         ),
-        ([1, 2], Coord(None, 0, None), [], [], 1, 2, RECORDS[1:3], 5),
+        (
+            [1, 2],
+            Coord(None, 0, None),
+            None,
+            [],
+            [],
+            [],
+            1,
+            2,
+            RECORDS[1:3],
+            5,
+        ),
+        (
+            [1, 2],
+            Coord("17", 0, None),
+            "GENE1",
+            [],
+            [],
+            [],
+            0,
+            10,
+            [],
+            0,
+        ),
+        (
+            [1, 2],
+            Coord("17", 0, None),
+            None,
+            ["Protein coding"],
+            ["CDS"],
+            [],
+            0,
+            10,
+            [],
+            0,
+        ),
+        (
+            [1, 2],
+            Coord("1", 80000000, None),
+            None,
+            [],
+            ["Exonic", "Intronic"],
+            [],
+            0,
+            10,
+            [RECORDS[3]],
+            1,
+        ),
     ],
 )
 def test_get_modifications_by_source(
     technology_ids,
     coord,
-    gene_filter,
+    gene_name,
+    biotypes,
+    features,
     multi_sort,
     first_record,
     max_records,
@@ -303,7 +415,9 @@ def test_get_modifications_by_source(
         organism_id=1,
         technology_ids=technology_ids,
         taxa_id=9606,
-        gene_filter=gene_filter,
+        gene_name=gene_name,
+        biotypes=biotypes,
+        features=features,
         chrom=coord.chrom,
         chrom_start=coord.start,
         chrom_end=coord.end,
@@ -325,7 +439,9 @@ def test_get_modifications_by_gene(Session, mocker, annotation):  # noqa
     response = modification_service.get_modifications_by_gene(
         annotation_source=AnnotationSource.ENSEMBL,
         taxa_id=9606,
-        gene_filter=["gene_name%2BGENE1%2BstartsWith"],
+        gene_name="GENE1",
+        biotypes=[],
+        features=[],
         chrom=None,
         chrom_start=0,
         chrom_end=None,

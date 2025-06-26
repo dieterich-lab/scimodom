@@ -42,14 +42,14 @@ async function getSunBurstData(
 ): Promise<Plotly.PlotData[]> {
   try {
     const data = await handleRequestWithErrorReporting<SunburstResponseData[]>(
-      HTTP.get(`/sunburst/${type}`),
-      `Failed to load Sunburst data, type ${type}`,
+      HTTP.get(`/charts/sunbursts/${type}`),
+      `Failed to load SunburstResponseData: ${type}`,
       dialogState
     )
     calculateCumulativeSize(data[0])
     return [getPlotlySunburstData(data[0]) as Plotly.PlotData]
   } catch (err) {
-    console.log(`Failed to fetch sunburst/${type} data: ${err}`)
+    console.log(`Failed to fetch /charts/sunbursts/${type}: ${err}`)
     throw err
   }
 }

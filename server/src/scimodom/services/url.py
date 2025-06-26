@@ -3,15 +3,18 @@ from urllib.parse import quote
 
 from scimodom.config import get_config
 
-
-API_PREFIX = "api/v0"
-BAM_FILE_API_ROUTE = f"/{API_PREFIX}/bam_file"
-DATA_MANAGEMENT_API_ROUTE = f"/{API_PREFIX}/management"
-DATASET_API_ROUTE = f"/{API_PREFIX}/dataset"
-MODIFICATION_API_ROUTE = f"/{API_PREFIX}/modification"
-PROJECT_API_ROUTE = f"/{API_PREFIX}/project"
-TRANSFER_API_ROUTE = f"/{API_PREFIX}/transfer"
-USER_API_ROUTE = f"/{API_PREFIX}/user"
+API_VERSION = "v0"
+API_PREFIX = f"api/{API_VERSION}"
+ANALYTICS_API_ROUTE = f"/{API_PREFIX}"
+CATALOG_API_ROUTE = f"/{API_PREFIX}/catalogs"
+DATASET_API_ROUTE = f"/{API_PREFIX}"
+DATASET_ATTACHMENT_API_ROUTE = f"/{API_PREFIX}/datasets"
+DATASET_COMPARISON_API_ROUTE = f"/{API_PREFIX}/datasets/comparisons"
+MODIFICATION_API_ROUTE = f"/{API_PREFIX}/modifications"
+PROJECT_API_ROUTE = f"/{API_PREFIX}"
+RELEASE_API_ROUTE = f"/{API_PREFIX}"
+UPLOAD_API_ROUTE = f"/{API_PREFIX}"
+USER_API_ROUTE = f"/{API_PREFIX}"
 
 CONFIRM_USER_REGISTRATION_URI = "confirm_user_registration"
 REQUEST_PASSWORD_RESET_URI = "request_password_reset"
@@ -33,11 +36,8 @@ class UrlService:
         """Construct registration link.
 
         :param email: User email
-        :type email: str
         :param token: Token
-        :type token: str
-        :returns: Registration link
-        :rtype: str
+        :return: Registration link
         """
         return self._build_link(CONFIRM_USER_REGISTRATION_URI, quote(email), token)
 
@@ -45,11 +45,8 @@ class UrlService:
         """Construct password reset link.
 
         :param email: User email
-        :type email: str
         :param token: Token
-        :type token: str
-        :returns: Password reset link
-        :rtype: str
+        :return: Password reset link
         """
         return self._build_link(REQUEST_PASSWORD_RESET_URI, quote(email), token)
 
@@ -65,7 +62,6 @@ class UrlService:
 def get_url_service():
     """Provide a helper function to set up an UrlService.
 
-    :returns: URL service instance
-    :rtype: UrlService
+    :return: URL service instance
     """
     return UrlService(http_public_url=get_config().HTTP_PUBLIC_URL)

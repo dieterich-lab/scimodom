@@ -1,7 +1,7 @@
 import type { EufRecord } from '@/utils/bed6'
 
 import type { Dataset } from '@/services/dataset'
-import type { UploadedFile } from '@/services/dataset_upload'
+import type { UploadedFile } from '@/services/datasetUpload'
 import type { ComparisonParams } from '@/services/comparison'
 
 interface UploadDescriptor extends UploadedFile {
@@ -44,7 +44,7 @@ function getCompareParams(
   const paramsStepB = isUpload(resultStepB)
     ? {
         upload: resultStepB.id,
-        upload_name: resultStepB.name,
+        uploadName: resultStepB.name,
         euf: resultStepB.isEUF
       }
     : {

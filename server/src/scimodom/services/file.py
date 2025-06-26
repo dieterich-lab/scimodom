@@ -2,6 +2,7 @@ import logging
 import gzip
 import os
 import re
+from enum import Enum
 from contextlib import contextmanager
 from fcntl import flock, LOCK_SH, LOCK_EX, LOCK_UN, LOCK_NB, lockf
 from functools import cache
@@ -62,6 +63,11 @@ class FileTooLarge(Exception):
     """Exception for handling large files."""
 
     pass
+
+
+class _Status(str, Enum):
+    UPDATED = "updated"
+    CREATED = "created"
 
 
 class FileService:
@@ -240,7 +246,7 @@ class FileService:
         """Retrieve gene list for a given selection.
 
         In the case that a project was created but no data was uploaded so far
-        the gene cash may not be initialized and a FileNotFoundError may be
+        the gene cache may not be initialized and a FileNotFoundError may be
         generated.
 
         :param selection_id: Selection ID
@@ -741,12 +747,14 @@ class FileService:
         name: str,
         data_stream: IO[bytes],
         max_size: Optional[int],
-    ) -> None:
+    ) -> _Status:
         try:
             bam_file = self.get_bam_file(dataset, name)
             self._update_bam_file(bam_file, data_stream, max_size)
+            return _Status.UPDATED
         except NoResultFound:
             self._create_bam_file(dataset, name, data_stream, max_size)
+            return _Status.CREATED
 
     def get_bam_file(self, dataset: Dataset, name: str) -> BamFile:
         return self._session.scalars(
@@ -762,6 +770,11 @@ class FileService:
         return open(path, "rb")
 
     def get_bam_file_list(self, dataset: Dataset) -> List[Dict[str, Any]]:
+        """Get all BAM files attachment for the given dataset.
+
+        :param dataset: Dataset instance
+        :returns: BAM file stat and name for each attachment
+        """
         items = self._session.scalars(
             select(BamFile).where(BamFile.dataset_id == dataset.id)
         ).all()
