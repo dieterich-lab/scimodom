@@ -65,7 +65,8 @@ docs = [
   "furo",
   "sphinx-argparse",
   "sphinx-copybutton",
-  "sphinx-issues"
+  "sphinx-issues",
+  "swagger-plugin-for-sphinx"
 ]
 
 [tool.setuptools.dynamic]

@@ -1,4 +1,4 @@
-.. _prject:
+.. _project:
 
 Project info
 ============

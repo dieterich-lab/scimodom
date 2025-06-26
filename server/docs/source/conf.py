@@ -23,6 +23,7 @@ extensions = [
     "sphinxarg.ext",
     "sphinx_copybutton",
     "sphinx_issues",
+    "swagger_plugin_for_sphinx",
 ]
 issues_github_path = "dieterich-lab/scimodom"
 templates_path = ["_templates"]

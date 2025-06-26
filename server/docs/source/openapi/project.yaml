@@ -1,0 +1,92 @@
+openapi: 3.0.4
+
+info:
+  title: Project REST API
+  version: v0
+  license: https://github.com/dieterich-lab/scimodom/blob/master/LICENSE
+
+servers:
+  - url: https://scimodom.dieterichlab.org/api/v0/
+
+tags:
+  - name: list
+    description: Projects and associated metadata
+
+paths:
+  /project/list_all:
+    get:
+      tags:
+        - list
+      summary: Get all projects
+      description: >-
+        Get metadata for all projects.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+  /project/list_mine:
+    get:
+      tags:
+        - list
+      summary: Get projects per user
+      description: >-
+        Get metadata for projects submitted per user.
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    UnauthorizedError:
+      description: Missing authorization header
+  schemas:
+    Project:
+      type: object
+      properties:
+        project_id:
+          type: string
+          description: SMID
+        title:
+          type: string
+          description: Project title
+        summary:
+          type: string
+          description: Project summary
+        date_added:
+          type: integer
+          description: >-
+            POSIX timestamp corresponding to the date the project was added
+        date_published:
+          type: integer
+          description: >-
+            POSIX timestamp corresponding to the date of publication
+        contact_name:
+          type: string
+          description: >-
+            The author of the data or a contact person responsible for adding the data
+        contact_institution:
+          type: string
+          description: >-
+            The institution or affiliation of contact_name
+        doi:
+          type: string
+          description: A list of DOIs associated with this project
+        pmid:
+          type: string
+          description: A list of PMIDs associated with this project
