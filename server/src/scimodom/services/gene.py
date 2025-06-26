@@ -2,6 +2,7 @@ from typing import Iterable
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import NoResultFound
 
 from scimodom.database.database import get_session
 from scimodom.database.models import (
@@ -57,6 +58,8 @@ class GeneService:
                 set(self._session.execute(query).scalars().all()),
             )
         )
+        if not genes:
+            raise NoResultFound
         self._file_service.update_gene_cache(selection_id, genes)
 
     def get_genes(self, selection_ids: Iterable[int]) -> Iterable[str]:

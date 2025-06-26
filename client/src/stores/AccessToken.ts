@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { jwtDecode } from 'jwt-decode'
-import { HTTPSecure } from '@/services/API'
+import { HTTPAuth } from '@/services/API'
 
 const REFRESH_GRACE_PERIOD_SECONDS = 30 * 60
 const REFRESH_RETRY_INTERVALL_SECONDS = 60
@@ -45,7 +45,7 @@ const useAccessToken = defineStore('access_token', {
       this.email = email
       this._tokenCache = token
       if (!decoded_token.exp) {
-        throw new Error('Got JWT token without exp!')
+        throw new Error('Got JWT token without expiry')
       }
       this.expireEpoch = decoded_token.exp
       this.refreshRequestedEpoch = null
@@ -77,10 +77,11 @@ const useAccessToken = defineStore('access_token', {
       }
       this.refresh()
     },
+    // fire-and-forget
     refresh() {
       const now_epoch = Date.now() / 1000
       console.log('Requesting access token refresh.')
-      HTTPSecure.get('/user/refresh_access_token')
+      HTTPAuth.post('/sessions/refresh')
         .then((response) => {
           if (response.status == 200) {
             if (this.email === null) {

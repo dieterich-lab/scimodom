@@ -21,7 +21,12 @@ async function scheduleUpload(file: File) {
     const d = dataset.value
     const cleaned_file_name = encodeURI(file.name.replace(ILLEGAL_FILENAME_CHAR_REGEXP, '_'))
     const info = `${d.dataset_title} [${d.dataset_id}]`
-    uploadManager.schedule(file, `/bam_file/${d.dataset_id}/${cleaned_file_name}`, info)
+    uploadManager.schedule(
+      file,
+      `/datasets/${d.dataset_id}/attachments/bams/${cleaned_file_name}`,
+      info,
+      'PUT'
+    )
   } else {
     console.log('Tried to schedule BAM upload without a dataset - that should never happen!')
   }

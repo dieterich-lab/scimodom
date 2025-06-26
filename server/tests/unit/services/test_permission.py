@@ -31,6 +31,14 @@ def test_insert_user_project_association(Session, project):
         assert records.user_id == user_id
 
 
+def test_may_change_project(Session, project):  # noqa
+    service = PermissionService(Session())
+    with Session() as session, session.begin():
+        user = session.get_one(User, 1)
+        assert service.may_change_project(user, "12345678") is True
+        assert service.may_change_project(user, "ABCDEFG") is False
+
+
 def test_may_change_dataset(Session, dataset, project):  # noqa
     service = PermissionService(Session())
     with Session() as session, session.begin():

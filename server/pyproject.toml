@@ -53,7 +53,7 @@ Discussions = "https://github.com/dieterich-lab/scimodom/discussions"
 Documentation = "https://dieterich-lab.github.io/scimodom"
 
 [project.optional-dependencies]
-dev = ["pre-commit", "SQLAlchemy[mypy]", "types-Flask-Cors", "types-requests"]
+dev = ["pre-commit", "SQLAlchemy[mypy]", "types-Flask-Cors", "types-requests", "openapi-spec-validator", "PyYAML"]
 tests = ["pytest", "pytest-cov", "pytest-depends", "pytest-mock", "pytest-freezer", "pytest-datafiles"]
 docs = [
   "ipykernel",
@@ -65,7 +65,8 @@ docs = [
   "furo",
   "sphinx-argparse",
   "sphinx-copybutton",
-  "sphinx-issues"
+  "sphinx-issues",
+  "swagger-plugin-for-sphinx"
 ]
 
 [tool.setuptools.dynamic]

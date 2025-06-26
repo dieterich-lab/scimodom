@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useId } from 'vue'
-import type { RnaType } from '@/services/rna_type'
+import type { RnaType } from '@/services/rnaType'
 import FormFieldWrapper from '@/components/ui/FormFieldWrapper.vue'
 import RnaTypeSelect from '@/components/ui/RnaTypeSelect.vue'
 import { type FormFieldProps, FORM_FIELD_DEFAULTS } from '@/utils/ui_style'

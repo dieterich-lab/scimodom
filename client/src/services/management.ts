@@ -1,5 +1,5 @@
 import type { DialogStateStore } from '@/stores/DialogState'
-import { handleRequestWithErrorReporting, HTTPSecure } from '@/services/API'
+import { handleRequestWithErrorReporting, HTTPAuth } from '@/services/API'
 
 interface DatasetPostRequest {
   smid: string
@@ -52,7 +52,7 @@ async function postDataset(
   dialogState: DialogStateStore
 ): Promise<void> {
   return await handleRequestWithErrorReporting<void>(
-    HTTPSecure.post('/management/dataset', request),
+    HTTPAuth.post('/datasets', request),
     `Failed to post dataset`,
     dialogState
   )
@@ -60,8 +60,8 @@ async function postDataset(
 
 async function postProject(request: ProjectPostRequest, dialogState: DialogStateStore) {
   return await handleRequestWithErrorReporting<void>(
-    HTTPSecure.post('/management/project', request),
-    `Failed to post project`,
+    HTTPAuth.post('/projects/requests', request),
+    `Failed to post project request`,
     dialogState
   )
 }

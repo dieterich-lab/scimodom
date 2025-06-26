@@ -1,0 +1,109 @@
+info:
+  title: Attachment REST API
+
+paths:
+  /bam_file/all/{dataset_id}:
+    get:
+      summary: Get BAM file attachment metadata
+      description: >-
+        Retrieve metadata for all BAM files attachments associated
+        with the given dataset identifier (EUFID).
+      parameters:
+        - in: path
+          name: dataset_id
+          required: true
+          schema:
+            type: string
+          description: Dataset identifier (EUFID)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    original_file_name:
+                      type: string
+                      description: Original file name
+                    size_in_bytes:
+                      type: integer
+                      description: File size in bytes
+                    mtime_epoch:
+                      type: integer
+                      description: >-
+                        POSIX time stamp corresponding to time of last modification
+          links:
+            GetFileName:
+              operationId: getName
+              description: >-
+                The `original_file_name` returned in the response can be used
+                as `name` parameter in `GET bam_file/{dataset_id}/{name}`,
+              parameters:
+                name: $response.body#/original_file_name
+        "400":
+          description: Invalid dataset identifier (malformed)
+          content:
+            application/json:
+              schema:
+                $ref: "_common.yaml#/components/schemas/Error"
+        "404":
+          description: Unknown dataset identifier
+          content:
+            application/json:
+              schema:
+                $ref: "_common.yaml#/components/schemas/Error"
+  /bam_file/{dataset_id}/{name}:
+    get:
+      summary: Download a BAM file
+      description: >-
+        Download a BAM file attached to a dataset given by its identifier (EUFID)
+      operationId: getName
+      parameters:
+        - in: path
+          name: dataset_id
+          required: true
+          schema:
+            type: string
+          description: Dataset identifier (EUFID)
+        - in: path
+          name: name
+          required: true
+          schema:
+            type: string
+          description: BAM original file name
+      responses:
+        "200":
+          description: OK
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "400":
+          description: Invalid dataset identifier or BAM file name (malformed)
+          content:
+            application/json:
+              schema:
+                $ref: "_common.yaml#/components/schemas/Error"
+        "404":
+          description: >-
+            Unknown dataset identifier, unknown BAM file name, or BAM
+            file is not an attachment of this dataset
+          content:
+            application/json:
+              schema:
+                $ref: "_common.yaml#/components/schemas/Error"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      $ref: "_common.yaml#/components/securitySchemes/BearerAuth"
+  schemas:
+    Error:
+      $ref: "_common.yaml#/components/schemas/Error"
+  responses:
+    UnauthorizedError:
+      $ref: "_common.yaml#/components/responses/UnauthorizedError"

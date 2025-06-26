@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { type DetectionMethod, detectionMethodCache } from '@/services/detection_method'
+import { type DetectionMethod, detectionMethodCache } from '@/services/detectionMethod'
 import { GENERIC_FIELD_DEFAULTS, type GenericFieldProps } from '@/utils/ui_style'
 import CascadeSelect, { type CascadeSelectChangeEvent } from 'primevue/cascadeselect'
 import { type CascadeItem, getOptionsForPrimvueCascadeSelect } from '@/utils/primevue'

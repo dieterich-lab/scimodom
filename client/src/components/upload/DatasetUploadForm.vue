@@ -21,7 +21,7 @@ import { type Project } from '@/services/project'
 import { type ModificationType, type Cto, type Technology } from '@/services/selection'
 
 import { type DatasetPostRequest, postDataset } from '@/services/management'
-import { type RnaType } from '@/services/rna_type'
+import { type RnaType } from '@/services/rnaType'
 import { type Assembly } from '@/services/assembly'
 import { allDatasetsCache } from '@/services/dataset'
 import { trashRequestErrors } from '@/services/API'
