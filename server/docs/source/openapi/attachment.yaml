@@ -1,0 +1,99 @@
+openapi: 3.0.4
+
+info:
+  title: Attachment REST API
+  version: v0
+  license: https://github.com/dieterich-lab/scimodom/blob/master/LICENSE
+
+servers:
+  - url: https://scimodom.dieterichlab.org/api/v0/
+
+paths:
+  /bam_file/all/{dataset_id}:
+    get:
+      summary: Get BAM files attached to dataset
+      description: >-
+        Get metadata for all BAM files attached to a given dataset.
+      parameters:
+        - in: path
+          name: dataset_id
+          required: true
+          schema:
+            type: string
+          description: EUFID
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    original_file_name:
+                      type: string
+                      description: Original file name
+                    size_in_bytes:
+                      type: integer
+                      description: File size in bytes
+                    mtime_epoch:
+                      type: integer
+                      description: >-
+                        POSIX time stamp corresponding to time of last modification
+          links:
+            GetFileName:
+              operationId: getName
+              description: >-
+                The `original_file_name` returned in the response can be used
+                as `name` parameter in `GET bam_file/{dataset}/{name}`,
+              parameters:
+                name: $response.body#/original_file_name
+        "400":
+          $ref: "#/components/responses/ClientResponseException400"
+        "404":
+          $ref: "#/components/responses/ClientResponseException404"
+  /bam_file/{dataset_id}/{name}:
+    get:
+      summary: Download BAM file
+      description: Download BAM file associated with dataset
+      operationId: getName
+      parameters:
+        - in: path
+          name: dataset_id
+          required: true
+          schema:
+            type: string
+          description: EUFID
+        - in: path
+          name: name
+          required: true
+          schema:
+            type: string
+          description: BAM original file name
+      responses:
+        "200":
+          description: OK
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "400":
+          $ref: "#/components/responses/ClientResponseException400"
+        "404":
+          $ref: "#/components/responses/ClientResponseException404"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    UnauthorizedError:
+      description: Missing authorization header
+    ClientResponseException400:
+      description: Bad Request
+    ClientResponseException404:
+      description: Dataset identifier or attachment not found

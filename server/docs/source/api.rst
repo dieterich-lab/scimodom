@@ -7,3 +7,5 @@ Sci-ModoM REST API
    :maxdepth: 1
 
    api_project
+   api_dataset
+   api_attachment

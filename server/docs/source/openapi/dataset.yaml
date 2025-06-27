@@ -1,0 +1,410 @@
+openapi: 3.0.4
+
+info:
+  title: Dataset REST API
+  version: v0
+  license: https://github.com/dieterich-lab/scimodom/blob/master/LICENSE
+
+servers:
+  - url: https://scimodom.dieterichlab.org/api/v0/
+
+tags:
+  - name: list
+    description: Dataset and associated metadata
+  - name: download
+    description: Dataset in bedRMod format
+  - name: compare
+    description: Perform complex queries
+
+paths:
+  /dataset/list_all:
+    get:
+      tags:
+        - list
+      summary: Get all dataset
+      description: >-
+        Get metadata for all dataset.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dataset"
+  /dataset/list_mine:
+    get:
+      tags:
+        - list
+      summary: Get dataset per user
+      description: >-
+        Get metadata for dataset submitted per user.
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dataset"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+  /transfer/dataset/{dataset_id}:
+    get:
+      tags:
+        - download
+      summary: Download dataset
+      description: Download dataset in bedRMod format
+      parameters:
+        - in: path
+          name: dataset_id
+          required: true
+          schema:
+            type: string
+          description: EUFID
+      responses:
+        "200":
+          description: OK
+          content:
+            test/csv:
+              schema:
+                type: string
+  /transfer/tmp_upload:
+    post:
+      tags:
+        - compare
+      summary: Upload file
+      description: >-
+        Upload a BED or bedRMod file for comparison
+      requestBody:
+        required: true
+        description: Path to file
+        content:
+          application/json:
+            schema:
+              type: string
+              format: binary
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  file_id:
+                    type: string
+                    description: Temporary file identifier
+        links:
+          GetFileById:
+            $ref: "#/components/links/GetFileById"
+  /dataset/intersect:
+    get:
+      tags:
+        - compare
+      summary: Search for overlaps
+      description: >-
+        Search for overlaps between dataset A and B (intersection).
+      operationId: getUploadQueryParam
+      parameters:
+        - $ref: "#/components/parameters/referenceQueryParam"
+        - $ref: "#/components/parameters/comparisonQueryparam"
+        - $ref: "#/components/parameters/strandQueryParam"
+        - $ref: "#/components/parameters/uploadQueryParam"
+        - $ref: "#/components/parameters/uploadNameQueryParam"
+        - $ref: "#/components/parameters/eufQueryParam"
+        - $ref: "#/components/parameters/taxaQueryParam"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Intersect"
+        "400":
+          $ref: "#/components/responses/ClientResponseException400"
+        "404":
+          $ref: "#/components/responses/ClientResponseException404"
+  /dataset/closest:
+    get:
+      tags:
+        - compare
+      summary: Search for closest non-overlaps
+      description: >-
+        Search for closest non-overlaps in dataset B wrt dataset A (closest).
+      operationId: getUploadQueryParam
+      parameters:
+        - $ref: "#/components/parameters/referenceQueryParam"
+        - $ref: "#/components/parameters/comparisonQueryparam"
+        - $ref: "#/components/parameters/strandQueryParam"
+        - $ref: "#/components/parameters/uploadQueryParam"
+        - $ref: "#/components/parameters/uploadNameQueryParam"
+        - $ref: "#/components/parameters/eufQueryParam"
+        - $ref: "#/components/parameters/taxaQueryParam"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Closest"
+        "400":
+          $ref: "#/components/responses/ClientResponseException400"
+        "404":
+          $ref: "#/components/responses/ClientResponseException404"
+  /dataset/subtract:
+    get:
+      tags:
+        - compare
+      summary: Search for strict non-overlaps
+      description: >-
+        Search for strict non-overlaps in dataset A wrt dataset B.
+      operationId: getUploadQueryParam
+      parameters:
+        - $ref: "#/components/parameters/referenceQueryParam"
+        - $ref: "#/components/parameters/comparisonQueryparam"
+        - $ref: "#/components/parameters/strandQueryParam"
+        - $ref: "#/components/parameters/uploadQueryParam"
+        - $ref: "#/components/parameters/uploadNameQueryParam"
+        - $ref: "#/components/parameters/eufQueryParam"
+        - $ref: "#/components/parameters/taxaQueryParam"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subtract"
+        "400":
+          $ref: "#/components/responses/ClientResponseException400"
+        "404":
+          $ref: "#/components/responses/ClientResponseException404"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    referenceQueryParam:
+      in: query
+      name: reference
+      required: true
+      schema:
+        type: array
+        items:
+          type: string
+      style: form
+      explode: true
+      description: Up to 3 reference EUFID (dataset A)
+    comparisonQueryparam:
+      in: query
+      name: comparison
+      required: false
+      schema:
+        type: array
+        items:
+          type: string
+      style: form
+      explode: true
+      description: >-
+        Up to 3 EUFID for comparison (dataset B). This is required
+        if `upload` is not used. This parameter is incompatible with `upload`.
+    strandQueryParam:
+      in: query
+      name: strand
+      required: false
+      schema:
+        type: boolean
+        default: true
+      description: If true, perform operations on the same strand.
+    uploadQueryParam:
+      in: query
+      name: upload
+      required: false
+      schema:
+        type: string
+      description: >-
+        `file_id` of the uploaded BED or bedRMod file. This is required
+        if `comparison` is not used. This parameter is incompatible with `comparison`.
+    uploadNameQueryParam:
+      in: query
+      name: upload_name
+      required: false
+      schema:
+        type: string
+        default: uploaded file
+      description: File name or description. Only used if `upload` is used.
+    eufQueryParam:
+      in: query
+      name: euf
+      required: false
+      schema:
+        type: boolean
+        default: false
+      description: >-
+        If true, the uploaded file must follow the latest euf-specs, else it
+        is considered as a BED6. Only used if `upload` is used.
+    taxaQueryParam:
+      in: query
+      name: taxaId
+      required: false
+      schema:
+        type: integer
+      description: >-
+        NCBI taxonomic identifier for `reference`. This is only
+        required if `euf` is true, and thus if `upload` is used.
+  responses:
+    UnauthorizedError:
+      description: Missing authorization header
+    ClientResponseException400:
+      description: Bad Request
+    ClientResponseException404:
+      description: >-
+        Dataset (`reference` or `comparison`) or upload file
+        identifier (`file_id`) not found
+  links:
+    GetFileById:
+      description: >-
+        The `file_id` returned in the response can be used
+        as `upload` query parameter in `GET dataset/intersect`,
+        `subtract`, or `closest`.
+      operationId: getUploadQueryParam
+      parameters:
+        upload: "$response.body#/file_id"
+  schemas:
+    Dataset:
+      type: array
+      items:
+        type: object
+        properties:
+          project_id:
+            type: string
+            description: SMID
+          dataset_id:
+            type: string
+            description: EUFID
+          dataset_title:
+            type: string
+            description: Dataset title
+          sequencing_platform:
+            type: string
+            nullable: true
+            description: Sequencing platform (header EUF specification)
+          basecalling:
+            type: string
+            nullable: true
+            description: Basecalling model information (header EUF specification)
+          bioinformatics_workflow:
+            type: string
+            nullable: true
+            description: >-
+              Link to bioinformatics workflow; program name, version, and/or call; information
+              relevant to score calculation; etc. (header EUF specification)
+          experiment:
+            type: string
+            nullable: true
+            description: >-
+              Information about or link to experimental protocol
+              and design (header EUF specification)
+          project_title:
+            type: string
+            description: Project title to which this dataset belong
+          summary:
+            type: string
+            description: Project summary to which this dataset belong
+          doi:
+            type: string
+            description: A list of DOIs associated with this project
+          pmid:
+            type: string
+            description: A list of PMIDs associated with this project
+          rna:
+            type: string
+            description: A valid RNA type (modification_type header EUF specification)
+          modomics_sname:
+            type: string
+            description: Modifications reported in this dataset (MODOMICS short name)
+          tech:
+            type: string
+            description: Detection technology used in this dataset
+          taxa_sname:
+            type: string
+            description: Taxonomic short name for organism used in this dataset
+          taxa_id:
+            type: integer
+            description: NCBI taxonomic identifier used in this dataset (header EUF specification)
+          cto:
+            type: string
+            description: Cell type, tissue, or organism used in this dataset
+    Comparison:
+      type: object
+      properties:
+        chrom:
+          type: string
+          description: Chromosome name
+        start:
+          type: integer
+          description: Feature start position
+        end:
+          type: integer
+          description: Feature end position
+        name:
+          type: string
+          description: >-
+            Feature name (MODOMICS short name if
+            `comparison` is used).
+        score:
+          type: integer
+          description: >-
+            Feature confidence (valid coverage or coverage
+            if `comparison` is used).
+        strand:
+          type: string
+          description: Feature strand
+        coverage:
+          type: integer
+          description: Feature coverage (or 1 if `upload` and `euf` is false)
+        frequency:
+          type: number
+          description: >-
+            Feature frequency (percentage of modification or 1 if `upload`
+            and `euf` is false.
+        eufid:
+          type: string
+          description: EUFID or UPLOAD
+    Intersect:
+      type: object
+      properties:
+        records:
+          type: array
+          items:
+            type: object
+            properties:
+              a:
+                $ref: "#/components/schemas/Comparison"
+              b:
+                $ref: "#/components/schemas/Comparison"
+    Closest:
+      type: object
+      properties:
+        records:
+          type: array
+          items:
+            type: object
+            properties:
+              a:
+                $ref: "#/components/schemas/Comparison"
+              b:
+                $ref: "#/components/schemas/Comparison"
+              distance:
+                type: integer
+                description: Distance to closest feature
+    Subtract:
+      type: object
+      properties:
+        records:
+          type: array
+          items:
+            $ref: "#/components/schemas/Comparison"

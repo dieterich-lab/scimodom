@@ -57,36 +57,40 @@ components:
       description: Missing authorization header
   schemas:
     Project:
-      type: object
-      properties:
-        project_id:
-          type: string
-          description: SMID
-        title:
-          type: string
-          description: Project title
-        summary:
-          type: string
-          description: Project summary
-        date_added:
-          type: integer
-          description: >-
-            POSIX timestamp corresponding to the date the project was added
-        date_published:
-          type: integer
-          description: >-
-            POSIX timestamp corresponding to the date of publication
-        contact_name:
-          type: string
-          description: >-
-            The author of the data or a contact person responsible for adding the data
-        contact_institution:
-          type: string
-          description: >-
-            The institution or affiliation of contact_name
-        doi:
-          type: string
-          description: A list of DOIs associated with this project
-        pmid:
-          type: string
-          description: A list of PMIDs associated with this project
+      type: array
+      items:
+        type: object
+        properties:
+          project_id:
+            type: string
+            description: SMID
+          title:
+            type: string
+            description: Project title
+          summary:
+            type: string
+            description: Project summary
+          date_added:
+            type: integer
+            description: >-
+              POSIX timestamp corresponding to the date the project was added. In
+              Sci-ModoM (UI), this is converted to YYYY-MM-DD (ISO 8601).
+          date_published:
+            type: integer
+            description: >-
+              POSIX timestamp corresponding to the date of publication. In
+              Sci-ModoM (UI), this is converted to YYYY-MM-DD (ISO 8601).
+          contact_name:
+            type: string
+            description: >-
+              The author of the data or a contact person responsible for adding the data
+          contact_institution:
+            type: string
+            description: >-
+              The institution or affiliation of contact_name
+          doi:
+            type: string
+            description: A list of DOIs associated with this project
+          pmid:
+            type: string
+            description: A list of PMIDs associated with this project
