@@ -1,0 +1,195 @@
+openapi: 3.0.4
+
+info:
+  title: Utilities REST API
+  version: v0
+  license: https://github.com/dieterich-lab/scimodom/blob/master/LICENSE
+
+servers:
+  - url: https://scimodom.dieterichlab.org/api/v0
+
+# tags:
+#   - name: assembly
+#     description: Get information related to assemblies
+#   - name: modification
+#     description: get information related to modifications
+
+paths:
+  /rna_types:
+    get:
+      summary: Get RNA types
+      description: Get valid RNA types
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      description: Sci-ModoM identifier for RNA type
+                    label:
+                      type: string
+                      description: RNA type description
+  /taxa:
+    get:
+      summary: Get species
+      description: Get valid species with taxonomic information
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    domain:
+                      type: string
+                      description: Domain
+                    kingdom:
+                      type: string
+                      description: Kingdom
+                    phylum:
+                      type: string
+                      description: Phylum
+                    taxa_id:
+                      type: integer
+                      description: NCBI taxonomic identifier
+                    taxa_name:
+                      type: string
+                      description: NCBI name for `taxa_id`
+                    taxa_sname:
+                      type: string
+                      description: Abbreviation for `taxa_name`
+  /modomics:
+    get:
+      summary: Get modifications
+      description: Get valid modifications using the MODOMICS nomenclature
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      description: MODOMICS identifier
+                    modomics_sname:
+                      type: string
+                      description: MODOMICS short name
+  /methods:
+    get:
+      summary: Get detection methods
+      description: Get valid detection methods and their class
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      description: Sci-ModoM identifier
+                    cls:
+                      type: string
+                      description: Classification
+                    meth:
+                      type: string
+                      description: Detection method
+  /chroms/{taxa_id}:
+    get:
+      summary: Get chromosomes and their size
+      description: Get valid chromosomes and their size for a given species
+      parameters:
+        - in: path
+          name: taxa_id
+          required: true
+          schema:
+            type: integer
+          description: A valid NCBI taxonomic identifier
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    chrom:
+                      type: string
+                      description: Chromosome name
+                    size:
+                      type: integer
+                      description: Chromosome size
+        "404":
+          $ref: "#/components/responses/ClientResponseException404"
+  /assembly/{taxa_id}:
+    get:
+      summary: Get assemblies
+      description: Get valid assemblies for a given species
+      parameters:
+        - in: path
+          name: taxa_id
+          required: true
+          schema:
+            type: integer
+          description: A valid NCBI taxonomic identifier
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      description: Sci-ModoM identifier for assembly
+                    name:
+                      type: string
+                      description: Assembly name
+        "400":
+          $ref: "#/components/responses/ClientResponseException400"
+  /release:
+    get:
+      summary: Get release information
+      description: Get current number of sites and datasets
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sites:
+                    type: integer
+                    description: Number of sites
+                  datasets:
+                    type: integer
+                    description: Number of dataset
+
+components:
+  responses:
+    ClientResponseException400:
+      description: Bad Request
+    ClientResponseException404:
+      description: Unrecognized parameter value

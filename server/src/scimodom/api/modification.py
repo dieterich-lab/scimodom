@@ -269,6 +269,7 @@ def _get_annotation_source():
 
 
 # TODO: for mod, org, and tech, we should in fact check that they exists in the DB...
+# why are we allowing empty tech?
 def _get_technology_ids():
     raw = get_unique_list_from_query_parameter("technology", int)
     if raw is None:

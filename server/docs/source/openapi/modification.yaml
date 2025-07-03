@@ -1,0 +1,421 @@
+openapi: 3.0.4
+
+info:
+  title: Modification REST API
+  version: v0
+  license: https://github.com/dieterich-lab/scimodom/blob/master/LICENSE
+
+servers:
+  - url: https://scimodom.dieterichlab.org/api/v0/
+
+paths:
+  # TODO: add csv endpoints
+  /modification/query:
+    get:
+      summary: Get modification sites
+      description: Query by modification, gene or genomic region
+      parameters:
+        - $ref: "#/components/parameters/rnaTypeQueryParam"
+        - $ref: "#/components/parameters/taxaIdQueryParam"
+        - $ref: "#/components/parameters/modificationQueryParam"
+        - $ref: "#/components/parameters/organismQueryParam"
+        - $ref: "#/components/parameters/technologyQueryParam"
+        - $ref: "#/components/parameters/geneFilterQueryParam"
+        - $ref: "#/components/parameters/multiSortQueryParam"
+        - $ref: "#/components/parameters/chromQueryParam"
+        - $ref: "#/components/parameters/chromStartQueryParam"
+        - $ref: "#/components/parameters/chromEndQueryParam"
+        - $ref: "#/components/parameters/firstRecordQueryParam"
+        - $ref: "#/components/parameters/maxRecordsQueryParam"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Search"
+        "400":
+          $ref: "#/components/responses/ClientResponseException400"
+  /modification/query/gene:
+    get:
+      summary: Get modification sites for one organism
+      description: Query by organism, gene or genomic region
+      parameters:
+        - $ref: "#/components/parameters/rnaTypeQueryParam"
+        - $ref: "#/components/parameters/taxaIdQueryParam"
+        # in fact these are required and dependent...
+        - $ref: "#/components/parameters/geneFilterQueryParam"
+        - $ref: "#/components/parameters/multiSortQueryParam"
+        - $ref: "#/components/parameters/chromQueryParam"
+        - $ref: "#/components/parameters/chromStartQueryParam"
+        - $ref: "#/components/parameters/chromEndQueryParam"
+        - $ref: "#/components/parameters/firstRecordQueryParam"
+        - $ref: "#/components/parameters/maxRecordsQueryParam"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Search"
+        "400":
+          $ref: "#/components/responses/ClientResponseException400"
+  /modification/sitewise:
+    get:
+      summary: Get modification site
+      description: Get information related to a modification site
+      parameters:
+        - $ref: "#/components/parameters/taxaIdQueryParam"
+        - $ref: "#/components/parameters/chromSimpleQueryParam"
+        - $ref: "#/components/parameters/chromSimpleStartQueryParam"
+        - $ref: "#/components/parameters/chromSimpleEndQueryParam"
+        - $ref: "#/components/parameters/strandQueryParam"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Site"
+        "400":
+          $ref: "#/components/responses/ClientResponseException400"
+        "404":
+          $ref: "#/components/responses/ClientResponseException404"
+  /modification/genomic-context/{context}:
+    get:
+      summary: Get genomic context
+      description: Get genomic context centered on a modification site
+      parameters:
+        - in: path
+          name: context
+          required: true
+          schema:
+            type: integer
+          description: >-
+            Context size (nucleotides to add on each side of site)
+        - $ref: "#/components/parameters/taxaIdQueryParam"
+        - $ref: "#/components/parameters/chromSimpleQueryParam"
+        - $ref: "#/components/parameters/chromSimpleStartQueryParam"
+        - $ref: "#/components/parameters/chromSimpleEndQueryParam"
+        - $ref: "#/components/parameters/strandQueryParam"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Context"
+        "400":
+          $ref: "#/components/responses/ClientResponseException400"
+        "404":
+          $ref: "#/components/responses/ClientResponseException404"
+  /modification/target/{type}:
+    get:
+      summary: Get interactome-relevant information
+      description: >-
+        Get information related to miRNA target and RBP binding sites
+        that may be affected by a modification site
+      parameters:
+        - in: path
+          name: type
+          required: true
+          schema:
+            type: string
+            enum:
+              - "MIRNA"
+              - "RBP"
+          description: miRNA targets or RBP binding sites
+        - $ref: "#/components/parameters/taxaIdQueryParam"
+        - $ref: "#/components/parameters/chromSimpleQueryParam"
+        - $ref: "#/components/parameters/chromSimpleStartQueryParam"
+        - $ref: "#/components/parameters/chromSimpleEndQueryParam"
+        - $ref: "#/components/parameters/strandQueryParam"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BED6"
+        "400":
+          $ref: "#/components/responses/ClientResponseException400"
+        "404":
+          $ref: "#/components/responses/ClientResponseException404"
+
+components:
+  parameters:
+    rnaTypeQueryParam:
+      in: query
+      name: rnaType
+      required: true
+      schema:
+        type: string
+      description: A valid RNA type (currently only `WTS`)
+    taxaIdQueryParam:
+      in: query
+      name: taxaId
+      required: true
+      schema:
+        type: integer
+      description: A valid NCBI taxonomic identifier
+    modificationQueryParam:
+      in: query
+      name: modification
+      required: true
+      schema:
+        type: integer
+      description: Sci-ModoM's modification identifier
+    organismQueryParam:
+      in: query
+      name: organism
+      required: true
+      schema:
+        type: integer
+      description: Sci-ModoM's organism identifier
+    technologyQueryParam:
+      in: query
+      name: technology
+      required: false # should be true
+      schema:
+        type: array
+        items:
+          type: integer
+      style: form
+      explode: true
+      description: Sci-ModoM's technology identifier
+    geneFilterQueryParam:
+      in: query
+      name: geneFilter
+      required: false
+      schema:
+        type: array
+        items:
+          type: string
+      style: from
+      explode: true
+      description: e.g. `gene_name%2BASB1%2BstartsWith`
+    multiSortQueryParam:
+      in: query
+      name: multiSort
+      required: false
+      schema:
+        type: array
+        items:
+          type: string
+      style: form
+      explode: true
+      description: e.g. `coverage%2Bdesc`
+    chromQueryParam:
+      in: query
+      name: chrom
+      required: false
+      schema:
+        type: string
+    chromStartQueryParam:
+      in: query
+      name: chromStart
+      required: false
+      schema:
+        type: integer
+    chromEndQueryParam:
+      in: query
+      name: chromEnd
+      required: false
+      schema:
+        type: integer
+    chromSimpleQueryParam:
+      in: query
+      name: chrom
+      required: true
+      schema:
+        type: string
+    chromSimpleStartQueryParam:
+      in: query
+      name: start
+      required: true
+      schema:
+        type: integer
+    chromSimpleEndQueryParam:
+      in: query
+      name: end
+      required: true
+      schema:
+        type: integer
+    strandQueryParam:
+      in: query
+      name: strand
+      required: true
+      schema:
+        type: string
+        enum:
+          - "+"
+          - "-"
+          - "."
+    firstRecordQueryParam:
+      in: query
+      name: firstRecord
+      required: false
+      schema:
+        type: integer
+    maxRecordsQueryParam:
+      in: query
+      name: maxRecords
+      required: false
+      schema:
+        type: integer
+  responses:
+    ClientResponseException400:
+      description: Bad Request
+    ClientResponseException404:
+      description: Unrecognized parameter value
+  schemas:
+    BED6:
+      type: object
+      properties:
+        records:
+          type: array
+          items:
+            type: object
+            properties:
+              chrom:
+                type: string
+                description: Chromosome name
+              start:
+                type: integer
+                description: Feature start position
+              end:
+                type: integer
+                description: Feature end position
+              name:
+                type: string
+                description: Feature name
+              score:
+                type: integer
+                description: Feature score
+              strand:
+                type: string
+                description: Feature strand
+    Search:
+      type: object
+      properties:
+        records:
+          type: array
+          items:
+            type: object
+            properties:
+              chrom:
+                type: string
+                description: Chromosome name
+              start:
+                type: integer
+                description: Feature start position
+              end:
+                type: integer
+                description: Feature end position
+              name:
+                type: string
+                description: Feature name (MODOMICS short name)
+              score:
+                type: integer
+                description: Feature confidence (valid coverage or coverage)
+              strand:
+                type: string
+                description: Feature strand
+              coverage:
+                type: integer
+                description: Feature coverage
+              frequency:
+                type: number
+                description: Feature frequency (percentage of modification)
+              reference_id:
+                type: integer
+                description: MODOMICS reference identifier for this modification
+              tech:
+                type: string
+                description: Detection technology
+              taxa_id:
+                type: integer
+                description: NCBI's taxonomic identifier
+              cto:
+                type: string
+                description: Cell, tissue, or organism
+              gene_id:
+                type: string
+                description: Gene identifier
+              gene_name:
+                type: string
+                description: Gene name
+              gene_biotype:
+                type: string
+                description: Gene biotype
+              feature:
+                type: string
+                description: Gene feature
+              id:
+                type: integer
+                description: Data id
+              dataset_id:
+                type: integer
+                description: EUFID
+        totalRecords:
+          type: integer
+          description: Total number of records matching the query
+    Site:
+      type: object
+      properties:
+        records:
+          type: array
+          items:
+            type: object
+            properties:
+              chrom:
+                type: string
+                description: Chromosome name
+              start:
+                type: integer
+                description: Feature start position
+              end:
+                type: integer
+                description: Feature end position
+              name:
+                type: string
+                description: Feature name (MODOMICS short name)
+              score:
+                type: integer
+                description: Feature confidence (valid coverage or coverage)
+              strand:
+                type: string
+                description: Feature strand
+              coverage:
+                type: integer
+                description: Feature coverage
+              frequency:
+                type: number
+                description: Feature frequency (percentage of modification)
+              rna:
+                type: string
+                description: RNA type
+              reference_id:
+                type: integer
+                description: MODOMICS reference identifier for this modification
+              modification_id:
+                type: integer
+                description: Sci-ModoM's modification identifier
+              short_name:
+                type: string
+                description: Modification short name (MODOMICS)
+              tech:
+                type: string
+                description: Detection technology
+              cto:
+                type: string
+                description: Cell, tissue, or organism
+              dataset_id:
+                type: integer
+                description: EUFID
+    Context:
+      type: object
+      properties:
+        context:
+          type: string
+          description: Sequence context centered on modification

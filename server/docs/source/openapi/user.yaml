@@ -1,0 +1,146 @@
+openapi: 3.0.4
+
+info:
+  title: User REST API
+  version: v0
+  license: https://github.com/dieterich-lab/scimodom/blob/master/LICENSE
+
+servers:
+  - url: https://scimodom.dieterichlab.org/api/v0
+
+tags:
+  - name: login
+    description: User registration and login
+  - name: password
+    description: Manage access
+
+paths:
+  /user/login:
+    post:
+      tags:
+        - login
+      summary: Login
+      description: Login
+      requestBody:
+        $ref: "#/components/requestBodies/LoginBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                    description: JWT
+        "401":
+          $ref: "#/components/responses/ClientResponseException401"
+  /user/get_username:
+    get:
+      summary: Get username
+      description: Get username
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  username:
+                    type: string
+                    description: username
+        "401":
+          $ref: "#/components/responses/ClientResponseException401"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  requestBodies:
+    UserBody:
+      description: JSON object with username
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              email:
+                type: string
+                description: Username
+    LoginBody:
+      description: JSON object with username and password
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              email:
+                type: string
+                description: Username
+              password:
+                type: string
+                description: Password
+    AuthBody:
+      description: JSON object with username, password, and token
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              email:
+                type: string
+                description: Username
+              password:
+                type: string
+                description: Password
+              token:
+                type: string
+                description: JWT
+    ConfirmBody:
+      description: JSON object with username and token
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              email:
+                type: string
+                description: Username
+              token:
+                type: string
+                description: JWT
+    TokenBody:
+      description: JSON object with token
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              token:
+                type: string
+                description: JWT
+    PasswordBody:
+      description: JSON object with password
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              password:
+                type: string
+                description: Password
+  responses:
+    ClientResponseException401:
+      description: Unauthorized
