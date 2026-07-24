@@ -1,0 +1,48 @@
+# Single source for
+#  - OpenAPI version
+#  - Sci-ModoM API version
+#  - Sci-ModoM API host URL
+#  - Sci-ModoM license
+#  - common components
+# The Sphinx build step copies these values into newly generated specs
+# from fragments, and also uses the Sci-ModoM API version to fill in
+# the {version} server variable below.
+
+openapi: 3.0.4
+
+info:
+  version: v0
+  license:
+    name: GNU AGPLv3+
+    url: https://github.com/dieterich-lab/scimodom/blob/master/LICENSE
+
+servers:
+  - url: "https://scimodom.dieterichlab.org/api/{version}"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Technical error message
+        user_message:
+          type: string
+          description: >-
+            Optional. Error caused by user input with
+            additional context.
+      required:
+        - message
+  responses:
+    UnauthorizedError:
+      description: Unauthorized request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"

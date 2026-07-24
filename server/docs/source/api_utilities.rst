@@ -3,4 +3,5 @@
 General resources
 =================
 
-.. swagger-plugin:: openapi/utilities.yaml
+.. swagger-plugin:: openapi/_include/utilities.yaml
+   :swagger-options: {"supportedSubmitMethods": ["get"]}

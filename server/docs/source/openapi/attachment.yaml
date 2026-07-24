@@ -1,12 +1,5 @@
-openapi: 3.0.4
-
 info:
   title: Attachment REST API
-  version: v0
-  license: https://github.com/dieterich-lab/scimodom/blob/master/LICENSE
-
-servers:
-  - url: https://scimodom.dieterichlab.org/api/v0/
 
 paths:
   /bam_file/all/{dataset_id}:

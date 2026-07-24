@@ -26,6 +26,12 @@ MAPPED_BIOTYPES = sorted(list(set(BIOTYPES.values())))
 @api.route("/rna_types", methods=["GET"])
 @cross_origin(supports_credentials=True)
 def get_rna_types():
+    """Get RNA types.
+
+    :returns: JSON array with RNA type information.
+    :statuscode 200: OK
+    :statuscode 500: Internal Server Error
+    """
     utilities_service = get_utilities_service()
     return utilities_service.get_rna_types()
 
@@ -33,6 +39,13 @@ def get_rna_types():
 @api.route("/taxa", methods=["GET"])
 @cross_origin(supports_credentials=True)
 def get_taxa():
+    """Get species with taxonomic information.
+
+    :returns: JSON array with taxonomic information
+    for each species.
+    :statuscode 200: OK
+    :statuscode 500: Internal Server Error
+    """
     utilities_service = get_utilities_service()
     return utilities_service.get_taxa()
 
@@ -40,6 +53,13 @@ def get_taxa():
 @api.route("/modomics", methods=["GET"])
 @cross_origin(supports_credentials=True)
 def get_modomics():
+    """Get modifications.
+
+    :returns: JSON array with MODOMICS nomenclature
+    for all modifications.
+    :statuscode 200: OK
+    :statuscode 500: Internal Server Error
+    """
     utilities_service = get_utilities_service()
     return utilities_service.get_modomics()
 
@@ -47,6 +67,13 @@ def get_modomics():
 @api.route("/methods", methods=["GET"])
 @cross_origin(supports_credentials=True)
 def get_methods():
+    """Get detection methods and their classification.
+
+    :returns: JSON array with classification information
+    for all detection methods.
+    :statuscode 200: OK
+    :statuscode 500: Internal Server Error
+    """
     utilities_service = get_utilities_service()
     return utilities_service.get_methods()
 
@@ -54,6 +81,14 @@ def get_methods():
 @api.route("/selections", methods=["GET"])
 @cross_origin(supports_credentials=True)
 def get_selections():
+    """Get selections (modification, organism, technology).
+
+    :returns: JSON array with detailed information for
+    all combinations of modifications, organisms, and
+    technology that are available in the database.
+    :statuscode 200: OK
+    :statuscode 500: Internal Server Error
+    """
     utilities_service = get_utilities_service()
     return utilities_service.get_selections()
 
@@ -92,6 +127,16 @@ def get_features(rna_type):
 @api.route("/chroms/<taxa_id>", methods=["GET"])
 @cross_origin(supports_credentials=True)
 def get_chroms(taxa_id: str):
+    """Get chromosomes and their size for a given taxon.
+
+    :param taxa_id: NCBI taxon (identifier)
+    :returns: JSON array with chromosome and their size for
+    the current assembly for the given taxon.
+    :statuscode 200: OK
+    :statuscode 400: Invalid Taxa ID (cannot be coerced to int)
+    :statuscode 404: Unrecognized Taxa ID (unknown or unavailable taxon)
+    :statuscode 500: Internal Server Error
+    """
     assembly_service = get_assembly_service()
     try:
         taxa_id_as_int = get_valid_taxa_id_from_string(taxa_id)
@@ -107,6 +152,16 @@ def get_chroms(taxa_id: str):
 @api.route("/assembly/<taxa_id>", methods=["GET"])
 @cross_origin(supports_credentials=True)
 def get_assemblies(taxa_id):
+    """Get assemblies for a given taxon.
+
+    :param taxa_id: NCBI taxon (identifier)
+    :returns: JSON array with all available assemblies
+    for the given taxon.
+    :statuscode 200: OK
+    :statuscode 400: Invalid Taxa ID (cannot be coerced to int)
+    :statuscode 404: Unrecognized Taxa ID (unknown or unavailable taxon)
+    :statuscode 500: Internal Server Error
+    """
     utilities_service = get_utilities_service()
     try:
         taxa_id_as_int = get_valid_taxa_id_from_string(taxa_id)
@@ -118,6 +173,7 @@ def get_assemblies(taxa_id):
 @api.route("/sunburst/<chart>", methods=["GET"])
 @cross_origin(supports_credentials=True)
 def get_sunburst_chart(chart):
+    """Get sunburst chart data."""
     try:
         cooked_type = SunburstChartType(chart)
     except ValueError:
@@ -141,5 +197,6 @@ def get_sunburst_chart(chart):
 @api.route("/release", methods=["GET"])
 @cross_origin(supports_credentials=True)
 def get_release():
+    """Get current number of sites and datasets."""
     utitlies_service = get_utilities_service()
     return utitlies_service.get_release_info()

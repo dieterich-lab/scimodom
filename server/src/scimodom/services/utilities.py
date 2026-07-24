@@ -34,19 +34,18 @@ class UtilitiesService:
         self._assembly_service = assembly_service
 
     def get_rna_types(self) -> list[dict[str, Any]]:
-        """Get all RA types.
+        """Get all RNA types.
 
-        :returns: Selected columns from RNAType
-        :rtype: list of dict
+        :returns: Identifier and label from RNAType
         """
         rna_types = self._session.scalars(select(RNAType)).all()
         return [{"id": rna.id, "label": rna.name} for rna in rna_types]
 
     def get_taxa(self) -> list[dict[str, Any]]:
-        """Get all organisms with their taxonomy.
+        """Get all species with their taxonomy.
 
-        :returns: Selected columns from Taxa and Taxonomy
-        :rtype: list of dict
+        :returns: Identifier, name and short name from Taxa; domain,
+        kingdom, and phylum from Taxonomy.
         """
         rows = self._session.execute(
             select(Taxa, Taxonomy).join(Taxonomy, Taxa.inst_taxonomy)
@@ -66,17 +65,15 @@ class UtilitiesService:
     def get_modomics(self) -> list[dict[str, Any]]:
         """Get all modifications.
 
-        :returns: Selected columns from Modomics
-        :rtype: list of dict
+        :returns: Identifier (MODOMICS code) and short name from Modomics
         """
         modomics = self._session.scalars(select(Modomics)).all()
         return [{"id": mod.id, "modomics_sname": mod.short_name} for mod in modomics]
 
     def get_methods(self) -> list[dict[str, Any]]:
-        """Get all standard methods.
+        """Get all detection methods.
 
-        :returns: Selected columns from DetectionMethod
-        :rtype: list of dict
+        :returns: Identifier, class, and method from DetectionMethod
         """
         methods = self._session.scalars(select(DetectionMethod)).all()
         return [
@@ -85,11 +82,13 @@ class UtilitiesService:
         ]
 
     def get_selections(self) -> list[dict[str, Any]]:
-        """Get available selections.
+        """Get all selections.
 
-        :returns: Selected columns from ORM models
-        for available selections.
-        :rtype: list of dict
+        Selections are defined by an association:
+        Modification, Organism, DetectionTechnology.
+
+        :returns: Selected columns from various ORM models
+        describing each selection in detail.
         """
         query = (
             select(
@@ -144,7 +143,12 @@ class UtilitiesService:
         assemblies = self._assembly_service.get_assemblies_by_taxa(taxa_id)
         return [{"id": assembly.id, "name": assembly.name} for assembly in assemblies]
 
-    def get_release_info(self):
+    def get_release_info(self) -> dict[str, int]:
+        """Get release information.
+
+        :returns: Number of sites and dataset in current release
+        :rtype: dict
+        """
         query = select(Data)
         sites = self._session.scalar(
             select(func.count()).select_from(

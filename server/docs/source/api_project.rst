@@ -3,4 +3,5 @@
 Browse projects
 ===============
 
-.. swagger-plugin:: openapi/project.yaml
+.. swagger-plugin:: openapi/_include/project.yaml
+   :swagger-options: {"supportedSubmitMethods": ["get"]}

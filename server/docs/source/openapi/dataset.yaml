@@ -1,12 +1,5 @@
-openapi: 3.0.4
-
 info:
   title: Dataset REST API
-  version: v0
-  license: https://github.com/dieterich-lab/scimodom/blob/master/LICENSE
-
-servers:
-  - url: https://scimodom.dieterichlab.org/api/v0/
 
 tags:
   - name: list
@@ -95,9 +88,9 @@ paths:
                   file_id:
                     type: string
                     description: Temporary file identifier
-        links:
-          GetFileById:
-            $ref: "#/components/links/GetFileById"
+          links:
+            GetFileById:
+              $ref: "#/components/links/GetFileById"
   /dataset/intersect:
     get:
       tags:
@@ -105,7 +98,7 @@ paths:
       summary: Search for overlaps
       description: >-
         Search for overlaps between dataset A and B (intersection).
-      operationId: getUploadQueryParam
+      operationId: getIntersectQueryParam
       parameters:
         - $ref: "#/components/parameters/referenceQueryParam"
         - $ref: "#/components/parameters/comparisonQueryparam"
@@ -132,7 +125,7 @@ paths:
       summary: Search for closest non-overlaps
       description: >-
         Search for closest non-overlaps in dataset B wrt dataset A (closest).
-      operationId: getUploadQueryParam
+      operationId: getClosestQueryParam
       parameters:
         - $ref: "#/components/parameters/referenceQueryParam"
         - $ref: "#/components/parameters/comparisonQueryparam"
@@ -159,7 +152,7 @@ paths:
       summary: Search for strict non-overlaps
       description: >-
         Search for strict non-overlaps in dataset A wrt dataset B.
-      operationId: getUploadQueryParam
+      operationId: getSubtractQueryParam
       parameters:
         - $ref: "#/components/parameters/referenceQueryParam"
         - $ref: "#/components/parameters/comparisonQueryparam"
@@ -270,7 +263,7 @@ components:
         The `file_id` returned in the response can be used
         as `upload` query parameter in `GET dataset/intersect`,
         `subtract`, or `closest`.
-      operationId: getUploadQueryParam
+      operationId: getIntersectQueryParam
       parameters:
         upload: "$response.body#/file_id"
   schemas:

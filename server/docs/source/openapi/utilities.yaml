@@ -1,12 +1,5 @@
-openapi: 3.0.4
-
 info:
   title: Utilities REST API
-  version: v0
-  license: https://github.com/dieterich-lab/scimodom/blob/master/LICENSE
-
-servers:
-  - url: https://scimodom.dieterichlab.org/api/v0
 
 # tags:
 #   - name: assembly
@@ -18,7 +11,7 @@ paths:
   /rna_types:
     get:
       summary: Get RNA types
-      description: Get valid RNA types
+      description: Retrieve available RNA types
       responses:
         "200":
           description: OK
@@ -31,14 +24,14 @@ paths:
                   properties:
                     id:
                       type: string
-                      description: Sci-ModoM identifier for RNA type
+                      description: RNA type identifier
                     label:
                       type: string
                       description: RNA type description
   /taxa:
     get:
       summary: Get species
-      description: Get valid species with taxonomic information
+      description: Retrieve available species with their taxonomic information
       responses:
         "200":
           description: OK
@@ -60,7 +53,7 @@ paths:
                       description: Phylum
                     taxa_id:
                       type: integer
-                      description: NCBI taxonomic identifier
+                      description: NCBI taxon
                     taxa_name:
                       type: string
                       description: NCBI name for `taxa_id`
@@ -70,7 +63,7 @@ paths:
   /modomics:
     get:
       summary: Get modifications
-      description: Get valid modifications using the MODOMICS nomenclature
+      description: Retrieve available modifications
       responses:
         "200":
           description: OK
@@ -83,14 +76,14 @@ paths:
                   properties:
                     id:
                       type: string
-                      description: MODOMICS identifier
+                      description: MODOMICS code
                     modomics_sname:
                       type: string
                       description: MODOMICS short name
   /methods:
     get:
       summary: Get detection methods
-      description: Get valid detection methods and their class
+      description: Retrieve available detection methods and their classification
       responses:
         "200":
           description: OK
@@ -103,24 +96,87 @@ paths:
                   properties:
                     id:
                       type: string
-                      description: Sci-ModoM identifier
+                      description: Detection method identifier
                     cls:
                       type: string
                       description: Classification
                     meth:
                       type: string
                       description: Detection method
+  /selections:
+    get:
+      summary: Get selections
+      description: Retrieve available combinations of modification, organism, and technology
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    cls:
+                      type: string
+                      description: Detection method classification
+                    cto:
+                      type: string
+                      description: Cell, type, or organism
+                    domain:
+                      type: string
+                      description: Taxonomic domain
+                    kingdom:
+                      type: string
+                      description: Taxonomic kingdom
+                    meth:
+                      type: string
+                      description: Detection method
+                    modification_id:
+                      type: integer
+                      description: Modification identifier (MODOMICS code, `rna`)
+                    modomics_sname:
+                      type: string
+                      description: MODOMICS short name
+                    organism_id:
+                      type: integer
+                      description: Organism identifier (`taxa_id`, `cto`)
+                    rna:
+                      type: string
+                      description: RNA type
+                    rna_name:
+                      type: string
+                      description: RNA type description
+                    selection_id:
+                      type: integer
+                      description: Selection identifier
+                    taxa_id:
+                      type: integer
+                      description: NCBI taxon
+                    taxa_name:
+                      type: string
+                      description: NCBI name for `taxa_id`
+                    taxa_sname:
+                      type: string
+                      description: Abbreviation for `taxa_name`
+                    tech:
+                      type: string
+                      description: Detection technology
+                    technology_id:
+                      type: integer
+                      description: Detection technology identifier (method identifier, `tech`)
   /chroms/{taxa_id}:
     get:
       summary: Get chromosomes and their size
-      description: Get valid chromosomes and their size for a given species
+      description: >-
+        Retrieve chromosomes and their size for the current assembly associated with a given taxon
       parameters:
         - in: path
           name: taxa_id
           required: true
           schema:
             type: integer
-          description: A valid NCBI taxonomic identifier
+          description: A valid NCBI taxon
       responses:
         "200":
           description: OK
@@ -137,19 +193,30 @@ paths:
                     size:
                       type: integer
                       description: Chromosome size
+        "400":
+          description: Invalid Taxa ID
+          content:
+            application/json:
+              schema:
+                $ref: "_common.yaml#/components/schemas/Error"
         "404":
-          $ref: "#/components/responses/ClientResponseException404"
+          description: >-
+            Unrecognized Taxa ID (unknown or unavailable taxon)
+          content:
+            application/json:
+              schema:
+                $ref: "_common.yaml#/components/schemas/Error"
   /assembly/{taxa_id}:
     get:
       summary: Get assemblies
-      description: Get valid assemblies for a given species
+      description: Retrieve available assemblies for the given taxon
       parameters:
         - in: path
           name: taxa_id
           required: true
           schema:
             type: integer
-          description: A valid NCBI taxonomic identifier
+          description: A valid NCBI taxon
       responses:
         "200":
           description: OK
@@ -162,16 +229,27 @@ paths:
                   properties:
                     id:
                       type: string
-                      description: Sci-ModoM identifier for assembly
+                      description: Assembly identifier
                     name:
                       type: string
                       description: Assembly name
         "400":
-          $ref: "#/components/responses/ClientResponseException400"
+          description: Invalid Taxa ID
+          content:
+            application/json:
+              schema:
+                $ref: "_common.yaml#/components/schemas/Error"
+        "404":
+          description: >-
+            Unrecognized Taxa ID (unknown or unavailable taxon)
+          content:
+            application/json:
+              schema:
+                $ref: "_common.yaml#/components/schemas/Error"
   /release:
     get:
       summary: Get release information
-      description: Get current number of sites and datasets
+      description: Get current number of sites and datasets for current release
       responses:
         "200":
           description: OK
@@ -187,9 +265,32 @@ paths:
                     type: integer
                     description: Number of dataset
 
-components:
-  responses:
-    ClientResponseException400:
-      description: Bad Request
-    ClientResponseException404:
-      description: Unrecognized parameter value
+  /sunburst/{chart}:
+    get:
+      summary: Get sunburst chart data
+      # not a general-purpose API endpoint
+      x-internal: true
+      description: >-
+        Get a JSON object to generate one of the sunburst charts.
+        Primarily intended for use by the frontend rather than for general API consumption.
+      parameters:
+        - in: path
+          name: chart
+          required: true
+          schema:
+            type: string
+            enum: [search, browse]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Sunburst chart data
+        "404":
+          description: Unrecognized chart type
+          content:
+            application/json:
+              schema:
+                $ref: "_common.yaml#/components/schemas/Error"

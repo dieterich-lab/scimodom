@@ -25,6 +25,7 @@ ACCESS_TOKEN_EXPIRATION_TIME = timedelta(hours=2)
 
 @user_api.route("/register_user", methods=["POST"])
 def register_user():
+    """Register a new user."""
     user_service = get_user_service()
     try:
         user_service.register_user(

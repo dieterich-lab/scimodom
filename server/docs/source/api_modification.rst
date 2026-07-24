@@ -3,4 +3,5 @@
 Search RNA modification
 =======================
 
-.. swagger-plugin:: openapi/modification.yaml
+.. swagger-plugin:: openapi/_include/modification.yaml
+   :swagger-options: {"supportedSubmitMethods": ["get"]}

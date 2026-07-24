@@ -11,4 +11,6 @@ Sci-ModoM REST API
    api_project
    api_dataset
    api_attachment
+   api_transfer
+   api_management
    api_user

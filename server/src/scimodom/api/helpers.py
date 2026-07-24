@@ -337,6 +337,14 @@ def get_valid_taxa_id(is_optional: bool = False) -> Optional[int]:
 
 
 def get_valid_taxa_id_from_string(raw: str) -> int:
+    """Get taxonomic identifier from parameter value.
+
+    :param raw: Parameter value (taxonomic identifier)
+    :type raw: str
+    :raises ClientResponseException: If invalid or
+    unrecognized parameter value.
+    :return: NCBI taxon (identifier)
+    """
     try:
         taxa_id = int(raw)
         _validate_taxa_id(taxa_id)

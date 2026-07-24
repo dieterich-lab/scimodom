@@ -1,0 +1,254 @@
+info:
+  title: Management REST API
+  description: >-
+    Endpoints used to submit new projects and to add datasets to an
+    existing project. All endpoints require an authenticated user, and
+    dataset ingestion additionally requires the user to be associated
+    with the target project (SMID).
+
+tags:
+  - name: project
+    description: Project (SMID) creation requests
+  - name: dataset
+    description: Dataset ingestion
+
+paths:
+  /management/project:
+    post:
+      tags:
+        - project
+      summary: Request a new project
+      description: >-
+        Submit a project template. This does not create the project
+        directly - it is written to disk and the system administrator is
+        notified by e-mail to review and provision it.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectTemplate"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: OK
+        "400":
+          description: >-
+            Malformed request body, or the template fails validation
+            (e.g. missing required fields, no metadata entries supplied).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "500":
+          description: >-
+            The project template was saved, but the notification e-mail
+            to the system administrator could not be sent.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /management/dataset:
+    post:
+      tags:
+        - dataset
+      summary: Add a dataset to a project
+      description: >-
+        Import a previously uploaded bedRMod file (see
+        `POST /transfer/tmp_upload`) into an existing project. The caller
+        must be associated with the target project's SMID.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddDatasetBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: string
+                    example: Ok
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          description: >-
+            The authenticated user is not associated with the project
+            identified by `smid`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: >-
+            Unknown user, or `file_id` does not match a file previously
+            uploaded via `POST /transfer/tmp_upload`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: >-
+            The upload was rejected during import: unknown selection
+            (RNA type / modification / organism / technology
+            combination), a header that does not match the selected
+            values, a dataset that already exists, a file that does not
+            conform to the bedRMod format specification, or an empty
+            file.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Liftover failed, or an unexpected server error occurred.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      $ref: "_common.yaml#/components/securitySchemes/BearerAuth"
+  responses:
+    UnauthorizedError:
+      $ref: "_common.yaml#/components/responses/UnauthorizedError"
+  schemas:
+    Error:
+      $ref: "_common.yaml#/components/schemas/Error"
+    AddDatasetBody:
+      type: object
+      required:
+        - smid
+        - file_id
+        - rna_type
+        - title
+        - assembly_id
+        - modification_id
+        - organism_id
+        - technology_id
+      properties:
+        smid:
+          type: string
+          description: Project SMID the dataset will be added to
+        file_id:
+          type: string
+          description: >-
+            Identifier returned by `POST /transfer/tmp_upload` for the
+            bedRMod file to import
+        rna_type:
+          type: string
+          description: One of the RNA type IDs returned by `GET /rna_types`
+        title:
+          type: string
+          maxLength: 255
+        assembly_id:
+          type: integer
+        modification_id:
+          description: A single modification ID, or a list of IDs
+          oneOf:
+            - type: integer
+            - type: array
+              items:
+                type: integer
+        organism_id:
+          type: integer
+        technology_id:
+          type: integer
+    ProjectTemplate:
+      type: object
+      required:
+        - title
+        - summary
+        - contact_name
+        - contact_institution
+        - contact_email
+        - external_sources
+        - metadata
+      properties:
+        title:
+          type: string
+          maxLength: 255
+        summary:
+          type: string
+        contact_name:
+          type: string
+          maxLength: 128
+        contact_institution:
+          type: string
+          maxLength: 255
+        contact_email:
+          type: string
+          format: email
+        date_published:
+          type: string
+          format: date-time
+          nullable: true
+        external_sources:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            description: At least one of 'doi' or 'pmid' is required
+            properties:
+              doi:
+                type: string
+                maxLength: 255
+              pmid:
+                type: integer
+        metadata:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [rna, modomics_id, tech, method_id, organism]
+            properties:
+              rna:
+                type: string
+                maxLength: 32
+              modomics_id:
+                type: string
+                maxLength: 128
+              tech:
+                type: string
+                maxLength: 255
+              method_id:
+                type: string
+                maxLength: 8
+              note:
+                type: string
+                nullable: true
+              organism:
+                type: object
+                required: [taxa_id, cto, assembly_name]
+                properties:
+                  taxa_id:
+                    type: integer
+                  cto:
+                    type: string
+                    maxLength: 255
+                  assembly_name:
+                    type: string
+                    maxLength: 128
+                  assembly_id:
+                    type: integer
+                    nullable: true

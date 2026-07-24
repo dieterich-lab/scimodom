@@ -1,12 +1,5 @@
-openapi: 3.0.4
-
 info:
   title: Project REST API
-  version: v0
-  license: https://github.com/dieterich-lab/scimodom/blob/master/LICENSE
-
-servers:
-  - url: https://scimodom.dieterichlab.org/api/v0/
 
 tags:
   - name: list

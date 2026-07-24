@@ -1,12 +1,5 @@
-openapi: 3.0.4
-
 info:
   title: Modification REST API
-  version: v0
-  license: https://github.com/dieterich-lab/scimodom/blob/master/LICENSE
-
-servers:
-  - url: https://scimodom.dieterichlab.org/api/v0/
 
 paths:
   # TODO: add csv endpoints
@@ -191,7 +184,7 @@ components:
         type: array
         items:
           type: string
-      style: from
+      style: form
       explode: true
       description: e.g. `gene_name%2BASB1%2BstartsWith`
     multiSortQueryParam:

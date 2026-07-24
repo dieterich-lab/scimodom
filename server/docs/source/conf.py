@@ -6,7 +6,14 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-import scimodom
+import sys
+from pathlib import Path
+
+# Add docs/source to sys.path to resolve the local module import.
+sys.path.insert(0, str(Path(__file__).parent))
+
+import scimodom  # noqa: E402
+import include_swagger_api_spec  # noqa: E402
 
 project = "Sci-ModoM Docs"
 copyright = "2023 under the terms of the GNU AGPLv3+ License."
@@ -29,6 +36,8 @@ issues_github_path = "dieterich-lab/scimodom"
 templates_path = ["_templates"]
 exclude_patterns = []
 
+# Write the Swagger API specifications.
+include_swagger_api_spec.write()
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output

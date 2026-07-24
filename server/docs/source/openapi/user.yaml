@@ -1,12 +1,5 @@
-openapi: 3.0.4
-
 info:
   title: User REST API
-  version: v0
-  license: https://github.com/dieterich-lab/scimodom/blob/master/LICENSE
-
-servers:
-  - url: https://scimodom.dieterichlab.org/api/v0
 
 tags:
   - name: login
@@ -15,6 +8,49 @@ tags:
     description: Manage access
 
 paths:
+  /user/register_user:
+    post:
+      tags:
+        - login
+      summary: Register a new user
+      description: >-
+        Creates a new, inactive user and e-mails a confirmation link.
+      requestBody:
+        $ref: "#/components/requestBodies/LoginBody"
+      responses:
+        "200":
+          description: OK
+        "403":
+          description: User already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: The user was created, but the confirmation e-mail could not be sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /user/confirm_user:
+    post:
+      tags:
+        - login
+      summary: Confirm a registration
+      description: Confirm a registration using the token e-mailed by register_user.
+      requestBody:
+        $ref: "#/components/requestBodies/ConfirmBody"
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad, expired, or already-used confirmation link
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /user/login:
     post:
       tags:
@@ -35,7 +71,118 @@ paths:
                     type: string
                     description: JWT
         "401":
-          $ref: "#/components/responses/ClientResponseException401"
+          $ref: "#/components/responses/UnauthorizedError"
+
+  /user/request_password_reset:
+    post:
+      tags:
+        - password
+      summary: Request a password reset
+      description: >-
+        E-mails a password reset link. Always inspect the response
+        status rather than assuming success: this endpoint currently
+        reveals via 404 whether an email address is registered.
+      requestBody:
+        $ref: "#/components/requestBodies/UserBody"
+      responses:
+        "200":
+          description: OK
+        "404":
+          description: No user with this email address
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /user/do_password_reset:
+    post:
+      tags:
+        - password
+      summary: Reset a password
+      description: Set a new password using the token e-mailed by request_password_reset.
+      requestBody:
+        $ref: "#/components/requestBodies/AuthBody"
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Bad, expired, or already-used reset link
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /user/refresh_access_token:
+    get:
+      tags:
+        - login
+      summary: Refresh the access token
+      description: >-
+        Exchanges a still-valid access token for a new one with a fresh
+        expiry. Note this endpoint accepts the same token type it
+        issues - there is no separate longer-lived refresh token.
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                    description: JWT
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
+  /user/change_password:
+    post:
+      tags:
+        - password
+      summary: Change the current user's password
+      security:
+        - BearerAuth: []
+      requestBody:
+        $ref: "#/components/requestBodies/PasswordBody"
+      responses:
+        "200":
+          description: OK
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
+  /user/may_change_dataset/{dataset_id}:
+    get:
+      summary: Check write access on a dataset
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: dataset_id
+          required: true
+          schema:
+            type: string
+          description: EUFID
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  write_access:
+                    type: boolean
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          description: Unknown user, or unknown dataset
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /user/get_username:
     get:
       summary: Get username
@@ -54,14 +201,18 @@ paths:
                     type: string
                     description: username
         "401":
-          $ref: "#/components/responses/ClientResponseException401"
+          $ref: "#/components/responses/UnauthorizedError"
 
 components:
   securitySchemes:
     BearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
+      $ref: "_common.yaml#/components/securitySchemes/BearerAuth"
+  schemas:
+    Error:
+      $ref: "_common.yaml#/components/schemas/Error"
+  responses:
+    UnauthorizedError:
+      $ref: "_common.yaml#/components/responses/UnauthorizedError"
   requestBodies:
     UserBody:
       description: JSON object with username
@@ -119,17 +270,6 @@ components:
               token:
                 type: string
                 description: JWT
-    TokenBody:
-      description: JSON object with token
-      required: true
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              token:
-                type: string
-                description: JWT
     PasswordBody:
       description: JSON object with password
       required: true
@@ -141,6 +281,3 @@ components:
               password:
                 type: string
                 description: Password
-  responses:
-    ClientResponseException401:
-      description: Unauthorized
