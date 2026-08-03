@@ -96,12 +96,22 @@ def get_selections():
 @api.route("/genes", methods=["GET"])
 @cross_origin(supports_credentials=True)
 def get_genes():
+    """Get genes for one or more selection(s).
+
+    :query selection: A selection identifier
+    (associated with a combination of modification,
+    organism, and technology)
+    :returns: Array with gene symbols
+    :statuscode 200: OK
+    :statuscode 404: Unrecognized selection identifier (not found)
+    :statuscode 500: Internal Server Error
+    """
     gene_service = get_gene_service()
     selection_ids = get_unique_list_from_query_parameter("selection", int)
     try:
         return gene_service.get_genes(selection_ids)
-    except FileNotFoundError:
-        return create_error_response(404, "No data found for these selection")
+    except NoResultFound:
+        return create_error_response(404, "No data for queried selection(s)")
 
 
 @api.route("/biotypes/<rna_type>", methods=["GET"])
@@ -173,7 +183,15 @@ def get_assemblies(taxa_id):
 @api.route("/sunburst/<chart>", methods=["GET"])
 @cross_origin(supports_credentials=True)
 def get_sunburst_chart(chart):
-    """Get sunburst chart data."""
+    """Get sunburst chart data.
+
+    :param chart: chart type
+    :returns: JSON object to generate one of the
+    sunburst charts.
+    :statuscode 200: OK
+    :statuscode 404: Unrecognized chart type
+    :statuscode 500: Internal Server Error
+    """
     try:
         cooked_type = SunburstChartType(chart)
     except ValueError:
@@ -197,6 +215,12 @@ def get_sunburst_chart(chart):
 @api.route("/release", methods=["GET"])
 @cross_origin(supports_credentials=True)
 def get_release():
-    """Get current number of sites and datasets."""
+    """Get number of sites and datasets for current release.
+
+    :returns: JSON object with number of sites
+    and datasets.
+    :statuscode 200: OK
+    :statuscode 500: Internal Server Error
+    """
     utitlies_service = get_utilities_service()
     return utitlies_service.get_release_info()

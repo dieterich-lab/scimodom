@@ -240,7 +240,7 @@ class FileService:
         """Retrieve gene list for a given selection.
 
         In the case that a project was created but no data was uploaded so far
-        the gene cash may not be initialized and a FileNotFoundError may be
+        the gene cache may not be initialized and a FileNotFoundError may be
         generated.
 
         :param selection_id: Selection ID
@@ -762,6 +762,11 @@ class FileService:
         return open(path, "rb")
 
     def get_bam_file_list(self, dataset: Dataset) -> List[Dict[str, Any]]:
+        """Get all BAM files attachment for the given dataset.
+
+        :param dataset: Dataset instance
+        :returns: BAM file stat and name for each attachment
+        """
         items = self._session.scalars(
             select(BamFile).where(BamFile.dataset_id == dataset.id)
         ).all()

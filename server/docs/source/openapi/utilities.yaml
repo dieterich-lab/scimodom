@@ -1,15 +1,19 @@
 info:
   title: Utilities REST API
 
-# tags:
-#   - name: assembly
-#     description: Get information related to assemblies
-#   - name: modification
-#     description: get information related to modifications
+tags:
+  - name: assembly
+    description: Database tables for species and assemblies
+  - name: modification
+    description: Database tables for modifications
+  - name: internal
+    description: Database summary statistics
 
 paths:
   /rna_types:
     get:
+      tags:
+        - modification
       summary: Get RNA types
       description: Retrieve available RNA types
       responses:
@@ -28,8 +32,12 @@ paths:
                     label:
                       type: string
                       description: RNA type description
+        "500":
+          $ref: "#/components/responses/InternalServerError"
   /taxa:
     get:
+      tags:
+        - assembly
       summary: Get species
       description: Retrieve available species with their taxonomic information
       responses:
@@ -60,8 +68,12 @@ paths:
                     taxa_sname:
                       type: string
                       description: Abbreviation for `taxa_name`
+        "500":
+          $ref: "#/components/responses/InternalServerError"
   /modomics:
     get:
+      tags:
+        - modification
       summary: Get modifications
       description: Retrieve available modifications
       responses:
@@ -80,8 +92,12 @@ paths:
                     modomics_sname:
                       type: string
                       description: MODOMICS short name
+        "500":
+          $ref: "#/components/responses/InternalServerError"
   /methods:
     get:
+      tags:
+        - modification
       summary: Get detection methods
       description: Retrieve available detection methods and their classification
       responses:
@@ -103,8 +119,12 @@ paths:
                     meth:
                       type: string
                       description: Detection method
+        "500":
+          $ref: "#/components/responses/InternalServerError"
   /selections:
     get:
+      tags:
+        - modification
       summary: Get selections
       description: Retrieve available combinations of modification, organism, and technology
       responses:
@@ -165,8 +185,45 @@ paths:
                     technology_id:
                       type: integer
                       description: Detection technology identifier (method identifier, `tech`)
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /genes:
+    get:
+      tags:
+        - modification
+      summary: Get genomic annotation
+      description: >-
+        Retrieve all genes associated with a given selection (modification, organism, technology).
+      parameters:
+        - in: query
+          name: selection
+          required: true
+          schema:
+            type: string
+          description: A selection identifier
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                  description: Gene symbol
+        "404":
+          description: >-
+            Unrecognized selection identifier (not found or no data for this selection)
+          content:
+            application/json:
+              schema:
+                $ref: "_common.yaml#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
   /chroms/{taxa_id}:
     get:
+      tags:
+        - assembly
       summary: Get chromosomes and their size
       description: >-
         Retrieve chromosomes and their size for the current assembly associated with a given taxon
@@ -206,8 +263,12 @@ paths:
             application/json:
               schema:
                 $ref: "_common.yaml#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
   /assembly/{taxa_id}:
     get:
+      tags:
+        - assembly
       summary: Get assemblies
       description: Retrieve available assemblies for the given taxon
       parameters:
@@ -246,10 +307,14 @@ paths:
             application/json:
               schema:
                 $ref: "_common.yaml#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
   /release:
     get:
+      tags:
+        - internal
       summary: Get release information
-      description: Get current number of sites and datasets for current release
+      description: Retrieve number of sites and datasets for current release
       responses:
         "200":
           description: OK
@@ -264,14 +329,17 @@ paths:
                   datasets:
                     type: integer
                     description: Number of dataset
-
+        "500":
+          $ref: "#/components/responses/InternalServerError"
   /sunburst/{chart}:
     get:
-      summary: Get sunburst chart data
+      tags:
+        - internal
       # not a general-purpose API endpoint
       x-internal: true
+      summary: Get sunburst chart data
       description: >-
-        Get a JSON object to generate one of the sunburst charts.
+        Retrieve a JSON object to generate one of the sunburst charts.
         Primarily intended for use by the frontend rather than for general API consumption.
       parameters:
         - in: path
@@ -294,3 +362,5 @@ paths:
             application/json:
               schema:
                 $ref: "_common.yaml#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalServerError"

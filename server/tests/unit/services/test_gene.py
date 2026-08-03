@@ -1,6 +1,9 @@
 from datetime import datetime
 from typing import Iterable
 
+import pytest
+from sqlalchemy.exc import NoResultFound
+
 from scimodom.database.models import (
     DataAnnotation,
     Dataset,
@@ -79,3 +82,9 @@ def test_gene_cache(Session, project, annotation):
 
     gene_service.update_gene_cache(4)
     assert gene_service.get_genes([4]) == ["ENSG2", "GENE1", "GENE3", "GENE4"]
+
+
+def test_gene_cache_noresult(Session, project):
+    gene_service = _get_gene_service(Session())
+    with pytest.raises(NoResultFound):
+        gene_service.get_genes([123])

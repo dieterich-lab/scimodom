@@ -4,6 +4,7 @@ from sqlalchemy.exc import NoResultFound
 
 from scimodom.api.helpers import (
     ClientResponseException,
+    get_required_json_fields,
     get_valid_dataset,
     get_valid_taxa_id_from_string,
     get_non_negative_int,
@@ -84,6 +85,34 @@ class MockUtilitiesService:
 # - get_valid_targets_type
 # - validate_rna_type
 # - get_valid_coords
+
+
+def test_get_required_json_fields(test_client):
+    with test_client as client:
+        payload = {"field1": "value1", "field2": "value2"}
+        client.post("/test/register_user", json=payload)
+        assert get_required_json_fields("field1", "field2") == payload
+
+
+def test_get_required_json_fields_fail_body(test_client):
+    with test_client as client:
+        client.post("/test/register_user", json=[])
+        with pytest.raises(ClientResponseException) as exc:
+            get_required_json_fields("field1")
+        returned_message, returned_status = exc.value.response_tuple
+        assert returned_message["message"] == "Request body must be a JSON object"
+        assert returned_status == 400
+
+
+def test_get_required_json_fields_fail(test_client):
+    with test_client as client:
+        payload = {"field1": "value1"}
+        client.post("/test/register_user", json=payload)
+        with pytest.raises(ClientResponseException) as exc:
+            get_required_json_fields("field1", "field2")
+        returned_message, returned_status = exc.value.response_tuple
+        assert returned_message["message"] == "Missing required field(s): field2"
+        assert returned_status == 400
 
 
 @pytest.mark.parametrize(
@@ -177,8 +206,8 @@ def test_get_positive_int(test_client, value):
 @pytest.mark.parametrize(
     "bam_file,expected_status,expected_message",
     [
-        ("wrong file name.bam", 400, "Invalid file name"),
-        ("file_name.bam", 404, "Unknown file name and/or unknown/invalid dataset ID"),
+        ("wrong file name.bam", 400, "Invalid BAM file name"),
+        ("file_name.bam", 404, "Unknown BAM file name or no association with dataset"),
     ],
 )
 def test_get_valid_bam_file(bam_file, expected_status, expected_message, mock_services):

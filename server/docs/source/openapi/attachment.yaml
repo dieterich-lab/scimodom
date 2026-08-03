@@ -4,16 +4,17 @@ info:
 paths:
   /bam_file/all/{dataset_id}:
     get:
-      summary: Get BAM files attached to dataset
+      summary: Get BAM file attachment metadata
       description: >-
-        Get metadata for all BAM files attached to a given dataset.
+        Retrieve metadata for all BAM files attachments associated
+        with the given dataset identifier (EUFID).
       parameters:
         - in: path
           name: dataset_id
           required: true
           schema:
             type: string
-          description: EUFID
+          description: Dataset identifier (EUFID)
       responses:
         "200":
           description: OK
@@ -39,17 +40,26 @@ paths:
               operationId: getName
               description: >-
                 The `original_file_name` returned in the response can be used
-                as `name` parameter in `GET bam_file/{dataset}/{name}`,
+                as `name` parameter in `GET bam_file/{dataset_id}/{name}`,
               parameters:
                 name: $response.body#/original_file_name
         "400":
-          $ref: "#/components/responses/ClientResponseException400"
+          description: Invalid dataset identifier (malformed)
+          content:
+            application/json:
+              schema:
+                $ref: "_common.yaml#/components/schemas/Error"
         "404":
-          $ref: "#/components/responses/ClientResponseException404"
+          description: Unknown dataset identifier
+          content:
+            application/json:
+              schema:
+                $ref: "_common.yaml#/components/schemas/Error"
   /bam_file/{dataset_id}/{name}:
     get:
-      summary: Download BAM file
-      description: Download BAM file associated with dataset
+      summary: Download a BAM file
+      description: >-
+        Download a BAM file attached to a dataset given by its identifier (EUFID)
       operationId: getName
       parameters:
         - in: path
@@ -57,7 +67,7 @@ paths:
           required: true
           schema:
             type: string
-          description: EUFID
+          description: Dataset identifier (EUFID)
         - in: path
           name: name
           required: true
@@ -73,20 +83,27 @@ paths:
                 type: string
                 format: binary
         "400":
-          $ref: "#/components/responses/ClientResponseException400"
+          description: Invalid dataset identifier or BAM file name (malformed)
+          content:
+            application/json:
+              schema:
+                $ref: "_common.yaml#/components/schemas/Error"
         "404":
-          $ref: "#/components/responses/ClientResponseException404"
+          description: >-
+            Unknown dataset identifier, unknown BAM file name, or BAM
+            file is not an attachment of this dataset
+          content:
+            application/json:
+              schema:
+                $ref: "_common.yaml#/components/schemas/Error"
 
 components:
   securitySchemes:
     BearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
+      $ref: "_common.yaml#/components/securitySchemes/BearerAuth"
+  schemas:
+    Error:
+      $ref: "_common.yaml#/components/schemas/Error"
   responses:
     UnauthorizedError:
-      description: Missing authorization header
-    ClientResponseException400:
-      description: Bad Request
-    ClientResponseException404:
-      description: Dataset identifier or attachment not found
+      $ref: "_common.yaml#/components/responses/UnauthorizedError"

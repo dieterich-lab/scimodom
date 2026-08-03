@@ -133,21 +133,18 @@ class UtilitiesService:
         return [row._asdict() for row in self._session.execute(query)]
 
     def get_assemblies(self, taxa_id: int) -> list[dict[str, Any]]:
-        """Get available assemblies for given organism.
+        """Get assemblies for a given taxon.
 
-        :param taxa_id: Taxonomy ID
-        :type taxa_id: int
-        :returns: Selected columns from Assembly
-        :rtype: list of dict
+        :param taxa_id: NCBI taxon (identifier)
+        :returns: Identifier and name from Assembly
         """
         assemblies = self._assembly_service.get_assemblies_by_taxa(taxa_id)
         return [{"id": assembly.id, "name": assembly.name} for assembly in assemblies]
 
     def get_release_info(self) -> dict[str, int]:
-        """Get release information.
+        """Get number of sites and datasets for current release.
 
-        :returns: Number of sites and dataset in current release
-        :rtype: dict
+        :returns: Number of sites and datasets
         """
         query = select(Data)
         sites = self._session.scalar(

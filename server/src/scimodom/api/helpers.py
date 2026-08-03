@@ -133,6 +133,26 @@ def create_file_too_large_response(max_size: int) -> tuple[dict[str, str], int]:
     return create_error_response(413, message, message)
 
 
+# Request body validation
+
+
+def get_required_json_fields(*fields: str) -> dict[str, Any]:
+    """Retrieve fields from JSON object.
+
+    :params fields: JSON fields
+    :return: Validated JSON request body
+    """
+    body = request.get_json(silent=True)
+    if not isinstance(body, dict):
+        raise ClientResponseException(400, "Request body must be a JSON object")
+    missing = [field for field in fields if field not in body]
+    if missing:
+        raise ClientResponseException(
+            400, f"Missing required field(s): {', '.join(missing)}"
+        )
+    return body
+
+
 # Incoming parameter validation
 
 
@@ -189,13 +209,13 @@ def get_valid_bam_file(dataset: Dataset, name: str) -> BamFile:
     :rtype: BamFile
     """
     if not VALID_FILENAME_REGEXP.match(name):
-        raise ClientResponseException(400, "Invalid file name")
+        raise ClientResponseException(400, "Invalid BAM file name")
     file_service = get_file_service()
     try:
         return file_service.get_bam_file(dataset, name)
     except NoResultFound:
         raise ClientResponseException(
-            404, "Unknown file name and/or unknown/invalid dataset ID"
+            404, "Unknown BAM file name or no association with dataset"
         )
 
 

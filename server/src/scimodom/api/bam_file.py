@@ -21,6 +21,17 @@ MAX_BAM_FILE_SIZE = 2 * 1024 * 1024 * 1024
 @bam_file_api.route("/all/<dataset_id>", methods=["GET"])
 @cross_origin(supports_credentials=True)
 def list_bam_files(dataset_id: str):
+    """Get metadata for all BAM file attachments for the given EUFID.
+
+    :param dataset_id: Dataset identifier (EUFID)
+    :returns: JSON array with metadata for all BAM file
+    attachments associated with the given EUFID.
+
+    :statuscode 200: OK
+    :statuscode 400: Invalid dataset identifier (malformed)
+    :statuscode 404: Unknown dataset identifier
+    :statuscode 500: Internal Server Error
+    """
     try:
         dataset = get_valid_dataset(dataset_id)
     except ClientResponseException as e:
@@ -34,6 +45,12 @@ def list_bam_files(dataset_id: str):
 @cross_origin(supports_credentials=True)
 @jwt_required()
 def post_bam_file(dataset_id: str, name: str):
+    """Attach a BAM file to a dataset given by its identifier.
+
+    :param dataset_id: Dataset identifier (EUFID)
+    :param name: BAM file attachment name
+
+    """
     try:
         dataset = get_valid_dataset(dataset_id)
         _ = get_user_with_write_permission_on_dataset(dataset)
@@ -54,6 +71,17 @@ def post_bam_file(dataset_id: str, name: str):
 @bam_file_api.route("/<dataset_id>/<name>", methods=["GET"])
 @cross_origin(supports_credentials=True)
 def get_bam_file(dataset_id: str, name: str):
+    """Download a BAM file attached to a dataset given by its identifier.
+
+    :param dataset_id: Dataset identifier (EUFID)
+    :param name: BAM file attachment name
+
+    :statuscode 200: OK
+    :statuscode 400: Invalid dataset identifier or BAM file name (malformed)
+    :statuscode 404: Unknown dataset identifier, unknown BAM file name, or
+    BAM file is not an attachment of this dataset
+    :statuscode 500: Internal Server Error
+    """
     try:
         dataset = get_valid_dataset(dataset_id)
         bam_file = get_valid_bam_file(dataset, name)

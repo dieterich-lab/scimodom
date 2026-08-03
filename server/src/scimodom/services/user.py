@@ -138,11 +138,9 @@ class UserService:
                     f"Received bad confirmation token '{confirmation_token}' "
                     + f"for user '{email}' during registration"
                 )
-
             user.state = UserState.active
             user.confirmation_token = None
             self._session.commit()
-
         except _DetailedWrongUserOrPassword as exc:
             logger.warning(f"{str(exc)}")
             raise WrongUserOrPassword("Wrong username or password!")

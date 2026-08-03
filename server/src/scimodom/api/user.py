@@ -6,7 +6,11 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from sqlalchemy.exc import NoResultFound
 
-from scimodom.api.helpers import create_error_response
+from scimodom.api.helpers import (
+    ClientResponseException,
+    create_error_response,
+    get_required_json_fields,
+)
 from scimodom.services.dataset import get_dataset_service
 from scimodom.services.permission import get_permission_service
 from scimodom.services.user import (
@@ -25,21 +29,33 @@ ACCESS_TOKEN_EXPIRATION_TIME = timedelta(hours=2)
 
 @user_api.route("/register_user", methods=["POST"])
 def register_user():
-    """Register a new user."""
+    """Register a new user.
+
+    Create a new, inactive user and send out
+    a token to validate the email address.
+
+    :param request: The incoming JSON request payload
+    with "email" and "password".
+    :statuscode 200: OK
+    :statuscode 400: Bad request (malformed request body, missing fields)
+    :statuscode 403: User exists
+    :statuscode 500: SMTPException or Internal Server Error
+    """
     user_service = get_user_service()
     try:
-        user_service.register_user(
-            email=request.json["email"], password=request.json["password"]
-        )
+        fields = get_required_json_fields("email", "password")
+        user_service.register_user(email=fields["email"], password=fields["password"])
         return jsonify({"result": "OK"})
+    except ClientResponseException as exc:
+        return exc.response_tuple
     except UserExists:
         return create_error_response(
             403,
             "User exists",
             "User already exists.\nTry to reset your password.",
         )
-    except SMTPException as e:
-        logger.error(f"Failed to send registration email: {e}")
+    except SMTPException as exc:
+        logger.error(f"Failed to send registration email: {exc}")
         return create_error_response(
             500,
             "Failed to send registration email",
@@ -47,27 +63,58 @@ def register_user():
             "Make sure the email address is valid.\n"
             "If the problem persists, contact the system administrator.",
         )
+    except Exception:
+        logger.error(f"Unexpected error while registering user '{fields['email']}'")
+        return create_error_response(
+            500,
+            "Registration failed unexpectedly",
+            "Registration failed due to an unexpected server error. "
+            "No account was created; you can safely try again.\n"
+            "If the problem persists, contact the system administrator.",
+        )
 
 
 @user_api.route("/confirm_user", methods=["POST"])
 def confirm_user():
+    """Activate a registered user.
+
+    :param request: The incoming JSON request payload
+    with "email" and "token".
+    :statuscode 200: OK
+    :statuscode 400: Wrong username, wrong or expired token
+    :statuscode 500: Internal Server Error
+    """
     user_service = get_user_service()
     try:
+        fields = get_required_json_fields("email", "token")
         user_service.confirm_user(
-            email=request.json["email"], confirmation_token=request.json["token"]
+            email=fields["email"], confirmation_token=fields["token"]
         )
         return jsonify({"result": "OK"})
+    except ClientResponseException as exc:
+        return exc.response_tuple
     except WrongUserOrPassword:
         return create_error_response(
-            400, "Bad confirmation link", "Bad confirmation link"
+            400, "Wrong username, wrong or expired confirmation link"
         )
 
 
 @user_api.route("/request_password_reset", methods=["POST"])
 def request_password_reset():
+    """Request a reset token.
+
+    :param request: The incoming JSON request payload with "email".
+    :statuscode 200: OK
+    :statuscode 404: Unknown user
+    :statuscode 500: SMTPException or Internal Server Error
+    """
     user_service = get_user_service()
     try:
-        user_service.request_password_reset(request.json["email"])
+        fields = get_required_json_fields("email")
+        user_service.request_password_reset(fields["email"])
+        return jsonify({"result": "OK"})
+    except ClientResponseException as exc:
+        return exc.response_tuple
     except NoSuchUser:
         return create_error_response(
             404,
@@ -76,42 +123,71 @@ def request_password_reset():
             "Make sure this is the same address used for registration.\n"
             "If the problem persists, contact the system administrator.",
         )
-    return jsonify({"result": "OK"})
+    except SMTPException as exc:
+        logger.error(f"Failed to send registration email: {exc}")
+        return create_error_response(
+            500,
+            "Failed to send password reset link.",
+            "Failed to send email token.\n" "Contact the system administrator.",
+        )
 
 
 @user_api.route("/do_password_reset", methods=["POST"])
 def do_password_reset():
+    """Reset password.
+
+    :param request: The incoming JSON request payload with
+    "email", "token", and "password".
+    :statuscode 200: OK
+    :statuscode 401: Unauthorized
+    :statuscode 500: Internal Server Error
+    """
     user_service = get_user_service()
     try:
+        fields = get_required_json_fields("email", "token", "password")
         user_service.do_password_reset(
-            email=request.json["email"],
-            confirmation_token=request.json["token"],
-            new_password=request.json["password"],
+            email=fields["email"],
+            confirmation_token=fields["token"],
+            new_password=fields["password"],
         )
+        return jsonify({"result": "OK"})
+    except ClientResponseException as exc:
+        return exc.response_tuple
     except WrongUserOrPassword:
         return create_error_response(
             401,
-            "Wrong token",
-            "Sorry we don't recognise the link - you might have truncated it.\n"
-            "If not, please contact the system administrator.",
+            "Unknown user, wrong, used, or truncated link.",
+            "There is no user with this email address, the link\n"
+            "has already been used, is expired or truncated.\n"
+            "Contact the system administrator.",
         )
-    return jsonify({"result": "OK"})
 
 
 @user_api.route("/login", methods=["POST"])
 def login():
+    """Login.
+
+    :param request: The incoming JSON request payload with
+    "email" and "password".
+    :returns: JSON object with access token
+    :statuscode 200: OK
+    :statuscode 401: Unauthorized
+    :statuscode 500: Internal Server Error
+    """
     user_service = get_user_service()
-    email = request.json["email"]
-    password = request.json["password"]
-    if user_service.check_password(email, password):
-        access_token = create_access_token(
-            identity=email, expires_delta=ACCESS_TOKEN_EXPIRATION_TIME
-        )
-        return jsonify({"access_token": access_token})
-    else:
-        return create_error_response(
-            401, "Wrong user or password", "Wrong email address or password."
-        )
+    try:
+        fields = get_required_json_fields("email", "password")
+        if user_service.check_password(fields["email"], fields["password"]):
+            access_token = create_access_token(
+                identity=fields["email"], expires_delta=ACCESS_TOKEN_EXPIRATION_TIME
+            )
+            return jsonify({"access_token": access_token})
+        else:
+            return create_error_response(
+                401, "Wrong user or password", "Wrong email address or password."
+            )
+    except ClientResponseException as exc:
+        return exc.response_tuple
 
 
 @user_api.route("/refresh_access_token")
