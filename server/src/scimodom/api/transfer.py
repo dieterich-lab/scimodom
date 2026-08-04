@@ -14,6 +14,13 @@ MAX_TMP_FILE_SIZE = 50 * 1024 * 1024
 @transfer_api.route("/dataset/<dataset_id>", methods=["GET"])
 @cross_origin(supports_credentials=True)
 def export_dataset(dataset_id: str):
+    """Export a dataset in bedRMod format.
+
+    :param dataset_id: Dataset identifier (EUFID)
+    :statuscode 200: OK
+    :statuscode 404: Dataset not found
+    :statuscode 500: Internal Server Error
+    """
     exporter = get_exporter()
     try:
         file_name = exporter.get_dataset_file_name(dataset_id)
@@ -22,14 +29,19 @@ def export_dataset(dataset_id: str):
             mimetype="text/csv",
             headers={"Content-Disposition": f'attachment; filename="{file_name}"'},
         )
-    except NoSuchDataset as e:
-        message = str(e)
-        return create_error_response(404, message, message)
+    except NoSuchDataset as exc:
+        return create_error_response(404, str(exc))
 
 
 @transfer_api.route("/tmp_upload", methods=["POST"])
 @cross_origin(supports_credentials=True)
 def upload_tmp_file():
+    """Upload a temporary file.
+
+    :statuscode 200: OK
+    :statuscode 413: File too large
+    :statuscode 500: Internal Server Error
+    """
     if (
         request.content_length is not None
         and request.content_length > MAX_TMP_FILE_SIZE

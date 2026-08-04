@@ -1,22 +1,24 @@
 info:
   title: Dataset REST API
+  description: >-
+    Dataset access and comparison, including file transfer endpoints.
 
 tags:
   - name: list
     description: Dataset and associated metadata
-  - name: download
-    description: Dataset in bedRMod format
+  - name: transfer
+    description: File transfer (upload and export dataset)
   - name: compare
-    description: Perform complex queries
+    description: Perform complex queries with dataset
 
 paths:
   /dataset/list_all:
     get:
       tags:
         - list
-      summary: Get all dataset
+      summary: Get dataset
       description: >-
-        Get metadata for all dataset.
+        Retrieve metadata for all dataset.
       responses:
         "200":
           description: OK
@@ -30,7 +32,7 @@ paths:
         - list
       summary: Get dataset per user
       description: >-
-        Get metadata for dataset submitted per user.
+        Retrieve metadata for dataset submitted per user.
       security:
         - BearerAuth: []
       responses:
@@ -41,12 +43,26 @@ paths:
               schema:
                 $ref: "#/components/schemas/Dataset"
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          description: >-
+            Unauthorized (expired token, missing header)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: >-
+            Unprocessable Content (not enough segments, signature verification failed)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
   /transfer/dataset/{dataset_id}:
     get:
       tags:
-        - download
-      summary: Download dataset
+        - transfer
+      summary: Export dataset
       description: Download dataset in bedRMod format
       parameters:
         - in: path
@@ -54,7 +70,7 @@ paths:
           required: true
           schema:
             type: string
-          description: EUFID
+          description: Dataset identifier (EUFID)
       responses:
         "200":
           description: OK
@@ -62,13 +78,25 @@ paths:
             test/csv:
               schema:
                 type: string
+        "404":
+          description: Dataset not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
   /transfer/tmp_upload:
     post:
       tags:
-        - compare
-      summary: Upload file
+        - transfer
+      summary: Upload a temporary file
       description: >-
-        Upload a BED or bedRMod file for comparison
+        Upload a file (e.g. a BED/bedRMod file for dataset comparison, or
+        a bedRMod file for import via `POST /management/dataset`).
+        No authentication is required. Files are subject to a
+        size limit. Files under this endpoint's storage path are deleted
+        automatically.
       requestBody:
         required: true
         description: Path to file
@@ -91,6 +119,14 @@ paths:
           links:
             GetFileById:
               $ref: "#/components/links/GetFileById"
+        "413":
+          description: File too large
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
   /dataset/intersect:
     get:
       tags:
@@ -115,9 +151,28 @@ paths:
               schema:
                 $ref: "#/components/schemas/Intersect"
         "400":
-          $ref: "#/components/responses/ClientResponseException400"
+          description: >-
+            Bad request (malformed or missing parameters, invalid identifiers, too many dataset)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
-          $ref: "#/components/responses/ClientResponseException404"
+          description: >-
+            Dataset, file, or taxon not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: >-
+            Unprocessable Content (empty file or too many skipped records)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
   /dataset/closest:
     get:
       tags:
@@ -142,9 +197,28 @@ paths:
               schema:
                 $ref: "#/components/schemas/Closest"
         "400":
-          $ref: "#/components/responses/ClientResponseException400"
+          description: >-
+            Bad request (malformed or missing parameters, invalid identifiers, too many dataset)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
-          $ref: "#/components/responses/ClientResponseException404"
+          description: >-
+            Dataset, file, or taxon not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: >-
+            Unprocessable Content (empty file or too many skipped records)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
   /dataset/subtract:
     get:
       tags:
@@ -169,9 +243,28 @@ paths:
               schema:
                 $ref: "#/components/schemas/Subtract"
         "400":
-          $ref: "#/components/responses/ClientResponseException400"
+          description: >-
+            Bad request (malformed or missing parameters, invalid identifiers, too many dataset)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
-          $ref: "#/components/responses/ClientResponseException404"
+          description: >-
+            Dataset, file, or taxon not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: >-
+            Unprocessable Content (empty file or too many skipped records)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
 
 components:
   securitySchemes:
@@ -267,24 +360,13 @@ components:
       parameters:
         upload: "$response.body#/file_id"
   schemas:
+    Error:
+      $ref: "_common.yaml#/components/schemas/Error"
     Dataset:
       type: array
       items:
         type: object
         properties:
-          project_id:
-            type: string
-            description: SMID
-          dataset_id:
-            type: string
-            description: EUFID
-          dataset_title:
-            type: string
-            description: Dataset title
-          sequencing_platform:
-            type: string
-            nullable: true
-            description: Sequencing platform (header EUF specification)
           basecalling:
             type: string
             nullable: true
@@ -295,42 +377,55 @@ components:
             description: >-
               Link to bioinformatics workflow; program name, version, and/or call; information
               relevant to score calculation; etc. (header EUF specification)
+          cto:
+            type: string
+            description: Cell, tissue, or organism
+          dataset_id:
+            type: string
+            description: Dataset identifier (EUFID)
+          dataset_title:
+            type: string
+            description: Dataset title
+          doi:
+            type: string
+            description: A list of DOIs associated with this project
           experiment:
             type: string
             nullable: true
             description: >-
               Information about or link to experimental protocol
               and design (header EUF specification)
-          project_title:
+          modomics_sname:
             type: string
-            description: Project title to which this dataset belong
-          summary:
-            type: string
-            description: Project summary to which this dataset belong
-          doi:
-            type: string
-            description: A list of DOIs associated with this project
+            description: MODOMICS short name for modifications reported in this dataset
           pmid:
             type: string
             description: A list of PMIDs associated with this project
+          project_id:
+            type: string
+            description: Project identifier (SMID)
+          project_summary:
+            type: string
+            description: Project summary to which this dataset belong
+          project_title:
+            type: string
+            description: Project title to which this dataset belong
           rna:
             type: string
-            description: A valid RNA type (modification_type header EUF specification)
-          modomics_sname:
+            description: RNA type (modification_type header EUF specification)
+          sequencing_platform:
             type: string
-            description: Modifications reported in this dataset (MODOMICS short name)
+            nullable: true
+            description: Sequencing platform (header EUF specification)
+          taxa_id:
+            type: integer
+            description: NCBI taxon (header EUF specification)
+          taxa_sname:
+            type: string
+            description: NCBI name for `taxa_id`
           tech:
             type: string
             description: Detection technology used in this dataset
-          taxa_sname:
-            type: string
-            description: Taxonomic short name for organism used in this dataset
-          taxa_id:
-            type: integer
-            description: NCBI taxonomic identifier used in this dataset (header EUF specification)
-          cto:
-            type: string
-            description: Cell type, tissue, or organism used in this dataset
     Comparison:
       type: object
       properties:

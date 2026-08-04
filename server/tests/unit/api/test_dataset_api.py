@@ -516,13 +516,13 @@ def test_intersect_with_liftover(test_client, mock_services, mocker):
         (
             "/intersect?reference=datasetidAxx&comparison=datasetidZxxxx&strand=true",
             400,
-            "Invalid dataset ID for 'comparison'",
+            "Invalid comparison dataset ID: 'datasetidZxxxx'",
             None,
         ),
         (
             "/intersect?reference=datasetidAxx&comparison=datasetidZxx&strand=true",
             404,
-            "Unknown dataset for 'comparison'",
+            "Unknown comparison dataset ID: 'datasetidZxx'",
             None,
         ),
         (
@@ -534,7 +534,7 @@ def test_intersect_with_liftover(test_client, mock_services, mocker):
         (
             "/subtract?reference=datasetidAxx&upload=bl+ubber&strand=strand_aware",
             400,
-            "Invalid file ID in 'upload'",
+            "Invalid file ID for 'upload'",
             None,
         ),
         (

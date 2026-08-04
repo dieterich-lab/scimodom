@@ -237,11 +237,15 @@ def get_valid_dataset_id_list_from_request_parameter(parameter: str) -> list[str
     dataset_service = get_dataset_service()
     for dataset_id in as_list:
         if not _is_valid_identifier(dataset_id, Identifiers.EUFID.length):
-            raise ClientResponseException(400, f"Invalid dataset ID for '{parameter}'")
+            raise ClientResponseException(
+                400, f"Invalid {parameter} dataset ID: '{dataset_id}'"
+            )
         try:
             dataset_service.get_by_id(dataset_id)
-        except NoResultFound:
-            raise ClientResponseException(404, f"Unknown dataset for '{parameter}'")
+        except NoResultFound as exc:
+            raise ClientResponseException(
+                404, f"Unknown {parameter} dataset ID: '{dataset_id}'"
+            ) from exc
     return as_list
 
 
@@ -264,7 +268,7 @@ def get_valid_tmp_file_id_from_request_parameter(
             return None
         raise ClientResponseException(400, f"Missing required parameter '{parameter}'")
     if not VALID_FILENAME_REGEXP.match(raw_id):
-        raise ClientResponseException(400, f"Invalid file ID in '{parameter}'")
+        raise ClientResponseException(400, f"Invalid file ID for '{parameter}'")
     file_service = get_file_service()
     if not file_service.check_tmp_upload_file_id(raw_id):
         raise ClientResponseException(
@@ -290,8 +294,7 @@ def get_valid_remote_file_name_from_request_parameter(
     raw = request.args.get(parameter, type=str)
     if raw is None or raw == "":
         return default
-    else:
-        return re.sub(INVALID_CHARS_REGEXP, "?", raw)
+    return re.sub(INVALID_CHARS_REGEXP, "?", raw)
 
 
 def get_valid_boolean_from_request_parameter(
@@ -315,8 +318,7 @@ def get_valid_boolean_from_request_parameter(
             raise ClientResponseException(
                 400, f"Required parameter '{parameter}' missing ('true' or 'false')"
             )
-        else:
-            return default
+        return default
     lower_case_value = raw_value.lower()
     if lower_case_value == "false":
         return False
@@ -369,8 +371,8 @@ def get_valid_taxa_id_from_string(raw: str) -> int:
         taxa_id = int(raw)
         _validate_taxa_id(taxa_id)
         return taxa_id
-    except ValueError:
-        raise ClientResponseException(400, "Invalid Taxa ID")
+    except ValueError as exc:
+        raise ClientResponseException(400, "Invalid Taxa ID") from exc
 
 
 def validate_rna_type(rna_type: str) -> None:

@@ -40,18 +40,28 @@ class Exporter:
         self._session = session
 
     def get_dataset_file_name(self, dataset_id: str) -> str:
+        """Retrieve dataset name.
+
+        :param dataset_id: Dataset identifier (EUFID)
+        :returns: A sanitized dataset name
+        """
         try:
             dataset = self._session.get_one(Dataset, dataset_id)
         except NoResultFound:
-            raise NoSuchDataset(f"Failed to find dataset {dataset_id}")
+            raise NoSuchDataset(f"Dataset {dataset_id} not found.")
         cleaned_name = re.sub(self.BAD_FILE_NAME_CHARACTERS_REGEXP, "_", dataset.title)
-        return f"{cleaned_name}.bedrmod"  # noqa
+        return f"{cleaned_name}.bedrmod"
 
     def generate_dataset(self, dataset_id: str) -> Generator[bytes, None, None]:
+        """Generate a bedRMod file.
+
+        :param dataset_id: Dataset identifier (EUFID)
+        :returns: Dataset header and data lines
+        """
         try:
             dataset = self._session.get_one(Dataset, dataset_id)
         except NoResultFound:
-            raise NoSuchDataset(f"Failed to find dataset {dataset_id}")
+            raise NoSuchDataset(f"Dataset {dataset_id} not found.")
         for line in self._generate_header(dataset):
             yield line.encode("utf-8")
         for line in self._generate_records(dataset):

@@ -186,10 +186,9 @@ def login():
                 identity=fields["email"], expires_delta=ACCESS_TOKEN_EXPIRATION_TIME
             )
             return jsonify({"access_token": access_token})
-        else:
-            return create_error_response(
-                401, "Wrong user or password", "Wrong email address or password."
-            )
+        return create_error_response(
+            401, "Wrong user or password", "Wrong email address or password."
+        )
     except ClientResponseException as exc:
         return exc.response_tuple
 

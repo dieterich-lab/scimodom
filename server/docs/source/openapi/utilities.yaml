@@ -142,7 +142,7 @@ paths:
                       description: Detection method classification
                     cto:
                       type: string
-                      description: Cell, type, or organism
+                      description: Cell, tissue, or organism
                     domain:
                       type: string
                       description: Taxonomic domain

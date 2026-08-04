@@ -40,7 +40,7 @@ class DataService:
 
     @staticmethod
     def _get_datasets_as_id_list(datasets):
-        if type(datasets) is str or isinstance(datasets, Dataset):
+        if isinstance(datasets, (Dataset, str)):
             datasets = [datasets]
         return [x.id if isinstance(x, Dataset) else x for x in datasets]
 
