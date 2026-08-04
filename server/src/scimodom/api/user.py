@@ -2,7 +2,7 @@ import logging
 from datetime import timedelta
 from smtplib import SMTPException
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, jsonify
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from sqlalchemy.exc import NoResultFound
 
@@ -81,7 +81,8 @@ def confirm_user():
     :param request: The incoming JSON request payload
     with "email" and "token".
     :statuscode 200: OK
-    :statuscode 400: Wrong username, wrong or expired token
+    :statuscode 400: Bad request (malformed request body, missing fields)
+    :statuscode 401: Unauthorized (credentials failed authentication)
     :statuscode 500: Internal Server Error
     """
     user_service = get_user_service()
@@ -95,7 +96,7 @@ def confirm_user():
         return exc.response_tuple
     except WrongUserOrPassword:
         return create_error_response(
-            400, "Wrong username, wrong or expired confirmation link"
+            401, "Wrong username, wrong or expired confirmation link"
         )
 
 
@@ -105,6 +106,7 @@ def request_password_reset():
 
     :param request: The incoming JSON request payload with "email".
     :statuscode 200: OK
+    :statuscode 400: Bad request (malformed request body, missing fields)
     :statuscode 404: Unknown user
     :statuscode 500: SMTPException or Internal Server Error
     """
@@ -134,12 +136,13 @@ def request_password_reset():
 
 @user_api.route("/do_password_reset", methods=["POST"])
 def do_password_reset():
-    """Reset password.
+    """Reset password (publicly accessible).
 
     :param request: The incoming JSON request payload with
     "email", "token", and "password".
     :statuscode 200: OK
-    :statuscode 401: Unauthorized
+    :statuscode 400: Bad request (malformed request body, missing fields)
+    :statuscode 401: Unauthorized (credentials failed authentication)
     :statuscode 500: Internal Server Error
     """
     user_service = get_user_service()
@@ -156,7 +159,7 @@ def do_password_reset():
     except WrongUserOrPassword:
         return create_error_response(
             401,
-            "Unknown user, wrong, used, or truncated link.",
+            "Wrong user, wrong, used, or expired link.",
             "There is no user with this email address, the link\n"
             "has already been used, is expired or truncated.\n"
             "Contact the system administrator.",
@@ -171,7 +174,8 @@ def login():
     "email" and "password".
     :returns: JSON object with access token
     :statuscode 200: OK
-    :statuscode 401: Unauthorized
+    :statuscode 400: Bad request (malformed request body, missing fields)
+    :statuscode 401: Unauthorized (credentials failed authentication)
     :statuscode 500: Internal Server Error
     """
     user_service = get_user_service()
@@ -193,6 +197,17 @@ def login():
 @user_api.route("/refresh_access_token")
 @jwt_required()
 def refresh_access_token():
+    """Refresh access token.
+
+    :param header: The request header with current
+    token.
+    :returns: JSON object with new access token.
+    :statuscode 200: OK
+    :statuscode 401: Unauthorized (expired token, missing header)
+    :statuscode 422: Unprocessable Content (not enough segments,
+    signature verification failed)
+    :statuscode 500: Internal Server Error
+    """
     email = get_jwt_identity()
     access_token = create_access_token(
         identity=email, expires_delta=ACCESS_TOKEN_EXPIRATION_TIME
@@ -203,38 +218,65 @@ def refresh_access_token():
 @user_api.route("/change_password", methods=["POST"])
 @jwt_required()
 def change_password():
+    """Change password (restricted to authenticated users).
+
+    :param request: The request and header with current
+    token and "password".
+    :statuscode 200: OK
+    :statuscode 400: Bad request (malformed request body, missing fields)
+    :statuscode 401: Unauthorized (expired token, missing header)
+    :statuscode 422: Unprocessable Content (not enough segments,
+    signature verification failed)
+    :statuscode 500: Internal Server Error
+    """
     email = get_jwt_identity()
     user_service = get_user_service()
-    user_service.change_password(
-        email=email,
-        new_password=request.json["password"],
-    )
-    return jsonify({"result": "OK"})
+    try:
+        fields = get_required_json_fields("password")
+        user_service.change_password(
+            email=email,
+            new_password=fields["password"],
+        )
+        return jsonify({"result": "OK"})
+    except ClientResponseException as exc:
+        return exc.response_tuple
 
 
 @user_api.route("/may_change_dataset/<dataset_id>", methods=["GET"])
 @jwt_required()
 def may_change_dataset(dataset_id):
-    email = get_jwt_identity()
+    """Check if user has access (restricted to authenticated users).
 
+    :param header: The request header with current token.
+    :statuscode 200: OK
+    :statuscode 401: Unauthorized (expired token, missing header)
+    :statuscode 422: Unprocessable Content (not enough segments,
+    signature verification failed)
+    :statuscode 500: Internal Server Error
+    """
+    email = get_jwt_identity()
     user_service = get_user_service()
+    user = user_service.get_user_by_email(email)
     dataset_service = get_dataset_service()
     permission_service = get_permission_service()
-
-    try:
-        user = user_service.get_user_by_email(email)
-    except NoSuchUser:
-        return create_error_response(404, "No such user")
     try:
         dataset = dataset_service.get_by_id(dataset_id)
     except NoResultFound:
         return create_error_response(404, "Unknown dataset")
-
     return {"write_access": permission_service.may_change_dataset(user, dataset)}
 
 
 @user_api.route("/get_username", methods=["GET"])
 @jwt_required()
 def get_username():
+    """Get username (restricted to authenticated users).
+
+    :param header: The request header with current token.
+    :statuscode 200: OK
+    :statuscode 401: Unauthorized (expired token, missing header)
+    :statuscode 422: Unprocessable Content (not enough segments,
+    signature verification failed)
+    :statuscode 500: Internal Server Error
+    """
     email = get_jwt_identity()
     return jsonify(username=email), 200

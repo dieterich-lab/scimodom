@@ -51,6 +51,12 @@ paths:
         "200":
           description: OK
         "400":
+          description: Bad request (malformed request body, missing fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
           description: Wrong username, wrong or expired confirmation link
           content:
             application/json:
@@ -70,8 +76,14 @@ paths:
       responses:
         "200":
           description: OK
+        "400":
+          description: Bad request (malformed request body, missing fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
-          description: Unknown user (or wrong email address)
+          description: Unknown user or wrong email address
           content:
             application/json:
               schema:
@@ -89,9 +101,15 @@ paths:
       responses:
         "200":
           description: OK
+        "400":
+          description: Bad request (malformed request body, missing fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
           description: >-
-            Unknown user, truncated, expired, or already-used reset link
+            Wrong username, wrong, used, or expired reset link
           content:
             application/json:
               schema:
@@ -117,9 +135,14 @@ paths:
                   access_token:
                     type: string
                     description: JWT
+        "400":
+          description: Bad request (malformed request body, missing fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
-          description: >-
-            Unknown user or password
+          description: Wrong user or password
           content:
             application/json:
               schema:
@@ -132,9 +155,7 @@ paths:
         - login
       summary: Refresh the access token
       description: >-
-        Exchanges a still-valid access token for a new one with a fresh
-        expiry. Note this endpoint accepts the same token type it
-        issues - there is no separate longer-lived refresh token.
+        Exchange a valid access token for a new one with a fresh expiry.
       security:
         - BearerAuth: []
       responses:
@@ -149,8 +170,21 @@ paths:
                     type: string
                     description: JWT
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
-
+          description: >-
+            Unauthorized (expired token, missing header)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: >-
+            Unprocessable Content (not enough segments, signature verification failed)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
   /user/change_password:
     post:
       tags:
@@ -163,9 +197,28 @@ paths:
       responses:
         "200":
           description: OK
+        "400":
+          description: Bad request (malformed request body, missing fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
-
+          description: >-
+            Unauthorized (expired token, missing header)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: >-
+            Unprocessable Content (not enough segments, signature verification failed)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
   /user/may_change_dataset/{dataset_id}:
     get:
       summary: Check write access on a dataset
@@ -189,18 +242,25 @@ paths:
                   write_access:
                     type: boolean
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
-        "404":
-          description: Unknown user, or unknown dataset
+          description: >-
+            Unauthorized (expired token, missing header)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-
+        "422":
+          description: >-
+            Unprocessable Content (not enough segments, signature verification failed)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
   /user/get_username:
     get:
       summary: Get username
-      description: Get username
+      description: Retrieve username
       security:
         - BearerAuth: []
       responses:
@@ -213,9 +273,23 @@ paths:
                 properties:
                   username:
                     type: string
-                    description: username
+                    description: username (e-mail address)
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          description: >-
+            Unauthorized (expired token, missing header)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: >-
+            Unprocessable Content (not enough segments, signature verification failed)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
 
 components:
   securitySchemes:

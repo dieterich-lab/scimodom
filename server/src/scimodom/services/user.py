@@ -195,18 +195,13 @@ class UserService:
     def change_password(self, email: str, new_password: str) -> None:
         """Change a password for an authorized user.
 
+        The user has already been validated when this
+        function is called.
+
         :param email: User name (email address).
-        :type email: str
         :param new_password: New password
-        :type new_password: str
-        :raises _DetailedWrongUserOrPassword: If user does not exists.
         """
-        try:
-            user = self.get_user_by_email(email)
-        except NoSuchUser:
-            raise _DetailedWrongUserOrPassword(
-                f"Unknown user '{email}' tried to change the password"
-            )
+        user = self.get_user_by_email(email)
         user.state = UserState.active
         user.password_hash = generate_password_hash(new_password, method="pbkdf2")
         user.confirmation_token = None
