@@ -10,9 +10,9 @@ paths:
     get:
       tags:
         - list
-      summary: Get all projects
+      summary: Get projects
       description: >-
-        Get metadata for all projects.
+        Retrieve metadata for all projects.
       responses:
         "200":
           description: OK
@@ -20,13 +20,15 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Project"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
   /project/list_mine:
     get:
       tags:
         - list
       summary: Get projects per user
       description: >-
-        Get metadata for projects submitted per user.
+        Retrieve metadata for projects submitted per user.
       security:
         - BearerAuth: []
       responses:
@@ -37,7 +39,21 @@ paths:
               schema:
                 $ref: "#/components/schemas/Project"
         "401":
-          $ref: "#/components/responses/UnauthorizedError"
+          description: >-
+            Unauthorized (expired token, missing header)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: >-
+            Unprocessable Content (not enough segments, signature verification failed)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
 
 components:
   securitySchemes:
@@ -54,15 +70,14 @@ components:
       items:
         type: object
         properties:
-          project_id:
+          contact_institution:
             type: string
-            description: SMID
-          title:
+            description: >-
+              The institution or affiliation of `contact_name`
+          contact_name:
             type: string
-            description: Project title
-          summary:
-            type: string
-            description: Project summary
+            description: >-
+              The author of the data or a contact person responsible for adding the data
           date_added:
             type: integer
             description: >-
@@ -73,17 +88,18 @@ components:
             description: >-
               POSIX timestamp corresponding to the date of publication. In
               Sci-ModoM (UI), this is converted to YYYY-MM-DD (ISO 8601).
-          contact_name:
-            type: string
-            description: >-
-              The author of the data or a contact person responsible for adding the data
-          contact_institution:
-            type: string
-            description: >-
-              The institution or affiliation of contact_name
           doi:
             type: string
             description: A list of DOIs associated with this project
           pmid:
             type: string
             description: A list of PMIDs associated with this project
+          project_id:
+            type: string
+            description: Project identifier (SMID)
+          project_summary:
+            type: string
+            description: Project summary
+          project_title:
+            type: string
+            description: Project title

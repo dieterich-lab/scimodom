@@ -54,6 +54,8 @@ FIELDS_TO_CSV_HEADER_MAP = {
 
 @dataclass
 class GeneSearch:
+    """Dataclass for gene search."""
+
     gene_filter: list[str]
     chrom_filter: str | None = None
     chrom_start_filter: int | None = None
@@ -61,6 +63,8 @@ class GeneSearch:
 
 
 class IntersectResponse(BaseModel):
+    """DTO for BED6 records."""
+
     records: list[Bed6Record]
 
 
@@ -68,7 +72,18 @@ class IntersectResponse(BaseModel):
 @modification_api.route("/query/<by_gene>")
 @cross_origin(supports_credentials=True)
 def get_modifications_as_json(by_gene):
-    """Search view API."""
+    """Get modifications for queried parameters.
+
+    :param request: The request with required parameters.
+    :param by_gene: Query by gene
+    :returns: JSON array with all available dataset
+    and related metadata.
+    :statuscode 200: OK
+    :statuscode 401: Unauthorized (expired token, missing header)
+    :statuscode 422: Unprocessable Content (not enough segments,
+    signature verification failed)
+    :statuscode 500: Internal Server Error
+    """
     try:
         data = _get_modifications_for_request(by_gene)
     except ClientResponseException as e:

@@ -26,6 +26,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Dataset"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
   /dataset/list_mine:
     get:
       tags:

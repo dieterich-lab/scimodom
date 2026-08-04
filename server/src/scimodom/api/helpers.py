@@ -431,16 +431,14 @@ def get_valid_coords(taxa_id: int, context: int = 0) -> tuple[str, int, int, Str
         )
     try:
         strand_dto = Strand(strand)
-    except ValueError:
-        raise ClientResponseException(400, "Invalid strand value")
+    except ValueError as exc:
+        raise ClientResponseException(400, "Invalid strand value") from exc
 
     if context > 0:
         start = start - context
-        if start < 0:
-            start = 0
+        start = max(start, 0)
         end = end + context
-        if end > chrom_size[chrom]:
-            end = chrom_size[chrom]
+        end = min(end, chrom_size[chrom])
 
     return chrom, start, end, strand_dto
 
