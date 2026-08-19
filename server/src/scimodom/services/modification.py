@@ -226,12 +226,12 @@ class ModificationService:
         return {"records": [row._asdict() for row in self._session.execute(query)]}
 
     @staticmethod
-    def _get_arg_sort(string: str, url_split: str = "%2B") -> str:
+    def _get_arg_sort(string: str, url_split: str = "+") -> str:
         col, order = string.split(url_split)
         return f"Data.{col}.{order}()"
 
     @staticmethod
-    def _get_flt(string, url_split="%2B") -> tuple[str, list[str], str]:
+    def _get_flt(string, url_split="+") -> tuple[str, list[str], str]:
         col, val, operator = string.split(url_split)
         return col, val.split(","), operator
 
@@ -331,8 +331,8 @@ class ModificationService:
         # sort filters
         # index speed up for chrom + start
         if not multi_sort:
-            chrom_expr = self._get_arg_sort("chrom%2Basc")
-            start_expr = self._get_arg_sort("start%2Basc")
+            chrom_expr = self._get_arg_sort("chrom+asc")
+            start_expr = self._get_arg_sort("start+asc")
             query = query.order_by(eval(chrom_expr), eval(start_expr))
         else:
             for flt in multi_sort:

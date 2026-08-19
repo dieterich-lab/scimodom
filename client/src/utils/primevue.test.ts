@@ -113,5 +113,5 @@ test('formatPrimvueSortMeta', () => {
     { field: 'x', order: 1 },
     { field: 'y', order: -1 }
   ]
-  expect(formatPrimvueSortMetas(input)).toStrictEqual(['x%2Basc', 'y%2Bdesc'])
+  expect(formatPrimvueSortMetas(input)).toStrictEqual(['x+asc', 'y+desc'])
 })

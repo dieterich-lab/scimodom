@@ -125,7 +125,7 @@ function getGeneFilters(searchParameters: SearchParameters): string[] {
     { name: 'feature', value: p.features, matchMode: 'in' }
   ]) {
     if (value?.length) {
-      result.push(`${name}%2B${value}%2B${matchMode}`)
+      result.push(`${name}+${value}+${matchMode}`)
     }
   }
   return result

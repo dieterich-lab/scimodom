@@ -9,7 +9,11 @@ from scimodom.api.modification import (
     IntersectResponse,
 )
 from scimodom.utils.dtos.bedtools import Bed6Record
-from scimodom.utils.specs.enums import Strand, TargetsFileType
+from scimodom.utils.specs.enums import (
+    Strand,
+    TargetsFileType,
+    AnnotationSource,
+)
 
 
 @pytest.fixture
@@ -22,7 +26,8 @@ def test_client():
 @pytest.fixture
 def mock_services(mocker):
     mocker.patch(
-        "scimodom.api.modification.get_file_service", return_value=MockFileService()
+        "scimodom.api.modification.get_file_service",
+        return_value=MockFileService(),
     )
     mocker.patch(
         "scimodom.api.modification.get_bedtools_service",
@@ -33,7 +38,12 @@ def mock_services(mocker):
         return_value=MockUtilitiesService(),
     )
     mocker.patch(
-        "scimodom.api.helpers.get_assembly_service", return_value=MockAssemblyService()
+        "scimodom.api.helpers.get_assembly_service",
+        return_value=MockAssemblyService(),
+    )
+    mocker.patch(
+        "scimodom.api.modification.get_modification_service",
+        return_value=MockModificationService(),
     )
 
 
@@ -43,7 +53,10 @@ class MockAssemblyService:
     @staticmethod
     def get_chroms(taxa_id: int) -> list[dict[str, Any]]:
         if taxa_id in MockAssemblyService.VALID_TAXA:
-            return [{"chrom": "1", "size": 248956422}]
+            return [
+                {"chrom": "1", "size": 248956422},
+                {"chrom": "17", "size": 83257441},
+            ]
         else:
             raise FileNotFoundError
 
@@ -77,6 +90,10 @@ class MockUtilitiesService:
                 "phylum": "Arthropoda",
             },
         ]
+
+    @staticmethod
+    def get_rna_types() -> list[dict[str, Any]]:
+        return [{"id": "WTS", "label": "whole transcriptome"}]
 
 
 class MockFileService:
@@ -142,6 +159,151 @@ class MockBedtoolsService:
         else:
             MockBedtoolsService.INTERSECTION_RECORDS = [MockBedtoolsService.RECORDS[1]]
         return MockBedtoolsService.INTERSECTION_RECORDS
+
+
+class MockModificationService:
+    RECORDS = [
+        {
+            "id": 1,
+            "chrom": "17",
+            "start": 100001,
+            "end": 100002,
+            "name": "m6A",
+            "score": 1000,
+            "strand": Strand.FORWARD,
+            "coverage": 43,
+            "frequency": 100,
+            "dataset_id": "dataset_id01",
+            "feature": None,
+            "gene_id": None,
+            "gene_name": None,
+            "gene_biotype": None,
+            "tech": "Technology 1",
+            "taxa_id": 9606,
+            "cto": "Cell type 1",
+            "reference_id": 96,
+        },
+        {
+            "id": 4,
+            "chrom": "1",
+            "start": 20652450,
+            "end": 20652451,
+            "name": "m6A",
+            "score": 0,
+            "strand": Strand.REVERSE,
+            "coverage": 378,
+            "frequency": 9,
+            "dataset_id": "dataset_id03",
+            "feature": "CDS",
+            "gene_id": "ENSG1",
+            "gene_name": "GENE1",
+            "gene_biotype": "protein_coding",
+            "tech": "Technology 2",
+            "taxa_id": 9606,
+            "cto": "Cell type 1",
+            "reference_id": 96,
+        },
+    ]
+
+    @staticmethod
+    def get_modifications_by_source(
+        annotation_source: AnnotationSource,
+        modification_id: int,
+        organism_id: int,
+        technology_ids: list[int],
+        taxa_id: int,
+        gene_filter: list[str],
+        chrom: str | None,
+        chrom_start: int | None,
+        chrom_end: int | None,
+        first_record: int | None,
+        max_records: int | None,
+        multi_sort: list[str],
+    ) -> dict[str, Any]:
+        return {
+            "totalRecords": 1,
+            "records": [MockModificationService.RECORDS[0]],
+        }
+
+    @staticmethod
+    def get_modifications_by_gene(
+        annotation_source: AnnotationSource,
+        taxa_id: int,
+        gene_filter: list[str],
+        chrom: str | None,
+        chrom_start: int | None,
+        chrom_end: int | None,
+        first_record: int | None,
+        max_records: int | None,
+        multi_sort: list[str],
+    ) -> dict[str, Any]:
+        return {
+            "totalRecords": 1,
+            "records": [MockModificationService.RECORDS[1]],
+        }
+
+
+@pytest.mark.parametrize(
+    "url,http_status,message",
+    [
+        (
+            "query?modification=1&organism=1&technology[]=1&rnatype=WTS&taxaId=9606&geneFilter[]=gene_name%2BGENE%2BstartsWith&geneFilter[]=gene_biotype%2BlncRNA%2Bin&geneFilter[]=feature%2BCDS%2Bin&firstRecord=0&maxRecords=1",
+            404,
+            "Unknown RNA type",
+        ),
+        (
+            "query?modification=1&organism=1&technology[]=1&rnaType=WTS&taxId=9606&geneFilter[]=gene_name%2BGENE%2BstartsWith&geneFilter[]=gene_biotype%2BlncRNA%2Bin&geneFilter[]=feature%2BCDS%2Bin&firstRecord=0&maxRecords=1",
+            400,
+            "Invalid Taxa ID",
+        ),
+        (
+            "query?modification=1&organism=1&technology[]=1&rnaType=WTS&taxaId=960&geneFilter[]=gene_name%2BGENE%2BstartsWith&geneFilter[]=gene_biotype%2BlncRNA%2Bin&geneFilter[]=feature%2BCDS%2Bin&firstRecord=0&maxRecords=1",
+            404,
+            "Unrecognized Taxa ID",
+        ),
+        (
+            "query?modification=1&organism=1&technology[]=1&rnaType=WTS&taxaId=9606&geneFilter[]=gene_name%2BGENE%2BstartsWith&geneFilter[]=gene_biotype%2BlncRNA%2Bin&geneFilter[]=feature%2BCDS%2Bin&firstRecord=-1&maxRecords=1",
+            400,
+            "Invalid firstRecord",
+        ),
+        (
+            "query?modification=1&organism=1&technology[]=-1&rnaType=WTS&taxaId=9606&geneFilter[]=gene_name%2BGENE%2BstartsWith&geneFilter[]=gene_biotype%2BlncRNA%2Bin&geneFilter[]=feature%2BCDS%2Bin&firstRecord=0&maxRecords=1",
+            400,
+            "Invalid technology ID",
+        ),
+        (
+            "query/gene?rnaType=WTS&taxaId=9606&chrom=1&chromStart=-1&chromEnd=10000&firstRecord=0&maxRecords=10",
+            400,
+            "Invalid chromStart",
+        ),
+        (
+            "query/gene?rnaType=WTS&taxaId=9606&chrom=1&chromEnd=10000&firstRecord=0&maxRecords=10",
+            400,
+            "Invalid chromStart",
+        ),
+        (
+            "query/gene?rnaType=WTS&taxaId=9606&chromStart=0&chromEnd=10000&firstRecord=0&maxRecords=10",
+            400,
+            "Gene or chromosome is required",
+        ),
+        (
+            "query/gene?rnaType=WTS&taxaId=9606&chrom=1&chromStart=1&chromEnd=10000&multiSort[]=star%2Basc&firstRecord=0&maxRecords=10",
+            400,
+            "Invalid table sort (multiSort) field",
+        ),
+        (
+            "query/gene?rnaType=WTS&taxaId=9606&chrom=1&chromStart=1&chromEnd=10000&multiSort[]=start%2Bascending&firstRecord=0&maxRecords=10",
+            400,
+            "Invalid table sort (multiSort) direction",
+        ),
+    ],
+)
+def test_get_modification_as_json(
+    test_client, mock_services, url, http_status, message
+):
+    result = test_client.get(url)
+    assert result.status_code == http_status
+    assert result.json["message"] == message
 
 
 @pytest.mark.parametrize(

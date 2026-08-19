@@ -144,10 +144,10 @@ function formatPrimvueSortMetas(sortMetas?: DataTableSortMeta[]): string[] {
       }
       switch (x.order) {
         case 1:
-          results.push(`${x.field}%2Basc`)
+          results.push(`${x.field}+asc`)
           break
         case -1:
-          results.push(`${x.field}%2Bdesc`)
+          results.push(`${x.field}+desc`)
           break
         default:
           results.push(x.field)

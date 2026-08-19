@@ -318,7 +318,7 @@ def _get_gene_or_chrom_required() -> GeneSearch:
         )
 
 
-def _get_multi_sort(url_split: str = "%2B"):
+def _get_multi_sort(url_split: str = "+"):
     raw = get_unique_list_from_query_parameter("multiSort", str)
     if raw is None or (len(raw) == 1 and raw[0] == ""):
         return []
