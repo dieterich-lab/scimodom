@@ -88,6 +88,10 @@ def get_modifications_as_json(by_gene):
         data = _get_modifications_for_request(by_gene)
     except ClientResponseException as e:
         return e.response_tuple
+    # TODO
+    # response["records"] = [
+    #     {**r, "strand": r["strand"].value} for r in response["records"]
+    # ]
     for r in data["records"]:
         r["strand"] = r["strand"].value
     return data
