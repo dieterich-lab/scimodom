@@ -10,7 +10,10 @@ from flask_cors import cross_origin
 from pydantic import BaseModel
 
 from scimodom.services.annotation import RNA_TYPE_TO_ANNOTATION_SOURCE_MAP
-from scimodom.services.modification import get_modification_service
+from scimodom.services.modification import (
+    MultiSortError,
+    get_modification_service,
+)
 from scimodom.api.helpers import (
     ClientResponseException,
     get_positive_int,
@@ -237,35 +240,42 @@ def _get_bed6_records_from_request(
 
 def _get_modifications_for_request(by_gene):
     modification_service = get_modification_service()
-    # TODO: chrom validation, cf. get_valid_coords
-    if by_gene:
-        gene_or_chrom = _get_gene_or_chrom_required()
-        return modification_service.get_modifications_by_gene(
-            annotation_source=_get_annotation_source(),
-            taxa_id=get_valid_taxa_id(),
-            gene_filter=gene_or_chrom.gene_filter,
-            chrom=gene_or_chrom.chrom_filter,
-            chrom_start=gene_or_chrom.chrom_start_filter,
-            chrom_end=gene_or_chrom.chrom_end_filter,
-            first_record=get_optional_non_negative_int("firstRecord"),
-            max_records=get_optional_positive_int("maxRecords"),
-            multi_sort=_get_multi_sort(),
-        )
-    else:
-        return modification_service.get_modifications_by_source(
-            annotation_source=_get_annotation_source(),
-            modification_id=get_non_negative_int("modification"),
-            organism_id=get_non_negative_int("organism"),
-            technology_ids=_get_technology_ids(),
-            taxa_id=get_valid_taxa_id(),
-            gene_filter=_get_gene_filters(),
-            chrom=request.args.get("chrom", type=str),
-            chrom_start=get_optional_non_negative_int("chromStart"),
-            chrom_end=get_optional_positive_int("chromEnd"),
-            first_record=get_optional_non_negative_int("firstRecord"),
-            max_records=get_optional_positive_int("maxRecords"),
-            multi_sort=_get_multi_sort(),
-        )
+
+    multi_sort = get_unique_list_from_query_parameter("multiSort", str)
+    if multi_sort is None or (len(multi_sort) == 1 and multi_sort[0] == ""):
+        multi_sort = ["chrom+asc", "start+asc"]
+    try:
+        # TODO: chrom validation, cf. get_valid_coords
+        if by_gene:
+            gene_or_chrom = _get_gene_or_chrom_required()
+            return modification_service.get_modifications_by_gene(
+                annotation_source=_get_annotation_source(),
+                taxa_id=get_valid_taxa_id(),
+                gene_filter=gene_or_chrom.gene_filter,
+                chrom=gene_or_chrom.chrom_filter,
+                chrom_start=gene_or_chrom.chrom_start_filter,
+                chrom_end=gene_or_chrom.chrom_end_filter,
+                first_record=get_optional_non_negative_int("firstRecord"),
+                max_records=get_optional_positive_int("maxRecords"),
+                multi_sort=multi_sort,
+            )
+        else:
+            return modification_service.get_modifications_by_source(
+                annotation_source=_get_annotation_source(),
+                modification_id=get_non_negative_int("modification"),
+                organism_id=get_non_negative_int("organism"),
+                technology_ids=_get_technology_ids(),
+                taxa_id=get_valid_taxa_id(),
+                gene_filter=_get_gene_filters(),
+                chrom=request.args.get("chrom", type=str),
+                chrom_start=get_optional_non_negative_int("chromStart"),
+                chrom_end=get_optional_positive_int("chromEnd"),
+                first_record=get_optional_non_negative_int("firstRecord"),
+                max_records=get_optional_positive_int("maxRecords"),
+                multi_sort=multi_sort,
+            )
+    except MultiSortError as exc:
+        raise ClientResponseException(400, f"{exc}")
 
 
 def _get_csv_from_modifications_records(records):
@@ -320,18 +330,3 @@ def _get_gene_or_chrom_required() -> GeneSearch:
             chrom_start_filter=get_non_negative_int("chromStart"),
             chrom_end_filter=get_positive_int("chromEnd"),
         )
-
-
-def _get_multi_sort(url_split: str = "+"):
-    raw = get_unique_list_from_query_parameter("multiSort", str)
-    if raw is None or (len(raw) == 1 and raw[0] == ""):
-        return []
-    for i in raw:
-        field, direction = i.split(url_split)
-        if field not in ["chrom", "score", "start", "coverage", "frequency"]:
-            raise ClientResponseException(400, "Invalid table sort (multiSort) field")
-        if direction not in ["desc", "asc"]:
-            raise ClientResponseException(
-                400, "Invalid table sort (multiSort) direction"
-            )
-    return raw

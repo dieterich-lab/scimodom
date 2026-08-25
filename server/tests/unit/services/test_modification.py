@@ -13,7 +13,10 @@ from scimodom.database.models import (
     GenomicAnnotation,
     Organism,
 )
-from scimodom.services.modification import ModificationService
+from scimodom.services.modification import (
+    ModificationService,
+    MultiSortError,
+)
 from scimodom.utils.specs.enums import Strand, AnnotationSource
 
 Coord = namedtuple("Coord", "chrom start end")
@@ -230,10 +233,39 @@ def _get_modification_service(session):
 
 
 @pytest.mark.parametrize(
+    "multi_sort,message",
+    [
+        (["star+asc"], "Invalid sort column: 'star'"),
+        (["start+ascending"], "Invalid sort direction: 'ascending'"),
+    ],
+)
+def test_get_multi_sort_fail(Session, mocker, annotation, multi_sort, message):
+    modification_service = _get_modification_service(Session())
+    # patch base query, cf. #154
+    mocker.patch.object(
+        modification_service, "_get_base_search_query", _mock_get_base_search_query
+    )
+    query = modification_service._get_base_search_query()
+    with pytest.raises(MultiSortError) as exc:
+        modification_service._get_multi_sort(query, multi_sort)
+    assert (str(exc.value)) == message
+    assert exc.type == MultiSortError
+
+
+@pytest.mark.parametrize(
     "technology_ids,coord,gene_filter,multi_sort,first_record,max_records,expected_records,total",
     [
         ([1], Coord(None, 0, None), [], [], 0, 10, [RECORDS[4]], 1),
-        ([1, 2], Coord(None, 0, None), [], [], 0, 10, RECORDS[:5], 5),
+        (
+            [1, 2],
+            Coord(None, 0, None),
+            [],
+            ["chrom+asc", "start+asc"],
+            0,
+            10,
+            RECORDS[:5],
+            5,
+        ),
         ([1, 2], Coord("1", 20000000, 30000000), [], [], 0, 10, [RECORDS[0]], 1),
         (
             [1, 2],
@@ -275,7 +307,16 @@ def _get_modification_service(session):
             [RECORDS[0], RECORDS[1], RECORDS[2], RECORDS[4], RECORDS[3]],
             5,
         ),
-        ([1, 2], Coord(None, 0, None), [], [], 1, 2, RECORDS[1:3], 5),
+        (
+            [1, 2],
+            Coord(None, 0, None),
+            [],
+            ["chrom+asc", "start+asc"],
+            1,
+            2,
+            RECORDS[1:3],
+            5,
+        ),
     ],
 )
 def test_get_modifications_by_source(

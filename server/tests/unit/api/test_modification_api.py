@@ -1,4 +1,5 @@
 from io import StringIO
+from pathlib import Path
 from typing import Any, Iterable, Sequence
 from csv import DictReader
 
@@ -9,11 +10,13 @@ from scimodom.api.modification import (
     modification_api,
     IntersectResponse,
 )
+from scimodom.services.modification import MultiSortError
 from scimodom.utils.dtos.bedtools import Bed6Record
 from scimodom.utils.specs.enums import (
     Strand,
     TargetsFileType,
     AnnotationSource,
+    AssemblyFileType,
 )
 
 
@@ -119,6 +122,19 @@ class MockFileService:
         else:
             raise FileNotFoundError
 
+    @staticmethod
+    def get_assembly_file_path(
+        taxa_id: int,
+        file_type: AssemblyFileType,
+        assembly_name: str | None = None,
+        chrom: str | None = None,
+    ) -> Path:
+        return Path("path")
+
+    @staticmethod
+    def read_sequence_context(fasta_file: str) -> str:
+        return "ACGTAACCGCC"
+
 
 class MockBedtoolsService:
     RECORDS = [
@@ -205,6 +221,42 @@ class MockModificationService:
             "reference_id": 96,
         },
     ]
+    SITEWISE_RECORDS = [
+        {
+            "chrom": "1",
+            "coverage": 53,
+            "cto": "HeLa",
+            "dataset_id": "bLzgK48AVvYg",
+            "end": 944240,
+            "frequency": 16,
+            "modification_id": 5,
+            "name": "Am",
+            "reference_id": 127,
+            "rna": "WTS",
+            "score": 0,
+            "short_name": "H. sapiens",
+            "start": 944239,
+            "strand": Strand.REVERSE,
+            "tech": "NanoNm",
+        },
+        {
+            "chrom": "1",
+            "coverage": 20,
+            "cto": "C4-2",
+            "dataset_id": "Qjh5Y6qXGAFD",
+            "end": 944240,
+            "frequency": 30,
+            "modification_id": 5,
+            "name": "Am",
+            "reference_id": 127,
+            "rna": "WTS",
+            "score": 0,
+            "short_name": "H. sapiens",
+            "start": 944239,
+            "strand": Strand.REVERSE,
+            "tech": "NanoNm",
+        },
+    ]
 
     @staticmethod
     def get_modifications_by_source(
@@ -242,6 +294,14 @@ class MockModificationService:
             "totalRecords": 1,
             "records": [MockModificationService.RECORDS[1].copy()],
         }
+
+    @staticmethod
+    def get_modification_site(
+        chrom: str,
+        start: int,
+        end: int,
+    ) -> dict[str, list[str, Any]]:
+        return {"records": MockModificationService.SITEWISE_RECORDS.copy()}
 
 
 # TODO
@@ -404,16 +464,6 @@ def test_get_modification_as_json_extra(
             400,
             "Gene or chromosome is required",
         ),
-        (
-            "query/gene?rnaType=WTS&taxaId=9606&chrom=1&chromStart=1&chromEnd=10000&multiSort[]=star%2Basc&firstRecord=0&maxRecords=10",
-            400,
-            "Invalid table sort (multiSort) field",
-        ),
-        (
-            "query/gene?rnaType=WTS&taxaId=9606&chrom=1&chromStart=1&chromEnd=10000&multiSort[]=start%2Bascending&firstRecord=0&maxRecords=10",
-            400,
-            "Invalid table sort (multiSort) direction",
-        ),
     ],
 )
 def test_get_modification_as_json(
@@ -422,6 +472,33 @@ def test_get_modification_as_json(
     result = test_client.get(url)
     assert result.status_code == http_status
     assert result.json["message"] == message
+
+
+@pytest.mark.parametrize(
+    "url,func",
+    [
+        (
+            "query?modification=1&organism=1&technology[]=1&rnaType=WTS&taxaId=9606&multiSort[]=star%2Basc",
+            "get_modifications_by_source",
+        ),
+        (
+            "query/gene?rnaType=WTS&taxaId=9606&chrom=1&chromStart=1&chromEnd=10000&multiSort[]=start%2Bascending",
+            "get_modifications_by_gene",
+        ),
+    ],
+)
+def test_get_modification_as_json_multisort_fail(
+    test_client, mock_services, mocker, url, func
+):
+    mocker.patch.object(
+        MockModificationService,
+        func,
+        side_effect=MultiSortError("mock exception"),
+    )
+
+    response = test_client.get(url)
+    assert response.status_code == 400
+    assert response.json == {"message": "mock exception"}
 
 
 @pytest.mark.freeze_time("2026-08-24 20:00:00")
@@ -458,6 +535,100 @@ def test_get_modification_as_csv(test_client, mock_services):
 # https://scimodom-beta.dieterichlab.org/api/v0/modification/sitewise?chrom=1&start=944239&end=944240&strand=-&taxaId=9606
 # strand can be missing
 # prod: the whole selection is passed through, with taxa_id
+
+
+def test_get_modification_sitewise(test_client, mock_services):
+    url = "sitewise?chrom=1&start=944239&end=944240&strand=-&taxaId=9606"
+    response = test_client.get(url)
+    expected_records = [
+        {**r, "strand": r["strand"].value}
+        for r in MockModificationService.SITEWISE_RECORDS
+    ]
+    assert response.status_code == 200
+    assert response.json["records"] == expected_records
+
+
+@pytest.mark.parametrize(
+    "url,http_status,message",
+    [
+        (
+            "sitewise?chrom=1&start=944239&end=944240&strand=-&taxa_id=9606",
+            400,
+            "Invalid Taxa ID",
+        ),
+        (
+            "sitewise?chrom=1&start=944239&end=944240&strand=-&taxaId=a",
+            400,
+            "Invalid Taxa ID",
+        ),
+        (
+            "sitewise?chrom=1&start=944239&end=944240&strand=-&taxaId=456456",
+            404,
+            "Unrecognized Taxa ID",
+        ),
+        (
+            "sitewise?start=944239&end=944240&strand=-&taxaId=9606",
+            400,
+            "Invalid chrom",
+        ),
+        (
+            "sitewise?chrom=1&Start=944239&end=944240&strand=-&taxaId=9606",
+            400,
+            "Invalid start",
+        ),
+        (
+            "sitewise?chrom=1&start=944239&chromEnd=944240&strand=-&taxaId=9606",
+            400,
+            "Invalid end",
+        ),
+        (
+            "sitewise?chrom=2&start=944239&end=944240&strand=-&taxaId=9606",
+            404,
+            "Unrecognized chrom '2' for Taxa '9606'",
+        ),
+        (
+            "sitewise?chrom=1&start=944239&end=944238&strand=-&taxaId=9606",
+            400,
+            "Invalid coordinates: start must be smaller than end",
+        ),
+        (
+            "sitewise?chrom=1&start=944239&end=248956423&strand=-&taxaId=9606",
+            400,
+            "Invalid coordinates: end is greater than chrom size",
+        ),
+        (
+            "sitewise?chrom=1&start=944239&end=248956420&strand=plus&taxaId=9606",
+            400,
+            "Invalid strand value",
+        ),
+    ],
+)
+def test_get_modification_sitewise_fail(
+    test_client, mock_services, url, http_status, message
+):
+    result = test_client.get(url)
+    assert result.status_code == http_status
+    assert result.json["message"] == message
+
+
+# TODO: also test same error as previous...
+
+
+def test_get_genomic_sequence_context_file_not_found(
+    test_client, mock_services, mocker
+):
+    mocker.patch.object(
+        MockBedtoolsService,
+        "getfasta",
+        side_effect=FileNotFoundError,
+        create=True,
+    )
+
+    response = test_client.get(
+        "genomic-context/5?chrom=1&end=944240&start=944239&strand=-&taxaId=9606"
+    )
+    assert response.status_code == 200
+    assert response.json == {"context": ""}
 
 
 @pytest.mark.parametrize(

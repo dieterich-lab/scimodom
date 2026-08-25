@@ -1,7 +1,8 @@
 from functools import cache
-from typing import Any
+from typing import Any, ClassVar
 
 from sqlalchemy import select, func
+from sqlalchemy.sql import Select
 from sqlalchemy.orm import Session
 
 from scimodom.database.database import get_session
@@ -25,14 +26,26 @@ from scimodom.services.annotation import (
 from scimodom.utils.specs.enums import AnnotationSource
 
 
+class MultiSortError(Exception):
+    """Exception handling for sort columns."""
+
+    pass
+
+
 class ModificationService:
-    """Provide a service for modification-related queries.
+    """Utility class to query modifications.
 
     :param session: SQLAlchemy ORM session
-    :type session: Session
     :param annotation_service: Annotation service instance
-    :type annotation_service: AnnotationService
     """
+
+    SORT_COLUMNS: ClassVar[dict[str, Any]] = {
+        "chrom": Data.chrom,
+        "score": Data.score,
+        "start": Data.start,
+        "coverage": Data.coverage,
+        "frequency": Data.frequency,
+    }
 
     def __init__(self, session: Session, annotation_service: AnnotationService):
         self._session = session
@@ -226,11 +239,6 @@ class ModificationService:
         return {"records": [row._asdict() for row in self._session.execute(query)]}
 
     @staticmethod
-    def _get_arg_sort(string: str, url_split: str = "+") -> str:
-        col, order = string.split(url_split)
-        return f"Data.{col}.{order}()"
-
-    @staticmethod
     def _get_flt(string, url_split="+") -> tuple[str, list[str], str]:
         col, val, operator = string.split(url_split)
         return col, val.split(","), operator
@@ -302,6 +310,31 @@ class ModificationService:
             query = query.where(Data.end <= end)
         return query
 
+    @classmethod
+    def _get_multi_sort(
+        cls,
+        query: Select[Any],
+        multi_sort: list[str],
+    ) -> Select[Any]:
+        def _get_col_and_order(string: str, delim: str = "+"):
+            col, order = string.split(delim)
+            try:
+                column = cls.SORT_COLUMNS[col]
+            except KeyError:
+                raise MultiSortError(f"Invalid sort column: '{col}'")
+            if order == "asc":
+                return column.asc()
+            elif order == "desc":
+                return column.desc()
+            else:
+                raise MultiSortError(f"Invalid sort direction: '{order}'")
+
+        for sort in multi_sort:
+            ordered_col = _get_col_and_order(sort)
+            query = query.order_by(ordered_col)
+
+        return query
+
     def _get_gene_filters(self, query, gene_filter, annotation):
         # gene filters: matchMode unused (cf. PrimeVue), but keep it this way
         # e.g. to extend options or add table filters
@@ -325,19 +358,6 @@ class ModificationService:
             query = query.where(GenomicAnnotation.annotation_id == annotation.id).where(
                 GenomicAnnotation.biotype.in_(biotypes)
             )
-        return query
-
-    def _get_sort_filters(self, query, multi_sort):
-        # sort filters
-        # index speed up for chrom + start
-        if not multi_sort:
-            chrom_expr = self._get_arg_sort("chrom+asc")
-            start_expr = self._get_arg_sort("start+asc")
-            query = query.order_by(eval(chrom_expr), eval(start_expr))
-        else:
-            for flt in multi_sort:
-                expr = self._get_arg_sort(flt)
-                query = query.order_by(eval(expr))
         return query
 
     def _return_ensembl_query(
@@ -368,7 +388,7 @@ class ModificationService:
 
         length = self._get_length(query, Data)
 
-        query = self._get_sort_filters(query, multi_sort)
+        query = self._get_multi_sort(query, multi_sort)
 
         if first_record is not None:
             query = query.offset(first_record)
@@ -401,7 +421,7 @@ class ModificationService:
 
         length = self._get_length(query, Data)
 
-        query = self._get_sort_filters(query, multi_sort)
+        query = self._get_multi_sort(query, multi_sort)
 
         if first_record is not None:
             query = query.offset(first_record)
