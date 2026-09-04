@@ -490,8 +490,8 @@ def test_intersect_with_liftover(test_client, mock_services, mocker):
         (
             "/intersect?reference=datasetidAxx&comparison=datasetidBxx&euf=true&taxaId=99&strand=true",
             404,
-            "Unrecognized Taxa ID",
-            "Request needs a valid 'taxaId' when 'euf=true': Unrecognized Taxa ID",
+            "taxaId '99' not found",
+            "Request needs a valid 'taxaId' when 'euf=true': taxaId '99' not found",
         ),
         (
             "/intersect?reference=datasetidAxx&strand=true",

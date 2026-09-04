@@ -16,14 +16,18 @@ from scimodom.services.modification import (
 )
 from scimodom.api.helpers import (
     ClientResponseException,
+    get_required_query_param,
+    get_optional_query_param,
     get_positive_int,
+    get_non_negative_int,
+    get_optional_positive_int,
+    get_optional_non_negative_int,
+    validate_chrom,
+    validate_taxa_id,
     get_valid_coords,
     get_valid_targets_type,
     get_valid_taxa_id,
     get_response_from_pydantic_object,
-    get_non_negative_int,
-    get_optional_positive_int,
-    get_optional_non_negative_int,
     validate_rna_type,
     get_unique_list_from_query_parameter,
 )
@@ -56,13 +60,13 @@ FIELDS_TO_CSV_HEADER_MAP = {
 
 
 @dataclass
-class GeneSearch:
-    """Dataclass for gene search."""
+class GeneOrChromQuery:
+    """Dataclass for the Search interface."""
 
     gene_filter: list[str]
-    chrom_filter: str | None = None
-    chrom_start_filter: int | None = None
-    chrom_end_filter: int | None = None
+    chrom: str | None = None
+    chrom_start: int | None = None
+    chrom_end: int | None = None
 
 
 class IntersectResponse(BaseModel):
@@ -79,12 +83,15 @@ def get_modifications_as_json(by_gene):
 
     :param request: The request with required parameters.
     :param by_gene: Query by gene
-    :returns: JSON array with all available dataset
+    :return: JSON array with all available dataset
     and related metadata.
     :statuscode 200: OK
-    :statuscode 401: Unauthorized (expired token, missing header)
-    :statuscode 422: Unprocessable Content (not enough segments,
-    signature verification failed)
+    :statuscode 400: Bad request (syntax validation failed,
+    structurally invalid request)
+    :statuscode 404: Not found (semantic validation failed,
+    database entity or resource does not exist)
+    :statuscode 422: Unprocessable Content (API constraints
+    failed e.g. range constraints, enum-allowed values, etc.)
     :statuscode 500: Internal Server Error
     """
     try:
@@ -244,19 +251,25 @@ def _get_modifications_for_request(by_gene):
     multi_sort = get_unique_list_from_query_parameter("multiSort", str)
     if multi_sort is None or (len(multi_sort) == 1 and multi_sort[0] == ""):
         multi_sort = ["chrom+asc", "start+asc"]
+    taxa_id = validate_taxa_id(get_positive_int("taxaId"))
+
+    first_record = get_optional_non_negative_int("firstRecord")
+    max_records = get_optional_positive_int("maxRecords")
+
+    gene_or_chrom = _get_gene_or_chrom_query(taxa_id, is_optional=bool(by_gene))
+
     try:
         # TODO: chrom validation, cf. get_valid_coords
         if by_gene:
-            gene_or_chrom = _get_gene_or_chrom_required()
             return modification_service.get_modifications_by_gene(
                 annotation_source=_get_annotation_source(),
-                taxa_id=get_valid_taxa_id(),
+                taxa_id=taxa_id,
                 gene_filter=gene_or_chrom.gene_filter,
-                chrom=gene_or_chrom.chrom_filter,
-                chrom_start=gene_or_chrom.chrom_start_filter,
-                chrom_end=gene_or_chrom.chrom_end_filter,
-                first_record=get_optional_non_negative_int("firstRecord"),
-                max_records=get_optional_positive_int("maxRecords"),
+                chrom=gene_or_chrom.chrom,
+                chrom_start=gene_or_chrom.chrom_start,
+                chrom_end=gene_or_chrom.chrom_end,
+                first_record=first_record,
+                max_records=max_records,
                 multi_sort=multi_sort,
             )
         else:
@@ -265,13 +278,13 @@ def _get_modifications_for_request(by_gene):
                 modification_id=get_non_negative_int("modification"),
                 organism_id=get_non_negative_int("organism"),
                 technology_ids=_get_technology_ids(),
-                taxa_id=get_valid_taxa_id(),
+                taxa_id=taxa_id,
                 gene_filter=_get_gene_filters(),
                 chrom=request.args.get("chrom", type=str),
                 chrom_start=get_optional_non_negative_int("chromStart"),
                 chrom_end=get_optional_positive_int("chromEnd"),
-                first_record=get_optional_non_negative_int("firstRecord"),
-                max_records=get_optional_positive_int("maxRecords"),
+                first_record=first_record,
+                max_records=max_records,
                 multi_sort=multi_sort,
             )
     except MultiSortError as exc:
@@ -316,17 +329,47 @@ def _get_gene_filters():
     return raw
 
 
-def _get_gene_or_chrom_required() -> GeneSearch:
-    gene = get_unique_list_from_query_parameter("geneFilter", str)
-    if gene:
-        return GeneSearch(gene_filter=gene)
-    else:
-        chrom = request.args.get("chrom", type=str)
-        if not chrom:
-            raise ClientResponseException(400, "Gene or chromosome is required")
-        return GeneSearch(
-            gene_filter=[],
-            chrom_filter=chrom,
-            chrom_start_filter=get_non_negative_int("chromStart"),
-            chrom_end_filter=get_positive_int("chromEnd"),
+# def _get_gene_or_chrom_required() -> GeneSearch:
+#     gene = get_unique_list_from_query_parameter("geneFilter", str)
+#     if gene:
+#         return GeneSearch(gene_filter=gene)
+#     else:
+#         chrom = request.args.get("chrom", type=str)
+#         if not chrom:
+#             raise ClientResponseException(400, "Gene or chromosome is required")
+#         return GeneSearch(
+#             gene_filter=[],
+#             chrom_filter=chrom,
+#             chrom_start_filter=get_non_negative_int("chromStart"),
+#             chrom_end_filter=get_positive_int("chromEnd"),
+#         )
+
+
+def _get_gene_or_chrom_query(
+    taxa_id: int,
+    is_optional: bool,
+) -> GeneOrChromQuery:
+    gene_filter = get_unique_list_from_query_parameter("geneFilter", str) or []
+    chrom = request.args.get("chrom", type=str)
+    chrom_start = get_optional_non_negative_int("chromStart")
+    chrom_end = get_optional_positive_int("chromEnd")
+
+    if gene_filter and chrom:
+        raise ClientResponseException(
+            400,
+            "Too many parameters: use 'geneFilter' xor 'chrom'",
         )
+    if not is_optional and not gene_filter and not chrom:
+        raise ClientResponseException(
+            400,
+            "Missing required parameter: 'geneFilter' xor 'chrom'",
+        )
+    if chrom_start is not None or chrom_end is not None:
+        if not chrom:
+            raise ClientResponseException(
+                400,
+                "Unused parameters: 'chromStart' and 'chromEnd' require 'chrom'",
+            )
+        validate_chrom(taxa_id, chrom, chrom_start, chrom_end)
+
+    return GeneOrChromQuery(gene_filter, chrom, chrom_start, chrom_end)

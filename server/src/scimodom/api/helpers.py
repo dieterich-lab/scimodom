@@ -1,6 +1,7 @@
 from pathlib import Path
 import re
-from typing import Optional, Any
+from typing import Optional, Any, TypeVar
+from collections.abc import Callable
 
 from flask import request, Response
 from flask_jwt_extended import get_jwt_identity
@@ -73,6 +74,9 @@ This module depends on Flask. Most importantly some functions will assume
 that they are called while a HTTP request is processed and use the Flask
 'request' object.
 """
+
+
+T = TypeVar("T")  # Callable return type
 
 # EUFID length is validated separately
 VALID_DATASET_ID_REGEXP = re.compile(r"\A[a-zA-Z0-9]{1,256}\Z")
@@ -154,6 +158,153 @@ def get_required_json_fields(*fields: str) -> dict[str, Any]:
 
 
 # Incoming parameter validation
+
+# - Type conversion and syntax validation
+
+
+def _non_empty_str(raw: str, name: str) -> str:
+    if not raw:
+        raise ValueError
+    return raw
+
+
+def _non_negative_int(raw: str, name: str) -> int:
+    value = int(raw)
+    if value < 0:
+        raise ClientResponseException(
+            422, f"Parameter '{name}' must be a non-negative integer"
+        )
+    return value
+
+
+def _positive_int(raw: str, name: str) -> int:
+    value = int(raw)
+    if value <= 0:
+        raise ClientResponseException(
+            422, f"Parameter '{name}' must be a positive integer"
+        )
+    return value
+
+
+def get_non_negative_int(name: str) -> int:
+    """Parse query for parameter, convert, and validate.
+
+    :param name: Query parameter name
+    :raises ValueError or ClientResponseException
+    if fails to validate
+    :return: The converted value in the given range
+    """
+    return get_required_query_param(name, _non_negative_int, "integer")
+
+
+def get_positive_int(name: str) -> int:
+    """Parse query for parameter, convert, and validate.
+
+    :param name: Query parameter name
+    :raises ValueError or ClientResponseException
+    if fails to validate
+    :return: The converted value in the given range
+    """
+    return get_required_query_param(name, _positive_int, "integer")
+
+
+def get_optional_non_negative_int(name: str) -> int | None:
+    """Parse query for optional parameter, convert, and validate.
+
+    :param name: Query parameter name
+    :raises ValueError or ClientResponseException
+    if fails to validate
+    :return: The converted value in the given range or None
+    """
+    return get_optional_query_param(name, _non_negative_int, "integer")
+
+
+def get_optional_positive_int(name: str) -> int | None:
+    """Parse query for parameter, convert, and validate.
+
+    :param name: Query parameter name
+    :raises ValueError or ClientResponseException
+    if fails to validate
+    :return: The converted value in the given range or None
+    """
+    return get_optional_query_param(name, _positive_int, "integer")
+
+
+def get_required_query_param(
+    name: str,
+    converter: Callable[[str, str], T] = _non_empty_str,
+    type_name: str = "string",
+) -> T:
+    """Parse query string for parameter and convert to the given type.
+
+    This function performs syntactic validation only; if semantic
+    validation is required, this must be performed by the caller.
+    It distinguishes a missing or malformed parameter from
+    one that is present but fails to convert, e.g. ValueError or
+    API-specific constraints, such as a value that violates declared
+    bounds, etc. These must be validated in the Callable.
+
+    :param name: Query parameter name
+    :param converter: Callable used to convert the raw string
+    and perform API validation.
+    :param type_name: Human-readable type name for the error
+    message (defaults to converter.__name__)
+    :raises ClientResponseException:
+        400 if missing, or present but fails to convert
+        422 if API validation fails
+    :return: The converted value
+    """
+    raw = request.args.get(name)
+    if raw is None:
+        raise ClientResponseException(400, f"Missing required parameter: '{name}'")
+    return _convert_query_param(name, raw, converter, type_name)
+
+
+def get_optional_query_param(
+    name: str,
+    converter: Callable[[str, str], T] = _non_empty_str,
+    type_name: str = "string",
+) -> T | None:
+    """Parse query string for optional parameter and convert to the given type.
+
+    See 'get_required_query_param' for details. This functions returns
+    None if the parameter is missing or malformed, and otherwise performs
+    validation.
+    """
+    raw = request.args.get(name)
+    if raw is None:
+        return None
+    return _convert_query_param(name, raw, converter, type_name)
+
+
+def _convert_query_param(
+    name: str,
+    raw: str,
+    converter: Callable[[str, str], T],
+    type_name: str | None,
+) -> Any:
+    try:
+        return converter(raw, name)
+    except (ValueError, TypeError):
+        label = type_name or getattr(converter, "__name__", "value")
+        raise ClientResponseException(
+            400, f"Parameter '{name}' must be a valid {label} (got: '{raw}')"
+        )
+
+
+# - Semantic validation
+
+
+def validate_taxa_id(taxa_id: int) -> None:
+    """Check if taxon exists.
+
+    :param taxa_id: Incoming taxon identifier
+    :raises: ClientResponseException if taxa_id does not exist
+    """
+    utilities_service = get_utilities_service()
+    taxa_ids = [d["taxa_id"] for d in utilities_service.get_taxa()]
+    if taxa_id not in taxa_ids:
+        raise ClientResponseException(404, f"taxaId '{taxa_id}' not found")
 
 
 def get_valid_dataset(dataset_id: str) -> Dataset:
@@ -354,7 +505,7 @@ def get_valid_taxa_id(is_optional: bool = False) -> Optional[int]:
         if is_optional:
             return None
         raise ClientResponseException(400, "Invalid Taxa ID")
-    _validate_taxa_id(taxa_id)
+    validate_taxa_id(taxa_id)
     return taxa_id
 
 
@@ -369,7 +520,7 @@ def get_valid_taxa_id_from_string(raw: str) -> int:
     """
     try:
         taxa_id = int(raw)
-        _validate_taxa_id(taxa_id)
+        validate_taxa_id(taxa_id)
         return taxa_id
     except ValueError as exc:
         raise ClientResponseException(400, "Invalid Taxa ID") from exc
@@ -387,6 +538,43 @@ def get_valid_targets_type(raw: str) -> TargetsFileType:
         return TargetsFileType[raw]
     except KeyError:
         raise ClientResponseException(404, "Unknown targets type")
+
+
+def validate_chrom(
+    taxa_id: int, chrom: str, start: int, end: int
+) -> tuple[str, int, int]:
+    """Validate chromosome, start and end.
+
+    :param taxa_id: A valid taxon identifier (the
+    caller must provide a fully validated value)
+    :param chrom: Incoming chrom (the caller must
+    provide a syntactically valid value)
+    :param start: Incoming start (the caller must
+    provide a syntactically valid value)
+    :param end: Incoming end (the caller must
+    provide a syntactically valid value)
+    :raises ClientResponseException:
+        422 if start/end are inconsistent
+        404 if chrom does not exist
+    :return: Validated chrom, start, end
+    """
+    if end <= start:
+        raise ClientResponseException(
+            422,
+            "Parameter 'end'/'chromEnd' must be greater than 'start'/'chromStart'",
+        )
+    assembly_service = get_assembly_service()
+    chrom_size: dict[str, int] = {
+        d["chrom"]: d["size"]
+        for d in assembly_service.get_chroms(taxa_id)
+        if d["chrom"] == chrom
+    }
+    if chrom not in chrom_size:
+        raise ClientResponseException(
+            404, f"chrom '{chrom}' for taxaId '{taxa_id}' not found"
+        )
+    if not end < chrom_size[chrom]:
+        raise ClientResponseException(400, "Parameter 'end' is greater than chrom size")
 
 
 def get_valid_coords(taxa_id: int, context: int = 0) -> tuple[str, int, int, Strand]:
@@ -443,36 +631,36 @@ def get_valid_coords(taxa_id: int, context: int = 0) -> tuple[str, int, int, Str
     return chrom, start, end, strand_dto
 
 
-def get_non_negative_int(field: str) -> int:
-    raw = request.args.get(field, type=int)
-    if raw is None or raw < 0:
-        raise ClientResponseException(400, f"Invalid {field}")
-    return raw
+# def get_non_negative_int(field: str) -> int:
+#     raw = request.args.get(field, type=int)
+#     if raw is None or raw < 0:
+#         raise ClientResponseException(400, f"Invalid {field}")
+#     return raw
 
 
-def get_positive_int(field: str) -> int:
-    raw = request.args.get(field, type=int)
-    if raw is None or raw <= 0:
-        raise ClientResponseException(400, f"Invalid {field}")
-    return raw
+# def get_positive_int(field: str) -> int:
+#     raw = request.args.get(field, type=int)
+#     if raw is None or raw <= 0:
+#         raise ClientResponseException(400, f"Invalid {field}")
+#     return raw
 
 
-def get_optional_non_negative_int(field: str) -> int | None:
-    raw = request.args.get(field, type=int)
-    if raw is None:
-        return None
-    if raw < 0:
-        raise ClientResponseException(400, f"Invalid {field}")
-    return raw
+# def get_optional_non_negative_int(field: str) -> int | None:
+#     raw = request.args.get(field, type=int)
+#     if raw is None:
+#         return None
+#     if raw < 0:
+#         raise ClientResponseException(400, f"Invalid {field}")
+#     return raw
 
 
-def get_optional_positive_int(field: str) -> int | None:
-    raw = request.args.get(field, type=int)
-    if raw is None:
-        return None
-    if raw <= 0:
-        raise ClientResponseException(400, f"Invalid {field}")
-    return raw
+# def get_optional_positive_int(field: str) -> int | None:
+#     raw = request.args.get(field, type=int)
+#     if raw is None:
+#         return None
+#     if raw <= 0:
+#         raise ClientResponseException(400, f"Invalid {field}")
+#     return raw
 
 
 def get_unique_list_from_query_parameter(name: str, list_type) -> list[Any]:
@@ -523,10 +711,3 @@ def _is_valid_identifier(identifier, length):
     elif len(identifier) != length:
         return False
     return True
-
-
-def _validate_taxa_id(taxa_id: int) -> None:
-    utilities_service = get_utilities_service()
-    taxa_ids = [d["taxa_id"] for d in utilities_service.get_taxa()]
-    if taxa_id not in taxa_ids:
-        raise ClientResponseException(404, "Unrecognized Taxa ID")
