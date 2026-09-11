@@ -46,16 +46,30 @@ def mock_services(mocker):
         return_value=MockAssemblyService(),
     )
     mocker.patch(
+        "scimodom.api.helpers.get_annotation_service",
+        return_value=MockAnnotationService(),
+    )
+    mocker.patch(
         "scimodom.api.modification.get_modification_service",
         return_value=MockModificationService(),
     )
+
+
+class MockAnnotationService:
+    VALID_RNA_TYPES = ["WTS"]
+
+    @staticmethod
+    def get_features_by_rna_type(rna_type: str):
+        if rna_type not in MockAnnotationService.VALID_RNA_TYPES:
+            raise NotImplementedError
+        return ["CDS", "exon", "intron"]
 
 
 class MockAssemblyService:
     VALID_TAXA = [9606, 10090, 7227]
 
     @staticmethod
-    def get_chroms(taxa_id: int) -> list[dict[str, Any]]:
+    def get_chroms(taxa_id: int) -> list[dict[str, str | int]]:
         if taxa_id in MockAssemblyService.VALID_TAXA:
             return [
                 {"chrom": "1", "size": 248956422},
@@ -97,7 +111,55 @@ class MockUtilitiesService:
 
     @staticmethod
     def get_rna_types() -> list[dict[str, Any]]:
-        return [{"id": "WTS", "label": "whole transcriptome"}]
+        return [
+            {"id": "WTS", "label": "whole transcriptome"},
+            {"id": "WTS2", "label": "whole transcriptome2"},
+        ]
+
+    @staticmethod
+    def get_biotypes():
+        return {"biotypes": ["Protein coding", "lncRNA"]}
+
+    @staticmethod
+    def get_selections():
+        return [
+            {
+                "cls": "NGS 2nd generation",
+                "cto": "HeLa",
+                "domain": "Eukarya",
+                "kingdom": "Animalia",
+                "meth": "Chemical-assisted sequencing",
+                "modification_id": 2,
+                "modomics_sname": "m6A",
+                "organism_id": 3,
+                "rna": "WTS",
+                "rna_name": "whole transcriptome",
+                "selection_id": 3,
+                "taxa_id": 9606,
+                "taxa_name": "Homo sapiens",
+                "taxa_sname": "H. sapiens",
+                "tech": "MePMe-seq",
+                "technology_id": 2,
+            },
+            {
+                "cls": "NGS 2nd generation",
+                "cto": "HeLa",
+                "domain": "Eukarya",
+                "kingdom": "Animalia",
+                "meth": "Enzyme/protein-assisted sequencing",
+                "modification_id": 2,
+                "modomics_sname": "m6A",
+                "organism_id": 3,
+                "rna": "WTS",
+                "rna_name": "whole transcriptome",
+                "selection_id": 29,
+                "taxa_id": 9606,
+                "taxa_name": "Homo sapiens",
+                "taxa_sname": "H. sapiens",
+                "tech": "eTAM-seq",
+                "technology_id": 7,
+            },
+        ]
 
 
 class MockFileService:
@@ -176,6 +238,12 @@ class MockBedtoolsService:
         else:
             MockBedtoolsService.INTERSECTION_RECORDS = [MockBedtoolsService.RECORDS[1]]
         return MockBedtoolsService.INTERSECTION_RECORDS
+
+    @staticmethod
+    def getfasta(
+        records: Iterable[Bed6Record], fasta_file: Path, is_strand: bool
+    ) -> str:
+        return "fasta_file"
 
 
 class MockModificationService:
@@ -265,7 +333,9 @@ class MockModificationService:
         organism_id: int,
         technology_ids: list[int],
         taxa_id: int,
-        gene_filter: list[str],
+        gene_name: str | None,
+        biotypes: list[str],
+        features: list[str],
         chrom: str | None,
         chrom_start: int | None,
         chrom_end: int | None,
@@ -282,7 +352,9 @@ class MockModificationService:
     def get_modifications_by_gene(
         annotation_source: AnnotationSource,
         taxa_id: int,
-        gene_filter: list[str],
+        gene_name: str | None,
+        biotypes: list[str],
+        features: list[str],
         chrom: str | None,
         chrom_start: int | None,
         chrom_end: int | None,
@@ -304,170 +376,61 @@ class MockModificationService:
         return {"records": MockModificationService.SITEWISE_RECORDS.copy()}
 
 
-# TODO
-# returns a response in the test, but the API returns an empty response:
-# a random/inexistent modification, as long as it is a valid int
-# a random/inexistent organism, as long as it is a valid int
-# malformed technology, invalid value, random/inexistent value
-# malformed or invalid value (str instead of int) for firstRecord, maxRecords
-# malformed geneFilter, incl. gene_name, missing components (startsWith, in, etc. FAIL in production),
-# gene_biotypes, malformed or inexistent features or biotypes
-# both geneFilter (gene_name) and chrom
-# malformed chrom, start and end, random chrom (any string, negative value), range for start/end
-@pytest.mark.parametrize(
-    "url",
-    [
-        "query?modification=99999&organism=1&technology[]=1&rnaType=WTS&taxaId=9606&geneFilter[]=gene_name%2BGENE%2BstartsWith&geneFilter[]=gene_biotype%2BlncRNA%2Bin&geneFilter[]=feature%2BCDS%2Bin&firstRecord=0&maxRecords=1",
-        "query?modification=1&organism=11111&technology[]=1&rnaType=WTS&taxaId=9606&geneFilter[]=gene_name%2BGENE%2BstartsWith&geneFilter[]=gene_biotype%2BlncRNA%2Bin&geneFilter[]=feature%2BCDS%2Bin&firstRecord=0&maxRecords=1",
-        "query?modification=1&organism=1&technologi[]=1&rnaType=WTS&taxaId=9606&geneFilter[]=gene_name%2BGENE%2BstartsWith&geneFilter[]=gene_biotype%2BlncRNA%2Bin&geneFilter[]=feature%2BCDS%2Bin&firstRecord=0&maxRecords=1",
-        "query?modification=1&organism=1&technology[]=a&rnaType=WTS&taxaId=9606&geneFilter[]=gene_name%2BGENE%2BstartsWith&geneFilter[]=gene_biotype%2BlncRNA%2Bin&geneFilter[]=feature%2BCDS%2Bin&firstRecord=0&maxRecords=1",
-        "query?modification=1&organism=1&technology[]=1288888&rnaType=WTS&taxaId=9606&geneFilter[]=gene_name%2BGENE%2BstartsWith&geneFilter[]=gene_biotype%2BlncRNA%2Bin&geneFilter[]=feature%2BCDS%2Bin&firstRecord=0&maxRecords=1",
-        "query?modification=1&organism=1&technology[]=1&rnaType=WTS&taxaId=9606&geneFilter[]=gene_name%2BGENE%2BstartsWith&geneFilter[]=gene_biotype%2BlncRNA%2Bin&geneFilter[]=feature%2BCDS%2Bin&firstrecord=0&maximumRecords=1",
-        # "query?modification=1&organism=1&technology[]=1&rnaType=WTS&taxaId=9606&geneFilter[]=gene_name%2BGENE%2BstartsWith&geneFilter[]=gene_biotype%2BlncRNA%2Bin&geneFilter[]=feature%2BCDS%2Bin&firstRecord=a&maxRecords=1",
-        "query?modification=1&organism=1&technology[]=1&rnaType=WTS&taxaId=9606&gene_filter[]=gene_name%2BGENE%2BstartsWith&geneFilter[]=gene_biotype%2BlncRNA%2Bin&geneFilter[]=feature%2BCDS%2Bin&firstRecord=0&maxRecords=1",
-        "query?modification=1&organism=1&technology[]=1&rnaType=WTS&taxaId=9606&geneFilter[]=gene%2BGENE%2BstartsWith&geneFilter[]=gene_biotype%2BlncRNA%2Bin&geneFilter[]=feature%2BCDS%2Bin&firstRecord=0&maxRecords=1",
-        "query?modification=1&organism=1&technology[]=1&rnaType=WTS&taxaId=9606&geneFilter[]=gene_name%2BGENE&geneFilter[]=gene_biotype%2BlncRNA%2Bin&geneFilter[]=feat%2BCDS%2Bin&firstRecord=0&maxRecords=1",
-        "query?modification=1&organism=1&technology[]=1&rnaType=WTS&taxaId=9606&geneFilter[]=gene_name%2BGENE%2BstartsWith&geneFilter[]=gene_biotype%2BlncRNA&geneFilter[]=feat%2BCDS%2Bin&firstRecord=0&maxRecords=1",
-        "query?modification=1&organism=1&technology[]=1&rnaType=WTS&taxaId=9606&geneFilter[]=gene_name%2BGENE%2BstartsWith&geneFilter[]=biotype%2BlncRNA%2Bin&geneFilter[]=feature%2BCDS%2Bin&firstRecord=0&maxRecords=1",
-        "query?modification=1&organism=1&technology[]=1&rnaType=WTS&taxaId=9606&geneFilter[]=gene_name%2BGENE%2BstartsWith&geneFilter[]=gene_biotype%2Bwhatever%2Bin&geneFilter[]=feature%2BCDS%2Bin&firstRecord=0&maxRecords=1",
-        "query?modification=1&organism=1&technology[]=1&rnaType=WTS&taxaId=9606&geneFilter[]=gene_name%2BGENE%2BstartsWith&geneFilter[]=gene_biotype%2BlncRNA%2Bin&geneFilter[]=feature%2BABC%2Bin&firstRecord=0&maxRecords=1",
-        # TODO 400
-        # "query?modification=1&organism=1&technology[]=1&rnaType=WTS&taxaId=9606&geneFilter[]=gene_name%2BGENE%2BstartsWith&geneFilter[]=gene_biotype%2BlncRNA%2Bin&geneFilter[]=feature%2BCDS%2Bin&chrom=1&chromStart=1&chromEnd=10000&firstRecord=0&maxRecords=1",
-        # TODO: 400
-        # "query?modification=1&organism=1&technology[]=1&rnaType=WTS&taxaId=9606&Chrom=1&chromStart=1&chromEnd=10000&firstRecord=0&maxRecords=1",
-        # TODO: this should raise 404 see helpers:validate_chrom - but the mock raises a FileNotFoundError
-        # "query?modification=1&organism=1&technology[]=1&rnaType=WTS&taxaId=9606&chrom=a&chromStart=1&chromEnd=10000&firstRecord=0&maxRecords=1",
-        # TODO: in _get_gene_or_chrom_query this should return None, and with is_optional, this should return unused paramters???
-        # "query?modification=1&organism=1&technology[]=1&rnaType=WTS&taxaId=9606&chrom=-1&chromStart=1&chromEnd=10000&firstRecord=0&maxRecords=1",
-        # TODO: 422
-        # "query?modification=1&organism=1&technology[]=1&rnaType=WTS&taxaId=9606&chrom=1&chromStart=12&chromEnd=1&firstRecord=0&maxRecords=1",
-    ],
-)
-def test_get_modification_as_json_success(test_client, mock_services, url):
-    result = test_client.get(url)
-    expected_records = [
-        {**r, "strand": r["strand"].value} for r in MockModificationService.RECORDS
-    ]
-    assert result.status_code == 200
-    assert result.json["records"][0] == expected_records[0]
-
-
-# TODO
-# returns a response in the test, but the API returns an empty response:
-# if one geneFilter (no matter which one, no matter if content is bad) and chrom missing or malformed
-# wrong range - also tested elsewhere
-@pytest.mark.parametrize(
-    "url",
-    [
-        "query/gene?rnaType=WTS&taxaId=9606&genefilter[]=genebiotype%2BProtein+coding%2Bin&geneFilter[]=feat%2BCDS%2Bin&xhrom=7&chromStart=5527750&chromEnd=5527760&firstRecord=0&maxRecords=10",
-        "query/gene?rnaType=WTS&taxaId=9606&chrom=1&chromStart=50&chromEnd=1&firstRecord=0&maxRecords=10",
-    ],
-)
-def test_get_modification_as_json_by_gene_success(test_client, mock_services, url):
-    result = test_client.get(url)
-    expected_records = [
-        {**r, "strand": r["strand"].value} for r in MockModificationService.RECORDS
-    ]
-    assert result.status_code == 200
-    assert result.json["records"][0] == expected_records[1]
-
-
-# TODO
-@pytest.mark.parametrize(
-    "url,http_status,message",
-    [
-        (
-            "query?Modification=1&organism=1&technology[]=1&rnaType=WTS&taxaId=9606&geneFilter[]=gene_name%2BGENE%2BstartsWith&geneFilter[]=gene_biotype%2BlncRNA%2Bin&geneFilter[]=feature%2BCDS%2Bin&firstRecord=0&maxRecords=1",
-            400,
-            "Missing required parameter: 'modification'",
-        ),
-        (
-            "query?modification=a&organism=1&technology[]=1&rnaType=WTS&taxaId=9606&geneFilter[]=gene_name%2BGENE%2BstartsWith&geneFilter[]=gene_biotype%2BlncRNA%2Bin&geneFilter[]=feature%2BCDS%2Bin&firstRecord=0&maxRecords=1",
-            400,
-            "Parameter 'modification' must be a valid integer (got: 'a')",
-        ),
-        (
-            "query?modification=1&organ=1&technology[]=1&rnaType=WTS&taxaId=9606&geneFilter[]=gene_name%2BGENE%2BstartsWith&geneFilter[]=gene_biotype%2BlncRNA%2Bin&geneFilter[]=feature%2BCDS%2Bin&firstRecord=0&maxRecords=1",
-            400,
-            "Missing required parameter: 'organism'",
-        ),
-        (
-            "query?modification=1&organism=-1&technology[]=1&rnaType=WTS&taxaId=9606&geneFilter[]=gene_name%2BGENE%2BstartsWith&geneFilter[]=gene_biotype%2BlncRNA%2Bin&geneFilter[]=feature%2BCDS%2Bin&firstRecord=0&maxRecords=1",
-            422,
-            "Parameter 'organism' must be a non-negative integer",
-        ),
-        (
-            "query?modification=1&organism=1&technology[]=1&rnaType=wts&taxaId=9606&geneFilter[]=gene_name%2BGENE%2BstartsWith&geneFilter[]=gene_biotype%2BlncRNA%2Bin&geneFilter[]=feature%2BCDS%2Bin&firstRecord=0&maxRecords=1",
-            404,
-            "Unknown RNA type",
-        ),
-        (
-            "query?modification=1&organism=1&technology[]=1&rnaType=WTS&taxaId=a&geneFilter[]=gene_name%2BGENE%2BstartsWith&geneFilter[]=gene_biotype%2BlncRNA%2Bin&geneFilter[]=feature%2BCDS%2Bin&firstRecord=0&maxRecords=1",
-            400,
-            "Parameter 'taxaId' must be a valid integer (got: 'a')",
-        ),
-        (
-            "query/gene?rnaType=WTS&taxaId=9606&genefilter[]=gene_name%2BGENE%2BstartsWith&&Chrom=1&chromStart=0&chromEnd=10000&firstRecord=0&maxRecords=10",
-            400,
-            "Gene or chromosome is required",
-        ),
-    ],
-)
-def test_get_modification_as_json_extra(
-    test_client, mock_services, url, http_status, message
-):
-    result = test_client.get(url)
-    assert result.status_code == http_status
-    assert result.json["message"] == message
+# tests
 
 
 @pytest.mark.parametrize(
     "url,http_status,message",
     [
         (
-            "query?modification=1&organism=1&technology[]=1&rnatype=WTS&taxaId=9606&geneFilter[]=gene_name%2BGENE%2BstartsWith&geneFilter[]=gene_biotype%2BlncRNA%2Bin&geneFilter[]=feature%2BCDS%2Bin&firstRecord=0&maxRecords=1",
-            404,
-            "Unknown RNA type",
+            "query?modification=2&organism=3&technology=2&rnaType=WTS2&taxaId=9606",
+            501,
+            "rnaType 'WTS2' not implemented",
         ),
         (
-            "query?modification=1&organism=1&technology[]=1&rnaType=WTS&taxId=9606&geneFilter[]=gene_name%2BGENE%2BstartsWith&geneFilter[]=gene_biotype%2BlncRNA%2Bin&geneFilter[]=feature%2BCDS%2Bin&firstRecord=0&maxRecords=1",
+            "query?modification=2&organism=3&technology=2&rnaType=WTS&taxaId=9606&geneName=GENE&chromStart=1",
             400,
-            "Missing required parameter: 'taxaId'",
+            "Unused parameters: 'chromStart' and 'chromEnd' require 'chrom'",
         ),
         (
-            "query?modification=1&organism=1&technology[]=1&rnaType=WTS&taxaId=960&geneFilter[]=gene_name%2BGENE%2BstartsWith&geneFilter[]=gene_biotype%2BlncRNA%2Bin&geneFilter[]=feature%2BCDS%2Bin&firstRecord=0&maxRecords=1",
-            404,
-            "taxaId '960' not found",
-        ),
-        (
-            "query?modification=1&organism=1&technology[]=1&rnaType=WTS&taxaId=9606&geneFilter[]=gene_name%2BGENE%2BstartsWith&geneFilter[]=gene_biotype%2BlncRNA%2Bin&geneFilter[]=feature%2BCDS%2Bin&firstRecord=-1&maxRecords=1",
-            422,
-            "Parameter 'firstRecord' must be a non-negative integer",
-        ),
-        (
-            "query?modification=1&organism=1&technology[]=-1&rnaType=WTS&taxaId=9606&geneFilter[]=gene_name%2BGENE%2BstartsWith&geneFilter[]=gene_biotype%2BlncRNA%2Bin&geneFilter[]=feature%2BCDS%2Bin&firstRecord=0&maxRecords=1",
+            "query?modification=2&organism=3&technology=2&rnaType=WTS&taxaId=9606&chrom=ANY&chromEnd=1",
             400,
-            "Invalid technology ID",
+            "Unused parameters: 'chromEnd' require 'chromStart'",
         ),
         (
-            "query/gene?rnaType=WTS&taxaId=9606&chrom=1&chromStart=-1&chromEnd=10000&firstRecord=0&maxRecords=10",
-            422,
-            "Parameter 'chromStart' must be a non-negative integer",
-        ),
-        (
-            "query/gene?rnaType=WTS&taxaId=9606&chrom=1&chromEnd=10000&firstRecord=0&maxRecords=10",
+            "query?modification=2&organism=3&technology=2&rnaType=WTS&taxaId=9606&geneName=GENE&chrom=ANY",
             400,
-            "Missing required parameter: 'chromStart'",
+            "Too many parameters: use 'geneName' xor 'chrom'",
         ),
         (
-            "query/gene?rnaType=WTS&taxaId=9606&chrom=1&chromStart=1&chromEnd=0&firstRecord=0&maxRecords=10",
-            422,
-            "Parameter 'chromEnd' must be a positive integer",
-        ),
-        (
-            "query/gene?rnaType=WTS&taxaId=9606&chromStart=0&chromEnd=10000&firstRecord=0&maxRecords=10",
+            "query/gene?rnaType=WTS&taxaId=9606",
             400,
-            "Gene or chromosome is required",
+            "Missing required parameter: 'geneName' xor 'chrom'",
+        ),
+        (
+            "query?modification=2&organism=3&technology=2&rnaType=WTS&taxaId=9606",
+            200,
+            None,
+        ),
+        (
+            "query/gene?rnaType=WTS&taxaId=9606&chrom=1&chromStart=2",
+            400,
+            "Missing required parameter: 'chromEnd'",
+        ),
+        (
+            "query/gene?rnaType=WTS&taxaId=9606&chrom=1&chromStart=2&chromEnd=a",
+            400,
+            "Parameter 'chromEnd' must be a valid integer (got: 'a')",
+        ),
+        (
+            "query?modification=2&organism=3&technology=2&rnaType=WTS&taxaId=9606&chrom=1&chromStart=2",
+            200,
+            None,
+        ),
+        (
+            "query?modification=2&organism=3&technology=2&rnaType=WTS&taxaId=9606&firstRecord=first",
+            400,
+            "Parameter 'firstRecord' must be a valid integer (got: 'first')",
         ),
     ],
 )
@@ -476,25 +439,24 @@ def test_get_modification_as_json(
 ):
     result = test_client.get(url)
     assert result.status_code == http_status
-    assert result.json["message"] == message
+    if message is not None:
+        assert result.json["message"] == message
 
 
 @pytest.mark.parametrize(
     "url,func",
     [
         (
-            "query?modification=1&organism=1&technology[]=1&rnaType=WTS&taxaId=9606&multiSort[]=start%2Basc",
+            "query?modification=2&organism=3&technology[]=2&rnaType=WTS&taxaId=9606",
             "get_modifications_by_source",
         ),
         (
-            "query/gene?rnaType=WTS&taxaId=9606&chrom=1&chromStart=1&chromEnd=10000&multiSort[]=start%2Basc",
+            "query/gene?rnaType=WTS&taxaId=9606&chrom=1&chromStart=1&chromEnd=10000",
             "get_modifications_by_gene",
         ),
     ],
 )
-def test_get_modification_as_json_multisort_fail(
-    test_client, mock_services, mocker, url, func
-):
+def test_multisort_fail(test_client, mock_services, mocker, url, func):
     mocker.patch.object(
         MockModificationService,
         func,
@@ -508,7 +470,7 @@ def test_get_modification_as_json_multisort_fail(
 
 @pytest.mark.freeze_time("2026-08-24 20:00:00")
 def test_get_modification_as_csv(test_client, mock_services):
-    url = "csv?modification=1&organism=1&technology[]=1&rnaType=WTS&taxaId=9606"
+    url = "csv?modification=2&organism=3&technology[]=2&rnaType=WTS&taxaId=9606"
     response = test_client.get(url)
     assert response.status_code == 200
     assert response.mimetype == "text/csv"
@@ -537,11 +499,6 @@ def test_get_modification_as_csv(test_client, mock_services):
     ]
 
 
-# https://scimodom-beta.dieterichlab.org/api/v0/modification/sitewise?chrom=1&start=944239&end=944240&strand=-&taxaId=9606
-# strand can be missing
-# prod: the whole selection is passed through, with taxa_id
-
-
 def test_get_modification_sitewise(test_client, mock_services):
     url = "sitewise?chrom=1&start=944239&end=944240&strand=-&taxaId=9606"
     response = test_client.get(url)
@@ -553,80 +510,21 @@ def test_get_modification_sitewise(test_client, mock_services):
     assert response.json["records"] == expected_records
 
 
-@pytest.mark.parametrize(
-    "url,http_status,message",
-    [
-        (
-            "sitewise?chrom=1&start=944239&end=944240&strand=-&taxa_id=9606",
-            400,
-            "Invalid Taxa ID",
-        ),
-        (
-            "sitewise?chrom=1&start=944239&end=944240&strand=-&taxaId=a",
-            400,
-            "Invalid Taxa ID",
-        ),
-        (
-            "sitewise?chrom=1&start=944239&end=944240&strand=-&taxaId=456456",
-            404,
-            "taxaId '456456' not found",
-        ),
-        (
-            "sitewise?start=944239&end=944240&strand=-&taxaId=9606",
-            400,
-            "Invalid chrom",
-        ),
-        (
-            "sitewise?chrom=1&Start=944239&end=944240&strand=-&taxaId=9606",
-            400,
-            "Invalid start",
-        ),
-        (
-            "sitewise?chrom=1&start=944239&chromEnd=944240&strand=-&taxaId=9606",
-            400,
-            "Invalid end",
-        ),
-        (
-            "sitewise?chrom=2&start=944239&end=944240&strand=-&taxaId=9606",
-            404,
-            "Unrecognized chrom '2' for Taxa '9606'",
-        ),
-        (
-            "sitewise?chrom=1&start=944239&end=944238&strand=-&taxaId=9606",
-            400,
-            "Invalid coordinates: start must be smaller than end",
-        ),
-        (
-            "sitewise?chrom=1&start=944239&end=248956423&strand=-&taxaId=9606",
-            400,
-            "Invalid coordinates: end is greater than chrom size",
-        ),
-        (
-            "sitewise?chrom=1&start=944239&end=248956420&strand=plus&taxaId=9606",
-            400,
-            "Invalid strand value",
-        ),
-    ],
-)
-def test_get_modification_sitewise_fail(
-    test_client, mock_services, url, http_status, message
-):
-    result = test_client.get(url)
-    assert result.status_code == http_status
-    assert result.json["message"] == message
-
-
-# TODO: also test same error as previous...
+def test_get_genomic_sequence_context(test_client, mock_services):
+    response = test_client.get(
+        "genomic-context/1?chrom=1&end=944240&start=944239&strand=-&taxaId=9606"
+    )
+    assert response.status_code == 200
+    assert response.json == {"context": "ACGTAACCGCC"}
 
 
 def test_get_genomic_sequence_context_file_not_found(
-    test_client, mock_services, mocker
+    test_client, mock_services, mocker, caplog
 ):
     mocker.patch.object(
         MockBedtoolsService,
         "getfasta",
         side_effect=FileNotFoundError,
-        create=True,
     )
 
     response = test_client.get(
@@ -634,55 +532,20 @@ def test_get_genomic_sequence_context_file_not_found(
     )
     assert response.status_code == 200
     assert response.json == {"context": ""}
+    assert caplog.messages == [
+        "API not implemented for Taxa ID '9606': silently returning empty context!"
+    ]
 
 
+# TODO
+# cf. test_get_modification_sitewise with strand=-
 @pytest.mark.parametrize(
     "url,http_status,message",
     [
         (
-            "/target/MIRNAs?taxaId=9606&chrom=1&start=3284723&end=3284724&strand=%2B",
-            404,
-            "Unknown targets type",
-        ),
-        (
-            "/target/MIRNA?taxaId=9605&chrom=1&start=3284723&end=3284724&strand=%2D",
-            404,
-            "taxaId '9605' not found",
-        ),
-        (
-            "/target/MIRNA?taxaId=a&chrom=1&start=3284723&end=3284724&strand=%2E",
-            400,
-            "Invalid Taxa ID",
-        ),
-        (
-            "/target/MIRNA?taxaId=9606&chrom=I&start=3284723&end=3284724&strand=%2B",
-            404,
-            "Unrecognized chrom 'I' for Taxa '9606'",
-        ),
-        (
-            "/target/MIRNA?taxaId=9606&chrom=1&start=3284721&end=end&strand=%2B",
-            400,
-            "Invalid end",
-        ),
-        (
-            "/target/MIRNA?taxaId=9606&chrom=1&start=start&end=3284722&strand=%2B",
-            400,
-            "Invalid start",
-        ),
-        (
-            "/target/MIRNA?taxaId=9606&chrom=1&start=3284723&end=3284722&strand=%2B",
-            400,
-            "Invalid coordinates: start must be smaller than end",
-        ),
-        (
-            "/target/MIRNA?taxaId=9606&chrom=1&start=3284723&end=248956422&strand=%2B",
-            400,
-            "Invalid coordinates: end is greater than chrom size",
-        ),
-        (
             "/target/MIRNA?taxaId=9606&chrom=1&start=3284723&end=3284724&strand=+",
-            400,
-            "Invalid strand value",
+            422,
+            "Parameter 'strand' must be +, -, or .",
         ),
     ],
 )

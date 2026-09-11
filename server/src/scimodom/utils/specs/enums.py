@@ -113,6 +113,10 @@ class TargetsFileType(Enum):
     MIRNA = "mirna.bed".format
     RBP = "rbp_{chrom}.bed".format
 
+    @classmethod
+    def list(cls):
+        return list(map(lambda c: c.name, cls))
+
 
 # Misc. e.g. charts
 

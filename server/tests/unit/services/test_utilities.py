@@ -70,6 +70,15 @@ def test_get_taxa(Session, utilities_service: UtilitiesService, setup):
     assert utilities_service.get_taxa() == expected_taxa
 
 
+def test_get_biotypes(Session, utilities_service: UtilitiesService, mocker):
+    mocker.patch(
+        "scimodom.services.utilities.MAPPED_BIOTYPES",
+        ["biotype 1", "biotype 2"],
+    )
+
+    assert utilities_service.get_biotypes() == {"biotypes": ["biotype 1", "biotype 2"]}
+
+
 def test_get_modomics(Session, utilities_service: UtilitiesService, setup):
     expected_modomics = [
         {"id": "2000000006A", "modomics_sname": "m6A"},

@@ -19,6 +19,10 @@ from scimodom.database.models import (
     Selection,
 )
 from scimodom.services.assembly import get_assembly_service, AssemblyService
+from scimodom.services.annotation import BIOTYPES
+
+
+MAPPED_BIOTYPES = sorted(set(BIOTYPES.values()))
 
 
 class UtilitiesService:
@@ -32,6 +36,18 @@ class UtilitiesService:
     ) -> None:
         self._session = session
         self._assembly_service = assembly_service
+
+    @staticmethod
+    def get_biotypes() -> dict[str, list[str]]:
+        """Get all biotypes.
+
+        NOTE: biotypes are independent of species/RNA type.
+        To evaluate dynamically, remove module-level constant,
+        and use here mapped_biotypes = sorted(set(BIOTYPES.values()))
+
+        :returns: Biotypes values used in the UI
+        """
+        return {"biotypes": MAPPED_BIOTYPES}
 
     def get_rna_types(self) -> list[dict[str, Any]]:
         """Get all RNA types.

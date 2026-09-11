@@ -157,7 +157,7 @@ class AssemblyService:
             lines = fp.readlines()
         return [line.split()[0] for line in lines]
 
-    def get_chroms(self, taxa_id: int) -> list[dict[str, Any]]:
+    def get_chroms(self, taxa_id: int) -> list[dict[str, str | int]]:
         """Return chrom.sizes for the latest database version.
 
         :param taxa_id: Taxonomy ID

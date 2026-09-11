@@ -478,14 +478,14 @@ def test_intersect_with_liftover(test_client, mock_services, mocker):
         (
             "/intersect?reference=datasetidAxx&comparison=datasetidBxx&euf=true&strand=true",
             400,
-            "Invalid Taxa ID",
-            "Request needs a valid 'taxaId' when 'euf=true': Invalid Taxa ID",
+            "Missing required parameter: 'taxaId'",
+            "Request needs a valid 'taxaId' when 'euf=true': Missing required parameter: 'taxaId'",
         ),
         (
             "/intersect?reference=datasetidAxx&comparison=datasetidBxx&euf=true&taxaId=XXXX&strand=true",
             400,
-            "Invalid Taxa ID",
-            "Request needs a valid 'taxaId' when 'euf=true': Invalid Taxa ID",
+            "Parameter 'taxaId' must be a valid integer (got: 'XXXX')",
+            "Request needs a valid 'taxaId' when 'euf=true': Parameter 'taxaId' must be a valid integer (got: 'XXXX')",
         ),
         (
             "/intersect?reference=datasetidAxx&comparison=datasetidBxx&euf=true&taxaId=99&strand=true",

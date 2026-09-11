@@ -8,6 +8,7 @@ from flask_jwt_extended import get_jwt_identity
 from sqlalchemy.exc import NoResultFound
 from pydantic import BaseModel
 
+from scimodom.services.annotation import get_annotation_service
 from scimodom.database.models import Dataset, User, BamFile
 from scimodom.services.dataset import get_dataset_service
 from scimodom.services.file import get_file_service
@@ -88,11 +89,20 @@ MAX_DATASET_IDS_IN_LIST = 3
 class ClientResponseException(Exception):
     """Extend base exception for client response."""
 
-    def __init__(self, http_status: int, message: str, user_message: str | None = None):
+    def __init__(
+        self,
+        http_status: int,
+        message: str,
+        user_message: str | None = None,
+    ):
         super(ClientResponseException, self).__init__(
             f"HTTP status {http_status} {message}"
         )
-        self.response_tuple = create_error_response(http_status, message, user_message)
+        self.response_tuple = create_error_response(
+            http_status,
+            message,
+            user_message,
+        )
 
 
 class FileTooLargeException(ClientResponseException):
@@ -109,15 +119,11 @@ def create_error_response(
     """Construct an error response.
 
     :param status_code: HTTP status code
-    :type status_code: int
     :param message: General error message
-    :type message: str
     :param user_message: Error message specifically for the user.
     This can be used e.g. to add context per endpoint, or
     intercept more complex error messages.
-    :type error_message: str
     :return: Error response
-    :rtype: Tuple[dict[str, str], int]
     """
     json_response = {"message": message}
     if user_message is not None:
@@ -129,9 +135,7 @@ def create_file_too_large_response(max_size: int) -> tuple[dict[str, str], int]:
     """Construct an error response for file size.
 
     :param max_size: Allowed max. file size
-    :type max_size: int
     :return: Error response
-    :rtype: Tuple[dict[str, str], int]
     """
     message = _get_file_too_large_message(max_size)
     return create_error_response(413, message, message)
@@ -141,10 +145,12 @@ def create_file_too_large_response(max_size: int) -> tuple[dict[str, str], int]:
 
 
 def get_required_json_fields(*fields: str) -> dict[str, Any]:
-    """Retrieve fields from JSON object.
+    """Validate JSON object, i.e. if it contains given fields.
+
+    This function does not perform field validation.
 
     :params fields: JSON fields
-    :return: Validated JSON request body
+    :return: The valid JSON request body
     """
     body = request.get_json(silent=True)
     if not isinstance(body, dict):
@@ -157,9 +163,119 @@ def get_required_json_fields(*fields: str) -> dict[str, Any]:
     return body
 
 
-# Incoming parameter validation
+# Incoming (query or route) parameter validation
 
 # - Type conversion and syntax validation
+
+
+def get_non_negative_int(name: str) -> int:
+    """Parse query for parameter, convert, and validate.
+
+    :param name: Query parameter name
+    :raises ValueError or ClientResponseException: if fails to validate
+    :return: The converted value in the given range
+    """
+    return get_required_query_param(name, "non_negative_int")
+
+
+def get_positive_int(name: str) -> int:
+    """Parse query for parameter, convert, and validate.
+
+    :param name: Query parameter name
+    :raises ValueError or ClientResponseException: if fails to validate
+    :return: The converted value in the given range
+    """
+    return get_required_query_param(name, "positive_int")
+
+
+def get_optional_non_negative_int(name: str) -> int | None:
+    """Parse query for optional parameter, convert, and validate.
+
+    :param name: Query parameter name
+    :raises ValueError or ClientResponseException: if fails to validate
+    :return: The converted value in the given range or None
+    """
+    return get_optional_query_param(name, "non_negative_int")
+
+
+def get_optional_positive_int(name: str) -> int | None:
+    """Parse query for parameter, convert, and validate.
+
+    :param name: Query parameter name
+    :raises ValueError or ClientResponseException: if fails to validate
+    :return: The converted value in the given range or None
+    """
+    return get_optional_query_param(name, "positive_int")
+
+
+def get_required_query_param(
+    name: str,
+    converter_name: str = "string",
+) -> T:
+    """Parse query string for parameter and convert to the given type.
+
+    This function performs syntactic validation only; if semantic
+    validation is required, this must be performed by the caller.
+    It distinguishes a missing or malformed parameter from
+    one that is present but fails to convert, e.g. ValueError or
+    API-specific constraints, such as a value that violates declared
+    bounds, etc. These must be validated in the Callable.
+
+    :param name: Query parameter name
+    :param converter: Name of a callable used to convert the raw string
+    and perform API validation.
+    :raises ClientResponseException:
+        400 if missing, or present but fails to convert
+        422 if API validation fails
+    :return: The converted value
+    """
+    raw = request.args.get(name)
+    if raw is None:
+        raise ClientResponseException(400, f"Missing required parameter: '{name}'")
+    converter, type_name = _callables[converter_name]
+    return _convert_query_param(name, raw, converter, type_name)
+
+
+def get_optional_query_param(
+    name: str,
+    converter_name: str = "string",
+) -> T | None:
+    """Parse query string for optional parameter and convert to the given type.
+
+    See 'get_required_query_param' for details. This functions returns
+    None if the parameter is missing or malformed, and otherwise performs
+    validation.
+    """
+    raw = request.args.get(name)
+    if raw is None:
+        return None
+    converter, type_name = _callables[converter_name]
+    return _convert_query_param(name, raw, converter, type_name)
+
+
+def get_route_param(
+    name: str,
+    raw: str,
+    converter_name: str = "string",
+) -> T:
+    """Convert a route parameter to the given type.
+
+    This function performs syntactic validation only; if semantic
+    validation is required, this must be performed by the caller.
+
+    :param name: Route parameter name
+    :param raw: Route parameter
+    :param converter: Callable used to convert the raw string
+    and perform API validation.
+    :param type_name: Human-readable type name for the error
+    message (defaults to converter.__name__)
+    :raises ClientResponseException:
+        400 if fails to convert
+        422 if API validation fails
+    :return: The converted value
+    """
+    converter, type_name = _callables[converter_name]
+    return _convert_query_param(name, raw, converter, type_name)
 
 
 def _non_empty_str(raw: str, name: str) -> str:
@@ -186,95 +302,11 @@ def _positive_int(raw: str, name: str) -> int:
     return value
 
 
-def get_non_negative_int(name: str) -> int:
-    """Parse query for parameter, convert, and validate.
-
-    :param name: Query parameter name
-    :raises ValueError or ClientResponseException
-    if fails to validate
-    :return: The converted value in the given range
-    """
-    return get_required_query_param(name, _non_negative_int, "integer")
-
-
-def get_positive_int(name: str) -> int:
-    """Parse query for parameter, convert, and validate.
-
-    :param name: Query parameter name
-    :raises ValueError or ClientResponseException
-    if fails to validate
-    :return: The converted value in the given range
-    """
-    return get_required_query_param(name, _positive_int, "integer")
-
-
-def get_optional_non_negative_int(name: str) -> int | None:
-    """Parse query for optional parameter, convert, and validate.
-
-    :param name: Query parameter name
-    :raises ValueError or ClientResponseException
-    if fails to validate
-    :return: The converted value in the given range or None
-    """
-    return get_optional_query_param(name, _non_negative_int, "integer")
-
-
-def get_optional_positive_int(name: str) -> int | None:
-    """Parse query for parameter, convert, and validate.
-
-    :param name: Query parameter name
-    :raises ValueError or ClientResponseException
-    if fails to validate
-    :return: The converted value in the given range or None
-    """
-    return get_optional_query_param(name, _positive_int, "integer")
-
-
-def get_required_query_param(
-    name: str,
-    converter: Callable[[str, str], T] = _non_empty_str,
-    type_name: str = "string",
-) -> T:
-    """Parse query string for parameter and convert to the given type.
-
-    This function performs syntactic validation only; if semantic
-    validation is required, this must be performed by the caller.
-    It distinguishes a missing or malformed parameter from
-    one that is present but fails to convert, e.g. ValueError or
-    API-specific constraints, such as a value that violates declared
-    bounds, etc. These must be validated in the Callable.
-
-    :param name: Query parameter name
-    :param converter: Callable used to convert the raw string
-    and perform API validation.
-    :param type_name: Human-readable type name for the error
-    message (defaults to converter.__name__)
-    :raises ClientResponseException:
-        400 if missing, or present but fails to convert
-        422 if API validation fails
-    :return: The converted value
-    """
-    raw = request.args.get(name)
-    if raw is None:
-        raise ClientResponseException(400, f"Missing required parameter: '{name}'")
-    return _convert_query_param(name, raw, converter, type_name)
-
-
-def get_optional_query_param(
-    name: str,
-    converter: Callable[[str, str], T] = _non_empty_str,
-    type_name: str = "string",
-) -> T | None:
-    """Parse query string for optional parameter and convert to the given type.
-
-    See 'get_required_query_param' for details. This functions returns
-    None if the parameter is missing or malformed, and otherwise performs
-    validation.
-    """
-    raw = request.args.get(name)
-    if raw is None:
-        return None
-    return _convert_query_param(name, raw, converter, type_name)
+_callables = {
+    "string": (_non_empty_str, "string"),
+    "non_negative_int": (_non_negative_int, "integer"),
+    "positive_int": (_positive_int, "integer"),
+}
 
 
 def _convert_query_param(
@@ -293,18 +325,320 @@ def _convert_query_param(
 
 
 # - Semantic validation
+# - The caller must provide syntactically valid incoming parameters
+# - Additional arguments must be fully validated
 
 
-def validate_taxa_id(taxa_id: int) -> None:
-    """Check if taxon exists.
+def validate_chrom(
+    taxa_id: int, chrom: str, start: int | None, end: int | None
+) -> None:
+    """Validate chromosome, start and end.
 
-    :param taxa_id: Incoming taxon identifier
-    :raises: ClientResponseException if taxa_id does not exist
+    This function performs "piecemeal" validation,
+    allowing start and/or end to be missing; whether
+    these are required or not must be validated by
+    the caller.
+
+    :param taxa_id: A valid taxon identifier (the
+    caller must provide a fully validated value)
+    :param chrom: Incoming chrom (the caller must
+    provide a syntactically valid value or None)
+    :param start: Incoming start (the caller must
+    provide a syntactically valid value or None)
+    :param end: Incoming end (the caller must
+    provide a syntactically valid value or None)
+    :raises ClientResponseException:
+        404 if chrom does not exist
+        422 if start/end are inconsistent
     """
+    _get_chroms_and_validate(taxa_id, chrom, start, end)
+
+
+def _get_chroms_and_validate(
+    taxa_id: int, chrom: str, start: int | None, end: int | None
+) -> dict[str, int]:
+    assembly_service = get_assembly_service()
+    chrom_size: dict[str, int] = {
+        d["chrom"]: d["size"] for d in assembly_service.get_chroms(taxa_id)
+    }
+    if chrom not in chrom_size:
+        raise ClientResponseException(
+            404, f"chrom '{chrom}' for taxaId '{taxa_id}' not found"
+        )
+
+    start = start if start is not None else 0
+    end = end if end is not None else chrom_size[chrom]
+    if end <= start:
+        raise ClientResponseException(
+            422,
+            "Parameter 'end'/'chromEnd' must be greater than 'start'/'chromStart'",
+        )
+    if not end <= chrom_size[chrom]:
+        raise ClientResponseException(
+            422,
+            "Parameter 'end'/'chromEnd' is greater than chrom size",
+        )
+    return chrom_size
+
+
+def _validate_rna_type(rna_type: str) -> None:
     utilities_service = get_utilities_service()
-    taxa_ids = [d["taxa_id"] for d in utilities_service.get_taxa()]
-    if taxa_id not in taxa_ids:
-        raise ClientResponseException(404, f"taxaId '{taxa_id}' not found")
+    valid_rna_types = [obj["id"] for obj in utilities_service.get_rna_types()]
+    if rna_type not in valid_rna_types:
+        raise ClientResponseException(
+            404,
+            f"rnaType '{rna_type}' not found",
+            "Use GET /rna_types for valid RNA types",
+        )
+
+
+def _validate_taxa_id(taxa_id: int) -> None:
+    utilities_service = get_utilities_service()
+    valid_taxa_ids = [obj["taxa_id"] for obj in utilities_service.get_taxa()]
+    if taxa_id not in valid_taxa_ids:
+        raise ClientResponseException(
+            404,
+            f"taxaId '{taxa_id}' not found",
+            "Use GET /taxa for valid taxa",
+        )
+
+
+# TODO MS14
+# biotypes are independent of species/RNA type
+def _validate_biotypes(biotypes: list[str], rna_type: str) -> None:
+    utilities_service = get_utilities_service()
+    valid_biotypes = utilities_service.get_biotypes()["biotypes"]
+    unknown_biotypes = [
+        biotype for biotype in biotypes if biotype not in valid_biotypes
+    ]
+    if unknown_biotypes:
+        raise ClientResponseException(
+            404,
+            f"biotypes '{', '.join(unknown_biotypes)}' not found",
+            "Use GET biotypes/<rnaType> for valid biotypes",
+        )
+
+
+# TODO MS14
+def _validate_features(features: list[str], rna_type: str) -> None:
+    annotation_service = get_annotation_service()
+    try:
+        valid_features = annotation_service.get_features_by_rna_type(rna_type)
+    except NotImplementedError as exc:
+        raise ClientResponseException(
+            501, f"rnaType '{rna_type}' not implemented"
+        ) from exc
+    unknown_features = [
+        feature for feature in features if feature not in valid_features
+    ]
+    if unknown_features:
+        raise ClientResponseException(
+            404,
+            f"features '{', '.join(unknown_features)}' not found",
+            "Use GET features/<rnaType> for valid features",
+        )
+
+
+def _validate_selections(selections: list[tuple[int, int, int]]) -> None:
+    utilities_service = get_utilities_service()
+    valid_selections = [
+        (obj["modification_id"], obj["organism_id"], obj["technology_id"])
+        for obj in utilities_service.get_selections()
+    ]
+    unknown_selections = [s for s in selections if s not in valid_selections]
+    if unknown_selections:
+        raise ClientResponseException(
+            404,
+            (
+                "(modification, organism, technology) "
+                f"'{', '.join(map(str, unknown_selections))}' not found."
+            ),
+            (
+                "Use GET selections for valid combinations of "
+                "modification, organism, and technology identifiers"
+            ),
+        )
+
+
+# - Helpers
+
+
+def get_unique_list_from_query_param(name: str, list_type) -> list[Any]:
+    """Get unique list from query parameters.
+
+    There seem to be some confusion how arrays should be transmitted
+    as query parameters. While most people seem to agree that the values
+    are packed into multiple query parameters, some (older?) implementations
+    leave the original name, while newer ones insist on adding square
+    brackets '[]' at the end of the name, e.g. my_array = ['x', 'y'] may be
+    transmitted like this:
+
+        Old: ?my_array=x&my_array=y
+        New: ?my_array[]=x&my_array[]=y
+
+    Flask seems not to be aware of this. We don't care and allow both.
+    Also, we don't want that our code breaks if Flask fixes this - so we
+    ignore double results. So don't use this function for lists that are
+    allowed to contain the same value multiple times. Note also that the
+    order of returned values is not guaranteed.
+
+    Note: the caller should provide an explicit parser for types
+    other than Text and Numeric.
+    """
+    result_as_set = {
+        *request.args.getlist(name, type=list_type),
+        *request.args.getlist(f"{name}[]", type=list_type),
+    }
+    return list(result_as_set)
+
+
+def get_valid_rna_type() -> str:
+    """Parse query for RNA type and validate.
+
+    :raises ClientResponseException: 400, 404
+    :return: The validated RNA type
+    """
+    rna_type = get_required_query_param("rnaType")
+    _validate_rna_type(rna_type)
+    return rna_type
+
+
+def get_valid_rna_type_from_route(raw: str) -> int:
+    """Validate RNA type obtained via route parameter.
+
+    :param raw: Route parameter for rnaType
+    :raises ClientResponseException: 400, 404
+    :return: The validated RNA type
+    """
+    rna_type = get_route_param("rnaType", raw)
+    _validate_rna_type(rna_type)
+    return rna_type
+
+
+def get_valid_taxa_id() -> int:
+    """Parse query for taxon identifier and validate.
+
+    :raises ClientResponseException: 400, 404, 422
+    :return: The validated taxon identifier
+    """
+    taxa_id = get_positive_int("taxaId")
+    _validate_taxa_id(taxa_id)
+    return taxa_id
+
+
+def get_valid_taxa_id_from_route(raw: str) -> int:
+    """Validate taxon identifier obtained via route parameter.
+
+    :param raw: Route parameter for taxaId
+    :raises ClientResponseException: 400, 404, 422
+    :return: The validated taxon identifier
+    """
+    taxa_id = get_route_param("taxaId", raw, "positive_int")
+    _validate_taxa_id(taxa_id)
+    return taxa_id
+
+
+def get_valid_biotypes() -> list[str]:
+    """Parse query for biotypes and validate.
+
+    :raises ClientResponseException: 404
+    :return: The validated list of biotypes
+    """
+    rna_type = get_valid_rna_type()
+    biotypes = get_unique_list_from_query_param("biotypes", str)
+    _validate_biotypes(biotypes, rna_type)
+    return biotypes
+
+
+def get_valid_features() -> list[str]:
+    """Parse query for features and validate.
+
+    :raises ClientResponseException: 400, 404, 501
+    :return: The validated list of features
+    """
+    rna_type = get_valid_rna_type()
+    features = get_unique_list_from_query_param("features", str)
+    _validate_features(features, rna_type)
+    return features
+
+
+def get_valid_selections() -> tuple[int, int, list[int]]:
+    """Parse query for selections and validate.
+
+    :raises ClientResponseException: 400, 404, 422
+    :return: The validated modification, organism, and
+    technology identifiers
+    """
+    modification_id = get_non_negative_int("modification")
+    organism_id = get_non_negative_int("organism")
+    technology_ids = get_unique_list_from_query_param("technology", int)
+    if not technology_ids:
+        raise ClientResponseException(400, "Missing required parameter: 'technology'")
+    technology_ids = [_non_negative_int(tid, "technology") for tid in technology_ids]
+    selections = [(modification_id, organism_id, tid) for tid in technology_ids]
+    _validate_selections(selections)
+    return modification_id, organism_id, technology_ids
+
+
+def get_valid_coords(
+    taxa_id: int,
+    context: int = 0,
+) -> tuple[str, int, int, Strand]:
+    """Parse query for coordinates and validate.
+
+    NOTE: This function uses "start" and "end",
+    not "chromStart", "chromEnd".
+
+    :param taxa_id: A valid taxon identifier (the
+    caller must provide a fully validated value)
+    :param context: Number of bases to include in context around start-end.
+    :raises ClientResponseException: 400, 404, 422
+    :return: Coordinates as (chrom, start, end, strand)
+    """
+    chrom = get_required_query_param("chrom")
+    start = get_non_negative_int("start")
+    end = get_positive_int("end")
+    chrom_size = _get_chroms_and_validate(
+        taxa_id,
+        chrom,
+        start,
+        end,
+    )
+
+    strand = request.args.get("strand", default=".", type=str)
+    try:
+        strand_dto = Strand(strand)
+    except ValueError as exc:
+        raise ClientResponseException(
+            422, "Parameter 'strand' must be +, -, or ."
+        ) from exc
+
+    if context > 0:
+        start = start - context
+        start = max(start, 0)
+        end = end + context
+        end = min(end, chrom_size[chrom])
+
+    return chrom, start, end, strand_dto
+
+
+def get_valid_target_type(raw: str) -> TargetsFileType:
+    """Validate and return target file type value for site table.
+
+    :raises ClientResponseException: 400, 422
+    :return: The value corresponding to targetType
+    """
+    target_type = get_route_param("targetType", raw)
+    try:
+        return TargetsFileType[target_type]
+    except KeyError:
+        raise ClientResponseException(
+            422,
+            f"Parameter 'targetType' must be: {TargetsFileType.list()}",
+        )
+
+
+# HERE >>>
 
 
 def get_valid_dataset(dataset_id: str) -> Dataset:
@@ -379,7 +713,7 @@ def get_valid_dataset_id_list_from_request_parameter(parameter: str) -> list[str
     :return: List of dataset ID(s)
     :rtype: list[str]
     """
-    as_list = get_unique_list_from_query_parameter(parameter, str)
+    as_list = get_unique_list_from_query_param(parameter, str)
     if len(as_list) > MAX_DATASET_IDS_IN_LIST:
         raise ClientResponseException(
             400,
@@ -489,204 +823,6 @@ def validate_request_size(max_size: int) -> None:
     """
     if request.content_length is not None and request.content_length > max_size:
         raise FileTooLargeException(max_size)
-
-
-def get_valid_taxa_id(is_optional: bool = False) -> Optional[int]:
-    """Get Taxa ID from query parameter.
-
-    :param is_optional: True if not required (Default: False)
-    :type is_optional: bool
-    :raises ClientResponseException: If invalid query parameters.
-    :return: Taxa ID or None
-    :rtype: int | None
-    """
-    taxa_id = request.args.get("taxaId", type=int)
-    if taxa_id is None or taxa_id == "":
-        if is_optional:
-            return None
-        raise ClientResponseException(400, "Invalid Taxa ID")
-    validate_taxa_id(taxa_id)
-    return taxa_id
-
-
-def get_valid_taxa_id_from_string(raw: str) -> int:
-    """Get taxonomic identifier from parameter value.
-
-    :param raw: Parameter value (taxonomic identifier)
-    :type raw: str
-    :raises ClientResponseException: If invalid or
-    unrecognized parameter value.
-    :return: NCBI taxon (identifier)
-    """
-    try:
-        taxa_id = int(raw)
-        validate_taxa_id(taxa_id)
-        return taxa_id
-    except ValueError as exc:
-        raise ClientResponseException(400, "Invalid Taxa ID") from exc
-
-
-def validate_rna_type(rna_type: str) -> None:
-    utilities_service = get_utilities_service()
-    valid_rna_types = [x["id"] for x in utilities_service.get_rna_types()]
-    if rna_type not in valid_rna_types:
-        raise ClientResponseException(404, "Unknown RNA type")
-
-
-def get_valid_targets_type(raw: str) -> TargetsFileType:
-    try:
-        return TargetsFileType[raw]
-    except KeyError:
-        raise ClientResponseException(404, "Unknown targets type")
-
-
-def validate_chrom(
-    taxa_id: int, chrom: str, start: int, end: int
-) -> tuple[str, int, int]:
-    """Validate chromosome, start and end.
-
-    :param taxa_id: A valid taxon identifier (the
-    caller must provide a fully validated value)
-    :param chrom: Incoming chrom (the caller must
-    provide a syntactically valid value)
-    :param start: Incoming start (the caller must
-    provide a syntactically valid value)
-    :param end: Incoming end (the caller must
-    provide a syntactically valid value)
-    :raises ClientResponseException:
-        422 if start/end are inconsistent
-        404 if chrom does not exist
-    :return: Validated chrom, start, end
-    """
-    if end <= start:
-        raise ClientResponseException(
-            422,
-            "Parameter 'end'/'chromEnd' must be greater than 'start'/'chromStart'",
-        )
-    assembly_service = get_assembly_service()
-    chrom_size: dict[str, int] = {
-        d["chrom"]: d["size"]
-        for d in assembly_service.get_chroms(taxa_id)
-        if d["chrom"] == chrom
-    }
-    if chrom not in chrom_size:
-        raise ClientResponseException(
-            404, f"chrom '{chrom}' for taxaId '{taxa_id}' not found"
-        )
-    if not end < chrom_size[chrom]:
-        raise ClientResponseException(400, "Parameter 'end' is greater than chrom size")
-
-
-def get_valid_coords(taxa_id: int, context: int = 0) -> tuple[str, int, int, Strand]:
-    """Get coordinates from query parameter.
-
-    :param taxa_id: Taxonomy ID
-    :type taxa_id: int
-    :param context: Number of bases to include in context around start-end.
-    :type context: int
-    :raises ClientResponseException: If invalid query parameters.
-    :return: Coordinates as (chrom, start, end, strand)
-    :rtype: (str, int, int, Strand)
-    """
-    chrom = request.args.get("chrom", type=str)
-    if chrom is None:
-        raise ClientResponseException(400, "Invalid chrom")
-    start = request.args.get("start", type=int)
-    if start is None:
-        raise ClientResponseException(400, "Invalid start")
-    end = request.args.get("end", type=int)
-    if end is None:
-        raise ClientResponseException(400, "Invalid end")
-    strand = request.args.get("strand", default=".", type=str)
-
-    assembly_service = get_assembly_service()
-    chrom_size: dict[str, int] = {
-        d["chrom"]: d["size"]
-        for d in assembly_service.get_chroms(taxa_id)
-        if d["chrom"] == chrom
-    }
-    if chrom not in chrom_size:
-        raise ClientResponseException(
-            404, f"Unrecognized chrom '{chrom}' for Taxa '{taxa_id}'"
-        )
-    if not start < end:
-        raise ClientResponseException(
-            400, "Invalid coordinates: start must be smaller than end"
-        )
-    if not end < chrom_size[chrom]:
-        raise ClientResponseException(
-            400, "Invalid coordinates: end is greater than chrom size"
-        )
-    try:
-        strand_dto = Strand(strand)
-    except ValueError as exc:
-        raise ClientResponseException(400, "Invalid strand value") from exc
-
-    if context > 0:
-        start = start - context
-        start = max(start, 0)
-        end = end + context
-        end = min(end, chrom_size[chrom])
-
-    return chrom, start, end, strand_dto
-
-
-# def get_non_negative_int(field: str) -> int:
-#     raw = request.args.get(field, type=int)
-#     if raw is None or raw < 0:
-#         raise ClientResponseException(400, f"Invalid {field}")
-#     return raw
-
-
-# def get_positive_int(field: str) -> int:
-#     raw = request.args.get(field, type=int)
-#     if raw is None or raw <= 0:
-#         raise ClientResponseException(400, f"Invalid {field}")
-#     return raw
-
-
-# def get_optional_non_negative_int(field: str) -> int | None:
-#     raw = request.args.get(field, type=int)
-#     if raw is None:
-#         return None
-#     if raw < 0:
-#         raise ClientResponseException(400, f"Invalid {field}")
-#     return raw
-
-
-# def get_optional_positive_int(field: str) -> int | None:
-#     raw = request.args.get(field, type=int)
-#     if raw is None:
-#         return None
-#     if raw <= 0:
-#         raise ClientResponseException(400, f"Invalid {field}")
-#     return raw
-
-
-def get_unique_list_from_query_parameter(name: str, list_type) -> list[Any]:
-    """Get unique list from query parameters.
-
-    There seem to be some confusion how arrays should be transmitted
-    as query parameters. While most people seem to agree that the values
-    are packed into multiple query parameters, some (older?) implementations
-    leave the original name, while newer ones insist on adding square
-    brackets '[]' at the end of the name, e.g. my_array = ['x', 'y'] may be
-    transmitted like this:
-
-        Old: ?my_array=x&my_array=y
-        New: ?my_array[]=x&my_array[]=y
-
-    Flask seems not to be aware of this. We don't care and allow both.
-    Also, we don't want that our code breaks if Flask fixes this - so we
-    ignore double results. So don't use this function for lists that are
-    allowed to contain the same value multiple times. Note also that the
-    order of returned values is not guaranteed.
-    """
-    result_as_set = {
-        *request.args.getlist(name, type=list_type),
-        *request.args.getlist(f"{name}[]", type=list_type),
-    }
-    return list(result_as_set)
 
 
 # Response

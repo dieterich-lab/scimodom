@@ -51,7 +51,7 @@ class ModificationService:
         self._session = session
         self._annotation_service = annotation_service
 
-    # TODO: annotation_source, cf. #97
+    # TODO MS14
     def get_modifications_by_source(
         self,
         annotation_source: AnnotationSource,
@@ -59,7 +59,9 @@ class ModificationService:
         organism_id: int,
         technology_ids: list[int],
         taxa_id: int,
-        gene_filter: list[str],
+        gene_name: str | None,
+        biotypes: list[str],
+        features: list[str],
         chrom: str | None,
         chrom_start: int | None,
         chrom_end: int | None,
@@ -67,53 +69,34 @@ class ModificationService:
         max_records: int | None,
         multi_sort: list[str],
     ) -> dict[str, Any]:
-        """Get Data records for conditional selection, add
-        filters and sort.
-
-        Note: For Search, modification ID is unique, but
-        more than one technology IDs are allowed.
+        """Get Data records for Search query by modification.
 
         :param annotation_source: Source of annotation
-        :type annotation_source: AnnotationSource
-        :param modification_id: Modification ID
-        :type modification_id: int
-        :param organism_id: Organism ID
-        :type organism_id: int
-        :param technology_ids: Technology IDs
-        :type technology_ids: list[int]
-        :param taxa_id: Taxa ID
-        :type taxa_id: int
-        :param gene_filter: Filters (gene-related)
-        :type gene_filter: list of str
-        :param chrom: Chromosome
-        :type chrom: str
-        :param chrom_start: Chromosome start
-        :type chrom_start: int | None
-        :param chrom_end: Chromosome end
-        :type chrom_end: int | None
+        :param modification_id: Modification identifier
+        :param organism_id: Organism identifier
+        :param technology_ids: Technology identifier(s)
+        :param taxa_id: Taxon identifier
+        :param gene_name: Gene name filter (exact match)
+        :param biotypes: Gene biotype filter (grouped/display categories)
+        :param features: Annotation feature filter
+        :param chrom: Chromosome filter
+        :param chrom_start: Chromosome start filter
+        :param chrom_end: Chromosome end filter
         :param first_record: first record
-        :type first_record: int | None
         :param max_records: number of records
-        :type max_records: int | None
-        :param multi_sort: sorting criteria
-        :type multi_sort: list of str
-        :returns: query results
-        :rtype: dict[str, Any]
+        :param multi_sort: Table sort criteria
+        :return: The records matching the given query parameters
         """
-
-        # TODO: so far annotation_service is only needed to get the id from taxa_id
-        # so maybe we can just query it using taxa_id and annotation_source...
-        # and if we switch by source before anyway, we can simplify this
-        # TODO : biotypes?
         annotation = self._annotation_service.get_annotation(annotation_source, taxa_id)
-
         if annotation_source == AnnotationSource.ENSEMBL:
             query, length = self._return_ensembl_query(
                 annotation,
                 modification_id,
                 organism_id,
                 technology_ids,
-                gene_filter,
+                gene_name,
+                biotypes,
+                features,
                 chrom,
                 chrom_start,
                 chrom_end,
@@ -131,11 +114,14 @@ class ModificationService:
             "records": [row._asdict() for row in self._session.execute(query)],
         }
 
+    # TODO MS14
     def get_modifications_by_gene(
         self,
         annotation_source: AnnotationSource,
         taxa_id: int,
-        gene_filter: list[str],
+        gene_name: str | None,
+        biotypes: list[str],
+        features: list[str],
         chrom: str | None,
         chrom_start: int | None,
         chrom_end: int | None,
@@ -143,39 +129,29 @@ class ModificationService:
         max_records: int | None,
         multi_sort: list[str],
     ) -> dict[str, Any]:
-        """Get Data records when searching by gene, add
-        filters and sort.
+        """Get Data records for Search query by gene.
 
         :param annotation_source: Source of annotation
-        :type annotation_source: AnnotationSource
-        :param taxa_id: Taxa ID
-        :type taxa_id: int
-        :param gene_filter: Filters (gene-related)
-        :type gene_filter: list of str
-        :param chrom: Chromosome
-        :type chrom: str
-        :param chrom_start: Chromosome start
-        :type chrom_start: int | None
-        :param chrom_end: Chromosome end
-        :type chrom_end: int | None
+        :param taxa_id: Taxon identifier
+        :param gene_name: Gene name filter (exact match)
+        :param biotypes: Gene biotype filter (grouped/display categories)
+        :param features: Annotation feature filter
+        :param chrom: Chromosome filter
+        :param chrom_start: Chromosome start filter
+        :param chrom_end: Chromosome end filter
         :param first_record: first record
-        :type first_record: int | None
         :param max_records: number of records
-        :type max_records: int | None
-        :param multi_sort: sorting criteria
-        :type multi_sort: list of str
-        :returns: query results
-        :rtype: dict[str, Any]
+        :param multi_sort: Table sort criteria
+        :return: The records matching the given query parameters
         """
-
-        # TODO: see above
         annotation = self._annotation_service.get_annotation(annotation_source, taxa_id)
-        # TODO: currently ignore annotation_source
         if annotation_source == AnnotationSource.ENSEMBL:
             query, length = self._return_gene_query(
                 annotation,
                 taxa_id,
-                gene_filter,
+                gene_name,
+                biotypes,
+                features,
                 chrom,
                 chrom_start,
                 chrom_end,
@@ -302,12 +278,39 @@ class ModificationService:
         return query
 
     @staticmethod
-    def _add_chrom_filters(query, chrom, start, end):
+    def _add_chrom_filters(
+        query: Select[Any],
+        chrom: str,
+        start: int,
+        end: int,
+    ) -> Select[Any]:
         query = query.where(Data.chrom == chrom)
         if start:
             query = query.where(Data.start >= start)
         if end:
             query = query.where(Data.end <= end)
+        return query
+
+    @staticmethod
+    def _add_gene_filters(
+        query: Select[Any],
+        gene_name: str | None,
+        biotypes: list[str],
+        features: list[str],
+        annotation: Annotation,
+    ) -> Select[Any]:
+        if gene_name:
+            query = query.where(GenomicAnnotation.name == gene_name)
+        if features:
+            query = query.where(DataAnnotation.feature.in_(features))
+        if biotypes:
+            # 'biotypes' are the grouped/display categories; expand
+            # to the raw values for the actual filter.
+            # Index speedup on annotation.id, biotype, name.
+            raw_biotypes = [key for key, value in BIOTYPES.items() if value in biotypes]
+            query = query.where(GenomicAnnotation.annotation_id == annotation.id).where(
+                GenomicAnnotation.biotype.in_(raw_biotypes)
+            )
         return query
 
     @classmethod
@@ -335,30 +338,36 @@ class ModificationService:
 
         return query
 
-    def _get_gene_filters(self, query, gene_filter, annotation):
-        # gene filters: matchMode unused (cf. PrimeVue), but keep it this way
-        # e.g. to extend options or add table filters
-        # TODO annotation
-        # gene name
-        name_flt = next((flt for flt in gene_filter if "gene_name" in flt), None)
-        if name_flt:
-            _, name, _ = self._get_flt(name_flt)
-            query = query.where(GenomicAnnotation.name == name[0])
-        # annotation filter
-        feature_flt = next((flt for flt in gene_filter if "feature" in flt), None)
-        if feature_flt:
-            _, features, _ = self._get_flt(feature_flt)
-            query = query.where(DataAnnotation.feature.in_(features))
-        # biotypes
-        # index speed up on annotation_id + biotypes + name
-        biotype_flt = next((flt for flt in gene_filter if "gene_biotype" in flt), None)
-        if biotype_flt:
-            _, mapped_biotypes, _ = self._get_flt(biotype_flt)
-            biotypes = [k for k, v in BIOTYPES.items() if v in mapped_biotypes]
-            query = query.where(GenomicAnnotation.annotation_id == annotation.id).where(
-                GenomicAnnotation.biotype.in_(biotypes)
+    def _get_remaining_query(
+        self,
+        annotation: Annotation,
+        gene_name: str | None,
+        biotypes: list[str],
+        features: list[str],
+        chrom: str | None,
+        chrom_start: int | None,
+        chrom_end: int | None,
+        first_record: int | None,
+        max_records: int | None,
+        multi_sort: list[str],
+        query: Select[Any],
+    ) -> tuple[Select[Any], int]:
+        if chrom:
+            query = self._add_chrom_filters(query, chrom, chrom_start, chrom_end)
+        if gene_name or biotypes or features:
+            query = self._add_gene_filters(
+                query, gene_name, biotypes, features, annotation
             )
-        return query
+        query = query.group_by(Data.id)
+        length = self._get_length(query, Data)
+        query = self._get_multi_sort(query, multi_sort)
+        if first_record is not None:
+            query = query.offset(first_record)
+        if max_records is not None:
+            query = query.limit(max_records)
+        query = self._add_modomics_ref_to_data_query(query)
+
+        return query, length
 
     def _return_ensembl_query(
         self,
@@ -366,79 +375,72 @@ class ModificationService:
         modification_id: int,
         organism_id: int,
         technology_ids: list[int],
-        gene_filter: list[str],
+        gene_name: str | None,
+        biotypes: list[str],
+        features: list[str],
         chrom: str | None,
         chrom_start: int | None,
         chrom_end: int | None,
         first_record: int | None,
         max_records: int | None,
         multi_sort: list[str],
-    ):
+    ) -> tuple[Select[Any], int]:
         query = self._get_base_search_query(isouter=True)
         query = query.where(
             Data.modification_id == modification_id,
             Dataset.organism_id == organism_id,
             Dataset.technology_id.in_(technology_ids),
         )
-        if chrom:
-            query = self._add_chrom_filters(query, chrom, chrom_start, chrom_end)
-        if gene_filter:
-            query = self._get_gene_filters(query, gene_filter, annotation)
-        query = query.group_by(Data.id)
-
-        length = self._get_length(query, Data)
-
-        query = self._get_multi_sort(query, multi_sort)
-
-        if first_record is not None:
-            query = query.offset(first_record)
-        if max_records is not None:
-            query = query.limit(max_records)
-
-        query = self._add_modomics_ref_to_data_query(query)
-
-        return query, length
+        return self._get_remaining_query(
+            annotation,
+            gene_name,
+            biotypes,
+            features,
+            chrom,
+            chrom_start,
+            chrom_end,
+            first_record,
+            max_records,
+            multi_sort,
+            query,
+        )
 
     def _return_gene_query(
         self,
         annotation: Annotation,
         taxa_id: int,
-        gene_filter: list[str],
+        gene_name: str | None,
+        biotypes: list[str],
+        features: list[str],
         chrom: str | None,
         chrom_start: int | None,
         chrom_end: int | None,
         first_record: int | None,
         max_records: int | None,
         multi_sort: list[str],
-    ):
+    ) -> tuple[Select[Any], int]:
         query = self._get_base_search_query()
         query = query.where(Organism.taxa_id == taxa_id)
-        if chrom:
-            query = self._add_chrom_filters(query, chrom, chrom_start, chrom_end)
-        if gene_filter:
-            query = self._get_gene_filters(query, gene_filter, annotation)
-        query = query.group_by(Data.id)
-
-        length = self._get_length(query, Data)
-
-        query = self._get_multi_sort(query, multi_sort)
-
-        if first_record is not None:
-            query = query.offset(first_record)
-        if max_records is not None:
-            query = query.limit(max_records)
-
-        query = self._add_modomics_ref_to_data_query(query)
-
-        return query, length
+        return self._get_remaining_query(
+            annotation,
+            gene_name,
+            biotypes,
+            features,
+            chrom,
+            chrom_start,
+            chrom_end,
+            first_record,
+            max_records,
+            multi_sort,
+            query,
+        )
 
 
 @cache
 def get_modification_service() -> ModificationService:
-    """Instantiates a ModificationService object.
+    """Instantiate a ModificationService object.
 
-    :returns: ModificationService instance
-    :rtype: ModificationService
+    :return: ModificationService instance
     """
     return ModificationService(
         session=get_session(), annotation_service=get_annotation_service()

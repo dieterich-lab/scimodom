@@ -3,13 +3,13 @@ from flask_cors import cross_origin
 from sqlalchemy.exc import NoResultFound
 
 from scimodom.api.helpers import (
-    get_valid_taxa_id_from_string,
+    get_valid_taxa_id_from_route,
     ClientResponseException,
-    validate_rna_type,
-    get_unique_list_from_query_parameter,
+    get_valid_rna_type_from_route,
+    get_unique_list_from_query_param,
     create_error_response,
 )
-from scimodom.services.annotation import get_annotation_service, BIOTYPES
+from scimodom.services.annotation import get_annotation_service
 from scimodom.services.assembly import get_assembly_service
 from scimodom.services.gene import get_gene_service
 from scimodom.services.sunburst import get_sunburst_service
@@ -20,7 +20,6 @@ api = Blueprint("api", __name__)
 
 
 BUFFER_SIZE = 1024 * 1024
-MAPPED_BIOTYPES = sorted(list(set(BIOTYPES.values())))
 
 
 @api.route("/rna_types", methods=["GET"])
@@ -107,7 +106,7 @@ def get_genes():
     :statuscode 500: Internal Server Error
     """
     gene_service = get_gene_service()
-    selection_ids = get_unique_list_from_query_parameter("selection", int)
+    selection_ids = get_unique_list_from_query_param("selection", int)
     try:
         return gene_service.get_genes(selection_ids)
     except NoResultFound:
@@ -117,21 +116,41 @@ def get_genes():
 @api.route("/biotypes/<rna_type>", methods=["GET"])
 @cross_origin(supports_credentials=True)
 def get_biotypes(rna_type):  # noqa
-    # TODO: do biotypes also depend on RNA type/annotation?
-    return {"biotypes": MAPPED_BIOTYPES}
+    """Get biotypes.
+
+    NOTE: <rna_type> unused
+
+    :returns: JSON object with available biotypes
+    :statuscode 200: OK
+    :statuscode 500: Internal Server Error
+    """
+    utilities_service = get_utilities_service()
+    return utilities_service.get_biotypes()
 
 
 @api.route("/features/<rna_type>", methods=["GET"])
 @cross_origin(supports_credentials=True)
 def get_features(rna_type):
+    """Get features.
+
+    :returns: JSON object with available features for
+    a given rna_type
+    :statuscode 200: OK
+    :statuscode 404: Not Found
+    :statuscode 500: Internal Server Error
+    :statuscode 501: Not Implemented
+    """
     annotation_service = get_annotation_service()
     try:
-        validate_rna_type(rna_type)
+        get_valid_rna_type_from_route(rna_type)
         return {"features": annotation_service.get_features_by_rna_type(rna_type)}
-    except ClientResponseException as e:
-        return e.response_tuple
+    except ClientResponseException as exc:
+        return exc.response_tuple
     except NotImplementedError:
-        return create_error_response(501, f"RNA type '{rna_type}' not implemented.")
+        return create_error_response(
+            501,
+            f"rnaType '{rna_type}' not implemented",
+        )
 
 
 @api.route("/chroms/<taxa_id>", methods=["GET"])
@@ -149,10 +168,10 @@ def get_chroms(taxa_id: str):
     """
     assembly_service = get_assembly_service()
     try:
-        taxa_id_as_int = get_valid_taxa_id_from_string(taxa_id)
+        taxa_id_as_int = get_valid_taxa_id_from_route(taxa_id)
         return assembly_service.get_chroms(taxa_id_as_int)
-    except ClientResponseException as e:
-        return e.response_tuple
+    except ClientResponseException as exc:
+        return exc.response_tuple
     except NoResultFound:
         return create_error_response(404, "No chrom data available for this taxa (1).")
     except FileNotFoundError:
@@ -174,10 +193,10 @@ def get_assemblies(taxa_id):
     """
     utilities_service = get_utilities_service()
     try:
-        taxa_id_as_int = get_valid_taxa_id_from_string(taxa_id)
+        taxa_id_as_int = get_valid_taxa_id_from_route(taxa_id)
         return utilities_service.get_assemblies(taxa_id_as_int)
-    except ClientResponseException as e:
-        return e.response_tuple
+    except ClientResponseException as exc:
+        return exc.response_tuple
 
 
 @api.route("/sunburst/<chart>", methods=["GET"])

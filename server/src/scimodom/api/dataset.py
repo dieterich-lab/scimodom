@@ -1,6 +1,6 @@
 import logging
 from dataclasses import dataclass
-from typing import Generator, Iterable, Sequence
+from typing import Generator, Iterable, Sequence, TextIO
 
 from flask import Blueprint
 from flask_cors import cross_origin
@@ -224,17 +224,19 @@ class _CompareContext:
             "strand", default=True
         )
         self._is_euf = get_valid_boolean_from_request_parameter("euf", default=False)
-        try:
-            self._taxa_id = get_valid_taxa_id(is_optional=not self._is_euf)
-        except ClientResponseException as exc:
-            response, status_code = exc.response_tuple
-            message = response["message"]
-            raise ClientResponseException(
-                status_code,
-                message,
-                f"Request needs a valid 'taxaId' when 'euf=true': {message}",
-            ) from exc
-        self._tmp_file_handle = None
+        self._taxa_id: int | None = None
+        if self._is_euf:
+            try:
+                self._taxa_id = get_valid_taxa_id()
+            except ClientResponseException as exc:
+                response, status_code = exc.response_tuple
+                message = response["message"]
+                raise ClientResponseException(
+                    status_code,
+                    message,
+                    f"Request needs a valid 'taxaId' when 'euf=true': {message}",
+                ) from exc
+        self._tmp_file_handle: TextIO | None = None
 
         if self._upload_id is None and len(self._comparison_ids) == 0:
             raise ClientResponseException(

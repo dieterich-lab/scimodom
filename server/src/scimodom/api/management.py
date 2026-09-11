@@ -65,6 +65,7 @@ def create_project_request():
     return {"message": "OK"}, 200
 
 
+# TODO json validation?! RNAType
 @management_api.route("/dataset", methods=["POST"])
 @cross_origin(supports_credentials=True)
 @jwt_required()
