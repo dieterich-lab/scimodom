@@ -174,17 +174,13 @@ class ModificationService:
         chrom: str,
         start: int,
         end: int,
-    ):
+    ) -> dict[str, list[dict[str, Any]]]:
         """Retrieve information related to a modification site.
 
         :param chrom: Chromosome
-        :type chrom: str
         :param chrom_start: Chromosome start
-        :type chrom_start: int
         :param chrom_end: Chromosome end
-        :type chrom_end: int
-        :returns: query results
-        :rtype: list of dict
+        :return: The query results
         """
         query = (
             select(
@@ -213,11 +209,6 @@ class ModificationService:
         query = self._add_modomics_ref_to_data_query(query)
 
         return {"records": [row._asdict() for row in self._session.execute(query)]}
-
-    @staticmethod
-    def _get_flt(string, url_split="+") -> tuple[str, list[str], str]:
-        col, val, operator = string.split(url_split)
-        return col, val.split(","), operator
 
     @staticmethod
     def _add_modomics_ref_to_data_query(query):

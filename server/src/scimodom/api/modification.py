@@ -16,7 +16,6 @@ from scimodom.services.modification import (
 )
 from scimodom.api.helpers import (
     ClientResponseException,
-    create_error_response,
     get_optional_query_param,
     get_route_param,
     get_positive_int,
