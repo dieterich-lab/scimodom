@@ -103,7 +103,9 @@ test('getModifications maps SearchParameters into the request', async () => {
       technology: [1, 2],
       rnaType: 'WTS',
       taxaId: 123,
-      geneFilter: ['gene_name+abc+startsWith', 'gene_biotype+b1,b2+in', 'feature+f1+in'],
+      geneName: 'abc',
+      biotypes: ['b1', 'b2'],
+      features: ['f1'],
       chrom: '1',
       chromStart: 1,
       chromEnd: 2,
@@ -229,7 +231,7 @@ test("getGenomicContext calls '/modification/genomic-context' and returns a stri
   ])
   expect(mockedHandle).toHaveBeenCalledWith(
     expect.anything(),
-    "Failed to get context '${context}' for modification ${modification.id}",
+    "Failed to get context '5' for modification 15",
     dialogState
   )
   expect(context).toBe(expectedContext)
@@ -292,7 +294,7 @@ test("getSiteWiseInfo calls '/modification/sitewise' and returns records", async
   ])
   expect(mockedHandle).toHaveBeenCalledWith(
     expect.anything(),
-    'Failed to get site info for modification ${modification.id}',
+    'Failed to get site info for modification 15',
     dialogState
   )
   expect(records).toBe(expectedRecords)

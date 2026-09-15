@@ -30,7 +30,9 @@ interface ModificationRequest {
   technology?: number[]
   rnaType?: string
   taxaId: number
-  geneFilter: string[]
+  geneName?: string
+  biotypes?: string[]
+  features?: string[]
   chrom?: string
   chromStart?: number
   chromEnd?: number
@@ -101,34 +103,19 @@ function getQueryParametersFromSearchParameters(
   sortMetas?: DataTableSortMeta[]
 ): ModificationRequest {
   return {
-    // reformat filters for gene, biotypes and features as PV table filters
     modification: p.modificationType?.modification_id,
     organism: p.cto?.organism_id,
     technology: p.technologies?.map((x) => x.technology_id),
     rnaType: p.rna_type,
     taxaId: p.taxa.taxa_id,
-    geneFilter: getGeneFilters(p),
+    geneName: p.gene,
+    biotypes: p.biotypes,
+    features: p.features,
     chrom: p.chrom?.chrom,
     chromStart: p.chromStart,
     chromEnd: p.chromEnd,
     multiSort: formatPrimvueSortMetas(sortMetas)
   }
-}
-
-function getGeneFilters(searchParameters: SearchParameters): string[] {
-  const result: string[] = []
-  const p = searchParameters
-  for (const { name, value, matchMode } of [
-    // matchMode is actually hard coded to "equal" in the BE; forceSelection is toggled
-    { name: 'gene_name', value: p.gene, matchMode: 'startsWith' },
-    { name: 'gene_biotype', value: p.biotypes, matchMode: 'in' },
-    { name: 'feature', value: p.features, matchMode: 'in' }
-  ]) {
-    if (value?.length) {
-      result.push(`${name}+${value}+${matchMode}`)
-    }
-  }
-  return result
 }
 
 function getModificationExportLink(
@@ -184,7 +171,7 @@ async function getGenomicContext(
       params,
       paramsSerializer: { indexes: null }
     }),
-    "Failed to get context '${context}' for modification ${modification.id}",
+    `Failed to get context '${context}' for modification ${modification.id}`,
     dialogState
   )
   return data.context
@@ -197,7 +184,7 @@ async function getSiteWiseInfo(
   const params = getSiteParams(modification)
   const data = await handleRequestWithErrorReporting<SiteWiseResponse>(
     HTTP.get('/modification/sitewise', { params, paramsSerializer: { indexes: null } }),
-    'Failed to get site info for modification ${modification.id}',
+    `Failed to get site info for modification ${modification.id}`,
     dialogState
   )
   return data.records
