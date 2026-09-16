@@ -10,7 +10,7 @@ tags:
     description: Database summary statistics
 
 paths:
-  /rna_types:
+  /rna-types:
     get:
       tags:
         - modification

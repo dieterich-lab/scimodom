@@ -1,46 +1,21 @@
 import pytest
 
-from scimodom.database.models import Assembly
 from scimodom.services.utilities import UtilitiesService
-
-
-class MockAssemblyService:
-    def __init__(self):
-        pass
-
-    def get_assemblies_by_taxa(self, taxa_id: int):
-        assemblies = {
-            9606: [
-                Assembly(
-                    name="GRCh38", alt_name="hg38", taxa_id=9606, version="GcatSmFcytpU"
-                ),
-                Assembly(
-                    name="GRCh37", alt_name="hg19", taxa_id=9606, version="J9dit7Tfc6Sb"
-                ),
-            ],
-            10090: [
-                Assembly(
-                    name="GRCm38",
-                    alt_name="mm10",
-                    taxa_id=10090,
-                    version="GcatSmFcytpU",
-                )
-            ],
-        }
-        return assemblies[taxa_id]
 
 
 @pytest.fixture
 def utilities_service(Session):
-    yield UtilitiesService(session=Session(), assembly_service=MockAssemblyService())
+    yield UtilitiesService(
+        session=Session(),
+    )
 
 
-def test_get_rna_types(Session, utilities_service: UtilitiesService, setup):
+def test_get_rna_types(Session, utilities_service, setup):
     expected_rna_types = [{"id": "WTS", "label": "whole transcriptome"}]
     assert utilities_service.get_rna_types() == expected_rna_types
 
 
-def test_get_taxa(Session, utilities_service: UtilitiesService, setup):
+def test_get_taxa(Session, utilities_service, setup):
     expected_taxa = [
         {
             "taxa_id": 7227,
@@ -70,7 +45,7 @@ def test_get_taxa(Session, utilities_service: UtilitiesService, setup):
     assert utilities_service.get_taxa() == expected_taxa
 
 
-def test_get_biotypes(Session, utilities_service: UtilitiesService, mocker):
+def test_get_biotypes(Session, utilities_service, mocker):
     mocker.patch(
         "scimodom.services.utilities.MAPPED_BIOTYPES",
         ["biotype 1", "biotype 2"],
@@ -79,7 +54,7 @@ def test_get_biotypes(Session, utilities_service: UtilitiesService, mocker):
     assert utilities_service.get_biotypes() == {"biotypes": ["biotype 1", "biotype 2"]}
 
 
-def test_get_modomics(Session, utilities_service: UtilitiesService, setup):
+def test_get_modomics(Session, utilities_service, setup):
     expected_modomics = [
         {"id": "2000000006A", "modomics_sname": "m6A"},
         {"id": "2000000005C", "modomics_sname": "m5C"},
@@ -88,7 +63,7 @@ def test_get_modomics(Session, utilities_service: UtilitiesService, setup):
     assert utilities_service.get_modomics() == expected_modomics
 
 
-def test_get_methods(Session, utilities_service: UtilitiesService, setup):
+def test_get_methods(Session, utilities_service, setup):
     expected_methods = [
         {
             "id": "0ee048bc",
@@ -109,7 +84,7 @@ def test_get_methods(Session, utilities_service: UtilitiesService, setup):
     assert utilities_service.get_methods() == expected_methods
 
 
-def test_get_selection(Session, utilities_service: UtilitiesService, selection):
+def test_get_selection(Session, utilities_service, selection):
     expected_selection = {
         "modification_id": 1,
         "rna": "WTS",
@@ -133,11 +108,6 @@ def test_get_selection(Session, utilities_service: UtilitiesService, selection):
     assert selections[0] == expected_selection
 
 
-def test_get_assemblies(Session, utilities_service: UtilitiesService):
-    expected_assemblies = [{"id": None, "name": "GRCm38"}]
-    assert utilities_service.get_assemblies(10090) == expected_assemblies
-
-
-def test_get_release_info(Session, utilities_service: UtilitiesService, dataset):
+def test_get_release_info(Session, utilities_service, dataset):
     expected_info = {"sites": 7, "datasets": 4}
     assert utilities_service.get_release_info() == expected_info

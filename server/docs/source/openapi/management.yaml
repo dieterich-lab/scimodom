@@ -157,7 +157,7 @@ components:
             bedRMod file to import
         rna_type:
           type: string
-          description: One of the RNA type IDs returned by `GET /rna_types`
+          description: One of the RNA type IDs returned by `GET /rna-types`
         title:
           type: string
           maxLength: 255

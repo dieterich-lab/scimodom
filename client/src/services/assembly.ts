@@ -11,7 +11,7 @@ async function getAssembliesByTaxaId(
   dialogState: DialogStateStore
 ): Promise<Assembly[]> {
   return await handleRequestWithErrorReporting<Assembly[]>(
-    HTTP.get(`/assembly/${taxaId}`),
+    HTTP.get(`/assemblies/${taxaId}`),
     `Failed to load assemblies for Taxa ID ${taxaId}`,
     dialogState
   )

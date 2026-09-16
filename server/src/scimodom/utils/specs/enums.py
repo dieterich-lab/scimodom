@@ -124,3 +124,7 @@ class TargetsFileType(Enum):
 class SunburstChartType(Enum):
     search = "search"
     browse = "browse"
+
+    @classmethod
+    def list(cls):
+        return list(map(lambda c: c.name, cls))

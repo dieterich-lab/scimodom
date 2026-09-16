@@ -19,6 +19,7 @@ from scimodom.api.helpers import (
     get_valid_features,
     get_valid_coords,
     get_valid_target_type,
+    get_valid_chart_type,
     get_valid_dataset,
     get_valid_selections,
     get_non_negative_int,
@@ -71,6 +72,15 @@ def mock_services(mocker):
 class MockTargetsFileType(Enum):
     MIRNA = "mirna"
     RBP = "rbp"
+
+    @classmethod
+    def list(cls):
+        return list(map(lambda c: c.name, cls))
+
+
+class MockSunburstChartType(Enum):
+    search = "search"
+    browse = "browse"
 
     @classmethod
     def list(cls):
@@ -338,7 +348,7 @@ def test_get_valid_rna_type_fail(app, mocker):
     returned_message, returned_status = exc.value.response_tuple
     assert returned_status == 404
     assert returned_message["message"] == "rnaType 'type1' not found"
-    assert returned_message["user_message"] == "Use GET /rna_types for valid RNA types"
+    assert returned_message["user_message"] == "Use GET /rna-types for valid RNA types"
 
 
 def test_get_valid_rna_type_from_route(mocker):
@@ -483,9 +493,20 @@ def test_get_valid_target_type(mocker):
         get_valid_target_type(" ")
     returned_message, returned_status = exc.value.response_tuple
     assert returned_status == 422
+    assert returned_message["message"] == "Parameter 'target' must be: ['MIRNA', 'RBP']"
+
+
+def test_get_valid_chart_type(mocker):
+    mocker.patch(
+        "scimodom.api.helpers.SunburstChartType",
+        MockSunburstChartType,
+    )
+    with pytest.raises(ClientResponseException) as exc:
+        get_valid_chart_type(" ")
+    returned_message, returned_status = exc.value.response_tuple
+    assert returned_status == 422
     assert (
-        returned_message["message"]
-        == "Parameter 'targetType' must be: ['MIRNA', 'RBP']"
+        returned_message["message"] == "Parameter 'chart' must be: ['search', 'browse']"
     )
 
 

@@ -18,7 +18,6 @@ from scimodom.database.models import (
     Taxa,
     Selection,
 )
-from scimodom.services.assembly import get_assembly_service, AssemblyService
 from scimodom.services.annotation import BIOTYPES
 
 
@@ -26,16 +25,13 @@ MAPPED_BIOTYPES = sorted(set(BIOTYPES.values()))
 
 
 class UtilitiesService:
-    """Collection of common requests that are
-    used to run the application."""
+    """Provide a collection of general queries."""
 
     def __init__(
         self,
         session: Session,
-        assembly_service: AssemblyService,
     ) -> None:
         self._session = session
-        self._assembly_service = assembly_service
 
     @staticmethod
     def get_biotypes() -> dict[str, list[str]]:
@@ -45,14 +41,14 @@ class UtilitiesService:
         To evaluate dynamically, remove module-level constant,
         and use here mapped_biotypes = sorted(set(BIOTYPES.values()))
 
-        :returns: Biotypes values used in the UI
+        :return: Biotypes values used in the UI
         """
         return {"biotypes": MAPPED_BIOTYPES}
 
     def get_rna_types(self) -> list[dict[str, Any]]:
         """Get all RNA types.
 
-        :returns: Identifier and label from RNAType
+        :return: Identifier and label from RNAType
         """
         rna_types = self._session.scalars(select(RNAType)).all()
         return [{"id": rna.id, "label": rna.name} for rna in rna_types]
@@ -60,7 +56,7 @@ class UtilitiesService:
     def get_taxa(self) -> list[dict[str, Any]]:
         """Get all species with their taxonomy.
 
-        :returns: Identifier, name and short name from Taxa; domain,
+        :return: Identifier, name and short name from Taxa; domain,
         kingdom, and phylum from Taxonomy.
         """
         rows = self._session.execute(
@@ -81,7 +77,7 @@ class UtilitiesService:
     def get_modomics(self) -> list[dict[str, Any]]:
         """Get all modifications.
 
-        :returns: Identifier (MODOMICS code) and short name from Modomics
+        :return: Identifier (MODOMICS code) and short name from Modomics
         """
         modomics = self._session.scalars(select(Modomics)).all()
         return [{"id": mod.id, "modomics_sname": mod.short_name} for mod in modomics]
@@ -89,7 +85,7 @@ class UtilitiesService:
     def get_methods(self) -> list[dict[str, Any]]:
         """Get all detection methods.
 
-        :returns: Identifier, class, and method from DetectionMethod
+        :return: Identifier, class, and method from DetectionMethod
         """
         methods = self._session.scalars(select(DetectionMethod)).all()
         return [
@@ -103,7 +99,7 @@ class UtilitiesService:
         Selections are defined by an association:
         Modification, Organism, DetectionTechnology.
 
-        :returns: Selected columns from various ORM models
+        :return: Selected columns from various ORM models
         describing each selection in detail.
         """
         query = (
@@ -148,19 +144,10 @@ class UtilitiesService:
         )
         return [row._asdict() for row in self._session.execute(query)]
 
-    def get_assemblies(self, taxa_id: int) -> list[dict[str, Any]]:
-        """Get assemblies for a given taxon.
-
-        :param taxa_id: NCBI taxon (identifier)
-        :returns: Identifier and name from Assembly
-        """
-        assemblies = self._assembly_service.get_assemblies_by_taxa(taxa_id)
-        return [{"id": assembly.id, "name": assembly.name} for assembly in assemblies]
-
     def get_release_info(self) -> dict[str, int]:
         """Get number of sites and datasets for current release.
 
-        :returns: Number of sites and datasets
+        :return: Number of sites and datasets
         """
         query = select(Data)
         sites = self._session.scalar(
@@ -175,28 +162,13 @@ class UtilitiesService:
         )
         return {"sites": sites, "datasets": datasets}
 
-    def _dump(self, query):
-        """Serialize a query from a select statement using
-        individual columns of an ORM entity, i.e. using execute(),
-        the statement must return rows that have individual elements
-        per value, each corresponding to a separate column.
-
-        :param query: SQLAlchemy statement
-        :type query: SQLAlchemy Select object
-        :returns: Query result
-        :rtype: list of dict
-        """
-        return [r._asdict() for r in self._session.execute(query)]
-
 
 @cache
 def get_utilities_service() -> UtilitiesService:
-    """Instantiates a UtilitiesService object.
+    """Instantiate a UtilitiesService object.
 
-    :returns: UtilitiesService instance
-    :rtype: UtilitiesService
+    :return: UtilitiesService instance
     """
     return UtilitiesService(
         session=get_session(),
-        assembly_service=get_assembly_service(),
     )

@@ -16,7 +16,12 @@ from scimodom.services.permission import get_permission_service
 from scimodom.services.user import get_user_service, NoSuchUser
 from scimodom.services.utilities import get_utilities_service
 from scimodom.services.assembly import get_assembly_service
-from scimodom.utils.specs.enums import Strand, TargetsFileType, Identifiers
+from scimodom.utils.specs.enums import (
+    Strand,
+    TargetsFileType,
+    Identifiers,
+    SunburstChartType,
+)
 
 """
 This module supplies a number of helper functions to be used in various
@@ -388,7 +393,7 @@ def _validate_rna_type(rna_type: str) -> None:
         raise ClientResponseException(
             404,
             f"rnaType '{rna_type}' not found",
-            "Use GET /rna_types for valid RNA types",
+            "Use GET /rna-types for valid RNA types",
         )
 
 
@@ -510,7 +515,7 @@ def get_valid_rna_type_from_route(raw: str) -> int:
     :raises ClientResponseException: 400, 404
     :return: The validated RNA type
     """
-    rna_type = get_route_param("rnaType", raw)
+    rna_type = get_route_param("rna_type", raw)
     _validate_rna_type(rna_type)
     return rna_type
 
@@ -533,7 +538,7 @@ def get_valid_taxa_id_from_route(raw: str) -> int:
     :raises ClientResponseException: 400, 404, 422
     :return: The validated taxon identifier
     """
-    taxa_id = get_route_param("taxaId", raw, "positive_int")
+    taxa_id = get_route_param("taxa_id", raw, "positive_int")
     _validate_taxa_id(taxa_id)
     return taxa_id
 
@@ -626,15 +631,31 @@ def get_valid_target_type(raw: str) -> TargetsFileType:
     """Validate and return target file type value for site table.
 
     :raises ClientResponseException: 400, 422
-    :return: The value corresponding to targetType
+    :return: The value corresponding to target
     """
-    target_type = get_route_param("targetType", raw)
+    target = get_route_param("target", raw)
     try:
-        return TargetsFileType[target_type]
+        return TargetsFileType[target]
     except KeyError:
         raise ClientResponseException(
             422,
-            f"Parameter 'targetType' must be: {TargetsFileType.list()}",
+            f"Parameter 'target' must be: {TargetsFileType.list()}",
+        )
+
+
+def get_valid_chart_type(raw: str) -> TargetsFileType:
+    """Validate and return chart type value.
+
+    :raises ClientResponseException: 400, 422
+    :return: The value corresponding to chart
+    """
+    chart = get_route_param("chart", raw)
+    try:
+        return SunburstChartType[chart]
+    except KeyError:
+        raise ClientResponseException(
+            422,
+            f"Parameter 'chart' must be: {SunburstChartType.list()}",
         )
 
 
