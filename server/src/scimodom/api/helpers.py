@@ -171,116 +171,68 @@ def get_required_json_fields(*fields: str) -> dict[str, Any]:
 # Incoming (query or route) parameter validation
 
 # - Type conversion and syntax validation
+# - Semantic validation must be performed by the caller
 
 
 def get_non_negative_int(name: str) -> int:
     """Parse query for parameter, convert, and validate.
 
     :param name: Query parameter name
-    :raises ValueError or ClientResponseException: if fails to validate
+    :raises ClientResponseException: 400, 422
     :return: The converted value in the given range
     """
-    return get_required_query_param(name, "non_negative_int")
+    return _get_required_query_param(name, _non_negative_int, "integer")
 
 
 def get_positive_int(name: str) -> int:
     """Parse query for parameter, convert, and validate.
 
     :param name: Query parameter name
-    :raises ValueError or ClientResponseException: if fails to validate
+    :raises ClientResponseException: 400, 422
     :return: The converted value in the given range
     """
-    return get_required_query_param(name, "positive_int")
+    return _get_required_query_param(name, _positive_int, "integer")
 
 
 def get_optional_non_negative_int(name: str) -> int | None:
     """Parse query for optional parameter, convert, and validate.
 
     :param name: Query parameter name
-    :raises ValueError or ClientResponseException: if fails to validate
+    :raises ClientResponseException: 400, 422
     :return: The converted value in the given range or None
     """
-    return get_optional_query_param(name, "non_negative_int")
+    return _get_optional_query_param(name, _non_negative_int, "integer")
 
 
 def get_optional_positive_int(name: str) -> int | None:
     """Parse query for parameter, convert, and validate.
 
     :param name: Query parameter name
-    :raises ValueError or ClientResponseException: if fails to validate
+    :raises ClientResponseException: 400, 422
     :return: The converted value in the given range or None
     """
-    return get_optional_query_param(name, "positive_int")
+    return _get_optional_query_param(name, _positive_int, "integer")
 
 
-def get_required_query_param(
-    name: str,
-    converter_name: str = "string",
-) -> T:
-    """Parse query string for parameter and convert to the given type.
-
-    This function performs syntactic validation only; if semantic
-    validation is required, this must be performed by the caller.
-    It distinguishes a missing or malformed parameter from
-    one that is present but fails to convert, e.g. ValueError or
-    API-specific constraints, such as a value that violates declared
-    bounds, etc. These must be validated in the Callable.
+def get_optional_str(name: str) -> int:
+    """Parse query for parameter, convert, and validate.
 
     :param name: Query parameter name
-    :param converter: Name of a callable used to convert the raw string
-    and perform API validation.
-    :raises ClientResponseException:
-        400 if missing, or present but fails to convert
-        422 if API validation fails
-    :return: The converted value
+    :raises ClientResponseException: 400, 422
+    :return: The converted value in the given range
     """
-    raw = request.args.get(name)
-    if raw is None:
-        raise ClientResponseException(400, f"Missing required parameter: '{name}'")
-    converter, type_name = _callables[converter_name]
-    return _convert_query_param(name, raw, converter, type_name)
+    return _get_optional_query_param(name)
 
 
-def get_optional_query_param(
-    name: str,
-    converter_name: str = "string",
-) -> T | None:
-    """Parse query string for optional parameter and convert to the given type.
+def parse_non_negative_int(name: str, raw: str) -> int:
+    """Parse raw parameter, convert, and validate.
 
-    See 'get_required_query_param' for details. This functions returns
-    None if the parameter is missing or malformed, and otherwise performs
-    validation.
+    :param name: Parameter name
+    :param raw: Raw parameter value e.g. route parameter
+    :raises ClientResponseException: 400, 422
+    :return: The converted value in the given range
     """
-    raw = request.args.get(name)
-    if raw is None:
-        return None
-    converter, type_name = _callables[converter_name]
-    return _convert_query_param(name, raw, converter, type_name)
-
-
-def get_route_param(
-    name: str,
-    raw: str,
-    converter_name: str = "string",
-) -> T:
-    """Convert a route parameter to the given type.
-
-    This function performs syntactic validation only; if semantic
-    validation is required, this must be performed by the caller.
-
-    :param name: Route parameter name
-    :param raw: Route parameter
-    :param converter: Callable used to convert the raw string
-    and perform API validation.
-    :param type_name: Human-readable type name for the error
-    message (defaults to converter.__name__)
-    :raises ClientResponseException:
-        400 if fails to convert
-        422 if API validation fails
-    :return: The converted value
-    """
-    converter, type_name = _callables[converter_name]
-    return _convert_query_param(name, raw, converter, type_name)
+    return _parse_param(name, raw, _non_negative_int, "integer")
 
 
 def _non_empty_str(raw: str, name: str) -> str:
@@ -307,14 +259,7 @@ def _positive_int(raw: str, name: str) -> int:
     return value
 
 
-_callables = {
-    "string": (_non_empty_str, "string"),
-    "non_negative_int": (_non_negative_int, "integer"),
-    "positive_int": (_positive_int, "integer"),
-}
-
-
-def _convert_query_param(
+def _convert_param(
     name: str,
     raw: str,
     converter: Callable[[str, str], T],
@@ -329,9 +274,40 @@ def _convert_query_param(
         )
 
 
+def _get_required_query_param(
+    name: str,
+    converter: Callable[[str, str], T] = _non_empty_str,
+    converter_type: str = "string",
+) -> T:
+    raw = request.args.get(name)
+    if raw is None:
+        raise ClientResponseException(400, f"Missing required parameter: '{name}'")
+    return _convert_param(name, raw, converter, converter_type)
+
+
+def _get_optional_query_param(
+    name: str,
+    converter: Callable[[str, str], T] = _non_empty_str,
+    converter_type: str = "string",
+) -> T | None:
+    raw = request.args.get(name)
+    if raw is None:
+        return None
+    return _convert_param(name, raw, converter, converter_type)
+
+
+def _parse_param(
+    name: str,
+    raw: str,
+    converter: Callable[[str, str], T] = _non_empty_str,
+    converter_type: str = "string",
+) -> T:
+    return _convert_param(name, raw, converter, converter_type)
+
+
 # - Semantic validation
 # - The caller must provide syntactically valid incoming parameters
-# - Additional arguments must be fully validated
+# - Additional arguments must be "fully" validated
 
 
 def validate_chrom(
@@ -346,15 +322,13 @@ def validate_chrom(
 
     :param taxa_id: A valid taxon identifier (the
     caller must provide a fully validated value)
-    :param chrom: Incoming chrom (the caller must
+    :param chrom: Chromosome (the caller must
     provide a syntactically valid value or None)
-    :param start: Incoming start (the caller must
+    :param start: Chromosome start (the caller must
     provide a syntactically valid value or None)
-    :param end: Incoming end (the caller must
+    :param end: Chromosome end (the caller must
     provide a syntactically valid value or None)
-    :raises ClientResponseException:
-        404 if chrom does not exist
-        422 if start/end are inconsistent
+    :raises ClientResponseException: 404, 422
     """
     _get_chroms_and_validate(taxa_id, chrom, start, end)
 
@@ -465,6 +439,15 @@ def _validate_selections(selections: list[tuple[int, int, int]]) -> None:
         )
 
 
+def _get_valid_user() -> User:
+    email = get_jwt_identity()
+    user_service = get_user_service()
+    try:
+        return user_service.get_user_by_email(email)
+    except NoSuchUser:
+        raise ClientResponseException(404, f"User '{email}' not found")
+
+
 # - Helpers
 
 
@@ -503,19 +486,19 @@ def get_valid_rna_type() -> str:
     :raises ClientResponseException: 400, 404
     :return: The validated RNA type
     """
-    rna_type = get_required_query_param("rnaType")
+    rna_type = _get_required_query_param("rnaType")
     _validate_rna_type(rna_type)
     return rna_type
 
 
-def get_valid_rna_type_from_route(raw: str) -> int:
-    """Validate RNA type obtained via route parameter.
+def parse_valid_rna_type(raw: str) -> int:
+    """Parse raw RNA type and validate.
 
-    :param raw: Route parameter for rnaType
+    :param raw: Route parameter for RNA type
     :raises ClientResponseException: 400, 404
     :return: The validated RNA type
     """
-    rna_type = get_route_param("rna_type", raw)
+    rna_type = _parse_param("rna_type", raw)
     _validate_rna_type(rna_type)
     return rna_type
 
@@ -531,14 +514,14 @@ def get_valid_taxa_id() -> int:
     return taxa_id
 
 
-def get_valid_taxa_id_from_route(raw: str) -> int:
-    """Validate taxon identifier obtained via route parameter.
+def parse_valid_taxa_id(raw: str) -> int:
+    """Parse raw taxon identifier and validate.
 
-    :param raw: Route parameter for taxaId
+    :param raw: Route parameter for taxon identifier
     :raises ClientResponseException: 400, 404, 422
     :return: The validated taxon identifier
     """
-    taxa_id = get_route_param("taxa_id", raw, "positive_int")
+    taxa_id = _parse_param("taxa_id", raw, _positive_int, "integer")
     _validate_taxa_id(taxa_id)
     return taxa_id
 
@@ -546,7 +529,7 @@ def get_valid_taxa_id_from_route(raw: str) -> int:
 def get_valid_biotypes() -> list[str]:
     """Parse query for biotypes and validate.
 
-    :raises ClientResponseException: 404
+    :raises ClientResponseException: 400, 404
     :return: The validated list of biotypes
     """
     rna_type = get_valid_rna_type()
@@ -586,7 +569,6 @@ def get_valid_selections() -> tuple[int, int, list[int]]:
 
 
 def get_valid_coords(
-    taxa_id: int,
     context: int = 0,
 ) -> tuple[str, int, int, Strand]:
     """Parse query for coordinates and validate.
@@ -594,13 +576,13 @@ def get_valid_coords(
     NOTE: This function uses "start" and "end",
     not "chromStart", "chromEnd".
 
-    :param taxa_id: A valid taxon identifier (the
-    caller must provide a fully validated value)
-    :param context: Number of bases to include in context around start-end.
+    :param context: Number of bases to include in
+    context around start-end.
     :raises ClientResponseException: 400, 404, 422
     :return: Coordinates as (chrom, start, end, strand)
     """
-    chrom = get_required_query_param("chrom")
+    taxa_id = get_valid_taxa_id()
+    chrom = _get_required_query_param("chrom")
     start = get_non_negative_int("start")
     end = get_positive_int("end")
     chrom_size = _get_chroms_and_validate(
@@ -627,13 +609,13 @@ def get_valid_coords(
     return chrom, start, end, strand_dto
 
 
-def get_valid_target_type(raw: str) -> TargetsFileType:
-    """Validate and return target file type value for site table.
+def parse_valid_target_type(raw: str) -> TargetsFileType:
+    """Parse raw target and return target file type value.
 
     :raises ClientResponseException: 400, 422
     :return: The value corresponding to target
     """
-    target = get_route_param("target", raw)
+    target = _parse_param("target", raw)
     try:
         return TargetsFileType[target]
     except KeyError:
@@ -643,19 +625,55 @@ def get_valid_target_type(raw: str) -> TargetsFileType:
         )
 
 
-def get_valid_chart_type(raw: str) -> TargetsFileType:
-    """Validate and return chart type value.
+def parse_valid_chart_type(raw: str) -> TargetsFileType:
+    """Parse raw chart and return chart type value.
 
     :raises ClientResponseException: 400, 422
     :return: The value corresponding to chart
     """
-    chart = get_route_param("chart", raw)
+    chart = _parse_param("chart", raw)
     try:
         return SunburstChartType[chart]
     except KeyError:
         raise ClientResponseException(
             422,
             f"Parameter 'chart' must be: {SunburstChartType.list()}",
+        )
+
+
+def get_user_with_write_permission_on_project(smid: str) -> User:
+    """Get a user if allowed to add datasets to the given project.
+
+    :param smid: Project identifier (SMID)
+    :raises ClientResponseException: 403, 404
+    :return: User
+    """
+    permission_service = get_permission_service()
+    user = _get_valid_user()
+    if permission_service.may_change_project(user, smid):
+        return user
+    else:
+        raise ClientResponseException(
+            403,
+            f"Forbidden to access project '{smid}'",
+        )
+
+
+def get_user_with_write_permission_on_dataset(dataset: Dataset) -> User:
+    """Get a user if allowed to modify a dataset.
+
+    :param smid: Dataset
+    :raises ClientResponseException: 403, 404
+    :return: User
+    """
+    permission_service = get_permission_service()
+    user = _get_valid_user()
+    if permission_service.may_change_dataset(user, dataset):
+        return user
+    else:
+        raise ClientResponseException(
+            403,
+            f"Forbidden to access dataset '{dataset.id}'",
         )
 
 
@@ -678,29 +696,6 @@ def get_valid_dataset(dataset_id: str) -> Dataset:
         return dataset_service.get_by_id(dataset_id)
     except NoResultFound:
         raise ClientResponseException(404, "Unknown dataset")
-
-
-def get_user_with_write_permission_on_dataset(dataset: Dataset) -> User:
-    """Get user.
-
-    :param dataset: Dataset
-    :type dataset: Dataset
-    :raises ClientResponseException: If invalid query parameters.
-    :return: User
-    :rtype: User
-    """
-    email = get_jwt_identity()
-    user_service = get_user_service()
-    permission_service = get_permission_service()
-
-    try:
-        user = user_service.get_user_by_email(email)
-    except NoSuchUser:
-        raise ClientResponseException(404, "Unknown user")
-    if permission_service.may_change_dataset(user, dataset):
-        return user
-    else:
-        raise ClientResponseException(401, "Not your dataset")
 
 
 def get_valid_bam_file(dataset: Dataset, name: str) -> BamFile:

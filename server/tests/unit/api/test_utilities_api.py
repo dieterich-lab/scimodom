@@ -33,9 +33,7 @@ def test_get_features(test_client, mocker):
         "scimodom.api.utilities.get_annotation_service",
         return_value=mock_annotation_service,
     )
-    mocker.patch(
-        "scimodom.api.utilities.get_valid_rna_type_from_route", return_value="type"
-    )
+    mocker.patch("scimodom.api.utilities.parse_valid_rna_type", return_value="type")
     url = "features/type"
     result = test_client.get(url)
     assert result.status_code == 501
@@ -56,9 +54,7 @@ def test_get_chroms(test_client, mocker, error, index):
         "scimodom.api.utilities.get_assembly_service",
         return_value=mock_assembly_service,
     )
-    mocker.patch(
-        "scimodom.api.utilities.get_valid_taxa_id_from_route", return_value=9606
-    )
+    mocker.patch("scimodom.api.utilities.parse_valid_taxa_id", return_value=9606)
     url = "chroms/9606"
     result = test_client.get(url)
     assert result.status_code == 404
@@ -72,9 +68,7 @@ def test_get_assemblies(test_client, mocker):
         "scimodom.api.utilities.get_assembly_service",
         return_value=mock_assembly_service,
     )
-    mocker.patch(
-        "scimodom.api.utilities.get_valid_taxa_id_from_route", return_value=9606
-    )
+    mocker.patch("scimodom.api.utilities.parse_valid_taxa_id", return_value=9606)
     url = "assemblies/9606"
     result = test_client.get(url)
     assert result.status_code == 200

@@ -5,10 +5,10 @@ from sqlalchemy.exc import NoResultFound
 from scimodom.api.helpers import (
     ClientResponseException,
     create_error_response,
-    get_valid_taxa_id_from_route,
-    get_valid_rna_type_from_route,
+    parse_valid_taxa_id,
+    parse_valid_rna_type,
     get_unique_list_from_query_param,
-    get_valid_chart_type,
+    parse_valid_chart_type,
 )
 from scimodom.services.annotation import get_annotation_service
 from scimodom.services.assembly import get_assembly_service
@@ -148,7 +148,7 @@ def get_features(rna_type):
     """
     annotation_service = get_annotation_service()
     try:
-        rna_type = get_valid_rna_type_from_route(rna_type)
+        rna_type = parse_valid_rna_type(rna_type)
         return {"features": annotation_service.get_features_by_rna_type(rna_type)}
     except ClientResponseException as exc:
         return exc.response_tuple
@@ -175,7 +175,7 @@ def get_chroms(taxa_id: str):
     """
     assembly_service = get_assembly_service()
     try:
-        taxa_id_as_int = get_valid_taxa_id_from_route(taxa_id)
+        taxa_id_as_int = parse_valid_taxa_id(taxa_id)
         return assembly_service.get_chroms(taxa_id_as_int)
     except ClientResponseException as exc:
         return exc.response_tuple
@@ -207,7 +207,7 @@ def get_assemblies(taxa_id):
     """
     assembly_service = get_assembly_service()
     try:
-        taxa_id_as_int = get_valid_taxa_id_from_route(taxa_id)
+        taxa_id_as_int = parse_valid_taxa_id(taxa_id)
         assemblies = assembly_service.get_assemblies_by_taxa(taxa_id_as_int)
         return [{"id": assembly.id, "name": assembly.name} for assembly in assemblies]
     except ClientResponseException as exc:
@@ -228,7 +228,7 @@ def get_sunburst_chart(chart):
     :statuscode 500: Internal Server Error
     """
     try:
-        chart = get_valid_chart_type(chart)
+        chart = parse_valid_chart_type(chart)
         sunburst_service = get_sunburst_service()
     except ClientResponseException as exc:
         return exc.response_tuple

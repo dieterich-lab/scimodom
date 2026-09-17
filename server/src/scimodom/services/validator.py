@@ -377,8 +377,8 @@ class ValidatorService:
                 technology = self._get_technology(self._context.technology_id)
                 organism = self._get_organism(self._context.organism_id)
                 raise SelectionNotFoundError(
-                    f"No such selection with {mname}, {technology.tech}, and "
-                    f"{organism.cto} ({organism.taxa_id})."
+                    f"Selection with {mname}, {organism.cto}, and "
+                    f"{technology.tech} ({organism.taxa_id}) not found."
                 )
 
     def _check_for_duplicate_dataset(self) -> None:

@@ -1,0 +1,239 @@
+from smtplib import SMTPException
+
+import pytest
+from flask import Flask
+from flask_jwt_extended import JWTManager, create_access_token
+
+from scimodom.api.management import management_api
+from scimodom.services.assembly import LiftOverError
+from scimodom.services.validator import (
+    SelectionNotFoundError,
+    DatasetImportError,
+    DatasetHeaderError,
+    DatasetExistsError,
+    SpecsError,
+)
+from scimodom.utils.importer.bed_importer import (
+    BedImportTooManyErrors,
+    BedImportEmptyFile,
+)
+from scimodom.api.helpers import ClientResponseException
+
+
+@pytest.fixture
+def authenticated_client():
+    app = Flask(__name__)
+    app.config["JWT_SECRET_KEY"] = "test-secret"
+    JWTManager(app)
+    app.register_blueprint(management_api, url_prefix="")
+    client = app.test_client()
+    with app.app_context():
+        token = create_access_token(identity="test-user")
+    client.environ_base["HTTP_AUTHORIZATION"] = f"Bearer {token}"
+    yield client
+
+
+@pytest.fixture
+def unauthenticated_client():
+    app = Flask(__name__)
+    app.config["JWT_SECRET_KEY"] = "test-secret"
+    JWTManager(app)
+    app.register_blueprint(management_api, url_prefix="")
+    yield app.test_client()
+
+
+@pytest.fixture
+def project_mocks(mocker):
+    mock_project_service = mocker.Mock()
+    mock_project_service.create_project_request.return_value = 123
+    mocker.patch(
+        "scimodom.api.management.get_project_service",
+        return_value=mock_project_service,
+    )
+    mock_mail_service = mocker.Mock()
+    mock_mail_service.send_project_request_notification.return_value = None
+    mocker.patch(
+        "scimodom.api.management.get_mail_service",
+        return_value=mock_mail_service,
+    )
+
+
+@pytest.fixture
+def dataset_mocks(mocker):
+    mock_dataset_service = mocker.Mock()
+    mock_dataset_service.import_dataset.return_value = None
+    mocker.patch(
+        "scimodom.api.management.get_dataset_service",
+        return_value=mock_dataset_service,
+    )
+    mocker.patch(
+        "scimodom.api.management.parse_valid_rna_type",
+        return_value="any",
+    )
+    mocker.patch(
+        "scimodom.api.management.AnnotationService.get_annotation_source",
+        return_value=mocker.Mock(),
+    )
+    mock_dataset_post_request = mocker.Mock()
+    mock_dataset_post_request.file_id = "test.bed"
+    mocker.patch(
+        "scimodom.api.management.DatasetPostRequest.model_validate_json",
+        return_value=mock_dataset_post_request,
+    )
+    mock_config = mocker.Mock()
+    mock_config.UPLOAD_PATH = "/tmp/uploads"
+    mocker.patch(
+        "scimodom.api.management.get_config",
+        return_value=mock_config,
+    )
+    mock_open = mocker.patch(
+        "scimodom.api.management.open",
+        mocker.mock_open(),
+    )
+    mock_sunburst_service = mocker.Mock()
+    mock_sunburst_service.trigger_background_update.return_value = None
+    mocker.patch(
+        "scimodom.api.management.get_sunburst_service",
+        return_value=mock_sunburst_service,
+    )
+    yield mock_open
+
+
+def test_create_project_request(authenticated_client, mocker, project_mocks):
+    mock_project_template = mocker.Mock()
+    mocker.patch(
+        "scimodom.api.management.ProjectTemplate.model_validate_json",
+        return_value=mock_project_template,
+    )
+    result = authenticated_client.post("project", json={"field": "value"})
+    assert result.status_code == 200
+    assert result.json["message"] == "OK"
+
+
+def test_create_project_request_invalid_model(authenticated_client, project_mocks):
+    result = authenticated_client.post("project", json={})
+    assert result.status_code == 400
+    assert (
+        result.json["message"]
+        == "Request body validation: malformed and/or bad/missing fields"
+    )
+
+
+def test_create_project_request_invalid_json(authenticated_client, project_mocks):
+    result = authenticated_client.post(
+        "project", data='{"title"}', content_type="application/json"
+    )
+    assert result.status_code == 400
+    assert (
+        result.json["message"]
+        == "Request body validation: malformed and/or bad/missing fields"
+    )
+
+
+def test_create_project_request_smtp_exception(authenticated_client, mocker, caplog):
+    mock_project_service = mocker.Mock()
+    mock_project_service.create_project_request.return_value = 123
+    mocker.patch(
+        "scimodom.api.management.get_project_service",
+        return_value=mock_project_service,
+    )
+    mock_mail_service = mocker.Mock()
+    mock_mail_service.send_project_request_notification.side_effect = SMTPException(
+        "oups"
+    )
+    mocker.patch(
+        "scimodom.api.management.get_mail_service",
+        return_value=mock_mail_service,
+    )
+    mocker.patch(
+        "scimodom.api.management.ProjectTemplate.model_validate_json",
+        return_value=mocker.Mock(),
+    )
+    result = authenticated_client.post("project", json={})
+    assert result.status_code == 500
+    assert (
+        result.json["message"]
+        == "Request '123' created, but an unexpected error occurred during submission. Contact the system administrator."
+    )
+    assert caplog.messages[0] == "Notification failed for project '123': oups"
+
+
+def test_create_project_request_unauthenticated(unauthenticated_client, mocker):
+    mock_project_service = mocker.patch("scimodom.api.management.get_project_service")
+    result = unauthenticated_client.post("project", json={"field": "value"})
+    assert result.status_code == 401
+    assert result.json["msg"] == "Missing Authorization Header"
+    mock_project_service.assert_not_called()
+
+
+def test_add_dataset(authenticated_client, dataset_mocks):
+    result = authenticated_client.post("dataset", json={"field": "value"})
+    assert result.status_code == 200
+    assert result.json["message"] == "OK"
+
+
+@pytest.mark.parametrize(
+    "exception,http_status,msg,user_msg",
+    [
+        (ClientResponseException(1, "2"), 1, "2", None),
+        (NotImplementedError, 501, "rna_type 'any' not implemented", None),
+        (
+            SelectionNotFoundError("Error"),
+            404,
+            "Error",
+            "Invalid combination of modification(s), organism, and/or technology.\n"
+            "Modify the request form to match a valid selection for this dataset.\n"
+            "Use GET /selections for valid combinations.",
+        ),
+        (DatasetImportError, 422, "", "Modify the request form and re-submit"),
+        (
+            DatasetHeaderError,
+            422,
+            "",
+            "The request form must agree with the file header.\n"
+            "Modify the request form or select the correct dataset to upload.",
+        ),
+        (DatasetExistsError("Exists"), 422, "Exists", None),
+        (
+            SpecsError,
+            422,
+            "",
+            "Invalid bedRMod format specifications.\n"
+            "Modify the file header to conform to the latest specifications.",
+        ),
+        (BedImportEmptyFile, 422, "", "File upload failed. The file is empty."),
+        (
+            BedImportTooManyErrors("message", "error"),
+            422,
+            "error",
+            "Invalid bedRMod format specifications.\n"
+            "Consult the documentation (Dataset upload errors) for more information.",
+        ),
+        (
+            LiftOverError,
+            500,
+            "",
+            "Liftover failed. Contact the system administrator.",
+        ),
+    ],
+)
+def test_add_dataset_fail(
+    authenticated_client, dataset_mocks, exception, http_status, msg, user_msg
+):
+    mock = dataset_mocks
+    mock.side_effect = exception
+    result = authenticated_client.post("dataset", json={"field": "value"})
+    assert result.status_code == http_status
+    assert result.json["message"] == msg
+    if user_msg is not None:
+        assert result.json["user_message"] == user_msg
+
+
+def test_add_dataset_unauthenticated(unauthenticated_client, mocker):
+    mock_validate = mocker.patch(
+        "scimodom.api.management.DatasetPostRequest.model_validate_json"
+    )
+    result = unauthenticated_client.post("dataset", json={"field": "value"})
+    assert result.status_code == 401
+    assert result.json["msg"] == "Missing Authorization Header"
+    mock_validate.assert_not_called()

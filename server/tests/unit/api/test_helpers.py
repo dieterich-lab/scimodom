@@ -4,28 +4,32 @@ import pytest
 from flask import Flask
 from sqlalchemy.exc import NoResultFound
 
+from scimodom.services.user import NoSuchUser
 from scimodom.api.helpers import (
     ClientResponseException,
+    _get_required_query_param,
     get_required_json_fields,
-    get_required_query_param,
-    get_route_param,
-    validate_chrom,
     get_unique_list_from_query_param,
-    get_valid_rna_type,
-    get_valid_rna_type_from_route,
-    get_valid_taxa_id,
-    get_valid_taxa_id_from_route,
-    get_valid_biotypes,
-    get_valid_features,
-    get_valid_coords,
-    get_valid_target_type,
-    get_valid_chart_type,
-    get_valid_dataset,
-    get_valid_selections,
     get_non_negative_int,
     get_positive_int,
     get_optional_non_negative_int,
     get_optional_positive_int,
+    get_optional_str,
+    parse_non_negative_int,
+    get_valid_rna_type,
+    parse_valid_rna_type,
+    get_valid_taxa_id,
+    parse_valid_taxa_id,
+    get_valid_biotypes,
+    get_valid_features,
+    get_valid_selections,
+    get_valid_coords,
+    parse_valid_target_type,
+    parse_valid_chart_type,
+    validate_chrom,
+    get_user_with_write_permission_on_project,
+    get_user_with_write_permission_on_dataset,
+    get_valid_dataset,
     get_valid_bam_file,
     validate_request_size,
 )
@@ -50,9 +54,10 @@ def app():
 
 @pytest.fixture
 def mock_services(mocker):
-    # mocker.patch(
-    #     "scimodom.api.helpers.get_assembly_service", return_value=MockAssemblyService()
-    # )
+    mocker.patch(
+        "scimodom.api.helpers.get_assembly_service",
+        return_value=MockAssemblyService(),
+    )
     # mocker.patch(
     #     "scimodom.api.helpers.get_dataset_service", return_value=MockDatasetService()
     # )
@@ -67,6 +72,29 @@ def mock_services(mocker):
         "scimodom.api.helpers.get_annotation_service",
         return_value=MockAnnotationService(),
     )
+
+
+@pytest.fixture
+def mock_user_services(mocker):
+    user = mocker.Mock()
+    mocker.patch(
+        "scimodom.api.helpers.get_jwt_identity",
+        return_value="user@example.com",
+    )
+    mock_user_service = mocker.Mock()
+    mock_user_service.get_user_by_email.return_value = user
+    mocker.patch(
+        "scimodom.api.helpers.get_user_service",
+        return_value=mock_user_service,
+    )
+    mock_permission_service = mocker.Mock()
+    mock_permission_service.may_change_project.return_value = True
+    mock_permission_service.may_change_dataset.return_value = False
+    mocker.patch(
+        "scimodom.api.helpers.get_permission_service",
+        return_value=mock_permission_service,
+    )
+    yield user, mock_user_service, mock_permission_service
 
 
 class MockTargetsFileType(Enum):
@@ -260,10 +288,19 @@ def test_get_optional_positive_int(app):
         assert get_optional_positive_int("param") is None
 
 
+def test_get_optional_str(app):
+    with app.test_request_context("/?param=123", method="GET"):
+        assert get_optional_str("param") == "123"
+
+
+def test_parse_non_negative_int():
+    assert parse_non_negative_int("param", "1") == 1
+
+
 def test_get_required_query_param_missing(app):
     with app.test_request_context("/?parameter=0", method="GET"):
         with pytest.raises(ClientResponseException) as exc:
-            get_required_query_param("param")
+            _get_required_query_param("param")
     returned_message, returned_status = exc.value.response_tuple
     assert returned_status == 400
     assert returned_message["message"] == "Missing required parameter: 'param'"
@@ -272,18 +309,13 @@ def test_get_required_query_param_missing(app):
 def test_get_required_query_param_empty(app):
     with app.test_request_context("/?param=", method="GET"):
         with pytest.raises(ClientResponseException) as exc:
-            get_required_query_param("param")
+            _get_required_query_param("param")
     returned_message, returned_status = exc.value.response_tuple
     assert returned_status == 400
     assert (
         returned_message["message"]
         == "Parameter 'param' must be a valid string (got: '')"
     )
-
-
-def test_get_route_param():
-    assert get_route_param("param", "param") == "param"
-    assert get_route_param("param", "1", "positive_int") == 1
 
 
 # tests: semantic validation
@@ -351,12 +383,12 @@ def test_get_valid_rna_type_fail(app, mocker):
     assert returned_message["user_message"] == "Use GET /rna-types for valid RNA types"
 
 
-def test_get_valid_rna_type_from_route(mocker):
+def test_parse_valid_rna_type(mocker):
     mocker.patch(
         "scimodom.api.helpers.get_utilities_service",
         return_value=MockUtilitiesService(),
     )
-    assert get_valid_rna_type_from_route("Type1") == "Type1"
+    assert parse_valid_rna_type("Type1") == "Type1"
 
 
 def test_get_valid_taxa_id_fail(app, mocker):
@@ -373,12 +405,12 @@ def test_get_valid_taxa_id_fail(app, mocker):
     assert returned_message["user_message"] == "Use GET /taxa for valid taxa"
 
 
-def test_get_valid_taxa_id_from_route(mocker):
+def test_parse_valid_taxa_id(mocker):
     mocker.patch(
         "scimodom.api.helpers.get_utilities_service",
         return_value=MockUtilitiesService(),
     )
-    assert get_valid_taxa_id_from_route("9606") == 9606
+    assert parse_valid_taxa_id("9606") == 9606
 
 
 def test_get_valid_biotypes_fail(app, mocker):
@@ -455,14 +487,12 @@ def test_get_valid_selections_fail(
         assert returned_message["user_message"] == user_message
 
 
-def test_get_valid_coords_fail(app, mocker):
-    mocker.patch(
-        "scimodom.api.helpers.get_assembly_service",
-        return_value=MockAssemblyService(),
-    )
-    with app.test_request_context("/?chrom=1&start=1&end=2&strand=a", method="GET"):
+def test_get_valid_coords_fail(app, mock_services):
+    with app.test_request_context(
+        "/?chrom=1&start=1&end=2&strand=a&taxaId=9606", method="GET"
+    ):
         with pytest.raises(ClientResponseException) as exc:
-            get_valid_coords(9606)
+            get_valid_coords()
     returned_message, returned_status = exc.value.response_tuple
     assert returned_status == 422
     assert returned_message["message"] == "Parameter 'strand' must be +, -, or ."
@@ -475,39 +505,77 @@ def test_get_valid_coords_fail(app, mocker):
         (248956421, 248956422, ("1", 248956416, 248956422, Strand("."))),
     ],
 )
-def test_get_valid_coords(app, mocker, start, end, result):
-    mocker.patch(
-        "scimodom.api.helpers.get_assembly_service",
-        return_value=MockAssemblyService(),
-    )
-    with app.test_request_context(f"/?chrom=1&start={start}&end={end}", method="GET"):
-        assert get_valid_coords(9606, context=5) == result
+def test_get_valid_coords(app, mock_services, start, end, result):
+    with app.test_request_context(
+        f"/?chrom=1&start={start}&end={end}&taxaId=9606", method="GET"
+    ):
+        assert get_valid_coords(context=5) == result
 
 
-def test_get_valid_target_type(mocker):
+def test_parse_valid_target_type(mocker):
     mocker.patch(
         "scimodom.api.helpers.TargetsFileType",
         MockTargetsFileType,
     )
     with pytest.raises(ClientResponseException) as exc:
-        get_valid_target_type(" ")
+        parse_valid_target_type(" ")
     returned_message, returned_status = exc.value.response_tuple
     assert returned_status == 422
     assert returned_message["message"] == "Parameter 'target' must be: ['MIRNA', 'RBP']"
 
 
-def test_get_valid_chart_type(mocker):
+def test_parse_valid_chart_type(mocker):
     mocker.patch(
         "scimodom.api.helpers.SunburstChartType",
         MockSunburstChartType,
     )
     with pytest.raises(ClientResponseException) as exc:
-        get_valid_chart_type(" ")
+        parse_valid_chart_type(" ")
     returned_message, returned_status = exc.value.response_tuple
     assert returned_status == 422
     assert (
         returned_message["message"] == "Parameter 'chart' must be: ['search', 'browse']"
     )
+
+
+def test_get_user_with_write_permission_on_project(mock_user_services):
+    user, _, mock_permission_service = mock_user_services
+    result = get_user_with_write_permission_on_project("SMID")
+    assert result is user
+    mock_permission_service.may_change_project.assert_called_once_with(
+        user,
+        "SMID",
+    )
+
+
+def test_get_user_with_write_permission_on_project_forbidden(mock_user_services):
+    _, _, mock_permission_service = mock_user_services
+    mock_permission_service.may_change_project.return_value = False
+    with pytest.raises(ClientResponseException) as exc:
+        get_user_with_write_permission_on_project("SMID")
+    returned_message, returned_status = exc.value.response_tuple
+    assert returned_status == 403
+    assert returned_message["message"] == "Forbidden to access project 'SMID'"
+
+
+def test_get_user_with_write_permission_on_project_not_found(mock_user_services):
+    _, mock_user_service, _ = mock_user_services
+    mock_user_service.get_user_by_email.side_effect = NoSuchUser
+    with pytest.raises(ClientResponseException) as exc:
+        get_user_with_write_permission_on_project("SMID")
+    returned_message, returned_status = exc.value.response_tuple
+    assert returned_status == 404
+    assert returned_message["message"] == "User 'user@example.com' not found"
+
+
+def test_get_user_with_write_permission_on_dataset_forbidden(
+    mock_user_services, dataset
+):
+    with pytest.raises(ClientResponseException) as exc:
+        get_user_with_write_permission_on_dataset(dataset[0])
+    returned_message, returned_status = exc.value.response_tuple
+    assert returned_status == 403
+    assert returned_message["message"] == "Forbidden to access dataset 'dataset_id01'"
 
 
 # HERE >>>

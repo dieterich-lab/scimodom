@@ -547,5 +547,5 @@ def test_selection_not_found(Session, input_ctx):
         service.create_import_context(importer=importer, **input_ctx)
     assert (
         str(exc.value)
-        == "No such selection with m6A, Technology 1, and Cell type 2 (9606)."
+        == "Selection with m6A, Cell type 2, and Technology 1 (9606) not found."
     )

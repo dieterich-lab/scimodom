@@ -16,8 +16,8 @@ from scimodom.services.modification import (
 )
 from scimodom.api.helpers import (
     ClientResponseException,
-    get_optional_query_param,
-    get_route_param,
+    get_optional_str,
+    parse_non_negative_int,
     get_positive_int,
     get_non_negative_int,
     get_optional_positive_int,
@@ -28,7 +28,7 @@ from scimodom.api.helpers import (
     get_valid_features,
     get_valid_taxa_id,
     get_valid_coords,
-    get_valid_target_type,
+    parse_valid_target_type,
     get_valid_selections,
     get_response_from_pydantic_object,
     get_unique_list_from_query_param,
@@ -167,8 +167,7 @@ def get_modification_sitewise():
     :statuscode 500: Internal Server Error
     """
     try:
-        taxa_id = get_valid_taxa_id()
-        chrom, start, end, _ = get_valid_coords(taxa_id)
+        chrom, start, end, _ = get_valid_coords()
     except ClientResponseException as exc:
         return exc.response_tuple
 
@@ -200,12 +199,8 @@ def get_genomic_sequence_context(context):
     """
     try:
         taxa_id = get_valid_taxa_id()
-        context_as_int = get_route_param(
-            "context",
-            context,
-            "non_negative_int",
-        )
-        coords = get_valid_coords(taxa_id, context=context_as_int)
+        context_as_int = parse_non_negative_int("context", context)
+        coords = get_valid_coords(context=context_as_int)
     except ClientResponseException as exc:
         return exc.response_tuple
 
@@ -263,10 +258,10 @@ class _ModificationContext:
         stream: TextIO
 
     def __init__(self, target_type: str):
-        self._target_type = get_valid_target_type(target_type)
+        self._target_type = parse_valid_target_type(target_type)
         self._is_strand = True
         self._taxa_id = get_valid_taxa_id()
-        self._coords = get_valid_coords(self._taxa_id)
+        self._coords = get_valid_coords()
 
     def __enter__(self) -> Ctx:
         file_service = get_file_service()
@@ -386,8 +381,8 @@ def _get_valid_search_query_params(
     taxa_id: int,
     by_gene: bool,
 ) -> SearchQueryParams:
-    gene_name = get_optional_query_param("geneName")
-    chrom = get_optional_query_param("chrom")
+    gene_name = get_optional_str("geneName")
+    chrom = get_optional_str("chrom")
     chrom_start = get_optional_non_negative_int("chromStart")
     chrom_end = get_optional_positive_int("chromEnd")
     if (chrom_start or chrom_end) and not chrom:
