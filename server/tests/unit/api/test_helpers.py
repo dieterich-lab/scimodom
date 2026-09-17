@@ -27,8 +27,8 @@ from scimodom.api.helpers import (
     parse_valid_target_type,
     parse_valid_chart_type,
     validate_chrom,
-    get_user_with_write_permission_on_project,
-    get_user_with_write_permission_on_dataset,
+    validate_project_write_permission,
+    validate_dataset_write_permission,
     get_valid_dataset,
     get_valid_bam_file,
     validate_request_size,
@@ -538,41 +538,38 @@ def test_parse_valid_chart_type(mocker):
     )
 
 
-def test_get_user_with_write_permission_on_project(mock_user_services):
+def test_validate_project_write_permission(mock_user_services):
     user, _, mock_permission_service = mock_user_services
-    result = get_user_with_write_permission_on_project("SMID")
-    assert result is user
+    validate_project_write_permission("SMID")
     mock_permission_service.may_change_project.assert_called_once_with(
         user,
         "SMID",
     )
 
 
-def test_get_user_with_write_permission_on_project_forbidden(mock_user_services):
+def test_validate_permission_on_project_forbidden(mock_user_services):
     _, _, mock_permission_service = mock_user_services
     mock_permission_service.may_change_project.return_value = False
     with pytest.raises(ClientResponseException) as exc:
-        get_user_with_write_permission_on_project("SMID")
+        validate_project_write_permission("SMID")
     returned_message, returned_status = exc.value.response_tuple
     assert returned_status == 403
     assert returned_message["message"] == "Forbidden to access project 'SMID'"
 
 
-def test_get_user_with_write_permission_on_project_not_found(mock_user_services):
+def test_validate_project_write_permission_not_found(mock_user_services):
     _, mock_user_service, _ = mock_user_services
     mock_user_service.get_user_by_email.side_effect = NoSuchUser
     with pytest.raises(ClientResponseException) as exc:
-        get_user_with_write_permission_on_project("SMID")
+        validate_project_write_permission("SMID")
     returned_message, returned_status = exc.value.response_tuple
     assert returned_status == 404
     assert returned_message["message"] == "User 'user@example.com' not found"
 
 
-def test_get_user_with_write_permission_on_dataset_forbidden(
-    mock_user_services, dataset
-):
+def test_validate_dataset_write_permission_forbidden(mock_user_services, dataset):
     with pytest.raises(ClientResponseException) as exc:
-        get_user_with_write_permission_on_dataset(dataset[0])
+        validate_dataset_write_permission(dataset[0])
     returned_message, returned_status = exc.value.response_tuple
     assert returned_status == 403
     assert returned_message["message"] == "Forbidden to access dataset 'dataset_id01'"

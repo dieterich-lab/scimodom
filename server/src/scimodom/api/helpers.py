@@ -333,6 +333,36 @@ def validate_chrom(
     _get_chroms_and_validate(taxa_id, chrom, start, end)
 
 
+def validate_project_write_permission(smid: str) -> None:
+    """Validate if user is allowed to add datasets to the given project.
+
+    :param smid: Project identifier (SMID)
+    :raises ClientResponseException: 403, 404
+    """
+    permission_service = get_permission_service()
+    user = _get_valid_user()
+    if not permission_service.may_change_project(user, smid):
+        raise ClientResponseException(
+            403,
+            f"Forbidden to access project '{smid}'",
+        )
+
+
+def validate_dataset_write_permission(dataset: Dataset) -> None:
+    """Validate if a user is allowed to modify a dataset.
+
+    :param smid: Dataset
+    :raises ClientResponseException: 403, 404
+    """
+    permission_service = get_permission_service()
+    user = _get_valid_user()
+    if not permission_service.may_change_dataset(user, dataset):
+        raise ClientResponseException(
+            403,
+            f"Forbidden to access dataset '{dataset.id}'",
+        )
+
+
 def _get_chroms_and_validate(
     taxa_id: int, chrom: str, start: int | None, end: int | None
 ) -> dict[str, int]:
@@ -638,42 +668,6 @@ def parse_valid_chart_type(raw: str) -> TargetsFileType:
         raise ClientResponseException(
             422,
             f"Parameter 'chart' must be: {SunburstChartType.list()}",
-        )
-
-
-def get_user_with_write_permission_on_project(smid: str) -> User:
-    """Get a user if allowed to add datasets to the given project.
-
-    :param smid: Project identifier (SMID)
-    :raises ClientResponseException: 403, 404
-    :return: User
-    """
-    permission_service = get_permission_service()
-    user = _get_valid_user()
-    if permission_service.may_change_project(user, smid):
-        return user
-    else:
-        raise ClientResponseException(
-            403,
-            f"Forbidden to access project '{smid}'",
-        )
-
-
-def get_user_with_write_permission_on_dataset(dataset: Dataset) -> User:
-    """Get a user if allowed to modify a dataset.
-
-    :param smid: Dataset
-    :raises ClientResponseException: 403, 404
-    :return: User
-    """
-    permission_service = get_permission_service()
-    user = _get_valid_user()
-    if permission_service.may_change_dataset(user, dataset):
-        return user
-    else:
-        raise ClientResponseException(
-            403,
-            f"Forbidden to access dataset '{dataset.id}'",
         )
 
 

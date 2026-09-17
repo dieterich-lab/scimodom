@@ -17,7 +17,6 @@ from scimodom.utils.importer.bed_importer import (
     BedImportTooManyErrors,
     BedImportEmptyFile,
 )
-from scimodom.api.helpers import ClientResponseException
 
 
 @pytest.fixture
@@ -66,6 +65,19 @@ def dataset_mocks(mocker):
         "scimodom.api.management.get_dataset_service",
         return_value=mock_dataset_service,
     )
+    mock_file_service = mocker.Mock()
+    mock_file_service.check_tmp_upload_file_id.return_value = True
+    mock_file_service.open_tmp_upload_file_by_id = mocker.mock_open()
+    mocker.patch(
+        "scimodom.api.management.get_file_service",
+        return_value=mock_file_service,
+    )
+    mock_dataset_post_request = mocker.Mock()
+    mock_dataset_post_request.file_id = "test.bed"
+    mocker.patch(
+        "scimodom.api.management.DatasetPostRequest.model_validate_json",
+        return_value=mock_dataset_post_request,
+    )
     mocker.patch(
         "scimodom.api.management.parse_valid_rna_type",
         return_value="any",
@@ -74,21 +86,9 @@ def dataset_mocks(mocker):
         "scimodom.api.management.AnnotationService.get_annotation_source",
         return_value=mocker.Mock(),
     )
-    mock_dataset_post_request = mocker.Mock()
-    mock_dataset_post_request.file_id = "test.bed"
     mocker.patch(
-        "scimodom.api.management.DatasetPostRequest.model_validate_json",
-        return_value=mock_dataset_post_request,
-    )
-    mock_config = mocker.Mock()
-    mock_config.UPLOAD_PATH = "/tmp/uploads"
-    mocker.patch(
-        "scimodom.api.management.get_config",
-        return_value=mock_config,
-    )
-    mock_open = mocker.patch(
-        "scimodom.api.management.open",
-        mocker.mock_open(),
+        "scimodom.api.management.validate_project_write_permission",
+        return_value=None,
     )
     mock_sunburst_service = mocker.Mock()
     mock_sunburst_service.trigger_background_update.return_value = None
@@ -96,7 +96,7 @@ def dataset_mocks(mocker):
         "scimodom.api.management.get_sunburst_service",
         return_value=mock_sunburst_service,
     )
-    yield mock_open
+    yield mock_file_service
 
 
 def test_create_project_request(authenticated_client, mocker, project_mocks):
@@ -175,8 +175,7 @@ def test_add_dataset(authenticated_client, dataset_mocks):
 @pytest.mark.parametrize(
     "exception,http_status,msg,user_msg",
     [
-        (ClientResponseException(1, "2"), 1, "2", None),
-        (NotImplementedError, 501, "rna_type 'any' not implemented", None),
+        (ValueError, 422, "Rename the file and try to re-upload", None),
         (
             SelectionNotFoundError("Error"),
             404,
@@ -220,13 +219,26 @@ def test_add_dataset(authenticated_client, dataset_mocks):
 def test_add_dataset_fail(
     authenticated_client, dataset_mocks, exception, http_status, msg, user_msg
 ):
+    # use mock_file_service to parametrize side effects
+    # we don't care who raises the exception
     mock = dataset_mocks
-    mock.side_effect = exception
+    mock.open_tmp_upload_file_by_id.side_effect = exception
     result = authenticated_client.post("dataset", json={"field": "value"})
     assert result.status_code == http_status
     assert result.json["message"] == msg
     if user_msg is not None:
         assert result.json["user_message"] == user_msg
+
+
+def test_add_dataset_file_not_found(authenticated_client, dataset_mocks):
+    mock = dataset_mocks
+    mock.check_tmp_upload_file_id.return_value = False
+    result = authenticated_client.post("dataset", json={"field": "value"})
+    assert result.status_code == 404
+    assert result.json["message"] == "File 'test.bed' not found"
+    assert (
+        result.json["user_message"] == "Select the file again and/or try to re-upload"
+    )
 
 
 def test_add_dataset_unauthenticated(unauthenticated_client, mocker):
