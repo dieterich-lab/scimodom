@@ -58,6 +58,7 @@ test.each<{ searchBy: SearchBy; expectedUrl: string }>([
     mockedHandle.mockResolvedValueOnce(expectedResponse)
 
     const response = await getModifications(makeSearchParameters({ searchBy }), dialogState)
+
     expect(mockedGet).toHaveBeenCalledWith(
       expectedUrl,
       expect.objectContaining({ params: expect.objectContaining({ taxaId: 123, rnaType: 'WTS' }) })
@@ -96,6 +97,7 @@ test('getModifications maps SearchParameters into the request', async () => {
   })
 
   await getModifications(searchParameters, dialogState, 1, 10)
+
   expect(mockedGet.mock.calls[0][1]).toEqual({
     params: {
       modification: 7,
@@ -158,6 +160,7 @@ test("getTargetSites calls '/modification/target' and returns records", async ()
   const modification = makeModification()
 
   const records = await getTargetSites(modification, 'TARGET', dialogState)
+
   expect(mockedGet.mock.calls[0]).toEqual([
     '/modification/target/TARGET',
     {
@@ -204,6 +207,7 @@ test("getGenomicContext calls '/modification/genomic-context' and returns a stri
   const modification = makeModification()
 
   const context = await getGenomicContext(modification, 5, dialogState)
+
   expect(mockedGet.mock.calls[0]).toEqual([
     '/modification/genomic-context/5',
     {
@@ -267,6 +271,7 @@ test("getSiteWiseInfo calls '/modification/sitewise' and returns records", async
   const modification = makeModification()
 
   const records = await getSiteWiseInfo(modification, dialogState)
+
   expect(mockedGet.mock.calls[0]).toEqual([
     '/modification/sitewise',
     {

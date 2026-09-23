@@ -47,12 +47,10 @@ class SunburstService:
     def open_json(self, chart_type: SunburstChartType) -> TextIO:
         """Open a chart json data file.
 
-        Attempt to create file if does not exist.
+        Attempt to create a file if does not exist.
 
         :param chart_type: Chart type
-        :type chart_type: SunburstChartType
         :return: Opened file handle for reading
-        :rtype: TextIO
         """
         try:
             return self._file_service.open_sunburst_cache(chart_type.value)

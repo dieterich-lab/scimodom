@@ -48,7 +48,7 @@ def create_project_request():
     :param request: The incoming JSON request payload
     satisfying the ProjecTemplate model
     :statuscode 200: OK
-    :statuscode 400: Bad request - model validation failed
+    :statuscode 400: Bad request - model validation
     :statuscode 401: Missing Authorization Header
     :statuscode 500: Internal Server Error (or failed notification)
     """

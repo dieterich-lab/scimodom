@@ -25,7 +25,7 @@ from scimodom.api.helpers import (
     get_valid_selections,
     get_valid_coords,
     parse_valid_target_type,
-    parse_valid_chart_type,
+    parse_valid_sunburst_type,
     validate_chrom,
     validate_project_write_permission,
     validate_dataset_write_permission,
@@ -257,7 +257,7 @@ def test_get_non_negative_int(app):
     "param,http_status,message",
     [
         ("x", 400, "Parameter 'param' must be a valid integer (got: 'x')"),
-        ("-1", 422, "Parameter 'param' must be a non-negative integer"),
+        ("-1", 400, "Parameter 'param' must be a non-negative integer"),
     ],
 )
 def test_get_non_negative_int_fail(app, param, http_status, message):
@@ -274,7 +274,7 @@ def test_get_positive_int_fail(app):
         with pytest.raises(ClientResponseException) as exc:
             get_positive_int("param")
     returned_message, returned_status = exc.value.response_tuple
-    assert returned_status == 422
+    assert returned_status == 400
     assert returned_message["message"] == "Parameter 'param' must be a positive integer"
 
 
@@ -380,7 +380,10 @@ def test_get_valid_rna_type_fail(app, mocker):
     returned_message, returned_status = exc.value.response_tuple
     assert returned_status == 404
     assert returned_message["message"] == "rnaType 'type1' not found"
-    assert returned_message["user_message"] == "Use GET /rna-types for valid RNA types"
+    assert (
+        returned_message["user_message"]
+        == "Use GET /catalogs/rna-types for valid RNA types"
+    )
 
 
 def test_parse_valid_rna_type(mocker):
@@ -402,7 +405,7 @@ def test_get_valid_taxa_id_fail(app, mocker):
     returned_message, returned_status = exc.value.response_tuple
     assert returned_status == 404
     assert returned_message["message"] == "taxaId '10090' not found"
-    assert returned_message["user_message"] == "Use GET /taxa for valid taxa"
+    assert returned_message["user_message"] == "Use GET /catalogs/taxa for valid taxa"
 
 
 def test_parse_valid_taxa_id(mocker):
@@ -524,17 +527,18 @@ def test_parse_valid_target_type(mocker):
     assert returned_message["message"] == "Parameter 'target' must be: ['MIRNA', 'RBP']"
 
 
-def test_parse_valid_chart_type(mocker):
+def test_parse_valid_sunburst_type(mocker):
     mocker.patch(
         "scimodom.api.helpers.SunburstChartType",
         MockSunburstChartType,
     )
     with pytest.raises(ClientResponseException) as exc:
-        parse_valid_chart_type(" ")
+        parse_valid_sunburst_type(" ")
     returned_message, returned_status = exc.value.response_tuple
-    assert returned_status == 422
+    assert returned_status == 400
     assert (
-        returned_message["message"] == "Parameter 'chart' must be: ['search', 'browse']"
+        returned_message["message"]
+        == "Parameter 'sunburstType' must be: ['search', 'browse']"
     )
 
 

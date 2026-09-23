@@ -1,5 +1,5 @@
+import { type DialogStateStore } from '@/stores/DialogState'
 import { handleRequestWithErrorReporting, HTTP } from '@/services/API'
-import type { DialogStateStore } from '@/stores/DialogState'
 
 interface Assembly {
   id: number
@@ -11,8 +11,8 @@ async function getAssembliesByTaxaId(
   dialogState: DialogStateStore
 ): Promise<Assembly[]> {
   return await handleRequestWithErrorReporting<Assembly[]>(
-    HTTP.get(`/assemblies/${taxaId}`),
-    `Failed to load assemblies for Taxa ID ${taxaId}`,
+    HTTP.get(`/catalogs/taxa/${taxaId}/assemblies`),
+    `Failed to load Assembly: ${taxaId}`,
     dialogState
   )
 }

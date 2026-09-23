@@ -178,7 +178,7 @@ def get_non_negative_int(name: str) -> int:
     """Parse query for parameter, convert, and validate.
 
     :param name: Query parameter name
-    :raises ClientResponseException: 400, 422
+    :raises ClientResponseException: 400
     :return: The converted value in the given range
     """
     return _get_required_query_param(name, _non_negative_int, "integer")
@@ -188,7 +188,7 @@ def get_positive_int(name: str) -> int:
     """Parse query for parameter, convert, and validate.
 
     :param name: Query parameter name
-    :raises ClientResponseException: 400, 422
+    :raises ClientResponseException: 400
     :return: The converted value in the given range
     """
     return _get_required_query_param(name, _positive_int, "integer")
@@ -198,7 +198,7 @@ def get_optional_non_negative_int(name: str) -> int | None:
     """Parse query for optional parameter, convert, and validate.
 
     :param name: Query parameter name
-    :raises ClientResponseException: 400, 422
+    :raises ClientResponseException: 400
     :return: The converted value in the given range or None
     """
     return _get_optional_query_param(name, _non_negative_int, "integer")
@@ -208,17 +208,17 @@ def get_optional_positive_int(name: str) -> int | None:
     """Parse query for parameter, convert, and validate.
 
     :param name: Query parameter name
-    :raises ClientResponseException: 400, 422
+    :raises ClientResponseException: 400
     :return: The converted value in the given range or None
     """
     return _get_optional_query_param(name, _positive_int, "integer")
 
 
-def get_optional_str(name: str) -> int:
+def get_optional_str(name: str) -> str | None:
     """Parse query for parameter, convert, and validate.
 
     :param name: Query parameter name
-    :raises ClientResponseException: 400, 422
+    :raises ClientResponseException: 400
     :return: The converted value in the given range
     """
     return _get_optional_query_param(name)
@@ -229,7 +229,7 @@ def parse_non_negative_int(name: str, raw: str) -> int:
 
     :param name: Parameter name
     :param raw: Raw parameter value e.g. route parameter
-    :raises ClientResponseException: 400, 422
+    :raises ClientResponseException: 400
     :return: The converted value in the given range
     """
     return _parse_param(name, raw, _non_negative_int, "integer")
@@ -245,7 +245,7 @@ def _non_negative_int(raw: str, name: str) -> int:
     value = int(raw)
     if value < 0:
         raise ClientResponseException(
-            422, f"Parameter '{name}' must be a non-negative integer"
+            400, f"Parameter '{name}' must be a non-negative integer"
         )
     return value
 
@@ -254,7 +254,7 @@ def _positive_int(raw: str, name: str) -> int:
     value = int(raw)
     if value <= 0:
         raise ClientResponseException(
-            422, f"Parameter '{name}' must be a positive integer"
+            400, f"Parameter '{name}' must be a positive integer"
         )
     return value
 
@@ -264,7 +264,7 @@ def _convert_param(
     raw: str,
     converter: Callable[[str, str], T],
     type_name: str | None,
-) -> Any:
+) -> T:
     try:
         return converter(raw, name)
     except (ValueError, TypeError):
@@ -397,7 +397,7 @@ def _validate_rna_type(rna_type: str) -> None:
         raise ClientResponseException(
             404,
             f"rnaType '{rna_type}' not found",
-            "Use GET /rna-types for valid RNA types",
+            "Use GET /catalogs/rna-types for valid RNA types",
         )
 
 
@@ -408,7 +408,7 @@ def _validate_taxa_id(taxa_id: int) -> None:
         raise ClientResponseException(
             404,
             f"taxaId '{taxa_id}' not found",
-            "Use GET /taxa for valid taxa",
+            "Use GET /catalogs/taxa for valid taxa",
         )
 
 
@@ -536,7 +536,7 @@ def parse_valid_rna_type(raw: str) -> int:
 def get_valid_taxa_id() -> int:
     """Parse query for taxon identifier and validate.
 
-    :raises ClientResponseException: 400, 404, 422
+    :raises ClientResponseException: 400, 404
     :return: The validated taxon identifier
     """
     taxa_id = get_positive_int("taxaId")
@@ -548,7 +548,7 @@ def parse_valid_taxa_id(raw: str) -> int:
     """Parse raw taxon identifier and validate.
 
     :param raw: Route parameter for taxon identifier
-    :raises ClientResponseException: 400, 404, 422
+    :raises ClientResponseException: 400, 404
     :return: The validated taxon identifier
     """
     taxa_id = _parse_param("taxa_id", raw, _positive_int, "integer")
@@ -655,20 +655,20 @@ def parse_valid_target_type(raw: str) -> TargetsFileType:
         )
 
 
-def parse_valid_chart_type(raw: str) -> TargetsFileType:
-    """Parse raw chart and return chart type value.
+def parse_valid_sunburst_type(raw: str) -> SunburstChartType:
+    """Parse raw chart type and return chart type value.
 
-    :raises ClientResponseException: 400, 422
-    :return: The value corresponding to chart
+    :raises ClientResponseException: 400
+    :return: The value corresponding to raw chart type
     """
-    chart = _parse_param("chart", raw)
+    sunburst_type = _parse_param("sunburstType", raw)
     try:
-        return SunburstChartType[chart]
-    except KeyError:
+        return SunburstChartType[sunburst_type]
+    except KeyError as exc:
         raise ClientResponseException(
-            422,
-            f"Parameter 'chart' must be: {SunburstChartType.list()}",
-        )
+            400,
+            f"Parameter 'sunburstType' must be: {SunburstChartType.list()}",
+        ) from exc
 
 
 # HERE >>>

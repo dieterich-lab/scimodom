@@ -14,10 +14,10 @@ interface Taxa {
 class TaxaCache extends Cache<Taxa[]> {
   async getPromise(): Promise<Taxa[]> {
     try {
-      const response = await HTTP.get('/taxa')
+      const response = await HTTP.get('/catalogs/taxa')
       return response.data as Taxa[]
     } catch (err) {
-      console.log(`Failed to fetch Taxa: ${err}`)
+      console.log(`Failed to fetch /catalogs/taxa: ${err}`)
       throw err
     }
   }
