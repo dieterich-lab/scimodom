@@ -8,7 +8,7 @@ interface BioTypesResponse {
 async function getBioTypes(rnaType: string, dialogState: DialogStateStore): Promise<string[]> {
   const raw = await handleRequestWithErrorReporting<BioTypesResponse>(
     HTTP.get(`/catalogs/rna-types/${rnaType}/biotypes`),
-    `Failed to load BiotypesResponse: ${rnaType})`,
+    `Failed to load BiotypesResponse: ${rnaType}`,
     dialogState
   )
   return raw.biotypes

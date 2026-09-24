@@ -6,8 +6,8 @@ async function getGenesForSelectionIds(
   dialogState: DialogStateStore
 ): Promise<string[]> {
   const raw = await handleRequestWithErrorReporting<string[]>(
-    HTTP.get('/genes', { params: { selection: selectionIds } }),
-    'Failed to load features',
+    HTTP.get('/catalogs/genes', { params: { selection: selectionIds } }),
+    'Failed to load genes',
     dialogState
   )
   return raw.sort()

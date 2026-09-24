@@ -15,7 +15,7 @@ import FormTextArea from '@/components/ui/FormTextArea.vue'
 import { type RnaType } from '@/services/rnaType'
 import { type ProjectMetaData, type ProjectOrganism } from '@/services/management'
 import { type Modomics } from '@/services/modomics'
-import { type DetectionMethod } from '@/services/detection_method'
+import { type DetectionMethod } from '@/services/detectionMethod'
 import { type Taxa } from '@/services/taxa'
 import { type Assembly } from '@/services/assembly'
 

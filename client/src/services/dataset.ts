@@ -24,10 +24,10 @@ interface Dataset {
 class AllDatasetCache extends Cache<Dataset[]> {
   async getPromise(): Promise<Dataset[]> {
     try {
-      const response = await HTTP.get('/dataset/list_all')
+      const response = await HTTP.get('/datasets')
       return response.data as Dataset[]
     } catch (err) {
-      console.log(`Failed to fetch all datasets: ${err}`)
+      console.log(`Failed to fetch datasets: ${err}`)
       throw err
     }
   }
@@ -36,10 +36,10 @@ class AllDatasetCache extends Cache<Dataset[]> {
 class MyDatasetCache extends Cache<Dataset[]> {
   async getPromise(): Promise<Dataset[]> {
     try {
-      const response = await HTTPSecure.get('/dataset/list_mine')
+      const response = await HTTPSecure.get('/users/me/datasets')
       return response.data as Dataset[]
     } catch (err) {
-      console.log(`Failed to fetch MY datasets: ${err}`)
+      console.log(`Failed to fetch my datasets: ${err}`)
       throw err
     }
   }

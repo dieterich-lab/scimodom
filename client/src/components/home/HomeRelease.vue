@@ -9,7 +9,7 @@ const datasets = ref()
 
 // clean this, and fetch annotation (DB) release info
 onMounted(() => {
-  HTTP.get('/release')
+  HTTP.get('/releases')
     .then(function (response) {
       sites.value = response.data.sites
       datasets.value = response.data.datasets

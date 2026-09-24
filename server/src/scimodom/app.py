@@ -14,6 +14,7 @@ from scimodom.services.url import (
     ANALYTICS_API_ROUTE,
     CATALOG_API_ROUTE,
     DATASET_API_ROUTE,
+    DATASET_COMPARISON_API_ROUTE,
     MODIFICATION_API_ROUTE,
     PROJECT_API_ROUTE,
     RELEASE_API_ROUTE,
@@ -45,10 +46,13 @@ def create_app():
     # from scimodom.api.utilities import api
     # from scimodom.api.bam_file import bam_file_api
     from scimodom.api.dataset import dataset_api
+    from scimodom.api.comparison import dataset_comparison_api
 
     # from scimodom.api.management import management_api
     from scimodom.api.modification import modification_api
     from scimodom.api.project import project_api
+    from scimodom.api.release import release_api
+    from scimodom.api.upload import upload_api
 
     # from scimodom.api.transfer import transfer_api
     from scimodom.api.user import user_api
@@ -59,10 +63,15 @@ def create_app():
     # app.register_blueprint(api, url_prefix=f"/{API_PREFIX}")
     # app.register_blueprint(bam_file_api, url_prefix=BAM_FILE_API_ROUTE)
     app.register_blueprint(dataset_api, url_prefix=DATASET_API_ROUTE)
+    app.register_blueprint(
+        dataset_comparison_api, url_prefix=DATASET_COMPARISON_API_ROUTE
+    )
     # app.register_blueprint(management_api, url_prefix=DATA_MANAGEMENT_API_ROUTE)
     app.register_blueprint(modification_api, url_prefix=MODIFICATION_API_ROUTE)
     app.register_blueprint(project_api, url_prefix=PROJECT_API_ROUTE)
     # app.register_blueprint(transfer_api, url_prefix=TRANSFER_API_ROUTE)
+    app.register_blueprint(release_api, url_prefix=RELEASE_API_ROUTE)
+    app.register_blueprint(upload_api, url_prefix=UPLOAD_API_ROUTE)
     app.register_blueprint(user_api, url_prefix=USER_API_ROUTE)
 
     # CLI

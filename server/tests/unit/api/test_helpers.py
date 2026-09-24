@@ -352,6 +352,43 @@ def test_validate_chrom_fail(mocker, chrom, start, end, http_status, message):
     assert returned_message["message"] == message
 
 
+def test_validate_project_write_permission(mock_user_services):
+    user, _, mock_permission_service = mock_user_services
+    validate_project_write_permission("SMID")
+    mock_permission_service.may_change_project.assert_called_once_with(
+        user,
+        "SMID",
+    )
+
+
+def test_validate_permission_on_project_forbidden(mock_user_services):
+    _, _, mock_permission_service = mock_user_services
+    mock_permission_service.may_change_project.return_value = False
+    with pytest.raises(ClientResponseException) as exc:
+        validate_project_write_permission("SMID")
+    returned_message, returned_status = exc.value.response_tuple
+    assert returned_status == 403
+    assert returned_message["message"] == "Forbidden to access project 'SMID'"
+
+
+def test_validate_project_write_permission_not_found(mock_user_services):
+    _, mock_user_service, _ = mock_user_services
+    mock_user_service.get_user_by_email.side_effect = NoSuchUser
+    with pytest.raises(ClientResponseException) as exc:
+        validate_project_write_permission("SMID")
+    returned_message, returned_status = exc.value.response_tuple
+    assert returned_status == 404
+    assert returned_message["message"] == "User 'user@example.com' not found"
+
+
+def test_validate_dataset_write_permission_forbidden(mock_user_services, dataset):
+    with pytest.raises(ClientResponseException) as exc:
+        validate_dataset_write_permission(dataset[0])
+    returned_message, returned_status = exc.value.response_tuple
+    assert returned_status == 403
+    assert returned_message["message"] == "Forbidden to access dataset 'dataset_id01'"
+
+
 # tests: helpers
 
 
@@ -429,7 +466,7 @@ def test_get_valid_biotypes_fail(app, mocker):
     assert returned_message["message"] == "biotypes 'biotype3' not found"
     assert (
         returned_message["user_message"]
-        == "Use GET biotypes/<rnaType> for valid biotypes"
+        == "Use GET /catalogs/rna-types/<rnaType>/biotypes for valid biotypes"
     )
 
 
@@ -441,7 +478,7 @@ def test_get_valid_biotypes_fail(app, mocker):
             "Type2",
             404,
             "features 'utr' not found",
-            "Use GET features/<rnaType> for valid features",
+            "Use GET /catalogs/rna-types/<rnaType>/features for valid features",
         ),
     ],
 )
@@ -467,7 +504,7 @@ def test_get_valid_features_fail(
             404,
             ("(modification, organism, technology) '(2, 3, 1)' not found."),
             (
-                "Use GET selections for valid combinations of "
+                "Use GET /catalogs/selections for valid combinations of "
                 "modification, organism, and technology identifiers"
             ),
         ),
@@ -497,7 +534,7 @@ def test_get_valid_coords_fail(app, mock_services):
         with pytest.raises(ClientResponseException) as exc:
             get_valid_coords()
     returned_message, returned_status = exc.value.response_tuple
-    assert returned_status == 422
+    assert returned_status == 400
     assert returned_message["message"] == "Parameter 'strand' must be +, -, or ."
 
 
@@ -523,7 +560,7 @@ def test_parse_valid_target_type(mocker):
     with pytest.raises(ClientResponseException) as exc:
         parse_valid_target_type(" ")
     returned_message, returned_status = exc.value.response_tuple
-    assert returned_status == 422
+    assert returned_status == 400
     assert returned_message["message"] == "Parameter 'target' must be: ['MIRNA', 'RBP']"
 
 
@@ -540,43 +577,6 @@ def test_parse_valid_sunburst_type(mocker):
         returned_message["message"]
         == "Parameter 'sunburstType' must be: ['search', 'browse']"
     )
-
-
-def test_validate_project_write_permission(mock_user_services):
-    user, _, mock_permission_service = mock_user_services
-    validate_project_write_permission("SMID")
-    mock_permission_service.may_change_project.assert_called_once_with(
-        user,
-        "SMID",
-    )
-
-
-def test_validate_permission_on_project_forbidden(mock_user_services):
-    _, _, mock_permission_service = mock_user_services
-    mock_permission_service.may_change_project.return_value = False
-    with pytest.raises(ClientResponseException) as exc:
-        validate_project_write_permission("SMID")
-    returned_message, returned_status = exc.value.response_tuple
-    assert returned_status == 403
-    assert returned_message["message"] == "Forbidden to access project 'SMID'"
-
-
-def test_validate_project_write_permission_not_found(mock_user_services):
-    _, mock_user_service, _ = mock_user_services
-    mock_user_service.get_user_by_email.side_effect = NoSuchUser
-    with pytest.raises(ClientResponseException) as exc:
-        validate_project_write_permission("SMID")
-    returned_message, returned_status = exc.value.response_tuple
-    assert returned_status == 404
-    assert returned_message["message"] == "User 'user@example.com' not found"
-
-
-def test_validate_dataset_write_permission_forbidden(mock_user_services, dataset):
-    with pytest.raises(ClientResponseException) as exc:
-        validate_dataset_write_permission(dataset[0])
-    returned_message, returned_status = exc.value.response_tuple
-    assert returned_status == 403
-    assert returned_message["message"] == "Forbidden to access dataset 'dataset_id01'"
 
 
 # HERE >>>

@@ -3,19 +3,16 @@ import { HTTP } from '@/services/API'
 
 interface Modomics {
   id: string
-  reference_id: number
-  name: string
-  short_name: string
-  moiety: string
+  modomics_sname: string
 }
 
 class ModomicsCache extends Cache<Modomics[]> {
   async getPromise(): Promise<Modomics[]> {
     try {
-      const response = await HTTP.get('/modomics')
+      const response = await HTTP.get('/catalogs/modomics')
       return response.data as Modomics[]
     } catch (err) {
-      console.log(`Failed to fetch all Modomics: ${err}`)
+      console.log(`Failed to fetch /catalogs/modomics: ${err}`)
       throw err
     }
   }

@@ -2,31 +2,38 @@ import logging
 from dataclasses import dataclass
 from typing import Generator, Iterable, Sequence, TextIO
 
-from flask import Blueprint
+from flask import Blueprint, request
 from flask_cors import cross_origin
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from scimodom.api.helpers import (
     ClientResponseException,
+    create_error_response,
     get_valid_dataset_id_list_from_request_parameter,
     get_valid_tmp_file_id_from_request_parameter,
     get_valid_remote_file_name_from_request_parameter,
     get_valid_boolean_from_request_parameter,
     get_valid_taxa_id,
     get_response_from_pydantic_object,
+    parse_valid_rna_type,
+    validate_project_write_permission,
 )
+from scimodom.services.annotation import AnnotationService
 from scimodom.services.assembly import LiftOverError
 from scimodom.services.bedtools import get_bedtools_service, BedToolsService
+from scimodom.services.data import get_data_service
 from scimodom.services.dataset import get_dataset_service
 from scimodom.services.file import get_file_service
-from scimodom.services.data import get_data_service
+from scimodom.services.sunburst import get_sunburst_service
 from scimodom.services.user import get_user_service
 from scimodom.services.validator import (
     get_validator_service,
     SpecsError,
     DatasetHeaderError,
     DatasetImportError,
+    SelectionNotFoundError,
+    DatasetExistsError,
 )
 from scimodom.utils.importer.bed_importer import (
     Bed6Importer,
@@ -42,6 +49,7 @@ from scimodom.utils.dtos.bedtools import (
     SubtractRecord,
     ComparisonRecord,
 )
+from scimodom.utils.dtos.dataset import DatasetPostRequest
 from scimodom.utils.specs.enums import Identifiers
 
 logger = logging.getLogger(__name__)
@@ -49,29 +57,36 @@ logger = logging.getLogger(__name__)
 dataset_api = Blueprint("dataset_api", __name__)
 
 
-class IntersectResponse(BaseModel):
-    """DTO for intersect records."""
+# only in: ../client/src/components/browse/BrowseView.vue ???
+# from flask import Blueprint, Response, stream_with_context, request
+# from scimodom.services.exporter import get_exporter, NoSuchDataset
+# @transfer_api.route("/dataset/<dataset_id>", methods=["GET"])
+# @cross_origin(supports_credentials=True)
+# def export_dataset(dataset_id: str):
+#     """Export a dataset in bedRMod format.
 
-    records: list[IntersectRecord]
+# :param dataset_id: Dataset identifier (EUFID)
+# :statuscode 200: OK
+# :statuscode 404: Dataset not found
+# :statuscode 500: Internal Server Error
+# """
+# exporter = get_exporter()
+# try:
+#     file_name = exporter.get_dataset_file_name(dataset_id)
+#     return Response(
+#         stream_with_context(exporter.generate_dataset(dataset_id)),
+#         mimetype="text/csv",
+#         headers={"Content-Disposition": f'attachment; filename="{file_name}"'},
+#     )
+# except NoSuchDataset as exc:
+#     return create_error_response(404, str(exc))
 
 
-class ClosestResponse(BaseModel):
-    """DTO for closest records."""
+@dataset_api.get("/datasets")
+def get_datasets():
+    """Get all datasets.
 
-    records: list[ClosestRecord]
-
-
-class SubtractResponse(BaseModel):
-    """DTO for subtract records."""
-
-    records: list[SubtractRecord]
-
-
-@dataset_api.route("/list_all", methods=["GET"])
-def list_all():
-    """Get all dataset.
-
-    :returns: JSON array with all available dataset
+    :return: JSON array with all available dataset
     and related metadata.
     :statuscode 200: OK
     :statuscode 500: Internal Server Error
@@ -80,18 +95,49 @@ def list_all():
     return dataset_service.get_datasets()
 
 
-@dataset_api.route("/list_mine", methods=["GET"])
+@dataset_api.post("/datasets")
 @jwt_required()
-def list_mine():
+def add_dataset():
+    """Add new dataset to a project and import data.
+
+    This function looks for a dataset file under UPLOAD_PATH.
+
+    :param request: The incoming JSON request payload
+    satisfying the DatasetPostRequest model
+    :statuscode 200: OK
+    :statuscode 400: Bad request - model validation
+    :statuscode 401: Missing Authorization Header
+    :statuscode 403: Forbidden - project permission
+    :statuscode 404: Not found - RNA type or selection
+    :statuscode 422: Unprocessable Content - data validation,
+    not enough segments, or signature verification failed
+    :statuscode 500: Internal Server Error (or failed liftover)
+    :statuscode 501: Not Implemented - RNA type annotation
+    """
+    try:
+        dataset_form = DatasetPostRequest.model_validate_json(request.get_data())
+        validate_project_write_permission(dataset_form.smid)
+        _import_dataset(dataset_form)
+    except ValidationError:
+        return create_error_response(
+            400,
+            "Request body validation: malformed and/or bad/missing fields",
+        )
+    except ClientResponseException as exc:
+        return exc.response_tuple
+
+    sunburst_service = get_sunburst_service()
+    sunburst_service.trigger_background_update()
+    return {"message": "OK"}, 200
+
+
+@dataset_api.get("/users/me/datasets")
+@jwt_required()
+def get_my_datasets():
     """Get dataset associated with user.
 
-    This endpoint is restricted to authenticated users.
-    A call to "get_user_by_email" may raise a "NoSuchUser"
-    exception, but this should not happen in practice.
-    If it does, it will be caught by the 500.
-
     :param header: The request header with current token.
-    :returns: JSON array with all available dataset
+    :return: JSON array with all available dataset
     and related metadata.
     :statuscode 200: OK
     :statuscode 401: Unauthorized (expired token, missing header)
@@ -106,289 +152,87 @@ def list_mine():
     return dataset_service.get_datasets(user)
 
 
-@dataset_api.route("/intersect", methods=["GET"])
-@cross_origin(supports_credentials=True)
-def intersect():
-    """Intersect two or more dataset.
-
-    A "NoDataRecords" can be raised, but this
-    should not happen in practice. If it does,
-    it will be caught by the 500.
-
-    :param request: The request with required
-    and optional parameters.
-    :returns: JSON object with JSON array of
-    intersected records.
-    :statuscode 200: OK
-    :statuscode 400: Bad request (malformed or missing parameters,
-    invalid identifiers, too many dataset)
-    :statuscode 404: Dataset, file, or taxon not found
-    :statuscode 422: Unprocessable Content (empty file or
-    too many skipped records)
-    :statuscode 500: Internal Server Error (e.g. failed liftover)
-    """
+def _import_dataset(dataset_form):
+    file_service = get_file_service()
     try:
-        with _CompareContext() as ctx:
-            records = ctx.bedtools_service.intersect_comparison_records(
-                ctx.a_records, ctx.b_records_list, is_strand=ctx.is_strand
+        # MS14
+        rna_type = parse_valid_rna_type(dataset_form.rna_type)
+        annotation_source = AnnotationService.get_annotation_source(rna_type)
+
+        file_id = dataset_form.file_id
+        if not file_service.check_tmp_upload_file_id(file_id):
+            raise ClientResponseException(
+                404,
+                f"File '{file_id}' not found",
+                "Select the file again and/or try to re-upload",
             )
-            return get_response_from_pydantic_object(IntersectResponse(records=records))
-    except ClientResponseException as e:
-        return e.response_tuple
+    except NotImplementedError:
+        raise ClientResponseException(
+            501,
+            f"rna_type '{rna_type}' not implemented",
+        )
 
-
-@dataset_api.route("/closest", methods=["GET"])
-@cross_origin(supports_credentials=True)
-def closest():
-    """Intersect (non-overlap) two or more dataset.
-
-    A "NoDataRecords" can be raised, but this
-    should not happen in practice. If it does,
-    it will be caught by the 500.
-
-    :param request: The request with required
-    and optional parameters.
-    :returns: JSON object with JSON array of
-    intersected (non-overlap) records.
-    :statuscode 200: OK
-    :statuscode 400: Bad request (malformed or missing parameters,
-    invalid identifiers, too many dataset)
-    :statuscode 404: Dataset, file, or taxon not found
-    :statuscode 422: Unprocessable Content (empty file or
-    too many skipped records)
-    :statuscode 500: Internal Server Error (e.g. failed liftover)
-    """
+    dataset_service = get_dataset_service()
     try:
-        with _CompareContext() as ctx:
-            records = ctx.bedtools_service.closest_comparison_records(
-                ctx.a_records, ctx.b_records_list, is_strand=ctx.is_strand
+        with file_service.open_tmp_upload_file_by_id(file_id) as fh:
+            dataset_service.import_dataset(
+                fh,
+                source=file_id,
+                smid=dataset_form.smid,
+                title=dataset_form.title,
+                assembly_id=dataset_form.assembly_id,
+                modification_ids=dataset_form.modification_id,
+                organism_id=dataset_form.organism_id,
+                technology_id=dataset_form.technology_id,
+                annotation_source=annotation_source,
             )
-            return get_response_from_pydantic_object(ClosestResponse(records=records))
-    except ClientResponseException as e:
-        return e.response_tuple
-
-
-@dataset_api.route("/subtract", methods=["GET"])
-@cross_origin(supports_credentials=True)
-def subtract():
-    """Subtract two or more dataset.
-
-    A "NoDataRecords" can be raised, but this
-    should not happen in practice. If it does,
-    it will be caught by the 500.
-
-    :param request: The request with required
-    and optional parameters.
-    :returns: JSON object with JSON array of
-    subtracted records.
-    :statuscode 200: OK
-    :statuscode 400: Bad request (malformed or missing parameters,
-    invalid identifiers, too many dataset)
-    :statuscode 404: Dataset, file, or taxon not found
-    :statuscode 422: Unprocessable Content (empty file or
-    too many skipped records)
-    :statuscode 500: Internal Server Error (e.g. failed liftover)
-    """
-    try:
-        with _CompareContext() as ctx:
-            records = ctx.bedtools_service.subtract_comparison_records(
-                ctx.a_records, ctx.b_records_list, is_strand=ctx.is_strand
-            )
-            return get_response_from_pydantic_object(SubtractResponse(records=records))
-    except ClientResponseException as e:
-        return e.response_tuple
-
-
-class _CompareContext:
-    @dataclass
-    class Ctx:
-        bedtools_service: BedToolsService
-        a_records: Iterable[ComparisonRecord]
-        b_records_list: Sequence[Iterable[ComparisonRecord]]
-        is_strand: bool
-
-    def __init__(self):
-        self._reference_ids = get_valid_dataset_id_list_from_request_parameter(
-            "reference"
+    except SelectionNotFoundError as exc:
+        raise ClientResponseException(
+            404,
+            str(exc),
+            "Invalid combination of modification(s), organism, and/or technology.\n"
+            "Modify the request form to match a valid selection for this dataset.\n"
+            "Use GET /selections for valid combinations.",
         )
-        self._comparison_ids = get_valid_dataset_id_list_from_request_parameter(
-            "comparison"
+    except ValueError:
+        raise ClientResponseException(
+            422,
+            "Rename the file and try to re-upload",
         )
-        self._upload_id = get_valid_tmp_file_id_from_request_parameter(
-            "upload", is_optional=True
+    except DatasetImportError as exc:
+        raise ClientResponseException(
+            422,
+            str(exc),
+            "Modify the request form and re-submit",
         )
-        self._upload_name = get_valid_remote_file_name_from_request_parameter(
-            "upload_name"
+    except DatasetHeaderError as exc:
+        raise ClientResponseException(
+            422,
+            str(exc),
+            "The request form must agree with the file header.\n"
+            "Modify the request form or select the correct dataset to upload.",
         )
-        self._is_strand = get_valid_boolean_from_request_parameter(
-            "strand", default=True
+    except DatasetExistsError as exc:
+        raise ClientResponseException(422, str(exc))
+    except SpecsError as exc:
+        raise ClientResponseException(
+            422,
+            str(exc),
+            "Invalid bedRMod format specifications.\n"
+            "Modify the file header to conform to the latest specifications.",
         )
-        self._is_euf = get_valid_boolean_from_request_parameter("euf", default=False)
-        self._taxa_id: int | None = None
-        if self._is_euf:
-            try:
-                self._taxa_id = get_valid_taxa_id()
-            except ClientResponseException as exc:
-                response, status_code = exc.response_tuple
-                message = response["message"]
-                raise ClientResponseException(
-                    status_code,
-                    message,
-                    f"Request needs a valid 'taxaId' when 'euf=true': {message}",
-                ) from exc
-        self._tmp_file_handle: TextIO | None = None
-
-        if self._upload_id is None and len(self._comparison_ids) == 0:
-            raise ClientResponseException(
-                400, "Request is missing 'upload' or 'comparison'"
-            )
-        if self._upload_id is not None and len(self._comparison_ids) > 0:
-            raise ClientResponseException(
-                400, "Request can only handle 'upload' or 'comparison', but not both"
-            )
-        self._data_service = get_data_service()
-        self._validator_service = get_validator_service()
-
-    def __enter__(self) -> Ctx:
-        if self._upload_id is None:
-            # The MySQL driver does not allow to have multiple queries run at once;
-            # we have to buffer the b_records in memory
-            b_records_list = [
-                list(self._get_comparison_records_from_db([dataset_id]))
-                for dataset_id in self._comparison_ids
-            ]
-        else:
-            file_service = get_file_service()
-            try:
-                self._tmp_file_handle = file_service.open_tmp_upload_file_by_id(
-                    self._upload_id
-                )
-            except FileNotFoundError as exc:
-                raise ClientResponseException(
-                    404,
-                    "Upload file ID not found"
-                    "File not found - Select the file again and try to re-upload",
-                ) from exc
-            b_records_list = [list(self._get_comparison_records_from_file())]
-
-        a_records = self._get_comparison_records_from_db(self._reference_ids)
-        return self.Ctx(
-            bedtools_service=get_bedtools_service(),
-            a_records=a_records,
-            b_records_list=b_records_list,
-            is_strand=self._is_strand,
+    except BedImportEmptyFile as exc:
+        raise ClientResponseException(
+            422, str(exc), "File upload failed. The file is empty."
         )
-
-    def _get_comparison_records_from_db(
-        self, dataset_ids
-    ) -> Generator[ComparisonRecord, None, None]:
-        for dataset_id in dataset_ids:
-            for data in self._data_service.get_by_dataset(dataset_id):
-                yield ComparisonRecord(
-                    chrom=data.chrom,
-                    start=data.start,
-                    end=data.end,
-                    name=data.name,
-                    score=data.score,
-                    strand=data.strand,
-                    eufid=data.dataset_id,
-                    coverage=data.coverage,
-                    frequency=data.frequency,
-                )
-
-    def _get_comparison_records_from_file(
-        self,
-    ) -> Generator[ComparisonRecord, None, None]:
-        generator, context = self._import_with_context()
-        try:
-            for record in generator:
-                raw_record = record.model_dump()
-                yield ComparisonRecord(**raw_record, **context)
-        except BedImportEmptyFile as exc:
-            raise ClientResponseException(
-                422, str(exc), "File upload failed. The file is empty."
-            ) from exc
-        except BedImportTooManyErrors as exc:
-            raise ClientResponseException(
-                422,
-                str(exc),
-                f"File upload failed. Too many skipped records:\n{exc.error_summary}\n"
-                "Modify the file to conform to the latest bedRMod format specifications or\n"
-                "try toggling the BED6 option to ignore validation.",
-            ) from exc
-        except LiftOverError as exc:
-            raise ClientResponseException(
-                500, str(exc), "Liftover failed. Contact the system administrator."
-            ) from exc
-        except Exception as exc:
-            logger.error(f"Import failed (Comparison 2): {str(exc)}")
-            message = (
-                "Server was unable to process file import request.\n"
-                "Contact the system administrator."
-            )
-            raise ClientResponseException(500, message) from exc
-
-    def _import_with_context(
-        self,
-    ) -> tuple[Generator[EufRecord | Bed6Record, None, None], dict[str, str | int]]:
-        local_context: dict[str, str | int] = {
-            "eufid": "UPLOAD".ljust(Identifiers.EUFID.length)
-        }
-        if self._is_euf:
-            try:
-                euf_importer = EufImporter(
-                    stream=self._tmp_file_handle, source=self._upload_name
-                )
-                self._validator_service.create_read_only_import_context(
-                    euf_importer, self._taxa_id
-                )
-                context = self._validator_service.get_read_only_context()
-                if context.is_liftover:
-                    local_context["eufid"] = "LIFTED".ljust(Identifiers.EUFID.length)
-                return (
-                    self._validator_service.get_validated_records(
-                        euf_importer, context
-                    ),
-                    local_context,
-                )
-            except SpecsError as exc:
-                message = str(exc)
-                raise ClientResponseException(
-                    422,
-                    message,
-                    f"Invalid bedRMod format specifications: {message}\n"
-                    "Modify the file and start again, or toggle BED6 on "
-                    "file selection to ignore header.",
-                ) from exc
-            except DatasetHeaderError as exc:
-                message = str(exc)
-                raise ClientResponseException(
-                    422,
-                    message,
-                    f"Inconsistent header: {message}\n"
-                    "Select reference dataset for the correct organism.",
-                ) from exc
-            except DatasetImportError as exc:
-                message = str(exc)
-                raise ClientResponseException(
-                    422,
-                    message,
-                    f"{message}\nValidate the file header for inconsistencies.",
-                ) from exc
-            except Exception as exc:
-                logger.error(f"Import failed (Comparison 1): {str(exc)}")
-                message = (
-                    "Server was unable to process file import request.\n"
-                    "Contact the system administrator."
-                )
-                raise ClientResponseException(500, message) from exc
-        else:
-            bed6_importer = Bed6Importer(
-                stream=self._tmp_file_handle, source=self._upload_name
-            )
-            local_context = {**local_context, "frequency": 1, "coverage": 0}
-            return bed6_importer.parse(), local_context
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        if self._tmp_file_handle is not None:
-            self._tmp_file_handle.close()
+    except BedImportTooManyErrors as exc:
+        raise ClientResponseException(
+            422,
+            str(exc.error_summary),
+            "Invalid bedRMod format specifications.\n"
+            "Consult the documentation (Dataset upload errors) for more information.",
+        )
+    except LiftOverError as exc:
+        raise ClientResponseException(
+            500, str(exc), "Liftover failed. Contact the system administrator."
+        )

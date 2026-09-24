@@ -2,7 +2,7 @@
 import FileUpload from 'primevue/fileupload'
 import InputText, { type InputTextPassThroughOptions } from 'primevue/inputtext'
 import type { FileUploadUploaderEvent } from 'primevue/fileupload'
-import { postTemporaryFile } from '@/services/transfer'
+import { postTemporaryFile } from '@/services/upload'
 import { useDialogState } from '@/stores/DialogState'
 import { GENERIC_FIELD_DEFAULTS, type GenericFieldProps } from '@/utils/ui_style'
 import { ref } from 'vue'

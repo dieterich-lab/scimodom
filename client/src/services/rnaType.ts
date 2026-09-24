@@ -1,5 +1,5 @@
-import { HTTP } from '@/services/API'
 import { Cache } from '@/utils/cache'
+import { HTTP } from '@/services/API'
 
 interface RnaType {
   id: string

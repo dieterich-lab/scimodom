@@ -27,10 +27,10 @@ interface Selection extends ModificationType, Cto, Technology {
 class SelectionCache extends Cache<Selection[]> {
   async getPromise(): Promise<Selection[]> {
     try {
-      const response = await HTTP.get('/selections')
+      const response = await HTTP.get('/catalogs/selections')
       return response.data as Selection[]
     } catch (err) {
-      console.log(`Failed to fetch selections: ${err}`)
+      console.log(`Failed to fetch /catalogs/selections: ${err}`)
       throw err
     }
   }
@@ -132,15 +132,13 @@ async function getSelectionsByTaxaId(taxaId: number): Promise<Selection[]> {
 }
 
 async function getTechnologiesByIds(technologyIds: number[]): Promise<Technology[]> {
-  const canidates = (await technologySelectionCache.getData()).filter((x) =>
+  const candidates = (await technologySelectionCache.getData()).filter((x) =>
     technologyIds.includes(x.technology_id)
   )
-  if (canidates.length > 0) {
-    return canidates
+  if (candidates.length > 0) {
+    return candidates
   } else {
-    throw Error(
-      `Wanted technologies with IDs ${technologyIds} but got 0! That should never happen!`
-    )
+    throw Error(`Technologies '${technologyIds}' not found`)
   }
 }
 

@@ -1,4 +1,3 @@
-from pathlib import Path
 import re
 from typing import Optional, Any, TypeVar
 from collections.abc import Callable
@@ -24,61 +23,8 @@ from scimodom.utils.specs.enums import (
 )
 
 """
-This module supplies a number of helper functions to be used in various
-API routes.
-
-Incoming parameters validation
-
-Each function gets a piece of unsafe data and returns an entity fetched
-from the database or a cleaned, validated version of the input data.
-
-A ClientResponseException is raised, which contains a data field
-response_tuple, meant to be returned by a function handling a flask route.
-This tuple will usually contain a dict, which will be turned by Flask
-into a JSON document to form the body of the response and a HTTP status
-code - usually a 4xx. The response_tuple contains two items:
-
-* A dict with the following keys:
-  - message (mandatory): A short technical error message, which states
-    the issue as precisely as possible assuming that the reader knows
-    the all the context, especially the original HTTP request. This
-    message is meant for debugging, logging or for users using the Rest
-    API directly. The web frontend may fall back to use this message
-    if no 'user_message' was supplied. In this case it is the
-    responsibility of the frontend to add context information such as
-    the operation, that failed, and the HTTP status code. That is the normal
-    behaviour in case of a mismatch between frontend and backend, e.g. due
-    to a bug, server failure, or network error.
-
-  - user_message (optional): In case that the issue was caused by
-    by user error (e.g. wrong password, bad email address) this field
-    should be supplied. This message should contain all context the user
-    may need to to understand the message. The frontend will usually display
-    the message directly to the user without adding any context.
-    It is pointless to supply this message in cases in which the
-    the frontend validation will prevent the user error from reaching
-    the backend. The user_message can *and* should be preformatted
-    with line breaks at suitable spots.
-
-* A HTTP error code - usually a 4xx if the problem on the frontend side,
-  including all user errors, or 5xx in case the problem was most likely
-  caused by the backend.
-
-If something really unexpected happens, we leave it to Flask to generate
-a 500 response. In this case the content of the response is a HTML document
-without any details. This avoids information leak to hostile users (aka hackers).
-Such issues must be tracked using the logs on the server side.
-
-The helper functions in this modules mostly detect incorrect input
-on the user side and generate mostly 4xx errors.
-
-In addition a function create_error_response is supplied to allow modules
-to generate a response in the same format without raising a
-ClientResponseException.
-
-This module depends on Flask. Most importantly some functions will assume
-that they are called while a HTTP request is processed and use the Flask
-'request' object.
+NOTE: Most functions exposed in this module must be called while
+a HTTP request is processed and use the Flask 'request' object.
 """
 
 
@@ -92,7 +38,19 @@ MAX_DATASET_IDS_IN_LIST = 3
 
 
 class ClientResponseException(Exception):
-    """Extend base exception for client response."""
+    """Extend the base exception for a client response.
+
+    The message is meant for debugging, logging or for users
+    using the REST API directly. The web frontend may fall back
+    to use this message if no 'user_message' was supplied, in which
+    case it is the responsibility of the frontend to add context.
+
+    The user_message (optional) is mostly intended for user errors
+    (e.g. wrong password, bad email address). This message should
+    add context; the frontend will usually display it directly to
+    the user without adding any context. The user_message should
+    be formatted.
+    """
 
     def __init__(
         self,
@@ -123,12 +81,13 @@ def create_error_response(
 ) -> tuple[dict[str, str], int]:
     """Construct an error response.
 
+    This function allows to generate a response in the same
+    format without raising a ClientResponseException.
+
     :param status_code: HTTP status code
     :param message: General error message
     :param user_message: Error message specifically for the user.
-    This can be used e.g. to add context per endpoint, or
-    intercept more complex error messages.
-    :return: Error response
+    :return: Error response tuple
     """
     json_response = {"message": message}
     if user_message is not None:
@@ -424,7 +383,7 @@ def _validate_biotypes(biotypes: list[str], rna_type: str) -> None:
         raise ClientResponseException(
             404,
             f"biotypes '{', '.join(unknown_biotypes)}' not found",
-            "Use GET biotypes/<rnaType> for valid biotypes",
+            "Use GET /catalogs/rna-types/<rnaType>/biotypes for valid biotypes",
         )
 
 
@@ -444,7 +403,7 @@ def _validate_features(features: list[str], rna_type: str) -> None:
         raise ClientResponseException(
             404,
             f"features '{', '.join(unknown_features)}' not found",
-            "Use GET features/<rnaType> for valid features",
+            "Use GET /catalogs/rna-types/<rnaType>/features for valid features",
         )
 
 
@@ -463,7 +422,7 @@ def _validate_selections(selections: list[tuple[int, int, int]]) -> None:
                 f"'{', '.join(map(str, unknown_selections))}' not found."
             ),
             (
-                "Use GET selections for valid combinations of "
+                "Use GET /catalogs/selections for valid combinations of "
                 "modification, organism, and technology identifiers"
             ),
         )
@@ -627,7 +586,7 @@ def get_valid_coords(
         strand_dto = Strand(strand)
     except ValueError as exc:
         raise ClientResponseException(
-            422, "Parameter 'strand' must be +, -, or ."
+            400, "Parameter 'strand' must be +, -, or ."
         ) from exc
 
     if context > 0:
@@ -642,7 +601,7 @@ def get_valid_coords(
 def parse_valid_target_type(raw: str) -> TargetsFileType:
     """Parse raw target and return target file type value.
 
-    :raises ClientResponseException: 400, 422
+    :raises ClientResponseException: 400
     :return: The value corresponding to target
     """
     target = _parse_param("target", raw)
@@ -650,7 +609,7 @@ def parse_valid_target_type(raw: str) -> TargetsFileType:
         return TargetsFileType[target]
     except KeyError:
         raise ClientResponseException(
-            422,
+            400,
             f"Parameter 'target' must be: {TargetsFileType.list()}",
         )
 

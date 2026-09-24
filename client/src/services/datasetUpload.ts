@@ -20,12 +20,12 @@ async function uploadTemporaryDataset(
 ): Promise<UploadedFile> {
   const file_size = file.size
   if (file_size > MAX_UPLOAD_SIZE) {
-    dialogState.message = `This file is to large (${file_size} bytes, max ${MAX_UPLOAD_SIZE})`
+    dialogState.message = `File too large: ${file_size} bytes (max. ${MAX_UPLOAD_SIZE})`
     dialogState.state = DIALOG.ALERT
     throw new DatasetTooLarge()
   }
   const result = (await handleRequestWithErrorReporting(
-    HTTPSecure.post('transfer/tmp_upload', file),
+    HTTPSecure.post('/uploads', file),
     `Failed to upload '${file.name}'`,
     dialogState
   )) as UploadResponse

@@ -69,7 +69,7 @@ def get_features(rna_type: str):
         )
 
 
-@catalog_api.route("/taxa", methods=["GET"])
+@catalog_api.get("/taxa")
 def get_taxa():
     """Get species with taxonomic information.
 
@@ -86,7 +86,7 @@ def get_taxa():
 def get_chroms(taxa_id: str):
     """Get chromosomes and their size for a given taxon.
 
-    :param taxa_id: NCBI taxon (identifier)
+    :param taxa_id: Incoming NCBI taxon (identifier)
     :return: JSON array with chromosome and their size for
     the current assembly for the given taxon.
     :statuscode 200: OK
@@ -117,7 +117,7 @@ def get_chroms(taxa_id: str):
 def get_assemblies(taxa_id: str):
     """Get assemblies for a given taxon.
 
-    :param taxa_id: NCBI taxon (identifier)
+    :param taxa_id: Incoming NCBI taxon (identifier)
     :return: JSON array with all available assemblies
     for the given taxon.
     :statuscode 200: OK
@@ -135,7 +135,7 @@ def get_assemblies(taxa_id: str):
         return exc.response_tuple
 
 
-@catalog_api.route("/modomics", methods=["GET"])
+@catalog_api.get("/modomics")
 def get_modomics():
     """Get modifications.
 
@@ -148,7 +148,7 @@ def get_modomics():
     return utilities_service.get_modomics()
 
 
-@catalog_api.route("/methods", methods=["GET"])
+@catalog_api.get("/methods")
 def get_methods():
     """Get detection methods and their classification.
 
@@ -161,7 +161,7 @@ def get_methods():
     return utilities_service.get_methods()
 
 
-@catalog_api.route("/selections", methods=["GET"])
+@catalog_api.get("/selections")
 def get_selections():
     """Get selections (modification, organism, technology).
 
@@ -175,11 +175,11 @@ def get_selections():
     return utilities_service.get_selections()
 
 
-@catalog_api.route("/genes", methods=["GET"])
+@catalog_api.get("/genes")
 def get_genes():
     """Get genes for one or more selection(s).
 
-    :query selection: A selection identifier
+    :query selection: One or more selection identifiers
     (associated with a combination of modification,
     organism, and technology)
     :return: Array with gene symbols

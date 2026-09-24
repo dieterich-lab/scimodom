@@ -27,7 +27,7 @@ test('getBioTypes calls /catalogs/rna-type/<rnaType>/biotypes and returns the ar
   expect(mockedGet).toHaveBeenCalledWith('/catalogs/rna-types/RNA/biotypes')
   expect(mockedHandle).toHaveBeenCalledWith(
     expect.anything(),
-    'Failed to load BiotypesResponse: RNA)',
+    'Failed to load BiotypesResponse: RNA',
     dialogState
   )
   expect(result).toEqual(expected)

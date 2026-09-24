@@ -10,10 +10,10 @@ interface DetectionMethod {
 class DetectionMethodCache extends Cache<DetectionMethod[]> {
   async getPromise(): Promise<DetectionMethod[]> {
     try {
-      const response = await HTTP.get('/methods')
+      const response = await HTTP.get('/catalogs/methods')
       return response.data as DetectionMethod[]
     } catch (err) {
-      console.log(`Failed to fetch all detection methods: ${err}`)
+      console.log(`Failed to fetch /catalogs/methods: ${err}`)
       throw err
     }
   }

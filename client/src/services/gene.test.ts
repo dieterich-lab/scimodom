@@ -1,5 +1,5 @@
 import { test, expect, vi, beforeEach } from 'vitest'
-import { getFeaturesByRnaType } from '@/services/feature'
+import { getGenesForSelectionIds } from '@/services/gene'
 import { handleRequestWithErrorReporting, HTTP } from '@/services/API'
 import { type DialogStateStore } from '@/stores/DialogState'
 import { type AxiosResponse } from 'axios'
@@ -18,24 +18,23 @@ beforeEach(() => {
   mockedHandle.mockReset()
 })
 
-test('getFeaturesByRnaType calls /catalogs/rna-type/<rnaType>/features and returns the array', async () => {
-  const expected = ['cds', 'exon']
-  mockedHandle.mockResolvedValueOnce({ features: expected })
+test('getGenesForSelectionIds calls /catalogs/genes and returns the array', async () => {
+  const expected = ['G1', 'G2']
+  mockedHandle.mockResolvedValueOnce(expected)
 
-  const result = await getFeaturesByRnaType('RNA', dialogState)
+  const result = await getGenesForSelectionIds([1, 2], dialogState)
 
-  expect(mockedGet).toHaveBeenCalledWith('/catalogs/rna-types/RNA/features')
-  expect(mockedHandle).toHaveBeenCalledWith(
-    expect.anything(),
-    'Failed to load FeaturesResponse: RNA',
-    dialogState
+  expect(mockedGet).toHaveBeenCalledWith(
+    '/catalogs/genes',
+    expect.objectContaining({ params: { selection: [1, 2] } })
   )
+  expect(mockedHandle).toHaveBeenCalledWith(expect.anything(), 'Failed to load genes', dialogState)
   expect(result).toEqual(expected)
 })
 
-test('getFeaturesByRnaType does not swallow failures', async () => {
+test('getGenesForSelectionIds does not swallow failures', async () => {
   const error = new Error()
   mockedHandle.mockRejectedValueOnce(error)
 
-  await expect(getFeaturesByRnaType('RNA', dialogState)).rejects.toBe(error)
+  await expect(getGenesForSelectionIds([1], dialogState)).rejects.toBe(error)
 })
