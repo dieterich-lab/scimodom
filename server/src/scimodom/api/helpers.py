@@ -105,6 +105,10 @@ def create_file_too_large_response(max_size: int) -> tuple[dict[str, str], int]:
     return create_error_response(413, message, message)
 
 
+def _get_file_too_large_message(max_size: int):
+    return f"File too large (max. {max_size} bytes)"
+
+
 # Request body validation
 
 
@@ -287,7 +291,7 @@ def validate_chrom(
     provide a syntactically valid value or None)
     :param end: Chromosome end (the caller must
     provide a syntactically valid value or None)
-    :raises ClientResponseException: 404, 422
+    :raises ClientResponseException: 400, 404
     """
     _get_chroms_and_validate(taxa_id, chrom, start, end)
 
@@ -322,6 +326,16 @@ def validate_dataset_write_permission(dataset: Dataset) -> None:
         )
 
 
+def validate_request_size(max_size: int) -> None:
+    """Validate request size.
+
+    :param max_size: Maximum size allowed.
+    :raises FileTooLargeException: 413
+    """
+    if request.content_length is not None and request.content_length > max_size:
+        raise FileTooLargeException(max_size)
+
+
 def _get_chroms_and_validate(
     taxa_id: int, chrom: str, start: int | None, end: int | None
 ) -> dict[str, int]:
@@ -338,12 +352,12 @@ def _get_chroms_and_validate(
     end = end if end is not None else chrom_size[chrom]
     if end <= start:
         raise ClientResponseException(
-            422,
+            400,
             "Parameter 'end'/'chromEnd' must be greater than 'start'/'chromStart'",
         )
     if not end <= chrom_size[chrom]:
         raise ClientResponseException(
-            422,
+            400,
             "Parameter 'end'/'chromEnd' is greater than chrom size",
         )
     return chrom_size
@@ -435,6 +449,14 @@ def _get_valid_user() -> User:
         return user_service.get_user_by_email(email)
     except NoSuchUser:
         raise ClientResponseException(404, f"User '{email}' not found")
+
+
+def _is_valid_identifier(identifier, length):
+    if not VALID_DATASET_ID_REGEXP.match(identifier):
+        return False
+    elif len(identifier) != length:
+        return False
+    return True
 
 
 # - Helpers
@@ -542,7 +564,7 @@ def get_valid_features() -> list[str]:
 def get_valid_selections() -> tuple[int, int, list[int]]:
     """Parse query for selections and validate.
 
-    :raises ClientResponseException: 400, 404, 422
+    :raises ClientResponseException: 400, 404
     :return: The validated modification, organism, and
     technology identifiers
     """
@@ -567,7 +589,7 @@ def get_valid_coords(
 
     :param context: Number of bases to include in
     context around start-end.
-    :raises ClientResponseException: 400, 404, 422
+    :raises ClientResponseException: 400, 404
     :return: Coordinates as (chrom, start, end, strand)
     """
     taxa_id = get_valid_taxa_id()
@@ -601,6 +623,7 @@ def get_valid_coords(
 def parse_valid_target_type(raw: str) -> TargetsFileType:
     """Parse raw target and return target file type value.
 
+    :param raw: Incoming target type
     :raises ClientResponseException: 400
     :return: The value corresponding to target
     """
@@ -617,6 +640,7 @@ def parse_valid_target_type(raw: str) -> TargetsFileType:
 def parse_valid_sunburst_type(raw: str) -> SunburstChartType:
     """Parse raw chart type and return chart type value.
 
+    :param raw: Incoming chart type
     :raises ClientResponseException: 400
     :return: The value corresponding to raw chart type
     """
@@ -630,46 +654,41 @@ def parse_valid_sunburst_type(raw: str) -> SunburstChartType:
         ) from exc
 
 
-# HERE >>>
+def get_valid_dataset(raw: str) -> Dataset:
+    """Get a valid dataset.
 
-
-def get_valid_dataset(dataset_id: str) -> Dataset:
-    """Get dataset.
-
-    :param dataset_id: Dataset ID (EUFID)
-    :type dataset_id: str
-    :raises ClientResponseException: If invalid query parameters.
+    :param raw: Incoming dataset identifier (EUFID)
+    :raises ClientResponseException: 400, 404.
     :return: Dataset
-    :rtype: Dataset
     """
+    dataset_id = _parse_param("datasetId", raw)
     if not _is_valid_identifier(dataset_id, Identifiers.EUFID.length):
-        raise ClientResponseException(400, "Invalid dataset ID")
+        raise ClientResponseException(400, f"Invalid datasetId '{dataset_id}'")
     dataset_service = get_dataset_service()
     try:
         return dataset_service.get_by_id(dataset_id)
     except NoResultFound:
-        raise ClientResponseException(404, "Unknown dataset")
+        raise ClientResponseException(404, f"Dataset '{dataset_id}' not found")
 
 
-def get_valid_bam_file(dataset: Dataset, name: str) -> BamFile:
+def get_valid_bam_file(dataset: Dataset, raw: str) -> BamFile:
     """Get BAM file.
 
     :param dataset: Dataset
-    :type dataset: Dataset
-    :param name: File name
-    :type name: str
-    :raises ClientResponseException: If invalid query parameters.
-    :return: BAM file
-    :rtype: BamFile
+    :param raw: File name
+    :raises ClientResponseException: 400, 404.
+    :return: BAM file object
     """
+    name = _parse_param("BamName", raw)
     if not VALID_FILENAME_REGEXP.match(name):
-        raise ClientResponseException(400, "Invalid BAM file name")
+        raise ClientResponseException(400, f"Invalid BamName '{name}'")
     file_service = get_file_service()
     try:
         return file_service.get_bam_file(dataset, name)
     except NoResultFound:
         raise ClientResponseException(
-            404, "Unknown BAM file name or no association with dataset"
+            404,
+            f"BAM file '{name}' not found or no association with dataset '{dataset.id}'",
         )
 
 
@@ -677,28 +696,26 @@ def get_valid_dataset_id_list_from_request_parameter(parameter: str) -> list[str
     """Get a list of valid dataset IDs.
 
     :param parameter: Query parameter
-    :type parameter: str
-    :raises ClientResponseException: If invalid query parameters.
+    :raises ClientResponseException: 400, 404.
     :return: List of dataset ID(s)
-    :rtype: list[str]
     """
     as_list = get_unique_list_from_query_param(parameter, str)
     if len(as_list) > MAX_DATASET_IDS_IN_LIST:
         raise ClientResponseException(
             400,
-            f"'{parameter}' contained too many dataset IDs (max. {MAX_DATASET_IDS_IN_LIST})",
+            f"'{parameter}' contains too many datasetId (max. {MAX_DATASET_IDS_IN_LIST})",
         )
     dataset_service = get_dataset_service()
     for dataset_id in as_list:
         if not _is_valid_identifier(dataset_id, Identifiers.EUFID.length):
             raise ClientResponseException(
-                400, f"Invalid {parameter} dataset ID: '{dataset_id}'"
+                400, f"Invalid {parameter} datasetId '{dataset_id}'"
             )
         try:
             dataset_service.get_by_id(dataset_id)
         except NoResultFound as exc:
             raise ClientResponseException(
-                404, f"Unknown {parameter} dataset ID: '{dataset_id}'"
+                404, f"{parameter} datasetId '{dataset_id}' not found"
             ) from exc
     return as_list
 
@@ -709,28 +726,25 @@ def get_valid_tmp_file_id_from_request_parameter(
     """Get uploaded/temporary file identifier.
 
     :param parameter: Query parameter
-    :type parameter: str
     :param is_optional: True if parameter is required (Default: False)
-    :type is_optional: bool
-    :raises ClientResponseException: If invalid query parameters.
+    :raises ClientResponseException: 400, 404
     :return: Uploaded/temporary file identifier or None
-    :rtype: str | None
     """
-    raw_id = request.args.get(parameter, type=str)
-    if raw_id is None or raw_id == "":
+    file_id = request.args.get(parameter, type=str)
+    if not file_id:
         if is_optional:
             return None
-        raise ClientResponseException(400, f"Missing required parameter '{parameter}'")
-    if not VALID_FILENAME_REGEXP.match(raw_id):
-        raise ClientResponseException(400, f"Invalid file ID for '{parameter}'")
+        raise ClientResponseException(400, f"Missing required parameter: '{parameter}'")
+    if not VALID_FILENAME_REGEXP.match(file_id):
+        raise ClientResponseException(400, f"Invalid {parameter} fileId '{file_id}'")
     file_service = get_file_service()
-    if not file_service.check_tmp_upload_file_id(raw_id):
+    if not file_service.check_tmp_upload_file_id(file_id):
         raise ClientResponseException(
             404,
-            "Upload file ID not found",
-            "File not found - Select the file again and try to re-upload",
+            f"{parameter} file not found",
+            "Select the file again and try to re-upload",
         )
-    return raw_id
+    return file_id
 
 
 def get_valid_remote_file_name_from_request_parameter(
@@ -743,34 +757,30 @@ def get_valid_remote_file_name_from_request_parameter(
     :param default: Default file name
     :type default: str
     :return: Uploaded/temporary file name
-    :rtype: str | None
     """
-    raw = request.args.get(parameter, type=str)
-    if raw is None or raw == "":
+    file_name = request.args.get(parameter, type=str)
+    if not file_name:
         return default
-    return re.sub(INVALID_CHARS_REGEXP, "?", raw)
+    return re.sub(INVALID_CHARS_REGEXP, "?", file_name)
 
 
 def get_valid_boolean_from_request_parameter(
     parameter: str, default: Optional[bool] = None
 ) -> bool:
-    """Get boolean value out of query parameter.
+    """Parse query parameter to boolean value.
 
     :param parameter: Query parameter
-    :type parameter: str
     :param default: Default value. If query
     parameter is None, and there is no default,
     a ClientResponseException is raised.
-    :type default: bool | None
-    :raises ClientResponseException: If invalid query parameters.
+    :raises ClientResponseException: 400
     :return: Boolean value
-    :rtype: bool
     """
     raw_value = request.args.get(parameter, type=str)
     if raw_value is None:
         if default is None:
             raise ClientResponseException(
-                400, f"Required parameter '{parameter}' missing ('true' or 'false')"
+                400, f"Missing required parameter: '{parameter}' ('true' or 'false')"
             )
         return default
     lower_case_value = raw_value.lower()
@@ -783,17 +793,6 @@ def get_valid_boolean_from_request_parameter(
     )
 
 
-def validate_request_size(max_size: int) -> None:
-    """Validate request size.
-
-    :param max_size: Maximum size allowed.
-    :type max_size: int
-    :raises FileTooLargeException: If request exceeds maximum size.
-    """
-    if request.content_length is not None and request.content_length > max_size:
-        raise FileTooLargeException(max_size)
-
-
 # Response
 
 
@@ -801,18 +800,3 @@ def get_response_from_pydantic_object(obj: BaseModel):
     return Response(
         response=obj.model_dump_json(), status=200, mimetype="application/json"
     )
-
-
-# Private
-
-
-def _get_file_too_large_message(max_size: int):
-    return f"File too large (max. {max_size} bytes)"
-
-
-def _is_valid_identifier(identifier, length):
-    if not VALID_DATASET_ID_REGEXP.match(identifier):
-        return False
-    elif len(identifier) != length:
-        return False
-    return True

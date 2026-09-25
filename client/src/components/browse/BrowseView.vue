@@ -282,7 +282,7 @@ onMounted(async () => {
             </Column>
             <Column :exportable="false" field="dataset_id" style="width: 5%">
               <template #body="{ data }">
-                <a :href="getApiUrl(`transfer/dataset/${data.dataset_id}`)">
+                <a :href="getApiUrl(`datasets/${data.dataset_id}/bedrmod`)">
                   <Button text severity="secondary" label="Download" />
                 </a>
               </template>

@@ -398,20 +398,20 @@ def test_subtract(
             SpecsError,
             422,
             "MESSAGE",
-            "Invalid bedRMod format specifications: MESSAGE\n"
-            "Modify the file and start again, or toggle BED6 on file selection to ignore header.",
+            "Invalid bedRMod format specifications.\n"
+            "Modify the file to conform to the latest bedRMod format specifications or\ntoggle the BED6 option to ignore validation.",
         ),
         (
             DatasetHeaderError,
             422,
             "MESSAGE",
-            "Inconsistent header: MESSAGE\nSelect reference dataset for the correct organism.",
+            "The request form must agree with the file header.\nSelect reference dataset for the correct organism.",
         ),
         (
             DatasetImportError,
             422,
             "MESSAGE",
-            "MESSAGE\nValidate the file header for inconsistencies.",
+            "Validate the file header for inconsistencies.",
         ),
         (
             Exception,
@@ -473,6 +473,7 @@ def test_intersect_with_liftover(test_client, mock_services, mocker):
     )
 
 
+# the FileNotFoundError on enter is not tested!
 @pytest.mark.parametrize(
     "url,http_status,message,user_message",
     [
@@ -480,30 +481,30 @@ def test_intersect_with_liftover(test_client, mock_services, mocker):
             "/intersect?reference=datasetidAxx&comparison=datasetidBxx&euf=true&strand=true",
             400,
             "Missing required parameter: 'taxaId'",
-            "Request needs a valid 'taxaId' when 'euf=true': Missing required parameter: 'taxaId'",
+            "Request needs a valid 'taxaId' when 'euf=true'",
         ),
         (
             "/intersect?reference=datasetidAxx&comparison=datasetidBxx&euf=true&taxaId=XXXX&strand=true",
             400,
             "Parameter 'taxaId' must be a valid integer (got: 'XXXX')",
-            "Request needs a valid 'taxaId' when 'euf=true': Parameter 'taxaId' must be a valid integer (got: 'XXXX')",
+            "Request needs a valid 'taxaId' when 'euf=true'",
         ),
         (
             "/intersect?reference=datasetidAxx&comparison=datasetidBxx&euf=true&taxaId=99&strand=true",
             404,
             "taxaId '99' not found",
-            "Request needs a valid 'taxaId' when 'euf=true': taxaId '99' not found",
+            "Request needs a valid 'taxaId' when 'euf=true'",
         ),
         (
             "/intersect?reference=datasetidAxx&strand=true",
             400,
-            "Request is missing 'upload' or 'comparison'",
+            "Missing required parameter: 'upload' xor 'comparison'",
             None,
         ),
         (
             "/intersect?reference=datasetidAxx&comparison=datasetidBxx&upload=im_the_only_valid_temp_file_id&strand=true",
             400,
-            "Request can only handle 'upload' or 'comparison', but not both",
+            "Too many parameters: use 'upload' xor 'comparison'",
             None,
         ),
         (
@@ -511,19 +512,19 @@ def test_intersect_with_liftover(test_client, mock_services, mocker):
             "&comparison=datasetidBxx&comparison=datasetidCxx&comparison=datasetidDxx&comparison=datasetidExx"
             "&strand=true",
             400,
-            "'comparison' contained too many dataset IDs (max. 3)",
+            "'comparison' contains too many datasetId (max. 3)",
             None,
         ),
         (
             "/intersect?reference=datasetidAxx&comparison=datasetidZxxxx&strand=true",
             400,
-            "Invalid comparison dataset ID: 'datasetidZxxxx'",
+            "Invalid comparison datasetId 'datasetidZxxxx'",
             None,
         ),
         (
             "/intersect?reference=datasetidAxx&comparison=datasetidZxx&strand=true",
             404,
-            "Unknown comparison dataset ID: 'datasetidZxx'",
+            "comparison datasetId 'datasetidZxx' not found",
             None,
         ),
         (
@@ -535,14 +536,14 @@ def test_intersect_with_liftover(test_client, mock_services, mocker):
         (
             "/subtract?reference=datasetidAxx&upload=bl+ubber&strand=strand_aware",
             400,
-            "Invalid file ID for 'upload'",
+            "Invalid upload fileId 'bl ubber'",
             None,
         ),
         (
             "/subtract?reference=datasetidAxx&upload=blubber&strand=strand_aware",
             404,
-            "Upload file ID not found",
-            "File not found - Select the file again and try to re-upload",
+            "upload file not found",
+            "Select the file again and try to re-upload",
         ),
     ],
 )

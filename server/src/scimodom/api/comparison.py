@@ -3,7 +3,6 @@ from dataclasses import dataclass
 from typing import Generator, Iterable, Sequence, TextIO
 
 from flask import Blueprint
-from flask_cors import cross_origin
 from pydantic import BaseModel
 
 from scimodom.api.helpers import (
@@ -64,8 +63,7 @@ class SubtractResponse(BaseModel):
     records: list[SubtractRecord]
 
 
-@dataset_comparison_api.route("/intersect", methods=["GET"])
-@cross_origin(supports_credentials=True)
+@dataset_comparison_api.get("/intersect")
 def intersect():
     """Intersect two or more dataset.
 
@@ -75,15 +73,14 @@ def intersect():
 
     :param request: The request with required
     and optional parameters.
-    :returns: JSON object with JSON array of
+    :return: JSON object with JSON array of
     intersected records.
     :statuscode 200: OK
-    :statuscode 400: Bad request (malformed or missing parameters,
-    invalid identifiers, too many dataset)
-    :statuscode 404: Dataset, file, or taxon not found
-    :statuscode 422: Unprocessable Content (empty file or
-    too many skipped records)
-    :statuscode 500: Internal Server Error (e.g. failed liftover)
+    :statuscode 400: Bad request - malformed or missing parameters,
+    invalid identifiers, too many dataset
+    :statuscode 404: Not Found - dataset, file, or taxon
+    :statuscode 422: Unprocessable Content - data validation
+    :statuscode 500: Internal Server Error (or failed liftover)
     """
     try:
         with _CompareContext() as ctx:
@@ -95,8 +92,7 @@ def intersect():
         return e.response_tuple
 
 
-@dataset_comparison_api.route("/closest", methods=["GET"])
-@cross_origin(supports_credentials=True)
+@dataset_comparison_api.get("/closest")
 def closest():
     """Intersect (non-overlap) two or more dataset.
 
@@ -106,15 +102,14 @@ def closest():
 
     :param request: The request with required
     and optional parameters.
-    :returns: JSON object with JSON array of
-    intersected (non-overlap) records.
+    :return: JSON object with JSON array of
+    intersected records.
     :statuscode 200: OK
-    :statuscode 400: Bad request (malformed or missing parameters,
-    invalid identifiers, too many dataset)
-    :statuscode 404: Dataset, file, or taxon not found
-    :statuscode 422: Unprocessable Content (empty file or
-    too many skipped records)
-    :statuscode 500: Internal Server Error (e.g. failed liftover)
+    :statuscode 400: Bad request - malformed or missing parameters,
+    invalid identifiers, too many dataset
+    :statuscode 404: Not Found - dataset, file, or taxon
+    :statuscode 422: Unprocessable Content - data validation
+    :statuscode 500: Internal Server Error (or failed liftover)
     """
     try:
         with _CompareContext() as ctx:
@@ -126,8 +121,7 @@ def closest():
         return e.response_tuple
 
 
-@dataset_comparison_api.route("/subtract", methods=["GET"])
-@cross_origin(supports_credentials=True)
+@dataset_comparison_api.get("/subtract")
 def subtract():
     """Subtract two or more dataset.
 
@@ -137,15 +131,14 @@ def subtract():
 
     :param request: The request with required
     and optional parameters.
-    :returns: JSON object with JSON array of
-    subtracted records.
+    :return: JSON object with JSON array of
+    intersected records.
     :statuscode 200: OK
-    :statuscode 400: Bad request (malformed or missing parameters,
-    invalid identifiers, too many dataset)
-    :statuscode 404: Dataset, file, or taxon not found
-    :statuscode 422: Unprocessable Content (empty file or
-    too many skipped records)
-    :statuscode 500: Internal Server Error (e.g. failed liftover)
+    :statuscode 400: Bad request - malformed or missing parameters,
+    invalid identifiers, too many dataset
+    :statuscode 404: Not Found - dataset, file, or taxon
+    :statuscode 422: Unprocessable Content - data validation
+    :statuscode 500: Internal Server Error (or failed liftover)
     """
     try:
         with _CompareContext() as ctx:
@@ -192,17 +185,17 @@ class _CompareContext:
                 raise ClientResponseException(
                     status_code,
                     message,
-                    f"Request needs a valid 'taxaId' when 'euf=true': {message}",
+                    "Request needs a valid 'taxaId' when 'euf=true'",
                 ) from exc
         self._tmp_file_handle: TextIO | None = None
 
         if self._upload_id is None and len(self._comparison_ids) == 0:
             raise ClientResponseException(
-                400, "Request is missing 'upload' or 'comparison'"
+                400, "Missing required parameter: 'upload' xor 'comparison'"
             )
         if self._upload_id is not None and len(self._comparison_ids) > 0:
             raise ClientResponseException(
-                400, "Request can only handle 'upload' or 'comparison', but not both"
+                400, "Too many parameters: use 'upload' xor 'comparison'"
             )
         self._data_service = get_data_service()
         self._validator_service = get_validator_service()
@@ -224,8 +217,8 @@ class _CompareContext:
             except FileNotFoundError as exc:
                 raise ClientResponseException(
                     404,
-                    "Upload file ID not found"
-                    "File not found - Select the file again and try to re-upload",
+                    "Upload file not found"
+                    "Select the file again and try to re-upload",
                 ) from exc
             b_records_list = [list(self._get_comparison_records_from_file())]
 
@@ -270,9 +263,9 @@ class _CompareContext:
             raise ClientResponseException(
                 422,
                 str(exc),
-                f"File upload failed. Too many skipped records:\n{exc.error_summary}\n"
+                "Invalid bedRMod format specifications.\n"
                 "Modify the file to conform to the latest bedRMod format specifications or\n"
-                "try toggling the BED6 option to ignore validation.",
+                "toggle the BED6 option to ignore validation.",
             ) from exc
         except LiftOverError as exc:
             raise ClientResponseException(
@@ -314,16 +307,16 @@ class _CompareContext:
                 raise ClientResponseException(
                     422,
                     message,
-                    f"Invalid bedRMod format specifications: {message}\n"
-                    "Modify the file and start again, or toggle BED6 on "
-                    "file selection to ignore header.",
+                    "Invalid bedRMod format specifications.\n"
+                    "Modify the file to conform to the latest bedRMod format specifications or\n"
+                    "toggle the BED6 option to ignore validation.",
                 ) from exc
             except DatasetHeaderError as exc:
                 message = str(exc)
                 raise ClientResponseException(
                     422,
                     message,
-                    f"Inconsistent header: {message}\n"
+                    "The request form must agree with the file header.\n"
                     "Select reference dataset for the correct organism.",
                 ) from exc
             except DatasetImportError as exc:
@@ -331,7 +324,7 @@ class _CompareContext:
                 raise ClientResponseException(
                     422,
                     message,
-                    f"{message}\nValidate the file header for inconsistencies.",
+                    "Validate the file header for inconsistencies.",
                 ) from exc
             except Exception as exc:
                 logger.error(f"Import failed (Comparison 1): {str(exc)}")

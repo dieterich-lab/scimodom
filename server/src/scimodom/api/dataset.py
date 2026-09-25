@@ -1,34 +1,23 @@
 import logging
-from dataclasses import dataclass
-from typing import Generator, Iterable, Sequence, TextIO
 
-from flask import Blueprint, request
-from flask_cors import cross_origin
+from flask import Blueprint, Response, request, stream_with_context
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from pydantic import BaseModel, ValidationError
+from pydantic import ValidationError
 
 from scimodom.api.helpers import (
     ClientResponseException,
     create_error_response,
-    get_valid_dataset_id_list_from_request_parameter,
-    get_valid_tmp_file_id_from_request_parameter,
-    get_valid_remote_file_name_from_request_parameter,
-    get_valid_boolean_from_request_parameter,
-    get_valid_taxa_id,
-    get_response_from_pydantic_object,
     parse_valid_rna_type,
     validate_project_write_permission,
 )
 from scimodom.services.annotation import AnnotationService
 from scimodom.services.assembly import LiftOverError
-from scimodom.services.bedtools import get_bedtools_service, BedToolsService
-from scimodom.services.data import get_data_service
 from scimodom.services.dataset import get_dataset_service
+from scimodom.services.exporter import get_exporter, NoSuchDataset
 from scimodom.services.file import get_file_service
 from scimodom.services.sunburst import get_sunburst_service
 from scimodom.services.user import get_user_service
 from scimodom.services.validator import (
-    get_validator_service,
     SpecsError,
     DatasetHeaderError,
     DatasetImportError,
@@ -36,50 +25,14 @@ from scimodom.services.validator import (
     DatasetExistsError,
 )
 from scimodom.utils.importer.bed_importer import (
-    Bed6Importer,
-    EufImporter,
     BedImportTooManyErrors,
     BedImportEmptyFile,
 )
-from scimodom.utils.dtos.bedtools import (
-    EufRecord,
-    Bed6Record,
-    IntersectRecord,
-    ClosestRecord,
-    SubtractRecord,
-    ComparisonRecord,
-)
 from scimodom.utils.dtos.dataset import DatasetPostRequest
-from scimodom.utils.specs.enums import Identifiers
 
 logger = logging.getLogger(__name__)
 
 dataset_api = Blueprint("dataset_api", __name__)
-
-
-# only in: ../client/src/components/browse/BrowseView.vue ???
-# from flask import Blueprint, Response, stream_with_context, request
-# from scimodom.services.exporter import get_exporter, NoSuchDataset
-# @transfer_api.route("/dataset/<dataset_id>", methods=["GET"])
-# @cross_origin(supports_credentials=True)
-# def export_dataset(dataset_id: str):
-#     """Export a dataset in bedRMod format.
-
-# :param dataset_id: Dataset identifier (EUFID)
-# :statuscode 200: OK
-# :statuscode 404: Dataset not found
-# :statuscode 500: Internal Server Error
-# """
-# exporter = get_exporter()
-# try:
-#     file_name = exporter.get_dataset_file_name(dataset_id)
-#     return Response(
-#         stream_with_context(exporter.generate_dataset(dataset_id)),
-#         mimetype="text/csv",
-#         headers={"Content-Disposition": f'attachment; filename="{file_name}"'},
-#     )
-# except NoSuchDataset as exc:
-#     return create_error_response(404, str(exc))
 
 
 @dataset_api.get("/datasets")
@@ -98,7 +51,7 @@ def get_datasets():
 @dataset_api.post("/datasets")
 @jwt_required()
 def add_dataset():
-    """Add new dataset to a project and import data.
+    """Post a new dataset to a project and import data.
 
     This function looks for a dataset file under UPLOAD_PATH.
 
@@ -109,6 +62,7 @@ def add_dataset():
     :statuscode 401: Missing Authorization Header
     :statuscode 403: Forbidden - project permission
     :statuscode 404: Not found - RNA type or selection
+    :statuscode 409: Conflict - dataset exists
     :statuscode 422: Unprocessable Content - data validation,
     not enough segments, or signature verification failed
     :statuscode 500: Internal Server Error (or failed liftover)
@@ -129,6 +83,27 @@ def add_dataset():
     sunburst_service = get_sunburst_service()
     sunburst_service.trigger_background_update()
     return {"message": "OK"}, 200
+
+
+@dataset_api.get("/datasets/<dataset_id>/bedrmod")
+def export_dataset(dataset_id: str):
+    """Export a dataset in bedRMod format.
+
+    :param dataset_id: Dataset identifier (EUFID)
+    :statuscode 200: OK
+    :statuscode 404: Dataset not found
+    :statuscode 500: Internal Server Error
+    """
+    exporter = get_exporter()
+    try:
+        file_name = exporter.get_dataset_file_name(dataset_id)
+        return Response(
+            stream_with_context(exporter.generate_dataset(dataset_id)),
+            mimetype="text/csv",
+            headers={"Content-Disposition": f'attachment; filename="{file_name}"'},
+        )
+    except NoSuchDataset as exc:
+        return create_error_response(404, str(exc))
 
 
 @dataset_api.get("/users/me/datasets")
@@ -186,19 +161,21 @@ def _import_dataset(dataset_form):
                 technology_id=dataset_form.technology_id,
                 annotation_source=annotation_source,
             )
+    except ValueError:
+        raise ClientResponseException(
+            400,
+            "Rename the file and try to re-upload",
+        )
     except SelectionNotFoundError as exc:
         raise ClientResponseException(
             404,
             str(exc),
             "Invalid combination of modification(s), organism, and/or technology.\n"
             "Modify the request form to match a valid selection for this dataset.\n"
-            "Use GET /selections for valid combinations.",
+            "Use GET /catalogs/selections for valid combinations.",
         )
-    except ValueError:
-        raise ClientResponseException(
-            422,
-            "Rename the file and try to re-upload",
-        )
+    except DatasetExistsError as exc:
+        raise ClientResponseException(409, str(exc))
     except DatasetImportError as exc:
         raise ClientResponseException(
             422,
@@ -212,8 +189,6 @@ def _import_dataset(dataset_form):
             "The request form must agree with the file header.\n"
             "Modify the request form or select the correct dataset to upload.",
         )
-    except DatasetExistsError as exc:
-        raise ClientResponseException(422, str(exc))
     except SpecsError as exc:
         raise ClientResponseException(
             422,

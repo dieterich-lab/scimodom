@@ -8,11 +8,13 @@ enum UPLOAD_STATE {
   FAILED = 'FAILED'
 }
 
+type UploadMethod = 'POST' | 'PUT'
+
 const MAX_PARALLEL_UPLOADS = 1
 const WAIT_UNTIL_EXPIRING_SUCCESSFUL_JOB_MS = 10 * 60 * 1000
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024
-const MAX_FILE_SIZE_ERROR = `File to large (max ${MAX_FILE_SIZE} bytes)`
+const MAX_FILE_SIZE_ERROR = `File too large (max. ${MAX_FILE_SIZE} bytes)`
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms))
@@ -23,17 +25,25 @@ class ScheduledUpload {
   public state: UPLOAD_STATE
   public readonly file: File
   public readonly url: string
+  public readonly method: UploadMethod
   public info: string
   public errorMessage: string
   public readonly removeCallback: (x: ScheduledUpload) => void
 
-  constructor(file: File, url: string, info: string, removeCallback: (x: ScheduledUpload) => void) {
+  constructor(
+    file: File,
+    url: string,
+    info: string,
+    removeCallback: (x: ScheduledUpload) => void,
+    method: UploadMethod = 'POST'
+  ) {
     const randomNumber = new Uint32Array(1)
     crypto.getRandomValues(randomNumber)
     this.id = randomNumber[0]
     this.file = file
     this.url = url
     this.info = info
+    this.method = method
     this.state = UPLOAD_STATE.WAITING
     this.errorMessage = ''
     this.removeCallback = removeCallback
@@ -46,7 +56,14 @@ class ScheduledUpload {
   async run() {
     this.state = UPLOAD_STATE.RUNNING
     try {
-      await handleRequest(HTTPSecure.post(this.url, this.file))
+      switch (this.method) {
+        case 'POST':
+          await handleRequest(HTTPSecure.post(this.url, this.file))
+          break
+        case 'PUT':
+          await handleRequest(HTTPSecure.put(this.url, this.file))
+          break
+      }
       this.state = UPLOAD_STATE.DONE
     } catch (err) {
       this.errorMessage = `${err}`
@@ -64,11 +81,11 @@ const useUploadManager = defineStore('uploadManager', {
     return { uploads: [] as ScheduledUpload[] }
   },
   actions: {
-    schedule(file: File, post_request: string, info: string) {
+    schedule(file: File, url: string, info: string, method: UploadMethod = 'POST') {
       const removeCallback = (x: ScheduledUpload) => {
         this.remove(x)
       }
-      const newUpload = new ScheduledUpload(file, post_request, info, removeCallback)
+      const newUpload = new ScheduledUpload(file, url, info, removeCallback, method)
       this.uploads = [...this.uploads, newUpload]
       this.tryToStartUpload()
     },

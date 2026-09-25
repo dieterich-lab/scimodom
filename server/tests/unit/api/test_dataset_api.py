@@ -1,9 +1,12 @@
+from typing import Generator
+
 import pytest
 from flask import Flask
 from flask_jwt_extended import JWTManager, create_access_token
 
 from scimodom.api.dataset import dataset_api
 from scimodom.services.assembly import LiftOverError
+from scimodom.services.exporter import Exporter, NoSuchDataset
 from scimodom.services.validator import (
     SpecsError,
     DatasetHeaderError,
@@ -15,13 +18,6 @@ from scimodom.utils.importer.bed_importer import (
     BedImportTooManyErrors,
     BedImportEmptyFile,
 )
-
-
-# @pytest.fixture
-# def test_client():
-#     app = Flask(__name__)
-#     app.register_blueprint(dataset_api, url_prefix="")
-#     yield app.test_client()
 
 
 @pytest.fixture
@@ -88,6 +84,29 @@ def dataset_mocks(mocker):
     yield mock_file_service
 
 
+@pytest.fixture
+def exporter(mocker):
+    mocker.patch("scimodom.api.dataset.get_exporter", return_value=ExporterMock())
+
+
+class ExporterMock(Exporter):
+    def __init__(self):  # noqa
+        pass
+
+    def get_dataset_file_name(self, dataset_id: str) -> str:
+        if dataset_id == "dataset_id01":
+            return "foo"
+        else:
+            raise NoSuchDataset(f"No {dataset_id}")
+
+    def generate_dataset(self, dataset_id: str) -> Generator[bytes, None, None]:
+        if dataset_id == "dataset_id01":
+            yield b"Line 1\n"
+            yield b"Line 2\n"
+        else:
+            raise NoSuchDataset(f"No {dataset_id}")
+
+
 # tests
 
 
@@ -106,15 +125,16 @@ def test_add_dataset(authenticated_client, dataset_mocks):
 @pytest.mark.parametrize(
     "exception,http_status,msg,user_msg",
     [
-        (ValueError, 422, "Rename the file and try to re-upload", None),
+        (ValueError, 400, "Rename the file and try to re-upload", None),
         (
             SelectionNotFoundError("Error"),
             404,
             "Error",
             "Invalid combination of modification(s), organism, and/or technology.\n"
             "Modify the request form to match a valid selection for this dataset.\n"
-            "Use GET /selections for valid combinations.",
+            "Use GET /catalogs/selections for valid combinations.",
         ),
+        (DatasetExistsError("Exists"), 409, "Exists", None),
         (DatasetImportError, 422, "", "Modify the request form and re-submit"),
         (
             DatasetHeaderError,
@@ -123,7 +143,6 @@ def test_add_dataset(authenticated_client, dataset_mocks):
             "The request form must agree with the file header.\n"
             "Modify the request form or select the correct dataset to upload.",
         ),
-        (DatasetExistsError("Exists"), 422, "Exists", None),
         (
             SpecsError,
             422,
@@ -180,3 +199,16 @@ def test_add_dataset_unauthenticated(unauthenticated_client, mocker):
     assert result.status_code == 401
     assert result.json["msg"] == "Missing Authorization Header"
     mock_validate.assert_not_called()
+
+
+def test_export_dataset_simple(unauthenticated_client, exporter):
+    result = unauthenticated_client.get("/datasets/dataset_id01/bedrmod")
+    assert result.status == "200 OK"
+    assert result.data == b"Line 1\nLine 2\n"
+    assert result.headers.get("Content-Disposition") == 'attachment; filename="foo"'
+    assert result.headers.get("Content-Type") == "text/csv; charset=utf-8"
+
+
+def test_export_dataset_not_found(unauthenticated_client, exporter):
+    result = unauthenticated_client.get("/datasets/dataset_id02/bedrmod")
+    assert result.status == "404 NOT FOUND"

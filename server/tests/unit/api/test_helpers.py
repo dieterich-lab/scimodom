@@ -7,6 +7,7 @@ from sqlalchemy.exc import NoResultFound
 from scimodom.services.user import NoSuchUser
 from scimodom.api.helpers import (
     ClientResponseException,
+    FileTooLargeException,
     _get_required_query_param,
     get_required_json_fields,
     get_unique_list_from_query_param,
@@ -32,6 +33,7 @@ from scimodom.api.helpers import (
     get_valid_dataset,
     get_valid_bam_file,
     validate_request_size,
+    get_valid_remote_file_name_from_request_parameter,
 )
 from scimodom.utils.specs.enums import Strand
 
@@ -39,39 +41,6 @@ from scimodom.utils.specs.enums import Strand
 @pytest.fixture
 def app():
     return Flask(__name__)
-
-
-# @pytest.fixture
-# def test_client():
-#     app = Flask(__name__)
-
-#     @app.route("/test/<taxa_id>", methods=["GET"])
-#     def get_taxa_id(taxa_id):
-#         return taxa_id, 200
-
-#     yield app.test_client()
-
-
-@pytest.fixture
-def mock_services(mocker):
-    mocker.patch(
-        "scimodom.api.helpers.get_assembly_service",
-        return_value=MockAssemblyService(),
-    )
-    # mocker.patch(
-    #     "scimodom.api.helpers.get_dataset_service", return_value=MockDatasetService()
-    # )
-    # mocker.patch(
-    #     "scimodom.api.helpers.get_file_service", return_value=MockFileService()
-    # )
-    mocker.patch(
-        "scimodom.api.helpers.get_utilities_service",
-        return_value=MockUtilitiesService(),
-    )
-    mocker.patch(
-        "scimodom.api.helpers.get_annotation_service",
-        return_value=MockAnnotationService(),
-    )
 
 
 @pytest.fixture
@@ -329,14 +298,14 @@ def test_get_required_query_param_empty(app):
             "1",
             248956422,
             None,
-            422,
+            400,
             "Parameter 'end'/'chromEnd' must be greater than 'start'/'chromStart'",
         ),
         (
             "1",
             1,
             248956423,
-            422,
+            400,
             "Parameter 'end'/'chromEnd' is greater than chrom size",
         ),
     ],
@@ -483,8 +452,16 @@ def test_get_valid_biotypes_fail(app, mocker):
     ],
 )
 def test_get_valid_features_fail(
-    app, mock_services, rna_type, http_status, message, user_message
+    app, mocker, rna_type, http_status, message, user_message
 ):
+    mocker.patch(
+        "scimodom.api.helpers.get_utilities_service",
+        return_value=MockUtilitiesService(),
+    )
+    mocker.patch(
+        "scimodom.api.helpers.get_annotation_service",
+        return_value=MockAnnotationService(),
+    )
     with app.test_request_context(f"/?rnaType={rna_type}&features=utr", method="GET"):
         with pytest.raises(ClientResponseException) as exc:
             get_valid_features()
@@ -527,7 +504,15 @@ def test_get_valid_selections_fail(
         assert returned_message["user_message"] == user_message
 
 
-def test_get_valid_coords_fail(app, mock_services):
+def test_get_valid_coords_fail(app, mocker):
+    mocker.patch(
+        "scimodom.api.helpers.get_assembly_service",
+        return_value=MockAssemblyService(),
+    )
+    mocker.patch(
+        "scimodom.api.helpers.get_utilities_service",
+        return_value=MockUtilitiesService(),
+    )
     with app.test_request_context(
         "/?chrom=1&start=1&end=2&strand=a&taxaId=9606", method="GET"
     ):
@@ -545,7 +530,15 @@ def test_get_valid_coords_fail(app, mock_services):
         (248956421, 248956422, ("1", 248956416, 248956422, Strand("."))),
     ],
 )
-def test_get_valid_coords(app, mock_services, start, end, result):
+def test_get_valid_coords(app, mocker, start, end, result):
+    mocker.patch(
+        "scimodom.api.helpers.get_assembly_service",
+        return_value=MockAssemblyService(),
+    )
+    mocker.patch(
+        "scimodom.api.helpers.get_utilities_service",
+        return_value=MockUtilitiesService(),
+    )
     with app.test_request_context(
         f"/?chrom=1&start={start}&end={end}&taxaId=9606", method="GET"
     ):
@@ -579,69 +572,85 @@ def test_parse_valid_sunburst_type(mocker):
     )
 
 
-# HERE >>>
+@pytest.mark.parametrize(
+    "eufid,expected_status,expected_message",
+    [
+        ("ABCDEFGHIJKLM", 400, "Invalid datasetId 'ABCDEFGHIJKLM'"),
+        ("AB!DEF.HIJ/L", 400, "Invalid datasetId 'AB!DEF.HIJ/L'"),
+        ("aBCDEFGHIJKL", 404, "Dataset 'aBCDEFGHIJKL' not found"),
+    ],
+)
+def test_get_valid_dataset(eufid, expected_status, expected_message, mocker):
+    mocker.patch(
+        "scimodom.api.helpers.get_dataset_service", return_value=MockDatasetService()
+    )
+    with pytest.raises(ClientResponseException) as exc:
+        get_valid_dataset(eufid)
+    returned_message, returned_status = exc.value.response_tuple
+    assert returned_message["message"] == expected_message
+    assert returned_status == expected_status
 
 
-# @pytest.mark.parametrize(
-#     "eufid,expected_status,expected_message",
-#     [
-#         ("ABCDEFGHIJK", 400, "Invalid dataset ID"),
-#         ("ABCDEFGHIJKLM", 400, "Invalid dataset ID"),
-#         ("AB!DEF.HIJ/L", 400, "Invalid dataset ID"),
-#         ("aBCDEFGHIJKL", 404, "Unknown dataset"),
-#     ],
-# )
-# def test_get_valid_dataset(eufid, expected_status, expected_message, mock_services):
-#     with pytest.raises(ClientResponseException) as exc:
-#         get_valid_dataset(eufid)
-#     returned_message, returned_status = exc.value.response_tuple
-#     assert returned_message["message"] == expected_message
-#     assert returned_status == expected_status
+@pytest.mark.parametrize(
+    "bam_file,expected_status,expected_message",
+    [
+        ("wrong file name.bam", 400, "Invalid BamName 'wrong file name.bam'"),
+        (
+            "file_name.bam",
+            404,
+            "BAM file 'file_name.bam' not found or no association with dataset 'dataset_id01'",
+        ),
+    ],
+)
+def test_get_valid_bam_file(
+    bam_file, expected_status, expected_message, mocker, dataset
+):
+    mocker.patch(
+        "scimodom.api.helpers.get_file_service", return_value=MockFileService()
+    )
+    with pytest.raises(ClientResponseException) as exc:
+        get_valid_bam_file(dataset[0], bam_file)
+    returned_message, returned_status = exc.value.response_tuple
+    assert returned_message["message"] == expected_message
+    assert returned_status == expected_status
 
 
-# def test_get_valid_taxa_from_string(test_client, mock_services):
-#     with test_client as client:
-#         response = client.get("/test/9606")
-#         taxa_id_as_int = get_valid_taxa_id_from_from_route(response.data)
-#         assert taxa_id_as_int == 9606
+@pytest.mark.parametrize(
+    "content_length, max_size, should_raise",
+    [
+        (None, 100, False),  # no Content-Length
+        (0, 100, False),  # empty body
+        (50, 100, False),  # under the limit
+        (100, 100, False),  # exactly at the limit
+        (101, 100, True),  # one byte over
+    ],
+)
+def test_validate_request_size(app, content_length, max_size, should_raise):
+    kwargs = {}
+    if content_length is not None:
+        kwargs["data"] = b"x" * content_length
+
+    with app.test_request_context(method="POST", path="", **kwargs):
+        if should_raise:
+            with pytest.raises(FileTooLargeException):
+                validate_request_size(max_size=max_size)
+        else:
+            validate_request_size(max_size=max_size)
 
 
-# @pytest.mark.parametrize(
-#     "value,expected_status,expected_message",
-#     [(10090, 404, "taxaId '10090' not found"), ("X", 400, "Invalid Taxa ID")],
-# )
-# def test_get_valid_taxa_from_string_fail(
-#     value, expected_status, expected_message, test_client, mock_services
-# ):
-#     with test_client as client:
-#         response = client.get(f"/test/{value}")
-#         with pytest.raises(ClientResponseException) as exc:
-#             taxa_id_as_int = get_valid_taxa_id_from_from_route(response.data)
-#         returned_message, returned_status = exc.value.response_tuple
-#         assert returned_message["message"] == expected_message
-#         assert returned_status == expected_status
+# tested indirectly in test_comparison_api
+# - get_valid_dataset_id_list_from_request_parameter
+# - get_valid_tmp_file_id_from_request_parameter
 
 
-# @pytest.mark.parametrize(
-#     "bam_file,expected_status,expected_message",
-#     [
-#         ("wrong file name.bam", 400, "Invalid BAM file name"),
-#         ("file_name.bam", 404, "Unknown BAM file name or no association with dataset"),
-#     ],
-# )
-# def test_get_valid_bam_file(bam_file, expected_status, expected_message, mock_services):
-#     with pytest.raises(ClientResponseException) as exc:
-#         get_valid_bam_file("EUFID_IS_NOT_TESTED", bam_file)
-#     returned_message, returned_status = exc.value.response_tuple
-#     assert returned_message["message"] == expected_message
-#     assert returned_status == expected_status
-
-
-# def test_validate_request_size(test_client):
-#     with test_client as client:
-#         response = client.post("/", data="Content-Length")
-#         with pytest.raises(ClientResponseException) as exc:
-#             validate_request_size(10)
-#         returned_message, returned_status = exc.value.response_tuple
-#         assert returned_message["message"] == "File too large (max. 10 bytes)"
-#         assert returned_status == 413
+@pytest.mark.parametrize(
+    "param,name,expected",
+    [
+        ("param", "abc123.bed", "abc123.bed"),
+        ("param", "a+ bc1/23.bed", "a??bc1?23.bed"),
+        ("parameter", "abc123.bed", "uploaded file"),
+    ],
+)
+def test_get_valid_remote_file_name_from_request_parameter(app, param, name, expected):
+    with app.test_request_context(f"/?{param}={name}", method="GET"):
+        assert get_valid_remote_file_name_from_request_parameter("param") == expected
