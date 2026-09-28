@@ -6,7 +6,7 @@ interface ComparisonParams {
   reference: string[]
   comparison?: string[]
   upload?: string
-  upload_name?: string
+  uploadName?: string
   strand: boolean
   euf?: boolean
   taxaId?: number

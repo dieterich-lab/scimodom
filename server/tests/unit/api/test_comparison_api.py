@@ -530,7 +530,7 @@ def test_intersect_with_liftover(test_client, mock_services, mocker):
         (
             "/closest?reference=datasetidAxx&comparison=datasetidBxx&strand=strand_aware",
             400,
-            "Invalid value for 'strand' (allowed: 'true', 'false')",
+            "Invalid value for 'strand' (allowed: 'true', 'false', got: 'strand_aware')",
             None,
         ),
         (

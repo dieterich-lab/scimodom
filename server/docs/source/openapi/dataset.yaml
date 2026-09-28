@@ -318,7 +318,7 @@ components:
         if `comparison` is not used. This parameter is incompatible with `comparison`.
     uploadNameQueryParam:
       in: query
-      name: upload_name
+      name: uploadName
       required: false
       schema:
         type: string

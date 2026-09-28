@@ -1,5 +1,5 @@
 import re
-from typing import Optional, Any, TypeVar
+from typing import Any, TypeVar
 from collections.abc import Callable
 
 from flask import request, Response
@@ -21,11 +21,6 @@ from scimodom.utils.specs.enums import (
     Identifiers,
     SunburstChartType,
 )
-
-"""
-NOTE: Most functions exposed in this module must be called while
-a HTTP request is processed and use the Flask 'request' object.
-"""
 
 
 T = TypeVar("T")  # Callable return type
@@ -198,6 +193,39 @@ def parse_non_negative_int(name: str, raw: str) -> int:
     return _parse_param(name, raw, _non_negative_int, "integer")
 
 
+def get_bool(name: str, *, default: bool | None = None) -> bool:
+    """Parse query for parameter and convert.
+
+    :param name: Query parameter name
+    :param default: Default value (keyword-only)
+    :raises ClientResponseException: 400
+    :return: Boolean corresponding to parameter value
+    """
+    raw = request.args.get(name, type=str)
+    allowed = ", ".join(f"'{b}'" for b in _BOOLEANS)
+    if raw is None:
+        if default is None:
+            raise ClientResponseException(
+                400,
+                f"Missing required parameter: '{name}' (allowed: {allowed})",
+            )
+        return default
+
+    try:
+        return _BOOLEANS[raw.lower()]
+    except KeyError:
+        raise ClientResponseException(
+            400,
+            f"Invalid value for '{name}' (allowed: {allowed}, got: '{raw}')",
+        )
+
+
+_BOOLEANS = {
+    "true": True,
+    "false": False,
+}
+
+
 def _non_empty_str(raw: str, name: str) -> str:
     if not raw:
         raise ValueError
@@ -353,12 +381,15 @@ def _get_chroms_and_validate(
     if end <= start:
         raise ClientResponseException(
             400,
-            "Parameter 'end'/'chromEnd' must be greater than 'start'/'chromStart'",
+            "Parameter 'end'/'chromEnd' must be greater than "
+            f"'start'/'chromStart' (start is: {start}, got end: {end})",
         )
-    if not end <= chrom_size[chrom]:
+    size = chrom_size[chrom]
+    if not end <= size:
         raise ClientResponseException(
             400,
-            "Parameter 'end'/'chromEnd' is greater than chrom size",
+            "Parameter 'end'/'chromEnd' is greater than chrom size "
+            f"(max. allowed: {size}, got '{end}')",
         )
     return chrom_size
 
@@ -608,7 +639,7 @@ def get_valid_coords(
         strand_dto = Strand(strand)
     except ValueError as exc:
         raise ClientResponseException(
-            400, "Parameter 'strand' must be +, -, or ."
+            400, f"Invalid value for 'strand' (allowed: +, -, or ., got '{strand}')"
         ) from exc
 
     if context > 0:
@@ -623,24 +654,25 @@ def get_valid_coords(
 def parse_valid_target_type(raw: str) -> TargetsFileType:
     """Parse raw target and return target file type value.
 
-    :param raw: Incoming target type
+    :param raw: Route parameter for target type
     :raises ClientResponseException: 400
     :return: The value corresponding to target
     """
     target = _parse_param("target", raw)
     try:
         return TargetsFileType[target]
-    except KeyError:
+    except KeyError as exc:
         raise ClientResponseException(
             400,
-            f"Parameter 'target' must be: {TargetsFileType.list()}",
-        )
+            "Invalid value for 'target' "
+            f"(allowed: {TargetsFileType.list()}, got: '{target}')",
+        ) from exc
 
 
 def parse_valid_sunburst_type(raw: str) -> SunburstChartType:
     """Parse raw chart type and return chart type value.
 
-    :param raw: Incoming chart type
+    :param raw: Route parameter for chart type
     :raises ClientResponseException: 400
     :return: The value corresponding to raw chart type
     """
@@ -650,7 +682,8 @@ def parse_valid_sunburst_type(raw: str) -> SunburstChartType:
     except KeyError as exc:
         raise ClientResponseException(
             400,
-            f"Parameter 'sunburstType' must be: {SunburstChartType.list()}",
+            "Invalid value for 'sunburstType' "
+            f"(allowed: {SunburstChartType.list()}, got: '{sunburst_type}')",
         ) from exc
 
 
@@ -671,15 +704,15 @@ def get_valid_dataset(raw: str) -> Dataset:
         raise ClientResponseException(404, f"Dataset '{dataset_id}' not found")
 
 
-def get_valid_bam_file(dataset: Dataset, raw: str) -> BamFile:
+def get_valid_bam_file(dataset: Dataset, raw_file_name: str) -> BamFile:
     """Get BAM file.
 
     :param dataset: Dataset
-    :param raw: File name
+    :param raw_file_name: Incoming file name
     :raises ClientResponseException: 400, 404.
     :return: BAM file object
     """
-    name = _parse_param("BamName", raw)
+    name = _parse_param("BamName", raw_file_name)
     if not VALID_FILENAME_REGEXP.match(name):
         raise ClientResponseException(400, f"Invalid BamName '{name}'")
     file_service = get_file_service()
@@ -688,115 +721,87 @@ def get_valid_bam_file(dataset: Dataset, raw: str) -> BamFile:
     except NoResultFound:
         raise ClientResponseException(
             404,
-            f"BAM file '{name}' not found or no association with dataset '{dataset.id}'",
+            f"BAM file '{name}' not found or "
+            f"no association with dataset '{dataset.id}'",
         )
 
 
-def get_valid_dataset_id_list_from_request_parameter(parameter: str) -> list[str]:
+def get_valid_dataset_id_list(name: str) -> list[str]:
     """Get a list of valid dataset IDs.
 
-    :param parameter: Query parameter
+    :param name: Query parameter name
     :raises ClientResponseException: 400, 404.
     :return: List of dataset ID(s)
     """
-    as_list = get_unique_list_from_query_param(parameter, str)
+    as_list = get_unique_list_from_query_param(name, str)
     if len(as_list) > MAX_DATASET_IDS_IN_LIST:
         raise ClientResponseException(
             400,
-            f"'{parameter}' contains too many datasetId (max. {MAX_DATASET_IDS_IN_LIST})",
+            f"'{name}' contains too many datasetId "
+            f"(max. {MAX_DATASET_IDS_IN_LIST})",
         )
     dataset_service = get_dataset_service()
     for dataset_id in as_list:
         if not _is_valid_identifier(dataset_id, Identifiers.EUFID.length):
             raise ClientResponseException(
-                400, f"Invalid {parameter} datasetId '{dataset_id}'"
+                400, f"Invalid {name} datasetId '{dataset_id}'"
             )
         try:
             dataset_service.get_by_id(dataset_id)
         except NoResultFound as exc:
             raise ClientResponseException(
-                404, f"{parameter} datasetId '{dataset_id}' not found"
+                404, f"{name} datasetId '{dataset_id}' not found"
             ) from exc
     return as_list
 
 
-def get_valid_tmp_file_id_from_request_parameter(
-    parameter: str, is_optional=False
-) -> Optional[str]:
+def get_valid_tmp_file_id(name: str, is_optional: bool = False) -> str | None:
     """Get uploaded/temporary file identifier.
 
-    :param parameter: Query parameter
+    :param name: Query parameter name
     :param is_optional: True if parameter is required (Default: False)
     :raises ClientResponseException: 400, 404
     :return: Uploaded/temporary file identifier or None
     """
-    file_id = request.args.get(parameter, type=str)
+    file_id = request.args.get(name, type=str)
     if not file_id:
         if is_optional:
             return None
-        raise ClientResponseException(400, f"Missing required parameter: '{parameter}'")
+        raise ClientResponseException(400, f"Missing required parameter: '{name}'")
     if not VALID_FILENAME_REGEXP.match(file_id):
-        raise ClientResponseException(400, f"Invalid {parameter} fileId '{file_id}'")
+        raise ClientResponseException(400, f"Invalid {name} fileId '{file_id}'")
     file_service = get_file_service()
     if not file_service.check_tmp_upload_file_id(file_id):
         raise ClientResponseException(
             404,
-            f"{parameter} file not found",
+            f"{name} file not found",
             "Select the file again and try to re-upload",
         )
     return file_id
 
 
-def get_valid_remote_file_name_from_request_parameter(
-    parameter: str, default: str = "uploaded file"
-) -> str:
+def get_valid_remote_file_name(name: str, default: str = "uploaded file") -> str:
     """Get uploaded/temporary file name.
 
-    :param parameter: Query parameter
-    :type parameter: str
+    :param name: Query parameter name
     :param default: Default file name
-    :type default: str
     :return: Uploaded/temporary file name
     """
-    file_name = request.args.get(parameter, type=str)
+    file_name = request.args.get(name, type=str)
     if not file_name:
         return default
     return re.sub(INVALID_CHARS_REGEXP, "?", file_name)
-
-
-def get_valid_boolean_from_request_parameter(
-    parameter: str, default: Optional[bool] = None
-) -> bool:
-    """Parse query parameter to boolean value.
-
-    :param parameter: Query parameter
-    :param default: Default value. If query
-    parameter is None, and there is no default,
-    a ClientResponseException is raised.
-    :raises ClientResponseException: 400
-    :return: Boolean value
-    """
-    raw_value = request.args.get(parameter, type=str)
-    if raw_value is None:
-        if default is None:
-            raise ClientResponseException(
-                400, f"Missing required parameter: '{parameter}' ('true' or 'false')"
-            )
-        return default
-    lower_case_value = raw_value.lower()
-    if lower_case_value == "false":
-        return False
-    if lower_case_value == "true":
-        return True
-    raise ClientResponseException(
-        400, f"Invalid value for '{parameter}' (allowed: 'true', 'false')"
-    )
 
 
 # Response
 
 
 def get_response_from_pydantic_object(obj: BaseModel):
+    """Dump a model to a Flask response object.
+
+    :param obj: A pydantic object
+    :return: The Flask response with the jsonified model
+    """
     return Response(
         response=obj.model_dump_json(), status=200, mimetype="application/json"
     )

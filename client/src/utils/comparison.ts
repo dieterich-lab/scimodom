@@ -44,7 +44,7 @@ function getCompareParams(
   const paramsStepB = isUpload(resultStepB)
     ? {
         upload: resultStepB.id,
-        upload_name: resultStepB.name,
+        uploadName: resultStepB.name,
         euf: resultStepB.isEUF
       }
     : {

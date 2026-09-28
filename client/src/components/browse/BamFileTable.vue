@@ -6,7 +6,7 @@ import Button from 'primevue/button'
 import { useAccessToken } from '@/stores/AccessToken'
 import LocalTime from '@/components/ui/LocalTime.vue'
 import { useDialogState, DIALOG } from '@/stores/DialogState'
-import { mayChangeDataset } from '@/services/user'
+import { mayChangeDataset } from '@/services/dataset'
 import {
   type BamFile,
   deleteBamFile,

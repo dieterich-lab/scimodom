@@ -33,7 +33,8 @@ from scimodom.api.helpers import (
     get_valid_dataset,
     get_valid_bam_file,
     validate_request_size,
-    get_valid_remote_file_name_from_request_parameter,
+    get_valid_remote_file_name,
+    get_bool,
 )
 from scimodom.utils.specs.enums import Strand
 
@@ -287,6 +288,67 @@ def test_get_required_query_param_empty(app):
     )
 
 
+def test_get_bool_no_default(app):
+    with app.test_request_context("/?other=1"):
+        with pytest.raises(ClientResponseException) as exc:
+            get_bool("strand")
+
+    returned_message, returned_status = exc.value.response_tuple
+    assert (
+        returned_message["message"]
+        == "Missing required parameter: 'strand' (allowed: 'true', 'false')"
+    )
+    assert returned_status == 400
+
+
+def test_boolean_missing_with_default_true(app):
+    with app.test_request_context("/?other=1"):
+        assert get_bool("strand", default=True) is True
+
+
+@pytest.mark.parametrize(
+    "raw, expected",
+    [
+        ("true", True),
+        ("false", False),
+        ("TRUE", True),
+        ("FALSE", False),
+        ("True", True),
+        ("False", False),
+        ("tRuE", True),
+        ("FaLsE", False),
+    ],
+)
+def test_get_bool_case(app, raw, expected):
+    with app.test_request_context(f"/?strand={raw}"):
+        assert get_bool("strand") is expected
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        "",
+        "1",
+        "0",
+        "truthy",
+        "falsey",
+        " true",  # leading space is not trimmed
+        "true ",  # trailing space is not trimmed
+    ],
+)
+def test_get_bool_invalid_values(app, raw):
+    with app.test_request_context(f"/?strand={raw}"):
+        with pytest.raises(ClientResponseException) as exc:
+            get_bool("strand")
+
+    returned_message, returned_status = exc.value.response_tuple
+    assert (
+        returned_message["message"]
+        == f"Invalid value for 'strand' (allowed: 'true', 'false', got: '{raw}')"
+    )
+    assert returned_status == 400
+
+
 # tests: semantic validation
 
 
@@ -299,14 +361,16 @@ def test_get_required_query_param_empty(app):
             248956422,
             None,
             400,
-            "Parameter 'end'/'chromEnd' must be greater than 'start'/'chromStart'",
+            "Parameter 'end'/'chromEnd' must be greater than 'start'/'chromStart' "
+            "(start is: 248956422, got end: 248956422)",
         ),
         (
             "1",
             1,
             248956423,
             400,
-            "Parameter 'end'/'chromEnd' is greater than chrom size",
+            "Parameter 'end'/'chromEnd' is greater than chrom size "
+            "(max. allowed: 248956422, got '248956423')",
         ),
     ],
 )
@@ -520,7 +584,10 @@ def test_get_valid_coords_fail(app, mocker):
             get_valid_coords()
     returned_message, returned_status = exc.value.response_tuple
     assert returned_status == 400
-    assert returned_message["message"] == "Parameter 'strand' must be +, -, or ."
+    assert (
+        returned_message["message"]
+        == "Invalid value for 'strand' (allowed: +, -, or ., got 'a')"
+    )
 
 
 @pytest.mark.parametrize(
@@ -554,7 +621,10 @@ def test_parse_valid_target_type(mocker):
         parse_valid_target_type(" ")
     returned_message, returned_status = exc.value.response_tuple
     assert returned_status == 400
-    assert returned_message["message"] == "Parameter 'target' must be: ['MIRNA', 'RBP']"
+    assert (
+        returned_message["message"]
+        == "Invalid value for 'target' (allowed: ['MIRNA', 'RBP'], got: ' ')"
+    )
 
 
 def test_parse_valid_sunburst_type(mocker):
@@ -568,7 +638,7 @@ def test_parse_valid_sunburst_type(mocker):
     assert returned_status == 400
     assert (
         returned_message["message"]
-        == "Parameter 'sunburstType' must be: ['search', 'browse']"
+        == "Invalid value for 'sunburstType' (allowed: ['search', 'browse'], got: ' ')"
     )
 
 
@@ -639,8 +709,8 @@ def test_validate_request_size(app, content_length, max_size, should_raise):
 
 
 # tested indirectly in test_comparison_api
-# - get_valid_dataset_id_list_from_request_parameter
-# - get_valid_tmp_file_id_from_request_parameter
+# - get_valid_dataset_id_list
+# - get_valid_tmp_file_id
 
 
 @pytest.mark.parametrize(
@@ -651,6 +721,6 @@ def test_validate_request_size(app, content_length, max_size, should_raise):
         ("parameter", "abc123.bed", "uploaded file"),
     ],
 )
-def test_get_valid_remote_file_name_from_request_parameter(app, param, name, expected):
+def test_get_valid_remote_file_name(app, param, name, expected):
     with app.test_request_context(f"/?{param}={name}", method="GET"):
-        assert get_valid_remote_file_name_from_request_parameter("param") == expected
+        assert get_valid_remote_file_name("param") == expected

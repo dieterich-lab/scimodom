@@ -4,22 +4,28 @@ import {
   allDatasetsByIdCache,
   myDatasetsCache,
   getDatasetsByTaxaId,
+  mayChangeDataset,
   type Dataset
 } from '@/services/dataset'
-import { HTTP, HTTPSecure } from '@/services/API'
+import { HTTP, HTTPSecure, handleRequestWithErrorReporting } from '@/services/API'
+import { type DialogStateStore } from '@/stores/DialogState'
 import { type AxiosResponse } from 'axios'
 
 vi.mock('@/services/API', () => ({
   HTTP: { get: vi.fn().mockResolvedValue({} as AxiosResponse) },
-  HTTPSecure: { get: vi.fn().mockResolvedValue({} as AxiosResponse) }
+  HTTPSecure: { get: vi.fn().mockResolvedValue({} as AxiosResponse) },
+  handleRequestWithErrorReporting: vi.fn()
 }))
 
 const mockedGet = vi.mocked(HTTP.get)
 const mockedSecureGet = vi.mocked(HTTPSecure.get)
+const mockedHandle = vi.mocked(handleRequestWithErrorReporting)
+const dialogState = {} as DialogStateStore
 
 beforeEach(() => {
-  mockedGet.mockReset()
-  mockedSecureGet.mockReset()
+  mockedGet.mockClear()
+  mockedSecureGet.mockClear()
+  mockedHandle.mockReset()
 })
 
 const dataset: Dataset[] = [
@@ -123,4 +129,31 @@ test('getDatasetsByTaxaId', async () => {
   const human = await getDatasetsByTaxaId(9606)
 
   expect(human.map((d) => d.dataset_id).sort()).toEqual(['d1', 'd2'])
+})
+
+test.each([
+  { write_access: true, expected: true },
+  { write_access: false, expected: false }
+])(
+  'mayChangeDataset returns $expected when write_access is $write_access',
+  async ({ write_access, expected }) => {
+    mockedHandle.mockResolvedValueOnce({ write_access })
+
+    const result = await mayChangeDataset('d1', dialogState)
+
+    expect(mockedSecureGet).toHaveBeenCalledWith('/users/me/datasets/d1/permissions')
+    expect(mockedHandle).toHaveBeenCalledWith(
+      expect.any(Promise),
+      "Failed to load dataset 'd1' permission for user",
+      dialogState
+    )
+    expect(result).toBe(expected)
+  }
+)
+
+test('mayChangeDataset does not swallow failures', async () => {
+  const error = new Error()
+  mockedHandle.mockRejectedValueOnce(error)
+
+  await expect(mayChangeDataset('d1', dialogState)).rejects.toBe(error)
 })

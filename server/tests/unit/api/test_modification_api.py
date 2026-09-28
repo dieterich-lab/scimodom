@@ -545,7 +545,7 @@ def test_get_genomic_sequence_context_file_not_found(
         (
             "/target/MIRNA?taxaId=9606&chrom=1&start=3284723&end=3284724&strand=+",
             400,
-            "Parameter 'strand' must be +, -, or .",
+            "Invalid value for 'strand' (allowed: +, -, or ., got ' ')",
         ),
     ],
 )

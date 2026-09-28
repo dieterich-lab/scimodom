@@ -16,10 +16,10 @@ interface Project {
 class AllProjectsCache extends Cache<Project[]> {
   async getPromise(): Promise<Project[]> {
     try {
-      const response = await HTTP.get('/project/list_all')
+      const response = await HTTP.get('/projects')
       return response.data as Project[]
     } catch (err) {
-      console.log(`Failed to fetch all projects: ${err}`)
+      console.log(`Failed to fetch projects: ${err}`)
       throw err
     }
   }
@@ -28,10 +28,10 @@ class AllProjectsCache extends Cache<Project[]> {
 class MyProjectsCache extends Cache<Project[]> {
   async getPromise(): Promise<Project[]> {
     try {
-      const response = await HTTPSecure.get('/project/list_mine')
+      const response = await HTTPSecure.get('/users/me/projects')
       return response.data as Project[]
     } catch (err) {
-      console.log(`Failed to fetch all projects: ${err}`)
+      console.log(`Failed to fetch my projects: ${err}`)
       throw err
     }
   }

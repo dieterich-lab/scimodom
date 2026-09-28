@@ -1,5 +1,10 @@
-import { HTTP, HTTPSecure } from '@/services/API'
+import { type DialogStateStore } from '@/stores/DialogState'
+import { HTTP, HTTPSecure, handleRequestWithErrorReporting } from '@/services/API'
 import { ByKeyCache, Cache } from '@/utils/cache'
+
+interface MayChangeDatasetResponse {
+  write_access: boolean
+}
 
 interface Dataset {
   project_id: string
@@ -54,11 +59,24 @@ async function getDatasetsByTaxaId(taxaId: number): Promise<Readonly<Dataset[]>>
   return (await allDatasetsCache.getData()).filter((item) => item.taxa_id === taxaId)
 }
 
+async function mayChangeDataset(
+  datasetId: string,
+  dialogState: DialogStateStore
+): Promise<boolean> {
+  const data = await handleRequestWithErrorReporting<MayChangeDatasetResponse>(
+    HTTPSecure.get(`/users/me/datasets/${datasetId}/permissions`),
+    `Failed to load dataset '${datasetId}' permission for user`,
+    dialogState
+  )
+  return data.write_access
+}
+
 export {
   type Dataset,
   allDatasetsCache,
   allDatasetsByIdCache,
   myDatasetsCache,
   myDatasetsByIdCache,
-  getDatasetsByTaxaId
+  getDatasetsByTaxaId,
+  mayChangeDataset
 }

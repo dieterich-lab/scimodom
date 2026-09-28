@@ -100,7 +100,7 @@ test('postProject posts the request body to /projects/requests', async () => {
 
   await postProject(request, dialogState)
 
-  expect(mockedPost).toHaveBeenCalledWith('/management/project', request)
+  expect(mockedPost).toHaveBeenCalledWith('/projects/requests', request)
   expect(mockedHandle).toHaveBeenCalledWith(
     expect.anything(),
     'Failed to post project request',

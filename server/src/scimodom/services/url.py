@@ -16,8 +16,6 @@ RELEASE_API_ROUTE = f"/{API_PREFIX}"
 UPLOAD_API_ROUTE = f"/{API_PREFIX}"
 USER_API_ROUTE = f"/{API_PREFIX}"
 
-# DATA_MANAGEMENT_API_ROUTE = f"/{API_PREFIX}/management"
-
 CONFIRM_USER_REGISTRATION_URI = "confirm_user_registration"
 REQUEST_PASSWORD_RESET_URI = "request_password_reset"
 
@@ -38,11 +36,8 @@ class UrlService:
         """Construct registration link.
 
         :param email: User email
-        :type email: str
         :param token: Token
-        :type token: str
-        :returns: Registration link
-        :rtype: str
+        :return: Registration link
         """
         return self._build_link(CONFIRM_USER_REGISTRATION_URI, quote(email), token)
 
@@ -50,11 +45,8 @@ class UrlService:
         """Construct password reset link.
 
         :param email: User email
-        :type email: str
         :param token: Token
-        :type token: str
-        :returns: Password reset link
-        :rtype: str
+        :return: Password reset link
         """
         return self._build_link(REQUEST_PASSWORD_RESET_URI, quote(email), token)
 
@@ -70,7 +62,6 @@ class UrlService:
 def get_url_service():
     """Provide a helper function to set up an UrlService.
 
-    :returns: URL service instance
-    :rtype: UrlService
+    :return: URL service instance
     """
     return UrlService(http_public_url=get_config().HTTP_PUBLIC_URL)

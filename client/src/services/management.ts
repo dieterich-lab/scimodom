@@ -60,7 +60,7 @@ async function postDataset(
 
 async function postProject(request: ProjectPostRequest, dialogState: DialogStateStore) {
   return await handleRequestWithErrorReporting<void>(
-    HTTPSecure.post('/management/project', request),
+    HTTPSecure.post('/projects/requests', request),
     `Failed to post project request`,
     dialogState
   )

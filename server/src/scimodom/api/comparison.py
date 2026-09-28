@@ -7,10 +7,10 @@ from pydantic import BaseModel
 
 from scimodom.api.helpers import (
     ClientResponseException,
-    get_valid_dataset_id_list_from_request_parameter,
-    get_valid_tmp_file_id_from_request_parameter,
-    get_valid_remote_file_name_from_request_parameter,
-    get_valid_boolean_from_request_parameter,
+    get_valid_dataset_id_list,
+    get_valid_tmp_file_id,
+    get_valid_remote_file_name,
+    get_bool,
     get_valid_taxa_id,
     get_response_from_pydantic_object,
 )
@@ -159,32 +159,21 @@ class _CompareContext:
         is_strand: bool
 
     def __init__(self):
-        self._reference_ids = get_valid_dataset_id_list_from_request_parameter(
-            "reference"
-        )
-        self._comparison_ids = get_valid_dataset_id_list_from_request_parameter(
-            "comparison"
-        )
-        self._upload_id = get_valid_tmp_file_id_from_request_parameter(
-            "upload", is_optional=True
-        )
-        self._upload_name = get_valid_remote_file_name_from_request_parameter(
-            "upload_name"
-        )
-        self._is_strand = get_valid_boolean_from_request_parameter(
-            "strand", default=True
-        )
-        self._is_euf = get_valid_boolean_from_request_parameter("euf", default=False)
+        self._reference_ids = get_valid_dataset_id_list("reference")
+        self._comparison_ids = get_valid_dataset_id_list("comparison")
+        self._upload_id = get_valid_tmp_file_id("upload", is_optional=True)
+        self._upload_name = get_valid_remote_file_name("uploadName")
+        self._is_strand = get_bool("strand", default=True)
+        self._is_euf = get_bool("euf", default=False)
         self._taxa_id: int | None = None
         if self._is_euf:
             try:
                 self._taxa_id = get_valid_taxa_id()
             except ClientResponseException as exc:
                 response, status_code = exc.response_tuple
-                message = response["message"]
                 raise ClientResponseException(
                     status_code,
-                    message,
+                    response["message"],
                     "Request needs a valid 'taxaId' when 'euf=true'",
                 ) from exc
         self._tmp_file_handle: TextIO | None = None

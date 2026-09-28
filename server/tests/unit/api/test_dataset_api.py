@@ -3,6 +3,7 @@ from typing import Generator
 import pytest
 from flask import Flask
 from flask_jwt_extended import JWTManager, create_access_token
+from sqlalchemy.exc import NoResultFound
 
 from scimodom.api.dataset import dataset_api
 from scimodom.services.assembly import LiftOverError
@@ -114,6 +115,47 @@ def test_get_my_datasets(unauthenticated_client):
     result = unauthenticated_client.get("/users/me/datasets")
     assert result.status_code == 401
     assert result.json["msg"] == "Missing Authorization Header"
+
+
+def test_get_my_permissions(unauthenticated_client):
+    result = unauthenticated_client.get("/users/me/datasets/d1/permissions")
+    assert result.status_code == 401
+    assert result.json["msg"] == "Missing Authorization Header"
+
+
+def test_get_my_permissions_not_found(authenticated_client, dataset, mocker):
+    mock_dataset_service = mocker.Mock()
+    mock_dataset_service.get_by_id.side_effect = NoResultFound
+    mocker.patch(
+        "scimodom.api.dataset.get_dataset_service",
+        return_value=mock_dataset_service,
+    )
+    mocker.patch(
+        "scimodom.api.dataset.get_user_service",
+        return_value=mocker.Mock(),
+    )
+    mocker.patch(
+        "scimodom.api.dataset.get_permission_service",
+        return_value=mocker.Mock(),
+    )
+    result = authenticated_client.get("/users/me/datasets/d1/permissions")
+    assert result.status_code == 404
+    assert result.json["message"] == "Dataset 'd1' not found"
+
+
+def test_get_my_permissions_denied(authenticated_client, mocker):
+    mocker.patch("scimodom.api.dataset.get_dataset_service", return_value=mocker.Mock())
+    mocker.patch("scimodom.api.dataset.get_user_service", return_value=mocker.Mock())
+    mock_permission_service = mocker.Mock()
+    mock_permission_service.may_change_dataset.return_value = False
+    mocker.patch(
+        "scimodom.api.dataset.get_permission_service",
+        return_value=mock_permission_service,
+    )
+
+    result = authenticated_client.get("/users/me/datasets/d1/permissions")
+    assert result.status_code == 200
+    assert result.get_json() == {"write_access": False}
 
 
 def test_add_dataset(authenticated_client, dataset_mocks):

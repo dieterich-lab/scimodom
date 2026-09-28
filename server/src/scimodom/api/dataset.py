@@ -3,6 +3,7 @@ import logging
 from flask import Blueprint, Response, request, stream_with_context
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from pydantic import ValidationError
+from sqlalchemy.exc import NoResultFound
 
 from scimodom.api.helpers import (
     ClientResponseException,
@@ -15,6 +16,7 @@ from scimodom.services.assembly import LiftOverError
 from scimodom.services.dataset import get_dataset_service
 from scimodom.services.exporter import get_exporter, NoSuchDataset
 from scimodom.services.file import get_file_service
+from scimodom.services.permission import get_permission_service
 from scimodom.services.sunburst import get_sunburst_service
 from scimodom.services.user import get_user_service
 from scimodom.services.validator import (
@@ -91,7 +93,7 @@ def export_dataset(dataset_id: str):
 
     :param dataset_id: Dataset identifier (EUFID)
     :statuscode 200: OK
-    :statuscode 404: Dataset not found
+    :statuscode 404: Not Found - dataset
     :statuscode 500: Internal Server Error
     """
     exporter = get_exporter()
@@ -125,6 +127,31 @@ def get_my_datasets():
     email = get_jwt_identity()
     user = user_service.get_user_by_email(email)
     return dataset_service.get_datasets(user)
+
+
+@dataset_api.route("/users/me/datasets/<dataset_id>/permissions")
+@jwt_required()
+def get_my_permissions(dataset_id):
+    """Get user dataset permissions.
+
+    :param header: The request header with current token.
+    :statuscode 200: OK
+    :statuscode 401: Unauthorized (expired token, missing header)
+    :statuscode 404: Not Found - dataset
+    :statuscode 422: Unprocessable Content (not enough segments,
+    signature verification failed)
+    :statuscode 500: Internal Server Error
+    """
+    email = get_jwt_identity()
+    user_service = get_user_service()
+    user = user_service.get_user_by_email(email)
+    dataset_service = get_dataset_service()
+    permission_service = get_permission_service()
+    try:
+        dataset = dataset_service.get_by_id(dataset_id)
+    except NoResultFound:
+        return create_error_response(404, f"Dataset '{dataset_id}' not found")
+    return {"write_access": permission_service.may_change_dataset(user, dataset)}
 
 
 def _import_dataset(dataset_form):
