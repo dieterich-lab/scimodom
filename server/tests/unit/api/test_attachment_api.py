@@ -32,7 +32,7 @@ def authenticated_client():
 
 
 def test_put_bam_unauthenticated(unauthenticated_client, mocker):
-    mock_validate = mocker.patch("scimodom.api.attachment.get_valid_dataset")
+    mock_validate = mocker.patch("scimodom.api.attachment.parse_valid_dataset")
     response = unauthenticated_client.put(
         "/d1/attachments/bams/name",
         data=b"some bytes",
@@ -45,7 +45,7 @@ def test_put_bam_unauthenticated(unauthenticated_client, mocker):
 
 def test_put_bam_too_large(authenticated_client, mocker):
     mocker.patch(
-        "scimodom.api.attachment.get_valid_dataset", return_value=mocker.Mock()
+        "scimodom.api.attachment.parse_valid_dataset", return_value=mocker.Mock()
     )
     mocker.patch(
         "scimodom.api.attachment.validate_dataset_write_permission", return_value=None
@@ -66,7 +66,7 @@ def test_put_bam_too_large(authenticated_client, mocker):
 
 
 def test_deleted_bam_unauthenticated(unauthenticated_client, mocker):
-    mock_validate = mocker.patch("scimodom.api.attachment.get_valid_dataset")
+    mock_validate = mocker.patch("scimodom.api.attachment.parse_valid_dataset")
     response = unauthenticated_client.delete(
         "/d1/attachments/bams/name",
         data=b"some bytes",

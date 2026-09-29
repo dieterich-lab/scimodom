@@ -2,9 +2,9 @@ from flask import Blueprint, request, Response
 from flask_jwt_extended import jwt_required
 
 from scimodom.api.helpers import (
-    get_valid_dataset,
+    parse_valid_dataset,
     validate_dataset_write_permission,
-    get_valid_bam_file,
+    parse_valid_bam_file,
     ClientResponseException,
     validate_request_size,
     create_file_too_large_response,
@@ -29,7 +29,7 @@ def list_bam_metadata(dataset_id: str):
     :statuscode 500: Internal Server Error
     """
     try:
-        dataset = get_valid_dataset(dataset_id)
+        dataset = parse_valid_dataset(dataset_id)
     except ClientResponseException as e:
         return e.response_tuple
 
@@ -51,8 +51,8 @@ def get_bam_file(dataset_id: str, name: str):
     :statuscode 500: Internal Server Error
     """
     try:
-        dataset = get_valid_dataset(dataset_id)
-        bam_file = get_valid_bam_file(dataset, name)
+        dataset = parse_valid_dataset(dataset_id)
+        bam_file = parse_valid_bam_file(dataset, name)
     except ClientResponseException as e:
         return e.response_tuple
 
@@ -93,7 +93,7 @@ def put_bam_file(dataset_id: str, name: str):
     :statuscode 500: Internal Server Error
     """
     try:
-        dataset = get_valid_dataset(dataset_id)
+        dataset = parse_valid_dataset(dataset_id)
         validate_dataset_write_permission(dataset)
         validate_request_size(MAX_BAM_FILE_SIZE)
     except ClientResponseException as e:
@@ -128,9 +128,9 @@ def delete_bam_file(dataset_id: str, name: str):
     :statuscode 500: Internal Server Error
     """
     try:
-        dataset = get_valid_dataset(dataset_id)
+        dataset = parse_valid_dataset(dataset_id)
         validate_dataset_write_permission(dataset)
-        bam_file = get_valid_bam_file(dataset, name)
+        bam_file = parse_valid_bam_file(dataset, name)
     except ClientResponseException as e:
         return e.response_tuple
 

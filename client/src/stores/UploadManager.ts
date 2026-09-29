@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { HTTPSecure, handleRequest } from '@/services/API'
+import { HTTPAuth, handleRequest } from '@/services/API'
 
 enum UPLOAD_STATE {
   WAITING = 'WAITING',
@@ -58,10 +58,10 @@ class ScheduledUpload {
     try {
       switch (this.method) {
         case 'POST':
-          await handleRequest(HTTPSecure.post(this.url, this.file))
+          await handleRequest(HTTPAuth.post(this.url, this.file))
           break
         case 'PUT':
-          await handleRequest(HTTPSecure.put(this.url, this.file))
+          await handleRequest(HTTPAuth.put(this.url, this.file))
           break
       }
       this.state = UPLOAD_STATE.DONE

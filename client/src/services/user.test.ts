@@ -9,7 +9,7 @@ import {
 import {
   handleRequestWithErrorReporting,
   HTTP,
-  HTTPSecure,
+  HTTPAuth,
   prepareAPI,
   trashRequestErrors
 } from '@/services/API'
@@ -18,14 +18,14 @@ import { type AccessTokenStore } from '@/stores/AccessToken'
 
 vi.mock('@/services/API', () => ({
   HTTP: { post: vi.fn().mockResolvedValue({}) },
-  HTTPSecure: { put: vi.fn().mockResolvedValue({}) },
+  HTTPAuth: { put: vi.fn().mockResolvedValue({}) },
   handleRequestWithErrorReporting: vi.fn(),
   prepareAPI: vi.fn(),
   trashRequestErrors: vi.fn()
 }))
 
 const mockedHttpPost = vi.mocked(HTTP.post)
-const mockedSecurePut = vi.mocked(HTTPSecure.put)
+const mockedSecurePut = vi.mocked(HTTPAuth.put)
 const mockedHandle = vi.mocked(handleRequestWithErrorReporting)
 const mockedPrepareAPI = vi.mocked(prepareAPI)
 const mockedTrash = vi.mocked(trashRequestErrors)

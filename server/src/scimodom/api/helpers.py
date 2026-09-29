@@ -132,6 +132,25 @@ def get_required_json_fields(*fields: str) -> dict[str, Any]:
 # - Semantic validation must be performed by the caller
 
 
+def get_list(name: str, list_type) -> list[Any]:
+    """Parse query for parameters, convert, and validate.
+
+    :param name: Query parameter name
+    :list_type: Base type of list
+    :raises ClientResponseException: 400
+    :return: The converted values
+    """
+    raw = request.args.getlist(name)
+    try:
+        return [list_type(r) for r in raw]
+    except (ValueError, TypeError):
+        label = getattr(list_type, "__name__", "value")
+        values = ", ".join(raw)
+        raise ClientResponseException(
+            400, f"Parameter '{name}' must be a valid {label} (got: '{values}')"
+        )
+
+
 def get_non_negative_int(name: str) -> int:
     """Parse query for parameter, convert, and validate.
 
@@ -180,17 +199,6 @@ def get_optional_str(name: str) -> str | None:
     :return: The converted value in the given range
     """
     return _get_optional_query_param(name)
-
-
-def parse_non_negative_int(name: str, raw: str) -> int:
-    """Parse raw parameter, convert, and validate.
-
-    :param name: Parameter name
-    :param raw: Raw parameter value e.g. route parameter
-    :raises ClientResponseException: 400
-    :return: The converted value in the given range
-    """
-    return _parse_param(name, raw, _non_negative_int, "integer")
 
 
 def get_bool(name: str, *, default: bool | None = None) -> bool:
@@ -493,35 +501,6 @@ def _is_valid_identifier(identifier, length):
 # - Helpers
 
 
-def get_unique_list_from_query_param(name: str, list_type) -> list[Any]:
-    """Get unique list from query parameters.
-
-    There seem to be some confusion how arrays should be transmitted
-    as query parameters. While most people seem to agree that the values
-    are packed into multiple query parameters, some (older?) implementations
-    leave the original name, while newer ones insist on adding square
-    brackets '[]' at the end of the name, e.g. my_array = ['x', 'y'] may be
-    transmitted like this:
-
-        Old: ?my_array=x&my_array=y
-        New: ?my_array[]=x&my_array[]=y
-
-    Flask seems not to be aware of this. We don't care and allow both.
-    Also, we don't want that our code breaks if Flask fixes this - so we
-    ignore double results. So don't use this function for lists that are
-    allowed to contain the same value multiple times. Note also that the
-    order of returned values is not guaranteed.
-
-    Note: the caller should provide an explicit parser for types
-    other than Text and Numeric.
-    """
-    result_as_set = {
-        *request.args.getlist(name, type=list_type),
-        *request.args.getlist(f"{name}[]", type=list_type),
-    }
-    return list(result_as_set)
-
-
 def get_valid_rna_type() -> str:
     """Parse query for RNA type and validate.
 
@@ -571,11 +550,13 @@ def parse_valid_taxa_id(raw: str) -> int:
 def get_valid_biotypes() -> list[str]:
     """Parse query for biotypes and validate.
 
+    NOTE: May return an empty list.
+
     :raises ClientResponseException: 400, 404
     :return: The validated list of biotypes
     """
     rna_type = get_valid_rna_type()
-    biotypes = get_unique_list_from_query_param("biotypes", str)
+    biotypes = get_list("biotypes", str)
     _validate_biotypes(biotypes, rna_type)
     return biotypes
 
@@ -583,11 +564,13 @@ def get_valid_biotypes() -> list[str]:
 def get_valid_features() -> list[str]:
     """Parse query for features and validate.
 
+    NOTE: May return an empty list.
+
     :raises ClientResponseException: 400, 404, 501
     :return: The validated list of features
     """
     rna_type = get_valid_rna_type()
-    features = get_unique_list_from_query_param("features", str)
+    features = get_list("features", str)
     _validate_features(features, rna_type)
     return features
 
@@ -601,10 +584,9 @@ def get_valid_selections() -> tuple[int, int, list[int]]:
     """
     modification_id = get_non_negative_int("modification")
     organism_id = get_non_negative_int("organism")
-    technology_ids = get_unique_list_from_query_param("technology", int)
+    technology_ids = get_list("technology", int)
     if not technology_ids:
         raise ClientResponseException(400, "Missing required parameter: 'technology'")
-    technology_ids = [_non_negative_int(tid, "technology") for tid in technology_ids]
     selections = [(modification_id, organism_id, tid) for tid in technology_ids]
     _validate_selections(selections)
     return modification_id, organism_id, technology_ids
@@ -651,14 +633,13 @@ def get_valid_coords(
     return chrom, start, end, strand_dto
 
 
-def parse_valid_target_type(raw: str) -> TargetsFileType:
-    """Parse raw target and return target file type value.
+def get_valid_target_type() -> TargetsFileType:
+    """Parse query for target and return target file type value.
 
-    :param raw: Route parameter for target type
     :raises ClientResponseException: 400
     :return: The value corresponding to target
     """
-    target = _parse_param("target", raw)
+    target = _get_required_query_param("target")
     try:
         return TargetsFileType[target]
     except KeyError as exc:
@@ -687,10 +668,10 @@ def parse_valid_sunburst_type(raw: str) -> SunburstChartType:
         ) from exc
 
 
-def get_valid_dataset(raw: str) -> Dataset:
-    """Get a valid dataset.
+def parse_valid_dataset(raw: str) -> Dataset:
+    """Parse a valid dataset.
 
-    :param raw: Incoming dataset identifier (EUFID)
+    :param raw: Route parameter for dataset identifier
     :raises ClientResponseException: 400, 404.
     :return: Dataset
     """
@@ -704,11 +685,11 @@ def get_valid_dataset(raw: str) -> Dataset:
         raise ClientResponseException(404, f"Dataset '{dataset_id}' not found")
 
 
-def get_valid_bam_file(dataset: Dataset, raw_file_name: str) -> BamFile:
-    """Get BAM file.
+def parse_valid_bam_file(dataset: Dataset, raw_file_name: str) -> BamFile:
+    """Parse a valid BAM file.
 
     :param dataset: Dataset
-    :param raw_file_name: Incoming file name
+    :param raw_file_name: Route parameter file name
     :raises ClientResponseException: 400, 404.
     :return: BAM file object
     """
@@ -729,11 +710,13 @@ def get_valid_bam_file(dataset: Dataset, raw_file_name: str) -> BamFile:
 def get_valid_dataset_id_list(name: str) -> list[str]:
     """Get a list of valid dataset IDs.
 
+    NOTE: May return an empty list.
+
     :param name: Query parameter name
     :raises ClientResponseException: 400, 404.
     :return: List of dataset ID(s)
     """
-    as_list = get_unique_list_from_query_param(name, str)
+    as_list = get_list(name, str)
     if len(as_list) > MAX_DATASET_IDS_IN_LIST:
         raise ClientResponseException(
             400,

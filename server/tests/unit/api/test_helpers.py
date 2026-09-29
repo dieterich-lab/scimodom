@@ -10,13 +10,12 @@ from scimodom.api.helpers import (
     FileTooLargeException,
     _get_required_query_param,
     get_required_json_fields,
-    get_unique_list_from_query_param,
+    get_list,
     get_non_negative_int,
     get_positive_int,
     get_optional_non_negative_int,
     get_optional_positive_int,
     get_optional_str,
-    parse_non_negative_int,
     get_valid_rna_type,
     parse_valid_rna_type,
     get_valid_taxa_id,
@@ -25,13 +24,13 @@ from scimodom.api.helpers import (
     get_valid_features,
     get_valid_selections,
     get_valid_coords,
-    parse_valid_target_type,
+    get_valid_target_type,
     parse_valid_sunburst_type,
     validate_chrom,
     validate_project_write_permission,
     validate_dataset_write_permission,
-    get_valid_dataset,
-    get_valid_bam_file,
+    parse_valid_dataset,
+    parse_valid_bam_file,
     validate_request_size,
     get_valid_remote_file_name,
     get_bool,
@@ -218,6 +217,31 @@ def test_get_required_json_fields_fail(app, payload, message):
 # tests: syntactic validation
 
 
+@pytest.mark.parametrize(
+    "url,ltype,result",
+    [
+        ("/?param[]=a&param[]=b", str, []),
+        ("/?param=1&param=2", int, [1, 2]),
+        ("/?param=a&param=b", str, ["a", "b"]),
+    ],
+)
+def test_get_list(app, url, ltype, result):
+    with app.test_request_context(url, method="GET"):
+        assert get_list("param", ltype) == result
+
+
+def test_get_list_fail(app):
+    with app.test_request_context("/?param=a&param=2", method="GET"):
+        with pytest.raises(ClientResponseException) as exc:
+            assert get_list("param", int)
+    returned_message, returned_status = exc.value.response_tuple
+    assert returned_status == 400
+    assert (
+        returned_message["message"]
+        == "Parameter 'param' must be a valid int (got: 'a, 2')"
+    )
+
+
 def test_get_non_negative_int(app):
     with app.test_request_context("/?param=1", method="GET"):
         assert get_non_negative_int("param") == 1
@@ -261,10 +285,6 @@ def test_get_optional_positive_int(app):
 def test_get_optional_str(app):
     with app.test_request_context("/?param=123", method="GET"):
         assert get_optional_str("param") == "123"
-
-
-def test_parse_non_negative_int():
-    assert parse_non_negative_int("param", "1") == 1
 
 
 def test_get_required_query_param_missing(app):
@@ -422,21 +442,30 @@ def test_validate_dataset_write_permission_forbidden(mock_user_services, dataset
     assert returned_message["message"] == "Forbidden to access dataset 'dataset_id01'"
 
 
-# tests: helpers
-
-
 @pytest.mark.parametrize(
-    "url,ltype,result",
+    "content_length, max_size, should_raise",
     [
-        ("/?param[]=a&param[]=b", str, ["a", "b"]),
-        ("/?param=1&param[]=1", int, [1]),
-        ("/?parameter=a", str, []),
+        (None, 100, False),  # no Content-Length
+        (0, 100, False),  # empty body
+        (50, 100, False),  # under the limit
+        (100, 100, False),  # exactly at the limit
+        (101, 100, True),  # one byte over
     ],
 )
-def test_get_unique_list_from_query_param(app, url, ltype, result):
-    with app.test_request_context(url, method="GET"):
-        # order is not guaranteed
-        assert set(get_unique_list_from_query_param("param", ltype)) == set(result)
+def test_validate_request_size(app, content_length, max_size, should_raise):
+    kwargs = {}
+    if content_length is not None:
+        kwargs["data"] = b"x" * content_length
+
+    with app.test_request_context(method="POST", path="", **kwargs):
+        if should_raise:
+            with pytest.raises(FileTooLargeException):
+                validate_request_size(max_size=max_size)
+        else:
+            validate_request_size(max_size=max_size)
+
+
+# tests: helpers
 
 
 def test_get_valid_rna_type_fail(app, mocker):
@@ -568,7 +597,11 @@ def test_get_valid_selections_fail(
         assert returned_message["user_message"] == user_message
 
 
-def test_get_valid_coords_fail(app, mocker):
+@pytest.mark.parametrize(
+    "strand,decoded",
+    [("a", "a"), ("+", " ")],
+)
+def test_get_valid_coords_fail(app, mocker, strand, decoded):
     mocker.patch(
         "scimodom.api.helpers.get_assembly_service",
         return_value=MockAssemblyService(),
@@ -578,7 +611,7 @@ def test_get_valid_coords_fail(app, mocker):
         return_value=MockUtilitiesService(),
     )
     with app.test_request_context(
-        "/?chrom=1&start=1&end=2&strand=a&taxaId=9606", method="GET"
+        f"/?chrom=1&start=1&end=2&strand={strand}&taxaId=9606", method="GET"
     ):
         with pytest.raises(ClientResponseException) as exc:
             get_valid_coords()
@@ -586,7 +619,7 @@ def test_get_valid_coords_fail(app, mocker):
     assert returned_status == 400
     assert (
         returned_message["message"]
-        == "Invalid value for 'strand' (allowed: +, -, or ., got 'a')"
+        == f"Invalid value for 'strand' (allowed: +, -, or ., got '{decoded}')"
     )
 
 
@@ -612,13 +645,14 @@ def test_get_valid_coords(app, mocker, start, end, result):
         assert get_valid_coords(context=5) == result
 
 
-def test_parse_valid_target_type(mocker):
+def test_get_valid_target_type(app, mocker):
     mocker.patch(
         "scimodom.api.helpers.TargetsFileType",
         MockTargetsFileType,
     )
-    with pytest.raises(ClientResponseException) as exc:
-        parse_valid_target_type(" ")
+    with app.test_request_context("/?target= ", method="GET"):
+        with pytest.raises(ClientResponseException) as exc:
+            get_valid_target_type()
     returned_message, returned_status = exc.value.response_tuple
     assert returned_status == 400
     assert (
@@ -650,12 +684,12 @@ def test_parse_valid_sunburst_type(mocker):
         ("aBCDEFGHIJKL", 404, "Dataset 'aBCDEFGHIJKL' not found"),
     ],
 )
-def test_get_valid_dataset(eufid, expected_status, expected_message, mocker):
+def test_parse_valid_dataset(eufid, expected_status, expected_message, mocker):
     mocker.patch(
         "scimodom.api.helpers.get_dataset_service", return_value=MockDatasetService()
     )
     with pytest.raises(ClientResponseException) as exc:
-        get_valid_dataset(eufid)
+        parse_valid_dataset(eufid)
     returned_message, returned_status = exc.value.response_tuple
     assert returned_message["message"] == expected_message
     assert returned_status == expected_status
@@ -672,40 +706,17 @@ def test_get_valid_dataset(eufid, expected_status, expected_message, mocker):
         ),
     ],
 )
-def test_get_valid_bam_file(
+def parse_get_valid_bam_file(
     bam_file, expected_status, expected_message, mocker, dataset
 ):
     mocker.patch(
         "scimodom.api.helpers.get_file_service", return_value=MockFileService()
     )
     with pytest.raises(ClientResponseException) as exc:
-        get_valid_bam_file(dataset[0], bam_file)
+        parse_valid_bam_file(dataset[0], bam_file)
     returned_message, returned_status = exc.value.response_tuple
     assert returned_message["message"] == expected_message
     assert returned_status == expected_status
-
-
-@pytest.mark.parametrize(
-    "content_length, max_size, should_raise",
-    [
-        (None, 100, False),  # no Content-Length
-        (0, 100, False),  # empty body
-        (50, 100, False),  # under the limit
-        (100, 100, False),  # exactly at the limit
-        (101, 100, True),  # one byte over
-    ],
-)
-def test_validate_request_size(app, content_length, max_size, should_raise):
-    kwargs = {}
-    if content_length is not None:
-        kwargs["data"] = b"x" * content_length
-
-    with app.test_request_context(method="POST", path="", **kwargs):
-        if should_raise:
-            with pytest.raises(FileTooLargeException):
-                validate_request_size(max_size=max_size)
-        else:
-            validate_request_size(max_size=max_size)
 
 
 # tested indirectly in test_comparison_api

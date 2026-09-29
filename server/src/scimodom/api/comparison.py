@@ -178,6 +178,10 @@ class _CompareContext:
                 ) from exc
         self._tmp_file_handle: TextIO | None = None
 
+        if len(self._reference_ids) == 0:
+            raise ClientResponseException(
+                400, "Missing required parameter: 'reference'"
+            )
         if self._upload_id is None and len(self._comparison_ids) == 0:
             raise ClientResponseException(
                 400, "Missing required parameter: 'upload' xor 'comparison'"

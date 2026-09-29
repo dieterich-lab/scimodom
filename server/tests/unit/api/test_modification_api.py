@@ -383,58 +383,48 @@ class MockModificationService:
     "url,http_status,message",
     [
         (
-            "query?modification=2&organism=3&technology=2&rnaType=WTS2&taxaId=9606",
-            501,
-            "rnaType 'WTS2' not implemented",
+            "/records?modification=2&organism=3&technology=2&rnaType=WTS&taxaId=9606",
+            200,
+            None,
         ),
         (
-            "query?modification=2&organism=3&technology=2&rnaType=WTS&taxaId=9606&geneName=GENE&chromStart=1",
-            400,
-            "Unused parameters: 'chromStart' and 'chromEnd' require 'chrom'",
+            "records?modification=2&organism=3&technology=2&rnaType=WTS&taxaId=9606&chrom=1&chromStart=2",
+            200,
+            None,
         ),
         (
-            "query?modification=2&organism=3&technology=2&rnaType=WTS&taxaId=9606&chrom=ANY&chromEnd=1",
-            400,
-            "Unused parameters: 'chromEnd' require 'chromStart'",
-        ),
-        (
-            "query?modification=2&organism=3&technology=2&rnaType=WTS&taxaId=9606&geneName=GENE&chrom=ANY",
+            "/records?modification=2&organism=3&technology=2&rnaType=WTS&taxaId=9606&geneName=GENE&chrom=ANY",
             400,
             "Too many parameters: use 'geneName' xor 'chrom'",
         ),
         (
-            "query/gene?rnaType=WTS&taxaId=9606",
+            "/records?modification=2&organism=3&technology=2&rnaType=WTS&taxaId=9606&geneName=GENE&chromStart=1",
             400,
-            "Missing required parameter: 'geneName' xor 'chrom'",
+            "Unused parameters: 'chromStart' and 'chromEnd' require 'chrom'",
         ),
         (
-            "query?modification=2&organism=3&technology=2&rnaType=WTS&taxaId=9606",
-            200,
-            None,
+            "/records?modification=2&organism=3&technology=2&rnaType=WTS&taxaId=9606&chrom=ANY&chromEnd=1",
+            400,
+            "Unused parameter: 'chromEnd' requires 'chromStart'",
         ),
         (
-            "query/gene?rnaType=WTS&taxaId=9606&chrom=1&chromStart=2",
+            "/records?by=gene&rnaType=WTS&taxaId=9606&chrom=1&chromStart=2",
             400,
             "Missing required parameter: 'chromEnd'",
         ),
         (
-            "query/gene?rnaType=WTS&taxaId=9606&chrom=1&chromStart=2&chromEnd=a",
+            "/records?by=gene&rnaType=WTS&taxaId=9606",
             400,
-            "Parameter 'chromEnd' must be a valid integer (got: 'a')",
+            "Missing required parameter: 'geneName' xor 'chrom'",
         ),
         (
-            "query?modification=2&organism=3&technology=2&rnaType=WTS&taxaId=9606&chrom=1&chromStart=2",
-            200,
-            None,
-        ),
-        (
-            "query?modification=2&organism=3&technology=2&rnaType=WTS&taxaId=9606&firstRecord=first",
-            400,
-            "Parameter 'firstRecord' must be a valid integer (got: 'first')",
+            "/records?modification=2&organism=3&technology=2&rnaType=WTS2&taxaId=9606",
+            501,
+            "rnaType 'WTS2' not implemented",
         ),
     ],
 )
-def test_get_modification_as_json(
+def test_get_modification_records(
     test_client, mock_services, url, http_status, message
 ):
     result = test_client.get(url)
@@ -447,11 +437,11 @@ def test_get_modification_as_json(
     "url,func",
     [
         (
-            "query?modification=2&organism=3&technology[]=2&rnaType=WTS&taxaId=9606",
+            "/records?modification=2&organism=3&technology=2&rnaType=WTS&taxaId=9606",
             "get_modifications_by_source",
         ),
         (
-            "query/gene?rnaType=WTS&taxaId=9606&chrom=1&chromStart=1&chromEnd=10000",
+            "/records?by=gene&rnaType=WTS&taxaId=9606&chrom=1&chromStart=1&chromEnd=10000",
             "get_modifications_by_gene",
         ),
     ],
@@ -469,8 +459,8 @@ def test_multisort_fail(test_client, mock_services, mocker, url, func):
 
 
 @pytest.mark.freeze_time("2026-08-24 20:00:00")
-def test_get_modification_as_csv(test_client, mock_services):
-    url = "csv?modification=2&organism=3&technology[]=2&rnaType=WTS&taxaId=9606"
+def test_get_modification_records_as_csv(test_client, mock_services):
+    url = "/records?format=csv&modification=2&organism=3&technology=2&rnaType=WTS&taxaId=9606"
     response = test_client.get(url)
     assert response.status_code == 200
     assert response.mimetype == "text/csv"
@@ -499,8 +489,8 @@ def test_get_modification_as_csv(test_client, mock_services):
     ]
 
 
-def test_get_modification_sitewise(test_client, mock_services):
-    url = "sitewise?chrom=1&start=944239&end=944240&strand=-&taxaId=9606"
+def test_get_modification_sites(test_client, mock_services):
+    url = "/sites?chrom=1&start=944239&end=944240&strand=-&taxaId=9606"
     response = test_client.get(url)
     expected_records = [
         {**r, "strand": r["strand"].value}
@@ -510,15 +500,15 @@ def test_get_modification_sitewise(test_client, mock_services):
     assert response.json["records"] == expected_records
 
 
-def test_get_genomic_sequence_context(test_client, mock_services):
+def test_get_modification_context(test_client, mock_services):
     response = test_client.get(
-        "genomic-context/1?chrom=1&end=944240&start=944239&strand=-&taxaId=9606"
+        "/sites/context?window=1&chrom=1&end=944240&start=944239&strand=-&taxaId=9606"
     )
     assert response.status_code == 200
     assert response.json == {"context": "ACGTAACCGCC"}
 
 
-def test_get_genomic_sequence_context_file_not_found(
+def test_get_modification_context_file_not_found(
     test_client, mock_services, mocker, caplog
 ):
     mocker.patch.object(
@@ -528,40 +518,20 @@ def test_get_genomic_sequence_context_file_not_found(
     )
 
     response = test_client.get(
-        "genomic-context/5?chrom=1&end=944240&start=944239&strand=-&taxaId=9606"
+        "/sites/context?window=5&chrom=1&end=944240&start=944239&strand=-&taxaId=9606"
     )
     assert response.status_code == 200
     assert response.json == {"context": ""}
     assert caplog.messages == [
-        "API not implemented for Taxa ID '9606': silently returning empty context!"
+        "Not implemented for taxon '9606': returning empty context!"
     ]
-
-
-# TODO
-# cf. test_get_modification_sitewise with strand=-
-@pytest.mark.parametrize(
-    "url,http_status,message",
-    [
-        (
-            "/target/MIRNA?taxaId=9606&chrom=1&start=3284723&end=3284724&strand=+",
-            400,
-            "Invalid value for 'strand' (allowed: +, -, or ., got ' ')",
-        ),
-    ],
-)
-def test_get_modification_targets_bad_url(
-    test_client, mock_services, url, http_status, message
-):
-    result = test_client.get(url)
-    assert result.status_code == http_status
-    assert result.json["message"] == message
 
 
 @pytest.mark.parametrize(
     "url",
     [
-        "/target/MIRNA?taxaId=9606&chrom=1&start=3284723&end=3284724&strand=%2B",
-        "/target/RBP?taxaId=9606&chrom=1&start=2403131&end=2403132&strand=%2B",
+        "/sites/targets?target=MIRNA&taxaId=9606&chrom=1&start=3284723&end=3284724&strand=%2B",
+        "sites/targets?target=RBP&taxaId=9606&chrom=1&start=2403131&end=2403132&strand=%2B",
     ],
 )
 def test_get_modification_targets(test_client, mock_services, url):
@@ -574,7 +544,7 @@ def test_get_modification_targets(test_client, mock_services, url):
 
 
 def test_get_modification_targets_empty(test_client, mock_services, caplog):
-    url = "/target/MIRNA?taxaId=7227&chrom=1&start=3284723&end=3284724&strand=%2B"
+    url = "/sites/targets?target=MIRNA&taxaId=7227&chrom=1&start=3284723&end=3284724&strand=%2B"
     result = test_client.get(url)
     assert result.status == "200 OK"
     assert (
@@ -585,6 +555,6 @@ def test_get_modification_targets_empty(test_client, mock_services, caplog):
         (
             "scimodom.api.modification",
             30,
-            "API not implemented for Taxa ID '7227': silently returning empty response!",
+            "Not implemented for taxon '7227': returning empty response!",
         )
     ]

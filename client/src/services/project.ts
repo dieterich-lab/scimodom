@@ -1,4 +1,4 @@
-import { HTTP, HTTPSecure } from '@/services/API'
+import { HTTP, HTTPAuth } from '@/services/API'
 import { ByKeyCache, Cache } from '@/utils/cache'
 
 interface Project {
@@ -28,7 +28,7 @@ class AllProjectsCache extends Cache<Project[]> {
 class MyProjectsCache extends Cache<Project[]> {
   async getPromise(): Promise<Project[]> {
     try {
-      const response = await HTTPSecure.get('/users/me/projects')
+      const response = await HTTPAuth.get('/users/me/projects')
       return response.data as Project[]
     } catch (err) {
       console.log(`Failed to fetch my projects: ${err}`)

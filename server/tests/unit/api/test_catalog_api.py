@@ -13,17 +13,23 @@ def test_client():
     yield app.test_client()
 
 
-def test_get_genes(test_client, mocker):
+@pytest.mark.parametrize(
+    "selection,http_status,message",
+    [
+        ("?selection=1&selection=2", 404, "No data for selection(s) '1, 2'"),
+        ("", 400, "Missing required parameter: 'selection'"),
+    ],
+)
+def test_get_genes(test_client, mocker, selection, http_status, message):
     mock_gene_service = mocker.Mock()
     mock_gene_service.get_genes.side_effect = NoResultFound
     mocker.patch(
         "scimodom.api.catalog.get_gene_service",
         return_value=mock_gene_service,
     )
-    url = "genes?selection=1&selection=2"
-    result = test_client.get(url)
-    assert result.status_code == 404
-    assert result.json["message"] == "No data for selection(s) '1, 2'"
+    result = test_client.get(f"genes{selection}")
+    assert result.status_code == http_status
+    assert result.json["message"] == message
 
 
 def test_get_features(test_client, mocker):

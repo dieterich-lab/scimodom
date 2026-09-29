@@ -5,19 +5,19 @@ import {
   getBamFileDownLoadURL,
   type BamFile
 } from '@/services/bamfile'
-import { getApiUrl, handleRequestWithErrorReporting, HTTP, HTTPSecure } from '@/services/API'
+import { getApiUrl, handleRequestWithErrorReporting, HTTP, HTTPAuth } from '@/services/API'
 import { type DialogStateStore } from '@/stores/DialogState'
 import { type AxiosResponse } from 'axios'
 
 vi.mock('@/services/API', () => ({
   getApiUrl: vi.fn((uri: string) => `/${uri}`),
   HTTP: { get: vi.fn().mockResolvedValue({} as AxiosResponse) },
-  HTTPSecure: { delete: vi.fn().mockResolvedValue({} as AxiosResponse) },
+  HTTPAuth: { delete: vi.fn().mockResolvedValue({} as AxiosResponse) },
   handleRequestWithErrorReporting: vi.fn()
 }))
 
 const mockedGet = vi.mocked(HTTP.get)
-const mockedDelete = vi.mocked(HTTPSecure.delete)
+const mockedDelete = vi.mocked(HTTPAuth.delete)
 const mockedHandle = vi.mocked(handleRequestWithErrorReporting)
 const mockedGetApiUrl = vi.mocked(getApiUrl)
 const dialogState = {} as DialogStateStore

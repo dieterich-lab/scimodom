@@ -1,15 +1,15 @@
 import { test, expect, vi, beforeEach } from 'vitest'
 import { postTemporaryFile } from '@/services/upload'
-import { handleRequestWithErrorReporting, HTTPSecure } from '@/services/API'
+import { handleRequestWithErrorReporting, HTTPAuth } from '@/services/API'
 import { type DialogStateStore } from '@/stores/DialogState'
 import { type AxiosResponse } from 'axios'
 
 vi.mock('@/services/API', () => ({
-  HTTPSecure: { post: vi.fn().mockResolvedValue({} as AxiosResponse) },
+  HTTPAuth: { post: vi.fn().mockResolvedValue({} as AxiosResponse) },
   handleRequestWithErrorReporting: vi.fn()
 }))
 
-const mockedPost = vi.mocked(HTTPSecure.post)
+const mockedPost = vi.mocked(HTTPAuth.post)
 const mockedHandle = vi.mocked(handleRequestWithErrorReporting)
 const dialogState = {} as DialogStateStore
 

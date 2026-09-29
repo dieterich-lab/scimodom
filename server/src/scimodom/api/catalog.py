@@ -6,7 +6,7 @@ from scimodom.api.helpers import (
     create_error_response,
     parse_valid_taxa_id,
     parse_valid_rna_type,
-    get_unique_list_from_query_param,
+    get_list,
 )
 from scimodom.services.annotation import get_annotation_service
 from scimodom.services.assembly import get_assembly_service
@@ -188,7 +188,12 @@ def get_genes():
     :statuscode 500: Internal Server Error
     """
     gene_service = get_gene_service()
-    selection_ids = get_unique_list_from_query_param("selection", int)
+    selection_ids = get_list("selection", int)
+    if not selection_ids:
+        return create_error_response(
+            400,
+            "Missing required parameter: 'selection'",
+        )
     try:
         return gene_service.get_genes(selection_ids)
     except NoResultFound:

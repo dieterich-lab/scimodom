@@ -6,16 +6,16 @@ import {
   myProjectsByIdCache,
   type Project
 } from '@/services/project'
-import { HTTP, HTTPSecure } from '@/services/API'
+import { HTTP, HTTPAuth } from '@/services/API'
 import { type AxiosResponse } from 'axios'
 
 vi.mock('@/services/API', () => ({
   HTTP: { get: vi.fn().mockResolvedValue({} as AxiosResponse) },
-  HTTPSecure: { get: vi.fn().mockResolvedValue({} as AxiosResponse) }
+  HTTPAuth: { get: vi.fn().mockResolvedValue({} as AxiosResponse) }
 }))
 
 const mockedGet = vi.mocked(HTTP.get)
-const mockedSecureGet = vi.mocked(HTTPSecure.get)
+const mockedSecureGet = vi.mocked(HTTPAuth.get)
 
 beforeEach(() => {
   mockedGet.mockClear()

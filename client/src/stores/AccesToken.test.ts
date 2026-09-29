@@ -1,18 +1,18 @@
 import { test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useAccessToken } from '@/stores/AccessToken'
-import { HTTPSecure } from '@/services/API'
+import { HTTPAuth } from '@/services/API'
 import { jwtDecode } from 'jwt-decode'
 
 vi.mock('@/services/API', () => ({
-  HTTPSecure: { post: vi.fn() }
+  HTTPAuth: { post: vi.fn() }
 }))
 
 vi.mock('jwt-decode', () => ({
   jwtDecode: vi.fn()
 }))
 
-const mockedPost = vi.mocked(HTTPSecure.post)
+const mockedPost = vi.mocked(HTTPAuth.post)
 const mockedDecode = vi.mocked(jwtDecode)
 
 const NOW_SECONDS = 1_700_000_000

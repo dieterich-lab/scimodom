@@ -1,5 +1,5 @@
 import { DIALOG, type DialogStateStore } from '@/stores/DialogState'
-import { handleRequestWithErrorReporting, HTTPSecure } from '@/services/API'
+import { handleRequestWithErrorReporting, HTTPAuth } from '@/services/API'
 
 const MAX_UPLOAD_SIZE = 50 * 1024 * 1024
 
@@ -25,7 +25,7 @@ async function uploadTemporaryDataset(
     throw new DatasetTooLarge()
   }
   const result = (await handleRequestWithErrorReporting(
-    HTTPSecure.post('/uploads', file),
+    HTTPAuth.post('/uploads', file),
     `Failed to upload '${file.name}'`,
     dialogState
   )) as UploadResponse

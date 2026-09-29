@@ -1,5 +1,5 @@
 import { type DialogStateStore } from '@/stores/DialogState'
-import { getApiUrl, handleRequestWithErrorReporting, HTTP, HTTPSecure } from '@/services/API'
+import { getApiUrl, handleRequestWithErrorReporting, HTTP, HTTPAuth } from '@/services/API'
 
 interface BamFile {
   original_file_name: string
@@ -25,7 +25,7 @@ async function deleteBamFile(
 ): Promise<void> {
   const cookedName = encodeURI(name)
   return await handleRequestWithErrorReporting(
-    HTTPSecure.delete(`/datasets/${datasetId}/attachments/bams/${cookedName}`),
+    HTTPAuth.delete(`/datasets/${datasetId}/attachments/bams/${cookedName}`),
     `Failed to delete BAM file '${name}' (dataset ${datasetId})`,
     dialogState
   )

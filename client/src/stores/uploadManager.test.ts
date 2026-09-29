@@ -1,15 +1,15 @@
 import { test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useUploadManager, ScheduledUpload, UPLOAD_STATE } from '@/stores/UploadManager'
-import { HTTPSecure, handleRequest } from '@/services/API'
+import { HTTPAuth, handleRequest } from '@/services/API'
 import type { ucs2 } from 'punycode'
 
 vi.mock('@/services/API', () => ({
-  HTTPSecure: { post: vi.fn() },
+  HTTPAuth: { post: vi.fn() },
   handleRequest: vi.fn()
 }))
 
-const mockedPost = vi.mocked(HTTPSecure.post)
+const mockedPost = vi.mocked(HTTPAuth.post)
 const mockedHandle = vi.mocked(handleRequest)
 
 // use deterministic so `remove` assertions are stable

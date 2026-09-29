@@ -496,6 +496,12 @@ def test_intersect_with_liftover(test_client, mock_services, mocker):
             "Request needs a valid 'taxaId' when 'euf=true'",
         ),
         (
+            "/intersect?comparison=datasetidBxx&strand=true",
+            400,
+            "Missing required parameter: 'reference'",
+            None,
+        ),
+        (
             "/intersect?reference=datasetidAxx&strand=true",
             400,
             "Missing required parameter: 'upload' xor 'comparison'",

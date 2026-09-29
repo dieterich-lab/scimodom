@@ -2,7 +2,7 @@ import { DIALOG, type DialogStateStore } from '@/stores/DialogState'
 import {
   handleRequestWithErrorReporting,
   HTTP,
-  HTTPSecure,
+  HTTPAuth,
   prepareAPI,
   trashRequestErrors
 } from '@/services/API'
@@ -31,7 +31,7 @@ async function login(
 }
 
 async function changePassword(password: string, dialogState: DialogStateStore): Promise<void> {
-  const request = HTTPSecure.put('/users/me/password', { password })
+  const request = HTTPAuth.put('/users/me/password', { password })
   await handleRequestWithErrorReporting(request, 'Failed to change password', dialogState).then(
     () => {
       dialogState.message = 'Password changed successfully.'

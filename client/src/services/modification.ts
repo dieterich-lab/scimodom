@@ -84,16 +84,15 @@ async function getModifications(
   limit?: number,
   sortMetas?: DataTableSortMeta[]
 ): Promise<ModificationResponse> {
-  const url =
-    searchParameters.searchBy === 'Gene/Chrom' ? '/modification/query/gene' : '/modification/query'
   const params = {
     ...getQueryParametersFromSearchParameters(searchParameters, sortMetas),
+    by: searchParameters.searchBy === 'Gene/Chrom' ? 'gene' : undefined,
     firstRecord: offset,
     maxRecords: limit
   }
   return await handleRequestWithErrorReporting<ModificationResponse>(
-    HTTP.get(url, { params: params }),
-    'Failed to load features',
+    HTTP.get('/modifications/records', { params: params }),
+    'Failed to load modification records',
     dialogState
   )
 }
@@ -123,20 +122,22 @@ function getModificationExportLink(
   sortMetas?: DataTableSortMeta[],
   getApiUrlCb: (uri: string) => string = getApiUrl
 ) {
-  const uri =
-    searchParameters.searchBy === 'Gene/Chrom' ? 'modification/csv/gene' : 'modification/csv'
-  const rawParams = getQueryParametersFromSearchParameters(searchParameters, sortMetas)
+  const rawParams = {
+    ...getQueryParametersFromSearchParameters(searchParameters, sortMetas),
+    by: searchParameters.searchBy === 'Gene/Chrom' ? 'gene' : undefined,
+    format: 'csv'
+  }
   const params = new URLSearchParams()
   for (const [k, v] of Object.entries(rawParams)) {
-    if (v) {
+    if (v !== undefined && v !== null) {
       if (Array.isArray(v)) {
         v.forEach((x) => params.append(k, x))
       } else {
-        params.append(k, v)
+        params.append(k, String(v))
       }
     }
   }
-  return getApiUrlCb(uri) + '?' + params.toString()
+  return getApiUrlCb('modifications/records') + '?' + params.toString()
 }
 
 function getSiteParams(modification: Modification): SiteParams {
@@ -153,8 +154,8 @@ async function getTargetSites(
 ): Promise<Bed6Record[]> {
   const params = getSiteParams(modification)
   const data = await handleRequestWithErrorReporting<TargetSitesResponse>(
-    HTTP.get(`/modification/target/${target}`, { params, paramsSerializer: { indexes: null } }),
-    `Failed to load sites for target '${target}' for modification ${modification.id}`,
+    HTTP.get('/modifications/sites/targets', { params: { ...params, target } }),
+    `Failed to load target sites: '${target}'`,
     dialogState
   )
   return data.records
@@ -167,11 +168,8 @@ async function getGenomicContext(
 ): Promise<string> {
   const params = getSiteParams(modification)
   const data = await handleRequestWithErrorReporting<GenomicContextResponse>(
-    HTTP.get(`/modification/genomic-context/${context}`, {
-      params,
-      paramsSerializer: { indexes: null }
-    }),
-    `Failed to get context '${context}' for modification ${modification.id}`,
+    HTTP.get('/modifications/sites/context', { params: { ...params, window: context } }),
+    `Failed to load site context: '${context}'`,
     dialogState
   )
   return data.context
@@ -183,8 +181,8 @@ async function getSiteWiseInfo(
 ): Promise<SiteWiseInfo[]> {
   const params = getSiteParams(modification)
   const data = await handleRequestWithErrorReporting<SiteWiseResponse>(
-    HTTP.get('/modification/sitewise', { params, paramsSerializer: { indexes: null } }),
-    `Failed to get site info for modification ${modification.id}`,
+    HTTP.get('/modifications/sites', { params }),
+    'Failed to load modification sites',
     dialogState
   )
   return data.records

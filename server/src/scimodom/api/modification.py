@@ -6,7 +6,6 @@ from io import StringIO
 from typing import Iterable, TextIO
 
 from flask import Blueprint, Response
-from flask_cors import cross_origin
 from pydantic import BaseModel
 
 from scimodom.services.annotation import AnnotationService
@@ -17,7 +16,6 @@ from scimodom.services.modification import (
 from scimodom.api.helpers import (
     ClientResponseException,
     get_optional_str,
-    parse_non_negative_int,
     get_positive_int,
     get_non_negative_int,
     get_optional_positive_int,
@@ -28,10 +26,10 @@ from scimodom.api.helpers import (
     get_valid_features,
     get_valid_taxa_id,
     get_valid_coords,
-    parse_valid_target_type,
+    get_valid_target_type,
     get_valid_selections,
     get_response_from_pydantic_object,
-    get_unique_list_from_query_param,
+    get_list,
 )
 from scimodom.services.bedtools import BedToolsService, get_bedtools_service
 from scimodom.utils.dtos.bedtools import Bed6Record
@@ -82,88 +80,51 @@ class IntersectResponse(BaseModel):
     records: list[Bed6Record]
 
 
-@modification_api.route("/query", defaults={"by_gene": None}, methods=["GET"])
-@modification_api.route("/query/<by_gene>")
-@cross_origin(supports_credentials=True)
-def get_modifications_as_json(by_gene):
-    """Query modifications.
+@modification_api.get("/records")
+def get_modification_records():
+    """Get modifications (data records).
 
     :param request: The request with search parameters.
-    :param by_gene: Query by gene (default: by modification)
-    :return: JSON array with all modifications satisfying the
-    query criteria, incl. selected bedRMod fields, annotations,
-    and DB-associated IDs.
+    :return: JSON array with modifications incl. selected
+    bedRMod fields (data), annotation, etc.
     :statuscode 200: OK
-    :statuscode 400: Bad request (syntax validation failed,
-    structurally invalid request)
-    :statuscode 404: Not found (semantic validation failed,
-    database entity or resource does not exist)
-    :statuscode 422: Unprocessable Content (API constraints
-    failed e.g. range constraints, enum-allowed values, etc.)
+    :statuscode 400: Bad request - invalid request, syntax
+    :statuscode 404: Not found - semantic validation
     :statuscode 500: Internal Server Error
     :statuscode 501: Not Implemented (TODO MS14)
     """
     try:
-        records = _get_modifications_for_request(by_gene)
+        by_gene = get_optional_str("by") == "gene"
+        records = _get_modification_records(by_gene)
     except ClientResponseException as exc:
         return exc.response_tuple
+
+    if get_optional_str("format") == "csv":
+        records_as_csv = _get_csv_from_modification_records(records["records"])
+        now = datetime.now(timezone.utc)
+        file_name = now.strftime("scimodom_search_%Y-%m-%dT%H%M%S.csv")
+        return Response(
+            response=records_as_csv,
+            mimetype="text/csv",
+            headers={"Content-Disposition": f'attachment; filename="{file_name}"'},
+        )
+
     records["records"] = [
         {**r, "strand": r["strand"].value} for r in records["records"]
     ]
     return records
 
 
-@modification_api.route("/csv", defaults={"by_gene": None}, methods=["GET"])
-@modification_api.route("/csv/<by_gene>")
-@cross_origin(supports_credentials=True)
-def get_modifications_as_csv(by_gene):
-    """Query modifications and return a CSV.
-
-    :param request: The request with search parameters.
-    :param by_gene: Query by gene (default: by modification)
-    :return: A CSV with all modifications satisfying the
-    query criteria, incl. selected bedRMod fields, annotations,
-    and DB-associated IDs. Records field names are mapped with
-    FIELDS_TO_CSV_HEADER_MAP.
-    :statuscode 200: OK
-    :statuscode 400: Bad request (syntax validation failed,
-    structurally invalid request)
-    :statuscode 404: Not found (semantic validation failed,
-    database entity or resource does not exist)
-    :statuscode 422: Unprocessable Content (API constraints
-    failed e.g. range constraints, enum-allowed values, etc.)
-    :statuscode 500: Internal Server Error
-    :statuscode 501: Not Implemented (TODO MS14)
-    """
-    try:
-        records = _get_modifications_for_request(by_gene)
-    except ClientResponseException as exc:
-        return exc.response_tuple
-    records_as_csv = _get_csv_from_modifications_records(records["records"])
-    now = datetime.now(timezone.utc)
-    file_name = now.strftime("scimodom_search_%Y-%m-%dT%H%M%S.csv")
-    return Response(
-        response=records_as_csv,
-        mimetype="text/csv",
-        headers={"Content-Disposition": f'attachment; filename="{file_name}"'},
-    )
-
-
-@modification_api.route("/sitewise", methods=["GET"])
-@cross_origin(supports_credentials=True)
-def get_modification_sitewise():
-    """Get information related to a modification site.
+@modification_api.get("/sites")
+def get_modification_sites():
+    """Get modifications per site.
 
     :param request: The request with search parameters.
     :return: JSON object with all metadata associated with
     a modification site.
     :statuscode 200: OK
-    :statuscode 400: Bad request (syntax validation failed,
-    structurally invalid request)
-    :statuscode 404: Not found (semantic validation failed,
-    database entity or resource does not exist)
-    :statuscode 422: Unprocessable Content (API constraints
-    failed e.g. range constraints, enum-allowed values, etc.)
+    :statuscode 400: Bad request - invalid request, syntax
+    :statuscode 404: Not found - semantic validation
     :statuscode 500: Internal Server Error
     """
     try:
@@ -179,28 +140,20 @@ def get_modification_sitewise():
     return records
 
 
-@modification_api.route("/genomic-context/<context>", methods=["GET"])
-@cross_origin(supports_credentials=True)
-def get_genomic_sequence_context(context):
+@modification_api.get("/sites/context")
+def get_modification_site_context():
     """Get sequence context for a modification site.
 
     :param request: The request with search parameters.
-    :param context: The genomic context around a site
-    :return: JSON object with sequence context around a
-    modification site.
     :statuscode 200: OK
-    :statuscode 400: Bad request (syntax validation failed,
-    structurally invalid request)
-    :statuscode 404: Not found (semantic validation failed,
-    database entity or resource does not exist)
-    :statuscode 422: Unprocessable Content (API constraints
-    failed e.g. range constraints, enum-allowed values, etc.)
+    :statuscode 400: Bad request - invalid request, syntax
+    :statuscode 404: Not found - semantic validation
     :statuscode 500: Internal Server Error
     """
     try:
         taxa_id = get_valid_taxa_id()
-        context_as_int = parse_non_negative_int("context", context)
-        coords = get_valid_coords(context=context_as_int)
+        context = get_non_negative_int("window")
+        coords = get_valid_coords(context=context)
     except ClientResponseException as exc:
         return exc.response_tuple
 
@@ -216,31 +169,26 @@ def get_genomic_sequence_context(context):
         sequence = file_service.read_sequence_context(seq_file)
     except FileNotFoundError:
         logger.warning(
-            f"API not implemented for Taxa ID '{taxa_id}': silently returning empty context!"
+            f"Not implemented for taxon '{taxa_id}': returning empty context!"
         )
         sequence = ""
     return {"context": sequence}
 
 
-@modification_api.route("/target/<target_type>", methods=["GET"])
-@cross_origin(supports_credentials=True)
-def get_modification_targets(target_type):
-    """Get miRNA targets and RBP binding sites affected by a modification.
+@modification_api.get("/sites/targets")
+def get_modification_targets():
+    """Get targets affected by a modification.
+
+    Targets can be e.g. miRNA targets or RBP binding sites
 
     :param request: The request with search parameters.
-    :param target_type: The allowed target type e.g. MIRNA, RBP
-    :return: JSON array with site table information for selected target.
     :statuscode 200: OK
-    :statuscode 400: Bad request (syntax validation failed,
-    structurally invalid request)
-    :statuscode 404: Not found (semantic validation failed,
-    database entity or resource does not exist)
-    :statuscode 422: Unprocessable Content (API constraints
-    failed e.g. range constraints, enum-allowed values, etc.)
+    :statuscode 400: Bad request - invalid request, syntax
+    :statuscode 404: Not found - semantic validation
     :statuscode 500: Internal Server Error
     """
     try:
-        with _ModificationContext(target_type) as ctx:
+        with _ModificationContext() as ctx:
             records = ctx.bedtools_service.intersect_bed6_records(
                 ctx.records, ctx.stream, is_strand=ctx.is_strand
             )
@@ -257,8 +205,8 @@ class _ModificationContext:
         is_strand: bool
         stream: TextIO
 
-    def __init__(self, target_type: str):
-        self._target_type = parse_valid_target_type(target_type)
+    def __init__(self):
+        self._target_type = get_valid_target_type()
         self._is_strand = True
         self._taxa_id = get_valid_taxa_id()
         self._coords = get_valid_coords()
@@ -272,7 +220,7 @@ class _ModificationContext:
             )
         except FileNotFoundError:
             logger.warning(
-                f"API not implemented for Taxa ID '{self._taxa_id}': silently returning empty response!"
+                f"Not implemented for taxon '{self._taxa_id}': returning empty response!"
             )
             temp_file = bedtools_service.create_temp_file_from_records([], sort=False)
             self._annotation_targets_file = file_service.open_file_for_reading(
@@ -307,7 +255,7 @@ def _get_bed6_records_from_request(
     ]
 
 
-def _get_modifications_for_request(by_gene):
+def _get_modification_records(by_gene: bool):
     modification_service = get_modification_service()
 
     rna_type = get_valid_rna_type()
@@ -320,7 +268,7 @@ def _get_modifications_for_request(by_gene):
         raise ClientResponseException(501, f"rnaType '{rna_type}' not implemented")
 
     search_query_params = _get_valid_search_query_params(taxa_id, by_gene)
-    multi_sort = get_unique_list_from_query_param("multiSort", str)
+    multi_sort = get_list("multiSort", str)
     multi_sort = list(filter(None, multi_sort))
     if not multi_sort:
         multi_sort = ["chrom+asc", "start+asc"]
@@ -364,7 +312,7 @@ def _get_modifications_for_request(by_gene):
         raise ClientResponseException(400, f"{exc}")
 
 
-def _get_csv_from_modifications_records(records):
+def _get_csv_from_modification_records(records):
     as_text = StringIO()
     writer = DictWriter(
         as_text, fieldnames=FIELDS_TO_CSV_HEADER_MAP.values(), dialect="excel"
@@ -385,34 +333,42 @@ def _get_valid_search_query_params(
     chrom = get_optional_str("chrom")
     chrom_start = get_optional_non_negative_int("chromStart")
     chrom_end = get_optional_positive_int("chromEnd")
-    if (chrom_start or chrom_end) and not chrom:
-        raise ClientResponseException(
-            400,
-            "Unused parameters: 'chromStart' and 'chromEnd' require 'chrom'",
-        )
-    if chrom_end and not chrom_start:
-        raise ClientResponseException(
-            400,
-            "Unused parameters: 'chromEnd' require 'chromStart'",
-        )
-    if gene_name and chrom:
+
+    if gene_name is not None and chrom is not None:
         raise ClientResponseException(
             400,
             "Too many parameters: use 'geneName' xor 'chrom'",
         )
-    if by_gene:
-        if not gene_name and not chrom:
+
+    if chrom is None:
+        if chrom_start is not None or chrom_end is not None:
             raise ClientResponseException(
                 400,
-                "Missing required parameter: 'geneName' xor 'chrom'",
+                "Unused parameters: 'chromStart' and 'chromEnd' require 'chrom'",
             )
-        if chrom:
+    else:
+        if chrom_end is not None and chrom_start is None:
+            raise ClientResponseException(
+                400,
+                "Unused parameter: 'chromEnd' requires 'chromStart'",
+            )
+        if by_gene:
             chrom_start = get_non_negative_int("chromStart")
             chrom_end = get_positive_int("chromEnd")
-    if chrom:
+
         validate_chrom(taxa_id, chrom, chrom_start, chrom_end)
-    biotypes = get_valid_biotypes()
-    features = get_valid_features()
+
+    if by_gene and gene_name is None and chrom is None:
+        raise ClientResponseException(
+            400,
+            "Missing required parameter: 'geneName' xor 'chrom'",
+        )
+
     return SearchQueryParams(
-        gene_name, biotypes, features, chrom, chrom_start, chrom_end
+        gene_name,
+        get_valid_biotypes(),
+        get_valid_features(),
+        chrom,
+        chrom_start,
+        chrom_end,
     )

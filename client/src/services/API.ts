@@ -34,15 +34,17 @@ function getApiBaseUrl(): string {
   }
 }
 
-const HTTPSecure = axios.create({
+const HTTPAuth = axios.create({
   baseURL: getApiBaseUrl(),
-  withCredentials: false
+  withCredentials: false,
+  paramsSerializer: { indexes: null }
   // default xsrfCookieName: 'XSRF-TOKEN'
 })
 
 const HTTP = axios.create({
   baseURL: getApiBaseUrl(),
   withCredentials: false,
+  paramsSerializer: { indexes: null },
   headers: {
     Accept: 'application/json',
     'Content-Type': 'application/json'
@@ -55,8 +57,8 @@ function prepareAPI(isAuthRequired: boolean) {
   const accessToken = useAccessToken()
   const currentToken = accessToken.token
   if (currentToken !== cachedAccessToken) {
-    HTTPSecure.interceptors.request.use(
-      (config) => handleHTTPSecureRequest(config, accessToken),
+    HTTPAuth.interceptors.request.use(
+      (config) => handleHTTPAuthRequest(config, accessToken),
       (error) => Promise.reject(error)
     )
     cachedAccessToken = currentToken
@@ -69,7 +71,7 @@ function prepareAPI(isAuthRequired: boolean) {
   accessToken.considerToRefresh()
 }
 
-function handleHTTPSecureRequest(
+function handleHTTPAuthRequest(
   config: InternalAxiosRequestConfig,
   accessToken: AccessTokenStore
 ): InternalAxiosRequestConfig {
@@ -192,7 +194,7 @@ function trashRequestErrors(err: unknown) {
 
 export {
   HTTP,
-  HTTPSecure,
+  HTTPAuth,
   getApiBaseUrl,
   getApiUrl,
   prepareAPI,

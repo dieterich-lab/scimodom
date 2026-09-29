@@ -48,25 +48,22 @@ function makeSearchParameters(overrides: Partial<SearchParameters> = {}): Search
   }
 }
 
-test.each<{ searchBy: SearchBy; expectedUrl: string }>([
-  { searchBy: 'Modification', expectedUrl: '/modification/query' },
-  { searchBy: 'Gene/Chrom', expectedUrl: '/modification/query/gene' }
+test.each<{ searchBy: SearchBy; expectedBy: string | undefined }>([
+  { searchBy: 'Modification', expectedBy: undefined },
+  { searchBy: 'Gene/Chrom', expectedBy: 'gene' }
 ])(
-  'getModifications($searchBy) calls $expectedUrl and returns a response',
-  async ({ searchBy, expectedUrl }) => {
+  'getModifications with searchBy=$searchBy sends by=$expectedBy',
+  async ({ searchBy, expectedBy }) => {
     const expectedResponse = { records: [], totalRecords: 0 }
     mockedHandle.mockResolvedValueOnce(expectedResponse)
 
     const response = await getModifications(makeSearchParameters({ searchBy }), dialogState)
 
     expect(mockedGet).toHaveBeenCalledWith(
-      expectedUrl,
-      expect.objectContaining({ params: expect.objectContaining({ taxaId: 123, rnaType: 'WTS' }) })
-    )
-    expect(mockedHandle).toHaveBeenCalledWith(
-      expect.anything(),
-      'Failed to load features',
-      dialogState
+      '/modifications/records',
+      expect.objectContaining({
+        params: expect.objectContaining({ by: expectedBy })
+      })
     )
     expect(response).toBe(expectedResponse)
   }
@@ -125,11 +122,53 @@ test('getModifications does not swallow failures', async () => {
   await expect(getModifications(makeSearchParameters(), dialogState)).rejects.toBe(error)
 })
 
-test.each<{ searchBy: SearchBy; expected: string }>([
-  { searchBy: 'Gene/Chrom', expected: '/modification/csv/gene?rnaType=WTS&taxaId=123' },
-  { searchBy: 'Modification', expected: '/modification/csv?rnaType=WTS&taxaId=123' }
-])('getModificationExportLink($searchBy)', ({ searchBy, expected }) => {
-  expect(getModificationExportLink(makeSearchParameters({ searchBy }), [])).toBe(expected)
+test.each<{ searchBy: SearchBy; hasBy: Boolean }>([
+  { searchBy: 'Modification', hasBy: false },
+  { searchBy: 'Gene/Chrom', hasBy: true }
+])('getModificationExportLink with searchBy=$searchBy sets by=$hasBy', ({ searchBy, hasBy }) => {
+  const link = getModificationExportLink(makeSearchParameters({ searchBy }))
+
+  const params = new URLSearchParams(link.split('?')[1])
+  if (hasBy) {
+    expect(params.get('by')).toBe('gene')
+  } else {
+    expect(params.has('by')).toBe(false)
+  }
+})
+
+test('getModificationExportLink always sets format=csv', () => {
+  const link = getModificationExportLink(makeSearchParameters())
+
+  const params = new URLSearchParams(link.split('?')[1])
+  expect(params.get('format')).toBe('csv')
+})
+
+test('getModificationExportLink expands arrays into repeated parameters', () => {
+  const link = getModificationExportLink(
+    makeSearchParameters({
+      biotypes: ['b1', 'b2'],
+      features: ['f1', 'f2', 'f3']
+    })
+  )
+
+  const params = new URLSearchParams(link.split('?')[1])
+  expect(params.getAll('biotypes')).toEqual(['b1', 'b2'])
+  expect(params.getAll('features')).toEqual(['f1', 'f2', 'f3'])
+})
+
+test('getModificationExportLink drops undefined/null, but keep falsy values', () => {
+  const link = getModificationExportLink(
+    makeSearchParameters({
+      gene: undefined,
+      chrom: undefined,
+      chromStart: 0
+    })
+  )
+
+  const params = new URLSearchParams(link.split('?')[1])
+  expect(params.has('geneName')).toBe(false)
+  expect(params.has('chrom')).toBe(false)
+  expect(params.get('chromStart')).toBe('0')
 })
 
 function makeModification(overrides: Partial<Modification> = {}): Modification {
@@ -154,7 +193,7 @@ function makeModification(overrides: Partial<Modification> = {}): Modification {
   }
 }
 
-test("getTargetSites calls '/modification/target' and returns records", async () => {
+test("getTargetSites calls '/modifications/sites/targets' and returns records", async () => {
   const expectedRecords = [{ chrom: '1', start: 1, end: 2, name: 'x', score: 0, strand: '+' }]
   mockedHandle.mockResolvedValueOnce({ records: expectedRecords })
   const modification = makeModification()
@@ -162,7 +201,7 @@ test("getTargetSites calls '/modification/target' and returns records", async ()
   const records = await getTargetSites(modification, 'TARGET', dialogState)
 
   expect(mockedGet.mock.calls[0]).toEqual([
-    '/modification/target/TARGET',
+    '/modifications/sites/targets',
     {
       params: {
         id: 15,
@@ -181,14 +220,14 @@ test("getTargetSites calls '/modification/target' and returns records", async ()
         tech: 'tech',
         taxa_id: 9606,
         cto: 'cell-type',
-        taxaId: modification.taxa_id
-      },
-      paramsSerializer: { indexes: null }
+        taxaId: modification.taxa_id,
+        target: 'TARGET'
+      }
     }
   ])
   expect(mockedHandle).toHaveBeenCalledWith(
     expect.anything(),
-    "Failed to load sites for target 'TARGET' for modification 15",
+    "Failed to load target sites: 'TARGET'",
     dialogState
   )
   expect(records).toBe(expectedRecords)
@@ -201,7 +240,7 @@ test('getTargetSites does not swallow failures', async () => {
   await expect(getTargetSites(makeModification(), '', dialogState)).rejects.toBe(error)
 })
 
-test("getGenomicContext calls '/modification/genomic-context' and returns a string", async () => {
+test("getGenomicContext calls '/modifications/sites/context' and returns a string", async () => {
   const expectedContext = 'ACGTACGT'
   mockedHandle.mockResolvedValueOnce({ context: expectedContext })
   const modification = makeModification()
@@ -209,7 +248,7 @@ test("getGenomicContext calls '/modification/genomic-context' and returns a stri
   const context = await getGenomicContext(modification, 5, dialogState)
 
   expect(mockedGet.mock.calls[0]).toEqual([
-    '/modification/genomic-context/5',
+    '/modifications/sites/context',
     {
       params: {
         id: 15,
@@ -228,14 +267,14 @@ test("getGenomicContext calls '/modification/genomic-context' and returns a stri
         tech: 'tech',
         taxa_id: 9606,
         cto: 'cell-type',
-        taxaId: modification.taxa_id
-      },
-      paramsSerializer: { indexes: null }
+        taxaId: modification.taxa_id,
+        window: 5
+      }
     }
   ])
   expect(mockedHandle).toHaveBeenCalledWith(
     expect.anything(),
-    "Failed to get context '5' for modification 15",
+    "Failed to load site context: '5'",
     dialogState
   )
   expect(context).toBe(expectedContext)
@@ -248,7 +287,7 @@ test('getGenomicContext does not swallow failures', async () => {
   await expect(getGenomicContext(makeModification(), 1, dialogState)).rejects.toBe(error)
 })
 
-test("getSiteWiseInfo calls '/modification/sitewise' and returns records", async () => {
+test("getSiteWiseInfo calls '/modification/sites' and returns records", async () => {
   const expectedRecords = [
     {
       chrom: '1',
@@ -273,7 +312,7 @@ test("getSiteWiseInfo calls '/modification/sitewise' and returns records", async
   const records = await getSiteWiseInfo(modification, dialogState)
 
   expect(mockedGet.mock.calls[0]).toEqual([
-    '/modification/sitewise',
+    '/modifications/sites',
     {
       params: {
         id: 15,
@@ -293,13 +332,12 @@ test("getSiteWiseInfo calls '/modification/sitewise' and returns records", async
         taxa_id: 9606,
         cto: 'cell-type',
         taxaId: modification.taxa_id
-      },
-      paramsSerializer: { indexes: null }
+      }
     }
   ])
   expect(mockedHandle).toHaveBeenCalledWith(
     expect.anything(),
-    'Failed to get site info for modification 15',
+    'Failed to load modification sites',
     dialogState
   )
   expect(records).toBe(expectedRecords)

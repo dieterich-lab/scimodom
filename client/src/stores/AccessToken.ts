@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { jwtDecode } from 'jwt-decode'
-import { HTTPSecure } from '@/services/API'
+import { HTTPAuth } from '@/services/API'
 
 const REFRESH_GRACE_PERIOD_SECONDS = 30 * 60
 const REFRESH_RETRY_INTERVALL_SECONDS = 60
@@ -81,7 +81,7 @@ const useAccessToken = defineStore('access_token', {
     refresh() {
       const now_epoch = Date.now() / 1000
       console.log('Requesting access token refresh.')
-      HTTPSecure.post('/sessions/refresh')
+      HTTPAuth.post('/sessions/refresh')
         .then((response) => {
           if (response.status == 200) {
             if (this.email === null) {

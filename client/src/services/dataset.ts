@@ -1,5 +1,5 @@
 import { type DialogStateStore } from '@/stores/DialogState'
-import { HTTP, HTTPSecure, handleRequestWithErrorReporting } from '@/services/API'
+import { HTTP, HTTPAuth, handleRequestWithErrorReporting } from '@/services/API'
 import { ByKeyCache, Cache } from '@/utils/cache'
 
 interface MayChangeDatasetResponse {
@@ -41,7 +41,7 @@ class AllDatasetCache extends Cache<Dataset[]> {
 class MyDatasetCache extends Cache<Dataset[]> {
   async getPromise(): Promise<Dataset[]> {
     try {
-      const response = await HTTPSecure.get('/users/me/datasets')
+      const response = await HTTPAuth.get('/users/me/datasets')
       return response.data as Dataset[]
     } catch (err) {
       console.log(`Failed to fetch my datasets: ${err}`)
@@ -64,7 +64,7 @@ async function mayChangeDataset(
   dialogState: DialogStateStore
 ): Promise<boolean> {
   const data = await handleRequestWithErrorReporting<MayChangeDatasetResponse>(
-    HTTPSecure.get(`/users/me/datasets/${datasetId}/permissions`),
+    HTTPAuth.get(`/users/me/datasets/${datasetId}/permissions`),
     `Failed to load dataset '${datasetId}' permission for user`,
     dialogState
   )

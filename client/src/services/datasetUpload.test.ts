@@ -1,15 +1,15 @@
 import { test, expect, vi, beforeEach } from 'vitest'
 import { uploadTemporaryDataset, type UploadResponse } from '@/services/datasetUpload'
-import { handleRequestWithErrorReporting, HTTPSecure } from '@/services/API'
+import { handleRequestWithErrorReporting, HTTPAuth } from '@/services/API'
 import { DIALOG, type DialogStateStore } from '@/stores/DialogState'
 import { type AxiosResponse } from 'axios'
 
 vi.mock('@/services/API', () => ({
-  HTTPSecure: { post: vi.fn().mockResolvedValue({} as AxiosResponse) },
+  HTTPAuth: { post: vi.fn().mockResolvedValue({} as AxiosResponse) },
   handleRequestWithErrorReporting: vi.fn()
 }))
 
-const mockedPost = vi.mocked(HTTPSecure.post)
+const mockedPost = vi.mocked(HTTPAuth.post)
 const mockedHandle = vi.mocked(handleRequestWithErrorReporting)
 
 const MAX_UPLOAD_SIZE = 50 * 1024 * 1024

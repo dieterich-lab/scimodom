@@ -7,18 +7,18 @@ import {
   mayChangeDataset,
   type Dataset
 } from '@/services/dataset'
-import { HTTP, HTTPSecure, handleRequestWithErrorReporting } from '@/services/API'
+import { HTTP, HTTPAuth, handleRequestWithErrorReporting } from '@/services/API'
 import { type DialogStateStore } from '@/stores/DialogState'
 import { type AxiosResponse } from 'axios'
 
 vi.mock('@/services/API', () => ({
   HTTP: { get: vi.fn().mockResolvedValue({} as AxiosResponse) },
-  HTTPSecure: { get: vi.fn().mockResolvedValue({} as AxiosResponse) },
+  HTTPAuth: { get: vi.fn().mockResolvedValue({} as AxiosResponse) },
   handleRequestWithErrorReporting: vi.fn()
 }))
 
 const mockedGet = vi.mocked(HTTP.get)
-const mockedSecureGet = vi.mocked(HTTPSecure.get)
+const mockedSecureGet = vi.mocked(HTTPAuth.get)
 const mockedHandle = vi.mocked(handleRequestWithErrorReporting)
 const dialogState = {} as DialogStateStore
 
