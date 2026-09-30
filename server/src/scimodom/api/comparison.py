@@ -210,8 +210,8 @@ class _CompareContext:
             except FileNotFoundError as exc:
                 raise ClientResponseException(
                     404,
-                    "Upload file not found"
-                    "Select the file again and try to re-upload",
+                    f"Upload file not found: {self._upload_id}"
+                    "File not found. Select the file again and try to re-upload.",
                 ) from exc
             b_records_list = [list(self._get_comparison_records_from_file())]
 
@@ -257,18 +257,19 @@ class _CompareContext:
                 422,
                 str(exc),
                 "Invalid bedRMod format specifications.\n"
-                "Modify the file to conform to the latest bedRMod format specifications or\n"
-                "toggle the BED6 option to ignore validation.",
+                f"Too many skipped records: {exc.error_summary}\n"
+                "Modify the file to conform to the latest bedRMod format specifications\n"
+                "or toggle the BED6 option to ignore validation.",
             ) from exc
         except LiftOverError as exc:
             raise ClientResponseException(
-                500, str(exc), "Liftover failed. Contact the system administrator."
+                500, str(exc), "Liftover failed. Contact our support team."
             ) from exc
         except Exception as exc:
-            logger.error(f"Import failed (Comparison 2): {str(exc)}")
+            logger.error(f"Import failed (Comparison 2): {exc}")
             message = (
-                "Server was unable to process file import request.\n"
-                "Contact the system administrator."
+                "The server was unable to process a file import request.\n"
+                "Contact our support team."
             )
             raise ClientResponseException(500, message) from exc
 
@@ -296,34 +297,31 @@ class _CompareContext:
                     local_context,
                 )
             except SpecsError as exc:
-                message = str(exc)
                 raise ClientResponseException(
                     422,
-                    message,
-                    "Invalid bedRMod format specifications.\n"
-                    "Modify the file to conform to the latest bedRMod format specifications or\n"
-                    "toggle the BED6 option to ignore validation.",
+                    str(exc),
+                    f"Invalid bedRMod format specifications:\n{exc}\n"
+                    "Modify the file header to conform to the latest specifications\n"
+                    "or toggle the BED6 option to ignore validation.",
                 ) from exc
             except DatasetHeaderError as exc:
-                message = str(exc)
                 raise ClientResponseException(
                     422,
-                    message,
-                    "The request form must agree with the file header.\n"
+                    str(exc),
+                    f"The request form must agree with the file header:\n{exc}\n"
                     "Select reference dataset for the correct organism.",
                 ) from exc
             except DatasetImportError as exc:
-                message = str(exc)
                 raise ClientResponseException(
                     422,
-                    message,
-                    "Validate the file header for inconsistencies.",
+                    str(exc),
+                    f"Validate the file header for inconsistencies: {exc}",
                 ) from exc
             except Exception as exc:
-                logger.error(f"Import failed (Comparison 1): {str(exc)}")
+                logger.error(f"Import failed (Comparison 1): {exc}")
                 message = (
-                    "Server was unable to process file import request.\n"
-                    "Contact the system administrator."
+                    "The server was unable to process a file import request.\n"
+                    "Contact our support team."
                 )
                 raise ClientResponseException(500, message) from exc
         else:

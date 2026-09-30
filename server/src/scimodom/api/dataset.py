@@ -188,10 +188,11 @@ def _import_dataset(dataset_form):
                 technology_id=dataset_form.technology_id,
                 annotation_source=annotation_source,
             )
-    except ValueError:
+    except ValueError as exc:
         raise ClientResponseException(
             400,
-            "Rename the file and try to re-upload",
+            str(exc),
+            "Invalid file name: rename the file and try to re-upload.",
         )
     except SelectionNotFoundError as exc:
         raise ClientResponseException(
@@ -202,25 +203,25 @@ def _import_dataset(dataset_form):
             "Use GET /catalogs/selections for valid combinations.",
         )
     except DatasetExistsError as exc:
-        raise ClientResponseException(409, str(exc))
+        raise ClientResponseException(409, str(exc), "Dataset already exists.")
     except DatasetImportError as exc:
         raise ClientResponseException(
             422,
             str(exc),
-            "Modify the request form and re-submit",
+            f"Modify the request form and re-submit: {exc}",
         )
     except DatasetHeaderError as exc:
         raise ClientResponseException(
             422,
             str(exc),
-            "The request form must agree with the file header.\n"
+            f"The request form must agree with the file header:\n{exc}\n"
             "Modify the request form or select the correct dataset to upload.",
         )
     except SpecsError as exc:
         raise ClientResponseException(
             422,
             str(exc),
-            "Invalid bedRMod format specifications.\n"
+            f"Invalid bedRMod format specifications:\n{exc}\n"
             "Modify the file header to conform to the latest specifications.",
         )
     except BedImportEmptyFile as exc:
@@ -230,11 +231,12 @@ def _import_dataset(dataset_form):
     except BedImportTooManyErrors as exc:
         raise ClientResponseException(
             422,
-            str(exc.error_summary),
+            str(exc),
             "Invalid bedRMod format specifications.\n"
+            f"Too many skipped records: {exc.error_summary}\n"
             "Consult the documentation (Dataset upload errors) for more information.",
         )
     except LiftOverError as exc:
         raise ClientResponseException(
-            500, str(exc), "Liftover failed. Contact the system administrator."
+            500, str(exc), "Liftover failed. Contact our support team."
         )

@@ -55,8 +55,9 @@ def create_project_request():
         logger.error(f"Notification failed for project '{uuid}': {exc}")
         return create_error_response(
             500,
+            str(exc),
             f"Request '{uuid}' created, but an unexpected error occurred "
-            "during submission. Contact the system administrator.",
+            "during submission. Contact our support team.",
         )
     return {"message": "OK"}, 200
 

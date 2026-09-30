@@ -55,15 +55,15 @@ def register_user():
         return create_error_response(
             409,
             str(exc),
-            "Try to reset your password",
+            "User already exists. Try to reset your password.",
         )
     except SMTPException as exc:
         logger.error(f"Failed to send registration email: {exc}")
         return create_error_response(
             500,
-            "Failed to send registration email.",
-            "Make sure the email address is valid.\n"
-            "If the problem persists, contact the system administrator.",
+            str(exc),
+            "Failed to send registration email. Please verify your email address.\n"
+            "If the problem persists, contact our support team.",
         )
 
 
@@ -121,16 +121,16 @@ def request_password_reset():
         return create_error_response(
             404,
             f'User \'{fields["email"]}\' not found',
-            "Make sure the email address is valid.\n"
-            "If the problem persists, contact the system administrator.",
+            "User not found. Please verify your email address.\n"
+            "If the problem persists, contact our support team.",
         )
     except SMTPException as exc:
         logger.error(f"Failed to send registration email: {exc}")
         return create_error_response(
             500,
-            "Failed to send email.",
-            "Make sure the email address is valid.\n"
-            "If the problem persists, contact the system administrator.",
+            str(exc),
+            "Failed to send email. Please verify your email address.\n"
+            "If the problem persists, contact our support team.",
         )
 
 

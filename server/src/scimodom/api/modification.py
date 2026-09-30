@@ -309,7 +309,7 @@ def _get_modification_records(by_gene: bool):
                 multi_sort=multi_sort,
             )
     except MultiSortError as exc:
-        raise ClientResponseException(400, f"{exc}")
+        raise ClientResponseException(400, str(exc))
 
 
 def _get_csv_from_modification_records(records):

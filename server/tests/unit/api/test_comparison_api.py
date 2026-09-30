@@ -398,25 +398,25 @@ def test_subtract(
             SpecsError,
             422,
             "MESSAGE",
-            "Invalid bedRMod format specifications.\n"
-            "Modify the file to conform to the latest bedRMod format specifications or\ntoggle the BED6 option to ignore validation.",
+            "Invalid bedRMod format specifications:\nMESSAGE\n"
+            "Modify the file header to conform to the latest specifications\nor toggle the BED6 option to ignore validation.",
         ),
         (
             DatasetHeaderError,
             422,
             "MESSAGE",
-            "The request form must agree with the file header.\nSelect reference dataset for the correct organism.",
+            "The request form must agree with the file header:\nMESSAGE\nSelect reference dataset for the correct organism.",
         ),
         (
             DatasetImportError,
             422,
             "MESSAGE",
-            "Validate the file header for inconsistencies.",
+            "Validate the file header for inconsistencies: MESSAGE",
         ),
         (
             Exception,
             500,
-            "Server was unable to process file import request.\nContact the system administrator.",
+            "The server was unable to process a file import request.\nContact our support team.",
             None,
         ),
     ],

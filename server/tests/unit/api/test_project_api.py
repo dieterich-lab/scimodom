@@ -103,9 +103,10 @@ def test_create_project_request_smtp_exception(authenticated_client, mocker, cap
     )
     result = authenticated_client.post("/projects/requests", json={})
     assert result.status_code == 500
+    assert result.json["message"] == "oups"
     assert (
-        result.json["message"]
-        == "Request '123' created, but an unexpected error occurred during submission. Contact the system administrator."
+        result.json["user_message"]
+        == "Request '123' created, but an unexpected error occurred during submission. Contact our support team."
     )
     assert caplog.messages[0] == "Notification failed for project '123': oups"
 

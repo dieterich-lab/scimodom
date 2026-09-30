@@ -167,7 +167,12 @@ def test_add_dataset(authenticated_client, dataset_mocks):
 @pytest.mark.parametrize(
     "exception,http_status,msg,user_msg",
     [
-        (ValueError, 400, "Rename the file and try to re-upload", None),
+        (
+            ValueError,
+            400,
+            "",
+            "Invalid file name: rename the file and try to re-upload.",
+        ),
         (
             SelectionNotFoundError("Error"),
             404,
@@ -177,34 +182,39 @@ def test_add_dataset(authenticated_client, dataset_mocks):
             "Use GET /catalogs/selections for valid combinations.",
         ),
         (DatasetExistsError("Exists"), 409, "Exists", None),
-        (DatasetImportError, 422, "", "Modify the request form and re-submit"),
         (
-            DatasetHeaderError,
+            DatasetImportError("Import error"),
             422,
-            "",
-            "The request form must agree with the file header.\n"
+            "Import error",
+            "Modify the request form and re-submit: Import error",
+        ),
+        (
+            DatasetHeaderError("Header error"),
+            422,
+            "Header error",
+            "The request form must agree with the file header:\nHeader error\n"
             "Modify the request form or select the correct dataset to upload.",
         ),
         (
-            SpecsError,
+            SpecsError("specs"),
             422,
-            "",
-            "Invalid bedRMod format specifications.\n"
+            "specs",
+            "Invalid bedRMod format specifications:\nspecs\n"
             "Modify the file header to conform to the latest specifications.",
         ),
         (BedImportEmptyFile, 422, "", "File upload failed. The file is empty."),
         (
             BedImportTooManyErrors("message", "error"),
             422,
-            "error",
-            "Invalid bedRMod format specifications.\n"
+            "message",
+            "Invalid bedRMod format specifications.\nToo many skipped records: error\n"
             "Consult the documentation (Dataset upload errors) for more information.",
         ),
         (
             LiftOverError,
             500,
             "",
-            "Liftover failed. Contact the system administrator.",
+            "Liftover failed. Contact our support team.",
         ),
     ],
 )
