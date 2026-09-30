@@ -12,7 +12,7 @@ MAX_TMP_FILE_SIZE = 50 * 1024 * 1024
 def upload_tmp_file():
     """Upload a temporary file.
 
-    :statuscode 200: OK
+    :statuscode 201: Created
     :statuscode 413: File too large
     :statuscode 500: Internal Server Error
     """
@@ -25,6 +25,6 @@ def upload_tmp_file():
     file_service = get_file_service()
     try:
         file_id = file_service.upload_tmp_file(request.stream, MAX_TMP_FILE_SIZE)
-        return {"file_id": file_id}
+        return {"file_id": file_id}, 201
     except FileTooLarge:
         return create_file_too_large_response(MAX_TMP_FILE_SIZE)

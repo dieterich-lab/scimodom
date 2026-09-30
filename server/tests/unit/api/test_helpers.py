@@ -17,6 +17,11 @@ from scimodom.api.helpers import (
     get_optional_positive_int,
     get_optional_str,
     get_valid_rna_type,
+    get_bool,
+    parse_valid_bam_name,
+    validate_chrom,
+    validate_project_write_permission,
+    validate_dataset_write_permission,
     parse_valid_rna_type,
     get_valid_taxa_id,
     parse_valid_taxa_id,
@@ -26,14 +31,10 @@ from scimodom.api.helpers import (
     get_valid_coords,
     get_valid_target_type,
     parse_valid_sunburst_type,
-    validate_chrom,
-    validate_project_write_permission,
-    validate_dataset_write_permission,
     parse_valid_dataset,
-    parse_valid_bam_file,
+    parse_valid_bam,
     validate_request_size,
     get_valid_remote_file_name,
-    get_bool,
 )
 from scimodom.utils.specs.enums import Strand
 
@@ -369,6 +370,17 @@ def test_get_bool_invalid_values(app, raw):
     assert returned_status == 400
 
 
+def test_parse_valid_bam_name(mocker):
+    mocker.patch(
+        "scimodom.api.helpers.get_file_service", return_value=MockFileService()
+    )
+    with pytest.raises(ClientResponseException) as exc:
+        parse_valid_bam_name("wrong file name.bam")
+    returned_message, returned_status = exc.value.response_tuple
+    assert returned_message["message"] == "Invalid BamName 'wrong file name.bam'"
+    assert returned_status == 400
+
+
 # tests: semantic validation
 
 
@@ -695,28 +707,18 @@ def test_parse_valid_dataset(eufid, expected_status, expected_message, mocker):
     assert returned_status == expected_status
 
 
-@pytest.mark.parametrize(
-    "bam_file,expected_status,expected_message",
-    [
-        ("wrong file name.bam", 400, "Invalid BamName 'wrong file name.bam'"),
-        (
-            "file_name.bam",
-            404,
-            "BAM file 'file_name.bam' not found or no association with dataset 'dataset_id01'",
-        ),
-    ],
-)
-def parse_get_valid_bam_file(
-    bam_file, expected_status, expected_message, mocker, dataset
-):
+def test_parse_valid_bam(bam_file, mocker, dataset):
     mocker.patch(
         "scimodom.api.helpers.get_file_service", return_value=MockFileService()
     )
     with pytest.raises(ClientResponseException) as exc:
-        parse_valid_bam_file(dataset[0], bam_file)
+        parse_valid_bam(dataset[0], "file_name.bam")
     returned_message, returned_status = exc.value.response_tuple
-    assert returned_message["message"] == expected_message
-    assert returned_status == expected_status
+    assert (
+        returned_message["message"]
+        == "BAM file 'file_name.bam' not found or no association with dataset 'dataset_id01'"
+    )
+    assert returned_status == 404
 
 
 # tested indirectly in test_comparison_api

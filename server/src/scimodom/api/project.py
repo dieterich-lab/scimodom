@@ -35,7 +35,7 @@ def create_project_request():
 
     :param request: The incoming JSON request payload
     satisfying the ProjecTemplate model
-    :statuscode 200: OK
+    :statuscode 201: Created
     :statuscode 400: Bad request - model validation
     :statuscode 401: Missing Authorization Header
     :statuscode 500: Internal Server Error (or failed notification)
@@ -59,7 +59,7 @@ def create_project_request():
             f"Request '{uuid}' created, but an unexpected error occurred "
             "during submission. Contact our support team.",
         )
-    return {"message": "OK"}, 200
+    return {"request_id": uuid}, 201
 
 
 @project_api.get("/users/me/projects")

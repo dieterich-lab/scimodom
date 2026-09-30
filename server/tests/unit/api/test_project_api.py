@@ -58,8 +58,8 @@ def test_create_project_request(authenticated_client, mocker, project_mocks):
         return_value=mock_project_template,
     )
     result = authenticated_client.post("/projects/requests", json={"field": "value"})
-    assert result.status_code == 200
-    assert result.json["message"] == "OK"
+    assert result.status_code == 201
+    assert result.json["request_id"] == 123
 
 
 def test_create_project_request_invalid_model(authenticated_client, project_mocks):

@@ -57,6 +57,8 @@ function prepareAPI(isAuthRequired: boolean) {
   const accessToken = useAccessToken()
   const currentToken = accessToken.token
   if (currentToken !== cachedAccessToken) {
+    // use appends an interceptor; it does not replace the previous one...
+    HTTPAuth.interceptors.request.clear()
     HTTPAuth.interceptors.request.use(
       (config) => handleHTTPAuthRequest(config, accessToken),
       (error) => Promise.reject(error)
@@ -81,8 +83,8 @@ function handleHTTPAuthRequest(
 }
 
 function getApiUrl(endpoint: string): string {
-  const base = getApiBaseUrl()
-  return `${base}${endpoint}`
+  const base = getApiBaseUrl().replace(/\/$/, '')
+  return `${base}/${endpoint.replace(/^\//, '')}`
 }
 
 async function handleRequest<T>(
@@ -92,7 +94,8 @@ async function handleRequest<T>(
   let messages: undefined | ErrorMessages
   try {
     const response = await request
-    if (response.status === 200) {
+    // axios' default validateStatus resolves this promise for 2xx
+    if (response.status >= 200 && response.status < 300) {
       return response.data as T
     }
     messages = getErrorMessagesFromResponse(response, error_context)

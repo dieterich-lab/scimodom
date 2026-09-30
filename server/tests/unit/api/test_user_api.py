@@ -29,6 +29,19 @@ def authenticated_client():
     yield client
 
 
+def test_register_user(unauthenticated_client, mocker):
+    mock_user_service = mocker.Mock()
+    mocker.patch(
+        "scimodom.api.user.get_user_service",
+        return_value=mock_user_service,
+    )
+    result = unauthenticated_client.post(
+        "/users", json={"email": "user@email", "password": "pwd"}
+    )
+    assert result.status_code == 204
+    assert result.data == b""
+
+
 @pytest.mark.parametrize(
     "exception,http_status,msg,user_msg,log_msg",
     [
@@ -75,6 +88,19 @@ def test_register_user_fail(
         assert caplog.messages[0] == log_msg
 
 
+def test_confirm_user(unauthenticated_client, mocker):
+    mock_user_service = mocker.Mock()
+    mocker.patch(
+        "scimodom.api.user.get_user_service",
+        return_value=mock_user_service,
+    )
+    result = unauthenticated_client.post(
+        "/users/confirmation", json={"email": "user@email", "token": "token123"}
+    )
+    assert result.status_code == 204
+    assert result.data == b""
+
+
 def test_confirm_user_fail(
     unauthenticated_client,
     mocker,
@@ -90,6 +116,19 @@ def test_confirm_user_fail(
     )
     assert result.status_code == 401
     assert result.json["message"] == "Invalid credentials"
+
+
+def test_request_password_reset(unauthenticated_client, mocker):
+    mock_user_service = mocker.Mock()
+    mocker.patch(
+        "scimodom.api.user.get_user_service",
+        return_value=mock_user_service,
+    )
+    result = unauthenticated_client.post(
+        "/users/password/request", json={"email": "user@email"}
+    )
+    assert result.status_code == 204
+    assert result.data == b""
 
 
 @pytest.mark.parametrize(
@@ -138,6 +177,20 @@ def test_request_password_reset_fail(
         assert caplog.messages[0] == log_msg
 
 
+def test_reset_password(unauthenticated_client, mocker):
+    mock_user_service = mocker.Mock()
+    mocker.patch(
+        "scimodom.api.user.get_user_service",
+        return_value=mock_user_service,
+    )
+    result = unauthenticated_client.post(
+        "/users/password/reset",
+        json={"email": "user@email", "password": "pw", "token": "token123"},
+    )
+    assert result.status_code == 204
+    assert result.data == b""
+
+
 def test_reset_password_fail(
     unauthenticated_client,
     mocker,
@@ -174,10 +227,21 @@ def test_login_fail(
     assert result.json["message"] == "Invalid credentials"
 
 
-def test_change_my_password(unauthenticated_client):
+def test_change_my_password_unauthenticated(unauthenticated_client):
     result = unauthenticated_client.put("/users/me/password")
     assert result.status_code == 401
     assert result.json["msg"] == "Missing Authorization Header"
+
+
+def test_change_my_password(authenticated_client, mocker):
+    mock_user_service = mocker.Mock()
+    mocker.patch(
+        "scimodom.api.user.get_user_service",
+        return_value=mock_user_service,
+    )
+    result = authenticated_client.put("/users/me/password", json={"password": "pwd"})
+    assert result.status_code == 204
+    assert result.data == b""
 
 
 def test_get_me(unauthenticated_client):

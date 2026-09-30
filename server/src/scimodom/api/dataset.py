@@ -59,7 +59,8 @@ def add_dataset():
 
     :param request: The incoming JSON request payload
     satisfying the DatasetPostRequest model
-    :statuscode 200: OK
+    :return: JSON object with newly created identifier
+    :statuscode 201: Created
     :statuscode 400: Bad request - model validation
     :statuscode 401: Missing Authorization Header
     :statuscode 403: Forbidden - project permission
@@ -73,7 +74,7 @@ def add_dataset():
     try:
         dataset_form = DatasetPostRequest.model_validate_json(request.get_data())
         validate_project_write_permission(dataset_form.smid)
-        _import_dataset(dataset_form)
+        dataset_id = _import_dataset(dataset_form)
     except ValidationError:
         return create_error_response(
             400,
@@ -84,7 +85,7 @@ def add_dataset():
 
     sunburst_service = get_sunburst_service()
     sunburst_service.trigger_background_update()
-    return {"message": "OK"}, 200
+    return {"dataset_id": dataset_id}, 201
 
 
 @dataset_api.get("/datasets/<dataset_id>/bedrmod")
@@ -154,7 +155,7 @@ def get_my_permissions(dataset_id):
     return {"write_access": permission_service.may_change_dataset(user, dataset)}
 
 
-def _import_dataset(dataset_form):
+def _import_dataset(dataset_form: DatasetPostRequest) -> str:
     file_service = get_file_service()
     try:
         # MS14
@@ -177,7 +178,7 @@ def _import_dataset(dataset_form):
     dataset_service = get_dataset_service()
     try:
         with file_service.open_tmp_upload_file_by_id(file_id) as fh:
-            dataset_service.import_dataset(
+            return dataset_service.import_dataset(
                 fh,
                 source=file_id,
                 smid=dataset_form.smid,

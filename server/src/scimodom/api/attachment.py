@@ -3,8 +3,9 @@ from flask_jwt_extended import jwt_required
 
 from scimodom.api.helpers import (
     parse_valid_dataset,
+    parse_valid_bam_name,
+    parse_valid_bam,
     validate_dataset_write_permission,
-    parse_valid_bam_file,
     ClientResponseException,
     validate_request_size,
     create_file_too_large_response,
@@ -52,7 +53,7 @@ def get_bam_file(dataset_id: str, name: str):
     """
     try:
         dataset = parse_valid_dataset(dataset_id)
-        bam_file = parse_valid_bam_file(dataset, name)
+        bam_file = parse_valid_bam(dataset, name)
     except ClientResponseException as e:
         return e.response_tuple
 
@@ -82,8 +83,10 @@ def put_bam_file(dataset_id: str, name: str):
 
     :param dataset_id: Dataset identifier (EUFID)
     :param name: BAM file attachment name
-    :statuscode 200: OK
+    :statuscode 201: Created
+    :statuscode 204: No Content - updated
     :statuscode 400: Bad Request - invalid dataset identifier
+    or BAM name
     :statuscode 401: Missing Authorization Header
     :statuscode 403: Forbidden - dataset permission
     :statuscode 404: Not Found - dataset identifier
@@ -95,18 +98,22 @@ def put_bam_file(dataset_id: str, name: str):
     try:
         dataset = parse_valid_dataset(dataset_id)
         validate_dataset_write_permission(dataset)
+        valid_name = parse_valid_bam_name(name)
         validate_request_size(MAX_BAM_FILE_SIZE)
     except ClientResponseException as e:
         return e.response_tuple
 
     file_service = get_file_service()
     try:
-        file_service.create_or_update_bam_file(
-            dataset, name, request.stream, MAX_BAM_FILE_SIZE
+        status = file_service.create_or_update_bam_file(
+            dataset, valid_name, request.stream, MAX_BAM_FILE_SIZE
         )
+        if status == "updated":
+            return "", 204
+        elif status == "created":
+            return {"original_file_name": valid_name}, 201
     except FileTooLarge:
         return create_file_too_large_response(MAX_BAM_FILE_SIZE)
-    return {"message": "OK"}, 200
 
 
 @dataset_attachment_api.delete("/<dataset_id>/attachments/bams/<name>")
@@ -116,7 +123,7 @@ def delete_bam_file(dataset_id: str, name: str):
 
     :param dataset_id: Dataset identifier (EUFID)
     :param name: BAM file attachment name
-    :statuscode 200: OK
+    :statuscode 204: No Content
     :statuscode 400: Bad Request - invalid dataset identifier
     or BAM name
     :statuscode 401: Missing Authorization Header
@@ -130,10 +137,10 @@ def delete_bam_file(dataset_id: str, name: str):
     try:
         dataset = parse_valid_dataset(dataset_id)
         validate_dataset_write_permission(dataset)
-        bam_file = parse_valid_bam_file(dataset, name)
+        bam_file = parse_valid_bam(dataset, name)
     except ClientResponseException as e:
         return e.response_tuple
 
     file_service = get_file_service()
     file_service.remove_bam_file(bam_file)
-    return {"message": "OK"}, 200
+    return "", 204

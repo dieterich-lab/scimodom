@@ -32,7 +32,7 @@ def test_upload_tmp_file(test_client, mock_file_service):
         content_type="application/octet-stream",
     )
 
-    assert response.status_code == 200
+    assert response.status_code == 201
     assert response.get_json() == {"file_id": "abc123"}
     mock_file_service.upload_tmp_file.assert_called_once()
     # The service is called with the request stream and the max size.
@@ -82,6 +82,6 @@ def test_upload_tmp_file_falls_through(test_client, mock_file_service, mocker):
         content_type="application/octet-stream",
     )
 
-    assert response.status_code == 200
+    assert response.status_code == 201
     assert response.get_json() == {"file_id": "streamed123"}
     mock_file_service.upload_tmp_file.assert_called_once()

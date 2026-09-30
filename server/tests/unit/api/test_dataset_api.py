@@ -46,7 +46,7 @@ def authenticated_client():
 @pytest.fixture
 def dataset_mocks(mocker):
     mock_dataset_service = mocker.Mock()
-    mock_dataset_service.import_dataset.return_value = None
+    mock_dataset_service.import_dataset.return_value = "d1"
     mocker.patch(
         "scimodom.api.dataset.get_dataset_service",
         return_value=mock_dataset_service,
@@ -123,7 +123,7 @@ def test_get_my_permissions(unauthenticated_client):
     assert result.json["msg"] == "Missing Authorization Header"
 
 
-def test_get_my_permissions_not_found(authenticated_client, dataset, mocker):
+def test_get_my_permissions_not_found(authenticated_client, mocker):
     mock_dataset_service = mocker.Mock()
     mock_dataset_service.get_by_id.side_effect = NoResultFound
     mocker.patch(
@@ -160,8 +160,8 @@ def test_get_my_permissions_denied(authenticated_client, mocker):
 
 def test_add_dataset(authenticated_client, dataset_mocks):
     result = authenticated_client.post("/datasets", json={"field": "value"})
-    assert result.status_code == 200
-    assert result.json["message"] == "OK"
+    assert result.status_code == 201
+    assert result.json["dataset_id"] == "d1"
 
 
 @pytest.mark.parametrize(

@@ -26,9 +26,13 @@ from scimodom.utils.specs.enums import (
 T = TypeVar("T")  # Callable return type
 
 # EUFID length is validated separately
+
+_FILENAME_CHARS = r"a-zA-Z0-9.,_-"
+VALID_FILENAME_REGEXP = re.compile(rf"\A[{_FILENAME_CHARS}]{{1,256}}\Z")
+INVALID_CHARS_REGEXP = re.compile(rf"[^{_FILENAME_CHARS}]")
 VALID_DATASET_ID_REGEXP = re.compile(r"\A[a-zA-Z0-9]{1,256}\Z")
-VALID_FILENAME_REGEXP = re.compile(r"\A[a-zA-Z0-9.,_-]{1,256}\Z")
-INVALID_CHARS_REGEXP = re.compile(r"[^a-zA-Z0-9.,_-]")
+# VALID_FILENAME_REGEXP = re.compile(r"\A[a-zA-Z0-9.,_-]{1,256}\Z")
+# INVALID_CHARS_REGEXP = re.compile(r"[^a-zA-Z0-9.,_-]")
 MAX_DATASET_IDS_IN_LIST = 3
 
 
@@ -135,6 +139,11 @@ def get_required_json_fields(*fields: str) -> dict[str, Any]:
 def get_list(name: str, list_type) -> list[Any]:
     """Parse query for parameters, convert, and validate.
 
+    NOTE: A missing parameter and an empty list
+    are indistinguishable; this function returns [] in both
+    cases. Callers that require at least one value must
+    check the result.
+
     :param name: Query parameter name
     :list_type: Base type of list
     :raises ClientResponseException: 400
@@ -192,11 +201,11 @@ def get_optional_positive_int(name: str) -> int | None:
 
 
 def get_optional_str(name: str) -> str | None:
-    """Parse query for parameter, convert, and validate.
+    """Parse query for parameter.
 
     :param name: Query parameter name
     :raises ClientResponseException: 400
-    :return: The converted value in the given range
+    :return: The converted string or None
     """
     return _get_optional_query_param(name)
 
@@ -226,6 +235,19 @@ def get_bool(name: str, *, default: bool | None = None) -> bool:
             400,
             f"Invalid value for '{name}' (allowed: {allowed}, got: '{raw}')",
         )
+
+
+def parse_valid_bam_name(raw_file_name: str) -> str:
+    """Parse and validate a BAM file name.
+
+    :param raw_file_name: Route parameter file name
+    :raises ClientResponseException: 400
+    :return: Parse name
+    """
+    name = _parse_param("BamName", raw_file_name)
+    if not VALID_FILENAME_REGEXP.match(name):
+        raise ClientResponseException(400, f"Invalid BamName '{name}'")
+    return name
 
 
 _BOOLEANS = {
@@ -490,12 +512,16 @@ def _get_valid_user() -> User:
         raise ClientResponseException(404, f"User '{email}' not found")
 
 
+# def _is_valid_identifier(identifier: str, length: int) -> bool:
+#     if not VALID_DATASET_ID_REGEXP.match(identifier):
+#         return False
+#     elif len(identifier) != length:
+#         return False
+#     return True
+
+
 def _is_valid_identifier(identifier, length):
-    if not VALID_DATASET_ID_REGEXP.match(identifier):
-        return False
-    elif len(identifier) != length:
-        return False
-    return True
+    return bool(VALID_DATASET_ID_REGEXP.match(identifier) and len(identifier) == length)
 
 
 # - Helpers
@@ -512,7 +538,7 @@ def get_valid_rna_type() -> str:
     return rna_type
 
 
-def parse_valid_rna_type(raw: str) -> int:
+def parse_valid_rna_type(raw: str) -> str:
     """Parse raw RNA type and validate.
 
     :param raw: Route parameter for RNA type
@@ -604,6 +630,7 @@ def get_valid_coords(
     context around start-end.
     :raises ClientResponseException: 400, 404
     :return: Coordinates as (chrom, start, end, strand)
+    where strand defaults to Strand.UNDEFINED (".")
     """
     taxa_id = get_valid_taxa_id()
     chrom = _get_required_query_param("chrom")
@@ -669,7 +696,7 @@ def parse_valid_sunburst_type(raw: str) -> SunburstChartType:
 
 
 def parse_valid_dataset(raw: str) -> Dataset:
-    """Parse a valid dataset.
+    """Parse a valid dataset and return the matching object.
 
     :param raw: Route parameter for dataset identifier
     :raises ClientResponseException: 400, 404.
@@ -685,17 +712,15 @@ def parse_valid_dataset(raw: str) -> Dataset:
         raise ClientResponseException(404, f"Dataset '{dataset_id}' not found")
 
 
-def parse_valid_bam_file(dataset: Dataset, raw_file_name: str) -> BamFile:
-    """Parse a valid BAM file.
+def parse_valid_bam(dataset: Dataset, raw_file_name: str) -> BamFile:
+    """Parse a valid BAM file and return the matching object.
 
     :param dataset: Dataset
     :param raw_file_name: Route parameter file name
     :raises ClientResponseException: 400, 404.
     :return: BAM file object
     """
-    name = _parse_param("BamName", raw_file_name)
-    if not VALID_FILENAME_REGEXP.match(name):
-        raise ClientResponseException(400, f"Invalid BamName '{name}'")
+    name = parse_valid_bam_name(raw_file_name)
     file_service = get_file_service()
     try:
         return file_service.get_bam_file(dataset, name)
@@ -773,7 +798,7 @@ def get_valid_remote_file_name(name: str, default: str = "uploaded file") -> str
     file_name = request.args.get(name, type=str)
     if not file_name:
         return default
-    return re.sub(INVALID_CHARS_REGEXP, "?", file_name)
+    return re.sub(INVALID_CHARS_REGEXP, "?", file_name)[:256]
 
 
 # Response

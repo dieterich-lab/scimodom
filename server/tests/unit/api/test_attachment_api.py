@@ -65,6 +65,44 @@ def test_put_bam_too_large(authenticated_client, mocker):
     assert response.json["message"] == "File too large (max. 2147483648 bytes)"
 
 
+@pytest.mark.parametrize(
+    "status,http_status",
+    [
+        ("created", 201),
+        ("updated", 204),
+    ],
+)
+def test_put_bam(authenticated_client, mocker, status, http_status):
+    mocker.patch(
+        "scimodom.api.attachment.parse_valid_dataset",
+        return_value=mocker.Mock(),
+    )
+    mocker.patch(
+        "scimodom.api.attachment.validate_dataset_write_permission",
+        return_value=None,
+    )
+    mocker.patch(
+        "scimodom.api.attachment.validate_request_size",
+        return_value=None,
+    )
+    mock_file_service = mocker.Mock()
+    mock_file_service.create_or_update_bam_file.return_value = status
+    mocker.patch(
+        "scimodom.api.attachment.get_file_service",
+        return_value=mock_file_service,
+    )
+    response = authenticated_client.put(
+        "/d1/attachments/bams/mybam-name",
+        data=b"some bytes",
+        content_type="application/octet-stream",
+    )
+    assert response.status_code == http_status
+    if status == "created":
+        response.json["original_file_name"] == "mybam-name"
+    else:
+        assert response.data == b""
+
+
 def test_deleted_bam_unauthenticated(unauthenticated_client, mocker):
     mock_validate = mocker.patch("scimodom.api.attachment.parse_valid_dataset")
     response = unauthenticated_client.delete(
@@ -75,3 +113,26 @@ def test_deleted_bam_unauthenticated(unauthenticated_client, mocker):
     assert response.status_code == 401
     assert response.json["msg"] == "Missing Authorization Header"
     mock_validate.assert_not_called()
+
+
+def test_delete_bam(authenticated_client, mocker):
+    mocker.patch(
+        "scimodom.api.attachment.parse_valid_dataset",
+        return_value=mocker.Mock(),
+    )
+    mocker.patch(
+        "scimodom.api.attachment.validate_dataset_write_permission",
+        return_value=None,
+    )
+    mocker.patch(
+        "scimodom.api.attachment.parse_valid_bam",
+        return_value=mocker.Mock(),
+    )
+    mock_file_service = mocker.Mock()
+    mocker.patch(
+        "scimodom.api.attachment.get_file_service",
+        return_value=mock_file_service,
+    )
+    response = authenticated_client.delete("/d1/attachments/bams/name")
+    assert response.status_code == 204
+    assert response.data == b""

@@ -85,8 +85,9 @@ test('deleteBamFile does not swallow failures', async () => {
 })
 
 test('getBamFileDownLoadURL builds the download URL via getApiUrl', () => {
-  const url = getBamFileDownLoadURL('d1', 'sample.bam')
+  const url = getBamFileDownLoadURL('d1', 'sample_123 badly/named-file.bam')
 
-  expect(mockedGetApiUrl).toHaveBeenCalledWith('datasets/d1/attachments/bams/sample.bam')
-  expect(url).toBe('/datasets/d1/attachments/bams/sample.bam')
+  expect(mockedGetApiUrl).toHaveBeenCalledWith(
+    '/datasets/d1/attachments/bams/sample_123%20badly%2Fnamed-file.bam'
+  )
 })

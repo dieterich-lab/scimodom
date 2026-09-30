@@ -33,8 +33,8 @@ async function deleteBamFile(
 
 // GET - used in BamFileTable.vue as a normal hyperlink
 function getBamFileDownLoadURL(datasetId: string, name: string): string {
-  const cookedName = encodeURI(name)
-  return getApiUrl(`datasets/${datasetId}/attachments/bams/${cookedName}`)
+  const cookedName = encodeURIComponent(name)
+  return getApiUrl(`/datasets/${datasetId}/attachments/bams/${cookedName}`)
 }
 
 export { type BamFile, getBamFilesByDatasetId, deleteBamFile, getBamFileDownLoadURL }

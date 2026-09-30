@@ -39,7 +39,7 @@ def register_user():
 
     :param request: The incoming JSON request payload
     with "email" and "password".
-    :statuscode 200: OK
+    :statuscode 204: No Content
     :statuscode 400: Bad request - request body, missing fields
     :statuscode 409: Conflict - user exists
     :statuscode 500: Internal Server Error (or SMTPException)
@@ -48,7 +48,7 @@ def register_user():
     try:
         fields = get_required_json_fields("email", "password")
         user_service.register_user(email=fields["email"], password=fields["password"])
-        return {"message": "OK"}, 200
+        return "", 204
     except ClientResponseException as exc:
         return exc.response_tuple
     except UserExists as exc:
@@ -77,7 +77,7 @@ def confirm_user_registration():
 
     :param request: The incoming JSON request payload
     with "email" and "token".
-    :statuscode 200: OK
+    :statuscode 204: No Content
     :statuscode 400: Bad request - request body, missing fields
     :statuscode 401: Unauthorized - credentials
     :statuscode 500: Internal Server Error
@@ -88,7 +88,7 @@ def confirm_user_registration():
         user_service.confirm_user(
             email=fields["email"], confirmation_token=fields["token"]
         )
-        return {"message": "OK"}, 200
+        return "", 204
     except ClientResponseException as exc:
         return exc.response_tuple
     except WrongUserOrPassword:
@@ -105,7 +105,7 @@ def request_password_reset():
     via a FE dialog.
 
     :param request: The incoming JSON request payload with "email".
-    :statuscode 200: OK
+    :statuscode 204: No Content
     :statuscode 400: Bad request - request body, missing fields
     :statuscode 404: Not Found - user
     :statuscode 500: Internal Server Error (or SMTPException)
@@ -114,7 +114,7 @@ def request_password_reset():
     try:
         fields = get_required_json_fields("email")
         user_service.request_password_reset(fields["email"])
-        return {"message": "OK"}, 200
+        return "", 204
     except ClientResponseException as exc:
         return exc.response_tuple
     except NoSuchUser:
@@ -140,7 +140,7 @@ def do_password_reset():
 
     :param request: The incoming JSON request payload with
     "email", "token", and "password".
-    :statuscode 200: OK
+    :statuscode 204: No Content
     :statuscode 400: Bad request - malformed request body, missing fields
     :statuscode 401: Unauthorized - credentials
     :statuscode 500: Internal Server Error
@@ -153,7 +153,7 @@ def do_password_reset():
             confirmation_token=fields["token"],
             new_password=fields["password"],
         )
-        return {"message": "OK"}, 200
+        return "", 204
     except ClientResponseException as exc:
         return exc.response_tuple
     except WrongUserOrPassword:
@@ -183,7 +183,7 @@ def change_my_password():
 
     :param request: The request and header with current
     "token" and "password".
-    :statuscode 200: OK
+    :statuscode 204: No Content
     :statuscode 400: Bad request - malformed request body, missing fields
     :statuscode 401: Unauthorized - expired token, missing header
     :statuscode 422: Unprocessable Content (not enough segments,
@@ -198,7 +198,7 @@ def change_my_password():
             email=email,
             new_password=fields["password"],
         )
-        return {"message": "OK"}, 200
+        return "", 204
     except ClientResponseException as exc:
         return exc.response_tuple
 

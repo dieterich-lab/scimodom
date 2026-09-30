@@ -137,7 +137,7 @@ function getModificationExportLink(
       }
     }
   }
-  return getApiUrlCb('modifications/records') + '?' + params.toString()
+  return getApiUrlCb('/modifications/records') + '?' + params.toString()
 }
 
 function getSiteParams(modification: Modification): SiteParams {
