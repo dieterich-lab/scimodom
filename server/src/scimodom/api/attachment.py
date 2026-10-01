@@ -2,13 +2,13 @@ from flask import Blueprint, request, Response
 from flask_jwt_extended import jwt_required
 
 from scimodom.api.helpers import (
-    parse_valid_dataset,
-    parse_valid_bam_name,
-    parse_valid_bam,
-    validate_dataset_write_permission,
     ClientResponseException,
     validate_request_size,
     create_file_too_large_response,
+    parse_valid_dataset,
+    validate_file_name,
+    parse_valid_bam,
+    validate_dataset_write_permission,
 )
 from scimodom.services.file import get_file_service, FileTooLarge
 
@@ -98,7 +98,7 @@ def put_bam_file(dataset_id: str, name: str):
     try:
         dataset = parse_valid_dataset(dataset_id)
         validate_dataset_write_permission(dataset)
-        valid_name = parse_valid_bam_name(name)
+        validate_file_name("BAM", name)
         validate_request_size(MAX_BAM_FILE_SIZE)
     except ClientResponseException as e:
         return e.response_tuple
@@ -106,12 +106,12 @@ def put_bam_file(dataset_id: str, name: str):
     file_service = get_file_service()
     try:
         status = file_service.create_or_update_bam_file(
-            dataset, valid_name, request.stream, MAX_BAM_FILE_SIZE
+            dataset, name, request.stream, MAX_BAM_FILE_SIZE
         )
         if status == "updated":
             return "", 204
         elif status == "created":
-            return {"original_file_name": valid_name}, 201
+            return {"original_file_name": name}, 201
     except FileTooLarge:
         return create_file_too_large_response(MAX_BAM_FILE_SIZE)
 

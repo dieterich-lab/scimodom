@@ -7,10 +7,10 @@ from pydantic import BaseModel
 
 from scimodom.api.helpers import (
     ClientResponseException,
-    get_valid_dataset_id_list,
-    get_valid_tmp_file_id,
-    get_valid_remote_file_name,
-    get_bool,
+    get_optional_valid_dataset_id_list,
+    get_optional_valid_tmp_file_id,
+    get_valid_file_name,
+    get_optional_bool,
     get_valid_taxa_id,
     get_response_from_pydantic_object,
 )
@@ -43,6 +43,9 @@ from scimodom.utils.specs.enums import Identifiers
 logger = logging.getLogger(__name__)
 
 dataset_comparison_api = Blueprint("dataset_comparison_api", __name__)
+
+
+MAX_DATASET_IDS_IN_LIST = 3
 
 
 class IntersectResponse(BaseModel):
@@ -159,12 +162,20 @@ class _CompareContext:
         is_strand: bool
 
     def __init__(self):
-        self._reference_ids = get_valid_dataset_id_list("reference")
-        self._comparison_ids = get_valid_dataset_id_list("comparison")
-        self._upload_id = get_valid_tmp_file_id("upload", is_optional=True)
-        self._upload_name = get_valid_remote_file_name("uploadName")
-        self._is_strand = get_bool("strand", default=True)
-        self._is_euf = get_bool("euf", default=False)
+        self._reference_ids = get_optional_valid_dataset_id_list(
+            "reference",
+            MAX_DATASET_IDS_IN_LIST,
+        )
+        self._comparison_ids = get_optional_valid_dataset_id_list(
+            "comparison",
+            MAX_DATASET_IDS_IN_LIST,
+        )
+        self._upload_id = get_optional_valid_tmp_file_id("upload")
+        self._upload_name = get_valid_file_name("uploadName")
+        is_strand = get_optional_bool("strand")
+        self._is_strand = True if is_strand is None else is_strand
+        is_euf = get_optional_bool("euf")
+        self._is_euf = False if is_euf is None else is_euf
         self._taxa_id: int | None = None
         if self._is_euf:
             try:

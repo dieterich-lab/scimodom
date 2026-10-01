@@ -38,15 +38,15 @@ def mock_services(mocker):
         return_value=MockBedtoolsService(),
     )
     mocker.patch(
-        "scimodom.api.helpers.get_utilities_service",
+        "scimodom.api.helpers.validation.get_utilities_service",
         return_value=MockUtilitiesService(),
     )
     mocker.patch(
-        "scimodom.api.helpers.get_assembly_service",
+        "scimodom.api.helpers.validation.get_assembly_service",
         return_value=MockAssemblyService(),
     )
     mocker.patch(
-        "scimodom.api.helpers.get_annotation_service",
+        "scimodom.api.helpers.validation.get_annotation_service",
         return_value=MockAnnotationService(),
     )
     mocker.patch(

@@ -22,14 +22,14 @@ from scimodom.api.helpers import (
     get_optional_non_negative_int,
     validate_chrom,
     get_valid_rna_type,
-    get_valid_biotypes,
-    get_valid_features,
+    get_optional_valid_biotypes,
+    get_optional_valid_features,
     get_valid_taxa_id,
     get_valid_coords,
     get_valid_target_type,
     get_valid_selections,
     get_response_from_pydantic_object,
-    get_list,
+    get_optional_list,
 )
 from scimodom.services.bedtools import BedToolsService, get_bedtools_service
 from scimodom.utils.dtos.bedtools import Bed6Record
@@ -268,7 +268,7 @@ def _get_modification_records(by_gene: bool):
         raise ClientResponseException(501, f"rnaType '{rna_type}' not implemented")
 
     search_query_params = _get_valid_search_query_params(taxa_id, by_gene)
-    multi_sort = get_list("multiSort", str)
+    multi_sort = get_optional_list("multiSort", str)
     multi_sort = list(filter(None, multi_sort))
     if not multi_sort:
         multi_sort = ["chrom+asc", "start+asc"]
@@ -366,8 +366,8 @@ def _get_valid_search_query_params(
 
     return SearchQueryParams(
         gene_name,
-        get_valid_biotypes(),
-        get_valid_features(),
+        get_optional_valid_biotypes(),
+        get_optional_valid_features(),
         chrom,
         chrom_start,
         chrom_end,

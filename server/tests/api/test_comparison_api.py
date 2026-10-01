@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from types import SimpleNamespace
 from io import StringIO
 from typing import Iterable
 import unittest
@@ -43,13 +44,15 @@ def mock_services(mocker):
         "scimodom.api.comparison.get_file_service", return_value=MockFileService()
     )
     mocker.patch(
-        "scimodom.api.helpers.get_file_service", return_value=MockFileService()
+        "scimodom.api.helpers.validation.get_file_service",
+        return_value=MockFileService(),
     )
     mocker.patch(
-        "scimodom.api.helpers.get_dataset_service", return_value=MockDatasetService()
+        "scimodom.api.helpers.validation.get_dataset_service",
+        return_value=MockDatasetService(),
     )
     mocker.patch(
-        "scimodom.api.helpers.get_utilities_service",
+        "scimodom.api.helpers.validation.get_utilities_service",
         return_value=MockUtilitiesService(),
     )
     mocker.patch(
@@ -112,10 +115,11 @@ class MockFileService:
 class MockDatasetService:
     @staticmethod
     def get_by_id(dataset_id):
-        if dataset_id in DATA_BY_DATASET_ID.keys():
-            return dataset_id
-        else:
+        try:
+            DATA_BY_DATASET_ID[dataset_id]
+        except KeyError:
             raise NoResultFound
+        return SimpleNamespace(id=dataset_id)
 
 
 class MockDataService:
@@ -486,7 +490,7 @@ def test_intersect_with_liftover(test_client, mock_services, mocker):
         (
             "/intersect?reference=datasetidAxx&comparison=datasetidBxx&euf=true&taxaId=XXXX&strand=true",
             400,
-            "Parameter 'taxaId' must be a valid integer (got: 'XXXX')",
+            "Parameter 'taxaId' must be a valid _positive_int (got: 'XXXX')",
             "Request needs a valid 'taxaId' when 'euf=true'",
         ),
         (
@@ -524,13 +528,13 @@ def test_intersect_with_liftover(test_client, mock_services, mocker):
         (
             "/intersect?reference=datasetidAxx&comparison=datasetidZxxxx&strand=true",
             400,
-            "Invalid comparison datasetId 'datasetidZxxxx'",
+            "Invalid datasetId 'datasetidZxxxx'",
             None,
         ),
         (
             "/intersect?reference=datasetidAxx&comparison=datasetidZxx&strand=true",
             404,
-            "comparison datasetId 'datasetidZxx' not found",
+            "datasetId 'datasetidZxx' not found",
             None,
         ),
         (
@@ -542,7 +546,7 @@ def test_intersect_with_liftover(test_client, mock_services, mocker):
         (
             "/subtract?reference=datasetidAxx&upload=bl+ubber&strand=strand_aware",
             400,
-            "Invalid upload fileId 'bl ubber'",
+            "Invalid upload file name: 'bl ubber'",
             None,
         ),
         (
