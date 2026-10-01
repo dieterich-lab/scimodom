@@ -269,9 +269,6 @@ def _get_modification_records(by_gene: bool):
 
     search_query_params = _get_valid_search_query_params(taxa_id, by_gene)
     multi_sort = get_optional_list("multiSort", str)
-    multi_sort = list(filter(None, multi_sort))
-    if not multi_sort:
-        multi_sort = ["chrom+asc", "start+asc"]
     first_record = get_optional_non_negative_int("firstRecord")
     max_records = get_optional_positive_int("maxRecords")
 

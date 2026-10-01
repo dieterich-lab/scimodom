@@ -1,4 +1,5 @@
 from functools import cache
+from enum import Enum
 from typing import Any, ClassVar
 
 from sqlalchemy import select, func
@@ -39,13 +40,24 @@ class ModificationService:
     :param annotation_service: Annotation service instance
     """
 
+    class SortOrder(Enum):
+        """Provide table sort order."""
+
+        ASC = "asc"
+        DESC = "desc"
+
     SORT_COLUMNS: ClassVar[dict[str, Any]] = {
         "chrom": Data.chrom,
-        "score": Data.score,
         "start": Data.start,
+        "score": Data.score,
         "coverage": Data.coverage,
         "frequency": Data.frequency,
     }
+
+    DEFAULT_SORT: ClassVar[list[str]] = [
+        "chrom+asc",
+        "start+asc",
+    ]
 
     def __init__(self, session: Session, annotation_service: AnnotationService):
         self._session = session
@@ -316,12 +328,15 @@ class ModificationService:
                 column = cls.SORT_COLUMNS[col]
             except KeyError:
                 raise MultiSortError(f"Invalid sort column: '{col}'")
-            if order == "asc":
+            if order == cls.SortOrder.ASC.value:
                 return column.asc()
-            elif order == "desc":
+            elif order == cls.SortOrder.DESC.value:
                 return column.desc()
             else:
                 raise MultiSortError(f"Invalid sort direction: '{order}'")
+
+        if not multi_sort:
+            multi_sort = cls.DEFAULT_SORT
 
         for sort in multi_sort:
             ordered_col = _get_col_and_order(sort)

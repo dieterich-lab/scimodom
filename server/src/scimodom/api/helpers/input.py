@@ -297,7 +297,7 @@ def _get_optional_query_param(
 
 def _get_list_query_param(name: str, list_type: type[T]) -> list[T]:
     # returns an empty list if parameter is absent
-    # empty elements are not silently skipped
+    # empty elements are not silently skipped!
     is_str = list_type is str
     label = "non-empty str" if is_str else getattr(list_type, "__name__", "value")
     result: list[T] = []
