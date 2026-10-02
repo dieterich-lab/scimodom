@@ -67,6 +67,10 @@ def create_app():
     app.register_blueprint(upload_api, url_prefix=UPLOAD_API_ROUTE)
     app.register_blueprint(user_api, url_prefix=USER_API_ROUTE)
 
+    from scimodom.api.helpers import register_error_handlers
+
+    register_error_handlers(app)
+
     # CLI
     from scimodom.cli.assembly import assembly_cli
     from scimodom.cli.annotation import annotation_cli
@@ -82,7 +86,7 @@ def create_app():
     app.register_blueprint(dataset_cli)
     app.register_blueprint(charts_cli)
 
-    jwt = JWTManager(app)
+    JWTManager(app)
 
     @app.teardown_appcontext
     def cleanup(exception=None):

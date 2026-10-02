@@ -56,7 +56,7 @@ function makeProjectRequest(): ProjectPostRequest {
           taxa_id: 9606,
           cto: 'HeLa',
           assembly_name: 'GRCh38',
-          assembly_id: '1' // string!
+          assembly_id: '1' // string (form data)!
         }
       }
     ]

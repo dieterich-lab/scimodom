@@ -51,6 +51,8 @@ from .validation import (
 
 from .response import get_response_from_pydantic_object
 
+from .handlers import register_error_handlers
+
 __all__ = [
     "ClientResponseException",
     "FileTooLargeException",
@@ -93,4 +95,5 @@ __all__ = [
     "validate_project_write_permission",
     "validate_dataset_write_permission",
     "get_response_from_pydantic_object",
+    "register_error_handlers",
 ]
