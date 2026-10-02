@@ -173,7 +173,7 @@ def get_my_username():
     :statuscode 500: Internal Server Error
     """
     email = get_jwt_identity()
-    return {"email": email}, 200
+    return {"email": email}
 
 
 @user_api.put("/users/me/password")
@@ -222,7 +222,7 @@ def login():
             access_token = create_access_token(
                 identity=fields["email"], expires_delta=ACCESS_TOKEN_EXPIRATION_TIME
             )
-            return {"access_token": access_token}, 200
+            return {"access_token": access_token}
         return create_error_response(401, "Invalid credentials")
     except ClientResponseException as exc:
         return exc.response_tuple
@@ -246,4 +246,4 @@ def refresh_access_token():
     access_token = create_access_token(
         identity=email, expires_delta=ACCESS_TOKEN_EXPIRATION_TIME
     )
-    return {"access_token": access_token}, 200
+    return {"access_token": access_token}

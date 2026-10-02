@@ -1,5 +1,9 @@
 FROM docker.io/python:3.11-bookworm
 
+ARG BUILD_TAG
+ARG BUILD_COMMIT
+ARG BUILD_COMMIT_DATE
+
 EXPOSE 8000
 
 COPY server/. /install/
@@ -23,7 +27,9 @@ RUN python3 -m venv /app/venv \
     && pip install wheel \
     && pip install gunicorn \
     && cd /install \
-    && pip install .
+    && pip install . \
+    && python /install/scripts/include_build_info.py \
+       --tag "$BUILD_TAG" --commit "$BUILD_COMMIT" --commit-date "$BUILD_COMMIT_DATE"
 
 USER root
 

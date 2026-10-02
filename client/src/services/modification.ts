@@ -46,6 +46,10 @@ interface ModificationResponse {
   totalRecords: number
 }
 
+interface SiteSummaryResponse {
+  count: number
+}
+
 interface SiteParams {
   taxaId: number
   chrom: string
@@ -75,6 +79,16 @@ interface SiteWiseInfo extends Bed6Record {
 
 interface SiteWiseResponse {
   records: SiteWiseInfo[]
+}
+
+// TODO: call records summary; should be sites summary
+// add both records and sites to HomeRelease
+async function getSitesSummary(dialogState: DialogStateStore): Promise<SiteSummaryResponse> {
+  return await handleRequestWithErrorReporting<SiteSummaryResponse>(
+    HTTP.get('/modifications/records/summary'),
+    'Failed to load modification sites summary',
+    dialogState
+  )
 }
 
 async function getModifications(
@@ -192,6 +206,8 @@ export {
   type Modification,
   type ModificationResponse,
   type SiteWiseInfo,
+  type SiteSummaryResponse,
+  getSitesSummary,
   getModifications,
   getModificationExportLink,
   getTargetSites,

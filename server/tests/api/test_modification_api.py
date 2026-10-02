@@ -327,6 +327,14 @@ class MockModificationService:
     ]
 
     @staticmethod
+    def get_modification_records_count() -> int:
+        return 2
+
+    @staticmethod
+    def get_modification_sites_count() -> int:
+        return 1
+
+    @staticmethod
     def get_modifications_by_source(
         annotation_source: AnnotationSource,
         modification_id: int,
@@ -377,6 +385,24 @@ class MockModificationService:
 
 
 # tests
+
+
+def test_get_modification_records_summary(test_client, mocker):
+    mocker.patch(
+        "scimodom.api.modification.get_modification_service",
+        return_value=MockModificationService(),
+    )
+    result = test_client.get("/records/summary")
+    assert result.json["count"] == 2
+
+
+def test_get_modification_sites_summary(test_client, mocker):
+    mocker.patch(
+        "scimodom.api.modification.get_modification_service",
+        return_value=MockModificationService(),
+    )
+    result = test_client.get("/sites/summary")
+    assert result.json["count"] == 1
 
 
 @pytest.mark.parametrize(

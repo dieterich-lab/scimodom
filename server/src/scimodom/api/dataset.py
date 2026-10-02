@@ -50,6 +50,17 @@ def get_datasets():
     return dataset_service.get_datasets()
 
 
+@dataset_api.get("/datasets/summary")
+def get_datasets_summary():
+    """Get count of datasets.
+
+    :return: JSON object with number of datasets
+    :statuscode 200: OK
+    :statuscode 500: Internal Server Error
+    """
+    return {"count": get_dataset_service().get_dataset_count()}
+
+
 @dataset_api.post("/datasets")
 @jwt_required()
 def add_dataset():

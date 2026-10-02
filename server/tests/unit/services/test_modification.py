@@ -232,6 +232,16 @@ def _get_modification_service(session):
 # tests
 
 
+def test_get_modification_records_count(Session, dataset):
+    modification_service = _get_modification_service(Session())
+    assert modification_service.get_modification_records_count() == 7
+
+
+def test_get_modification_sites_count(Session, dataset):
+    modification_service = _get_modification_service(Session())
+    assert modification_service.get_modification_sites_count() == 6
+
+
 @pytest.mark.parametrize(
     "multi_sort,message",
     [

@@ -5,7 +5,9 @@ import {
   myDatasetsCache,
   myDatasetsByIdCache,
   getDatasetsByTaxaId,
-  type Dataset
+  getDatasetSummary,
+  type Dataset,
+  type DatasetSummaryResponse
 } from '@/services/dataset'
 
 expectTypeOf(allDatasetsCache.getPromise).returns.resolves.toEqualTypeOf<Dataset[]>()
@@ -17,3 +19,4 @@ expectTypeOf(allDatasetsByIdCache.getData).returns.resolves.toEqualTypeOf<
 expectTypeOf(myDatasetsByIdCache.getData).returns.resolves.toEqualTypeOf<
   Readonly<Map<string, Dataset>>
 >()
+expectTypeOf(getDatasetSummary).returns.resolves.toEqualTypeOf<DatasetSummaryResponse>()

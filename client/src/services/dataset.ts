@@ -2,6 +2,10 @@ import { type DialogStateStore } from '@/stores/DialogState'
 import { HTTP, HTTPAuth, handleRequestWithErrorReporting } from '@/services/API'
 import { ByKeyCache, Cache } from '@/utils/cache'
 
+interface DatasetSummaryResponse {
+  count: number
+}
+
 interface MayChangeDatasetResponse {
   write_access: boolean
 }
@@ -71,12 +75,22 @@ async function mayChangeDataset(
   return data.write_access
 }
 
+async function getDatasetSummary(dialogState: DialogStateStore): Promise<DatasetSummaryResponse> {
+  return await handleRequestWithErrorReporting<DatasetSummaryResponse>(
+    HTTP.get('/datasets/summary'),
+    'Failed to load dataset summary',
+    dialogState
+  )
+}
+
 export {
   type Dataset,
+  type DatasetSummaryResponse,
   allDatasetsCache,
   allDatasetsByIdCache,
   myDatasetsCache,
   myDatasetsByIdCache,
   getDatasetsByTaxaId,
-  mayChangeDataset
+  mayChangeDataset,
+  getDatasetSummary
 }

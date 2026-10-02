@@ -3,8 +3,8 @@ from urllib.parse import quote
 
 from scimodom.config import get_config
 
-
-API_PREFIX = "api/v0"
+API_VERSION = "v0"
+API_PREFIX = f"api/{API_VERSION}"
 ANALYTICS_API_ROUTE = f"/{API_PREFIX}"
 CATALOG_API_ROUTE = f"/{API_PREFIX}/catalogs"
 DATASET_API_ROUTE = f"/{API_PREFIX}"

@@ -111,6 +111,17 @@ class ExporterMock(Exporter):
 # tests
 
 
+def test_get_dataset_summary(unauthenticated_client, mocker):
+    mock_dataset_service = mocker.Mock()
+    mock_dataset_service.get_dataset_count.return_value = 1
+    mocker.patch(
+        "scimodom.api.dataset.get_dataset_service",
+        return_value=mock_dataset_service,
+    )
+    result = unauthenticated_client.get("/datasets/summary")
+    assert result.json["count"] == 1
+
+
 def test_get_my_datasets(unauthenticated_client):
     result = unauthenticated_client.get("/users/me/datasets")
     assert result.status_code == 401

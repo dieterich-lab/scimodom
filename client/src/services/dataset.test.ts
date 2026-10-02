@@ -5,6 +5,7 @@ import {
   myDatasetsCache,
   getDatasetsByTaxaId,
   mayChangeDataset,
+  getDatasetSummary,
   type Dataset
 } from '@/services/dataset'
 import { HTTP, HTTPAuth, handleRequestWithErrorReporting } from '@/services/API'
@@ -156,4 +157,26 @@ test('mayChangeDataset does not swallow failures', async () => {
   mockedHandle.mockRejectedValueOnce(error)
 
   await expect(mayChangeDataset('d1', dialogState)).rejects.toBe(error)
+})
+
+test('getDatasetSummary', async () => {
+  const expectedResponse = { count: 1 }
+  mockedHandle.mockResolvedValueOnce(expectedResponse)
+
+  const response = await getDatasetSummary(dialogState)
+
+  expect(mockedHandle).toHaveBeenCalledWith(
+    expect.anything(),
+    'Failed to load dataset summary',
+    dialogState
+  )
+  expect(mockedGet).toHaveBeenCalledWith('/datasets/summary')
+  expect(response).toBe(expectedResponse)
+})
+
+test('getDatasetSummary does not swallow failures', async () => {
+  const error = new Error()
+  mockedHandle.mockRejectedValueOnce(error)
+
+  await expect(getDatasetSummary(dialogState)).rejects.toBe(error)
 })

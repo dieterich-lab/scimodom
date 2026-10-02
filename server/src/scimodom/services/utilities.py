@@ -1,13 +1,11 @@
 from functools import cache
 from typing import Any
 
-from sqlalchemy import select, func
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from scimodom.database.database import get_session
 from scimodom.database.models import (
-    Data,
-    Dataset,
     DetectionMethod,
     DetectionTechnology,
     Modification,
@@ -20,12 +18,20 @@ from scimodom.database.models import (
 )
 from scimodom.services.annotation import BIOTYPES
 
+try:
+    from scimodom._build_info import BUILD_INFO
+except ModuleNotFoundError:
+    BUILD_INFO = None  # dev before running the script
 
 MAPPED_BIOTYPES = sorted(set(BIOTYPES.values()))
 
 
 class UtilitiesService:
-    """Provide a collection of general queries."""
+    """Provide a collection of general queries.
+
+    - catalogs
+    - release
+    """
 
     def __init__(
         self,
@@ -144,23 +150,27 @@ class UtilitiesService:
         )
         return [row._asdict() for row in self._session.execute(query)]
 
-    def get_release_info(self) -> dict[str, int]:
-        """Get number of sites and datasets for current release.
+    def get_release_info(self) -> dict[str, Any]:
+        """Get build, API and data-release information.
 
-        :return: Number of sites and datasets
+        :return: Build metadata, API version, DB revision status.
         """
-        query = select(Data)
-        sites = self._session.scalar(
-            select(func.count()).select_from(
-                query.with_only_columns(Data.id).subquery()
-            )
-        )
-        datasets = self._session.scalar(
-            select(func.count()).select_from(
-                query.with_only_columns(Dataset.id).subquery()
-            )
-        )
-        return {"sites": sites, "datasets": datasets}
+        return {
+            "build": BUILD_INFO["build"] if BUILD_INFO else None,
+            "api": BUILD_INFO["api"] if BUILD_INFO else None,
+            "database": {
+                **(BUILD_INFO["database"] if BUILD_INFO else {}),
+                "current_revision": self._get_current_db_revision(),
+            },
+        }
+
+    def _get_current_db_revision(self) -> str | None:
+        try:
+            return self._session.execute(
+                text("SELECT version_num FROM alembic_version")
+            ).scalar()
+        except Exception:
+            return None
 
 
 @cache

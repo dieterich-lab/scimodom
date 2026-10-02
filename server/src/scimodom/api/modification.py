@@ -115,6 +115,19 @@ def get_modification_records():
     return records
 
 
+@modification_api.get("/records/summary")
+def get_modification_records_summary():
+    """Get count of modifications (data records).
+
+    :return: JSON object with number of records
+    :statuscode 200: OK
+    :statuscode 500: Internal Server Error
+    """
+    return {
+        "count": get_modification_service().get_modification_records_count(),
+    }
+
+
 @modification_api.get("/sites")
 def get_modification_sites():
     """Get modifications per site.
@@ -138,6 +151,19 @@ def get_modification_sites():
         {**r, "strand": r["strand"].value} for r in records["records"]
     ]
     return records
+
+
+@modification_api.get("/sites/summary")
+def get_modification_sites_summary():
+    """Get count of modifications sites.
+
+    :return: JSON object with number of sites
+    :statuscode 200: OK
+    :statuscode 500: Internal Server Error
+    """
+    return {
+        "count": get_modification_service().get_modification_sites_count(),
+    }
 
 
 @modification_api.get("/sites/context")

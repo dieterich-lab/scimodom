@@ -10,6 +10,31 @@ def utilities_service(Session):
     )
 
 
+EXPECTED_BUILD = {
+    "build": {
+        "tag": "tag",
+        "commit": "hash",
+        "commit_date": "2026-10-02T06:22:11.537973+00:00",
+        "version": "0.0.0",
+        "generated_at": "2026-10-02T06:22:11.537973+00:00",
+    },
+    "api": {"version": "v0"},
+    "database": {"expected_revision": "123abc"},
+}
+
+
+# tests
+
+
+def test_get_biotypes(Session, utilities_service, mocker):
+    mocker.patch(
+        "scimodom.services.utilities.MAPPED_BIOTYPES",
+        ["biotype 1", "biotype 2"],
+    )
+
+    assert utilities_service.get_biotypes() == {"biotypes": ["biotype 1", "biotype 2"]}
+
+
 def test_get_rna_types(Session, utilities_service, setup):
     expected_rna_types = [{"id": "WTS", "label": "whole transcriptome"}]
     assert utilities_service.get_rna_types() == expected_rna_types
@@ -43,15 +68,6 @@ def test_get_taxa(Session, utilities_service, setup):
         },
     ]
     assert utilities_service.get_taxa() == expected_taxa
-
-
-def test_get_biotypes(Session, utilities_service, mocker):
-    mocker.patch(
-        "scimodom.services.utilities.MAPPED_BIOTYPES",
-        ["biotype 1", "biotype 2"],
-    )
-
-    assert utilities_service.get_biotypes() == {"biotypes": ["biotype 1", "biotype 2"]}
 
 
 def test_get_modomics(Session, utilities_service, setup):
@@ -108,6 +124,17 @@ def test_get_selection(Session, utilities_service, selection):
     assert selections[0] == expected_selection
 
 
-def test_get_release_info(Session, utilities_service, dataset):
-    expected_info = {"sites": 7, "datasets": 4}
-    assert utilities_service.get_release_info() == expected_info
+def test_get_release_info(Session, utilities_service, mocker):
+    mocker.patch(
+        "scimodom.services.utilities.BUILD_INFO",
+        EXPECTED_BUILD,
+    )
+    expected_build = {
+        "build": EXPECTED_BUILD["build"],
+        "api": EXPECTED_BUILD["api"],
+        "database": {
+            **(EXPECTED_BUILD["database"]),
+            "current_revision": None,
+        },
+    }
+    assert utilities_service.get_release_info() == expected_build

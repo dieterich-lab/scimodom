@@ -63,6 +63,35 @@ class ModificationService:
         self._session = session
         self._annotation_service = annotation_service
 
+    def get_modification_records_count(self) -> int:
+        """Get total count of data records.
+
+        Within a dataset, #records = #sites,
+        but not across datasets.
+
+        :return: The number of data records
+        """
+        return self._session.scalar(select(func.count()).select_from(Data))
+
+    def get_modification_sites_count(self) -> int:
+        """Get total count of modification sites.
+
+        TODO: site table
+
+        :return: The number of sites
+        """
+        site_query = select(
+            Data.modification_id,
+            Data.chrom,
+            Data.start,
+            Data.end,
+            Data.strand,
+        ).distinct()
+
+        return self._session.scalar(
+            select(func.count()).select_from(site_query.subquery())
+        )
+
     # TODO MS14
     def get_modifications_by_source(
         self,

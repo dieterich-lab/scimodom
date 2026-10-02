@@ -5,14 +5,11 @@ from scimodom.services.utilities import get_utilities_service
 release_api = Blueprint("release_api", __name__)
 
 
-@release_api.get("/releases")
+@release_api.get("/info")
 def get_release():
-    """Get release information.
+    """Get release, build, API information.
 
-    TODO: this function does not yet
-    return what it should!
-
-    :return: JSON object with summary
+    :return: JSON object with info
     :statuscode 200: OK
     :statuscode 500: Internal Server Error
     """

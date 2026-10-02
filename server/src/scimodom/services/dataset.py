@@ -70,21 +70,38 @@ class DatasetService:
         """Retrieve dataset by EUFID.
 
         :param eufid: EUFID
-        :type eufid: str
-        :returns: Dataset instance
-        :rtype: Dataset
+        :return: Dataset instance
         """
         return self._session.get_one(Dataset, eufid)
 
-    def get_datasets(self, user: Optional[User] = None) -> List[Dict[str, str]]:
-        """Retrieve all datasets. Add project-related information.
+    def get_dataset_count(self, user: Optional[User] = None) -> int:
+        """Count datasets.
+
+        :param user: Restricts the count to projects associated with user.
+        :return: Number of datasets
+        """
+        query = select(func.count(Dataset.id))
+        if user is not None:
+            query = (
+                query.join_from(Dataset, Project, Dataset.inst_project)
+                .join(
+                    UserProjectAssociation,
+                    UserProjectAssociation.project_id == Project.id,
+                )
+                .join(User, User.id == UserProjectAssociation.user_id)
+                .where(User.id == user.id)
+            )
+        return self._session.scalar(query)
+
+    def get_datasets(
+        self,
+        user: Optional[User] = None,
+    ) -> List[Dict[str, str]]:
+        """Get all datasets.
 
         :param user: Restricts results based on projects associated with user.
-        :type user: User
-        :returns: Query result
-        :rtype: list of dict
+        :return: JSON array with dataset-related information
         """
-
         query = (
             select(
                 Dataset.project_id,

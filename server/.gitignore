@@ -51,8 +51,8 @@ coverage.xml
 .pytest_cache/
 cover/
 
-# Flask
-
+# Flask / application
+src/scimodom/_build_info.py
 
 # Environments
 .env

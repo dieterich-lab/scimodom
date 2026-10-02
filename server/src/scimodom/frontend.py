@@ -77,7 +77,7 @@ def index(path: str):
     :statuscode 500: Internal Server Error
     """
     if path.startswith(API_PREFIX):
-        return {"message": "Unknown API call"}, 404
+        return {"message": "API endpoint not found"}, 404
     if exists(join(get_config().FRONTEND_PATH, path)):
         return frontend.send_static_file(path)
     else:
