@@ -6,7 +6,7 @@ tags:
     description: Projects and associated metadata
 
 paths:
-  /project/list_all:
+  /projects:
     get:
       tags:
         - list
@@ -22,7 +22,7 @@ paths:
                 $ref: "#/components/schemas/Project"
         "500":
           $ref: "#/components/responses/InternalServerError"
-  /project/list_mine:
+  /users/me/projects:
     get:
       tags:
         - list

@@ -1,19 +1,23 @@
 info:
-  title: Utilities REST API
+  title: catalogs REST API
+  description: >-
+    Reference, catalogs, shared lookup, and definition tables.
 
 tags:
   - name: assembly
-    description: Database tables for species and assemblies
+    description: Database tables for taxon and assemblies
+  - name: RNA
+    description: Database tables for RNA types and annotations
   - name: modification
-    description: Database tables for modifications
-  - name: internal
-    description: Database summary statistics
+    description: Database tables for modifications reference information
+  - name: content
+    description: Database tables for content selection
 
 paths:
-  /rna-types:
+  /catalogs/rna-types:
     get:
       tags:
-        - modification
+        - RNA
       summary: Get RNA types
       description: Retrieve available RNA types
       responses:
@@ -34,11 +38,88 @@ paths:
                       description: RNA type description
         "500":
           $ref: "#/components/responses/InternalServerError"
-  /taxa:
+  /catalogs/rna-types/{rna_type}/biotypes:
+    get:
+      tags:
+        - RNA
+      summary: Get biotypes
+      description: >-
+        Retrieve available biotypes. The biotypes are currently
+        independent of `rna_type`; the path parameter is accepted but
+        not used to filter the result.
+      parameters:
+        - in: path
+          name: rna_type
+          required: true
+          schema:
+            type: string
+          description: A valid RNA type identifier
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  biotypes:
+                    type: array
+                    items:
+                      type: string
+                      description: Biotypes display categories
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /catalogs/rna-types/{rna_type}/features:
+    get:
+      tags:
+        - RNA
+      summary: Get features
+      description: Retrieve available genomic features for a given RNA type
+      parameters:
+        - in: path
+          name: rna_type
+          required: true
+          schema:
+            type: string
+          description: A valid RNA type identifier
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  features:
+                    type: array
+                    items:
+                      type: string
+                      description: Genomic features
+        "400":
+          description: Bad Request - invalid RNA type
+          content:
+            application/json:
+              schema:
+                $ref: "_common.yaml#/components/schemas/Error"
+        "404":
+          description: Not found - RNA type
+          content:
+            application/json:
+              schema:
+                $ref: "_common.yaml#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "501":
+          description: Not Implemented - RNA type annotation
+          content:
+            application/json:
+              schema:
+                $ref: "_common.yaml#/components/schemas/Error"
+  /catalogs/taxa:
     get:
       tags:
         - assembly
-      summary: Get species
+      summary: Get taxa
       description: Retrieve available species with their taxonomic information
       responses:
         "200":
@@ -70,12 +151,100 @@ paths:
                       description: Abbreviation for `taxa_name`
         "500":
           $ref: "#/components/responses/InternalServerError"
-  /modomics:
+  /catalogs/taxa/{taxa_id}/chromosomes:
+    get:
+      tags:
+        - assembly
+      summary: Get chromosomes and their size
+      description: >-
+        Retrieve chromosomes and their size for the current assembly associated with a given taxon
+      parameters:
+        - in: path
+          name: taxa_id
+          required: true
+          schema:
+            type: integer
+          description: A valid NCBI taxon
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    chrom:
+                      type: string
+                      description: Chromosome name
+                    size:
+                      type: integer
+                      description: Chromosome size
+        "400":
+          description: Bad Request - invalid NCBI taxon
+          content:
+            application/json:
+              schema:
+                $ref: "_common.yaml#/components/schemas/Error"
+        "404":
+          description: >-
+            Not Found - NCBI taxon or chromosome data
+          content:
+            application/json:
+              schema:
+                $ref: "_common.yaml#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /catalogs/taxa/{taxa_id}/assemblies:
+    get:
+      tags:
+        - assembly
+      summary: Get assemblies
+      description: Retrieve available assemblies for the given taxon
+      parameters:
+        - in: path
+          name: taxa_id
+          required: true
+          schema:
+            type: integer
+          description: A valid NCBI taxon
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      description: Assembly identifier
+                    name:
+                      type: string
+                      description: Assembly name
+        "400":
+          description: Bad Request - invalid NCBI taxon
+          content:
+            application/json:
+              schema:
+                $ref: "_common.yaml#/components/schemas/Error"
+        "404":
+          description: Not Found - NCBI taxon
+          content:
+            application/json:
+              schema:
+                $ref: "_common.yaml#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /catalogs/modomics:
     get:
       tags:
         - modification
-      summary: Get modifications
-      description: Retrieve available modifications
+      summary: Get modifications nomenclature
+      description: Retrieve modifications annotated by MODOMICS
       responses:
         "200":
           description: OK
@@ -94,7 +263,7 @@ paths:
                       description: MODOMICS short name
         "500":
           $ref: "#/components/responses/InternalServerError"
-  /methods:
+  /catalogs/methods:
     get:
       tags:
         - modification
@@ -121,10 +290,10 @@ paths:
                       description: Detection method
         "500":
           $ref: "#/components/responses/InternalServerError"
-  /selections:
+  /catalogs/selections:
     get:
       tags:
-        - modification
+        - content
       summary: Get selections
       description: Retrieve available combinations of modification, organism, and technology
       responses:
@@ -187,20 +356,25 @@ paths:
                       description: Detection technology identifier (method identifier, `tech`)
         "500":
           $ref: "#/components/responses/InternalServerError"
-  /genes:
+  /catalogs/genes:
     get:
       tags:
-        - modification
-      summary: Get genomic annotation
+        - content
+      summary: Get genes associated with selections
       description: >-
-        Retrieve all genes associated with a given selection (modification, organism, technology).
+        Retrieve all genes associated with one or more given selection(s)
+        (modification, organism, technology).
       parameters:
         - in: query
           name: selection
           required: true
           schema:
-            type: string
-          description: A selection identifier
+            type: array
+            items:
+              type: integer
+          style: form
+          explode: true
+          description: One or more selection identifiers
       responses:
         "200":
           description: OK
@@ -211,156 +385,23 @@ paths:
                 items:
                   type: string
                   description: Gene symbol
-        "404":
-          description: >-
-            Unrecognized selection identifier (not found or no data for this selection)
-          content:
-            application/json:
-              schema:
-                $ref: "_common.yaml#/components/schemas/Error"
-        "500":
-          $ref: "#/components/responses/InternalServerError"
-  /chroms/{taxa_id}:
-    get:
-      tags:
-        - assembly
-      summary: Get chromosomes and their size
-      description: >-
-        Retrieve chromosomes and their size for the current assembly associated with a given taxon
-      parameters:
-        - in: path
-          name: taxa_id
-          required: true
-          schema:
-            type: integer
-          description: A valid NCBI taxon
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    chrom:
-                      type: string
-                      description: Chromosome name
-                    size:
-                      type: integer
-                      description: Chromosome size
         "400":
-          description: Invalid Taxa ID
-          content:
-            application/json:
-              schema:
-                $ref: "_common.yaml#/components/schemas/Error"
-        "404":
           description: >-
-            Unrecognized Taxa ID (unknown or unavailable taxon)
-          content:
-            application/json:
-              schema:
-                $ref: "_common.yaml#/components/schemas/Error"
-        "500":
-          $ref: "#/components/responses/InternalServerError"
-  /assembly/{taxa_id}:
-    get:
-      tags:
-        - assembly
-      summary: Get assemblies
-      description: Retrieve available assemblies for the given taxon
-      parameters:
-        - in: path
-          name: taxa_id
-          required: true
-          schema:
-            type: integer
-          description: A valid NCBI taxon
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                      description: Assembly identifier
-                    name:
-                      type: string
-                      description: Assembly name
-        "400":
-          description: Invalid Taxa ID
+            Bad Request - missing parameter(s) selection
           content:
             application/json:
               schema:
                 $ref: "_common.yaml#/components/schemas/Error"
         "404":
-          description: >-
-            Unrecognized Taxa ID (unknown or unavailable taxon)
+          description: Not Found - selection identifier
           content:
             application/json:
               schema:
                 $ref: "_common.yaml#/components/schemas/Error"
         "500":
           $ref: "#/components/responses/InternalServerError"
-  /release:
-    get:
-      tags:
-        - internal
-      summary: Get release information
-      description: Retrieve number of sites and datasets for current release
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  sites:
-                    type: integer
-                    description: Number of sites
-                  datasets:
-                    type: integer
-                    description: Number of dataset
-        "500":
-          $ref: "#/components/responses/InternalServerError"
-  /sunburst/{chart}:
-    get:
-      tags:
-        - internal
-      # not a general-purpose API endpoint
-      x-internal: true
-      summary: Get sunburst chart data
-      description: >-
-        Retrieve a JSON object to generate one of the sunburst charts.
-        Primarily intended for use by the frontend rather than for general API consumption.
-      parameters:
-        - in: path
-          name: chart
-          required: true
-          schema:
-            type: string
-            enum: [search, browse]
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                description: Sunburst chart data
-        "404":
-          description: Unrecognized chart type
-          content:
-            application/json:
-              schema:
-                $ref: "_common.yaml#/components/schemas/Error"
-        "500":
-          $ref: "#/components/responses/InternalServerError"
+
+components:
+  responses:
+    InternalServerError:
+      $ref: "_common.yaml#/components/responses/InternalServerError"

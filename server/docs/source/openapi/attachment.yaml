@@ -1,79 +1,50 @@
 info:
-  title: Attachment REST API
+  title: datasets REST API
+  description: >-
+    Dataset attachments. Attachments can be listed, downloaded, uploaded
+    (create or replace), and deleted. Uploading and deleting an attachment
+    require authentication and that the user has write permission on the dataset.
+
+tags:
+  - name: BAM
+    description: BAM file attachments
 
 paths:
-  /bam_file/all/{dataset_id}:
+  /datasets/{dataset_id}/attachments/bams:
     get:
+      tags:
+        - BAM
       summary: Get BAM file attachment metadata
       description: >-
-        Retrieve metadata for all BAM files attachments associated
-        with the given dataset identifier (EUFID).
+        Retrieve metadata for BAM file attachments associated with the
+        given dataset identifier (EUFID).
       parameters:
-        - in: path
-          name: dataset_id
-          required: true
-          schema:
-            type: string
-          description: Dataset identifier (EUFID)
+        - $ref: "#/components/parameters/datasetIdPathParam"
       responses:
         "200":
           description: OK
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    original_file_name:
-                      type: string
-                      description: Original file name
-                    size_in_bytes:
-                      type: integer
-                      description: File size in bytes
-                    mtime_epoch:
-                      type: integer
-                      description: >-
-                        POSIX time stamp corresponding to time of last modification
-          links:
-            GetFileName:
-              operationId: getName
-              description: >-
-                The `original_file_name` returned in the response can be used
-                as `name` parameter in `GET bam_file/{dataset_id}/{name}`,
-              parameters:
-                name: $response.body#/original_file_name
+                $ref: "#/components/schemas/BamFileList"
         "400":
-          description: Invalid dataset identifier (malformed)
-          content:
-            application/json:
-              schema:
-                $ref: "_common.yaml#/components/schemas/Error"
+          $ref: "#/components/responses/ClientResponseException400"
         "404":
-          description: Unknown dataset identifier
-          content:
-            application/json:
-              schema:
-                $ref: "_common.yaml#/components/schemas/Error"
-  /bam_file/{dataset_id}/{name}:
+          $ref: "#/components/responses/ClientResponseException404"
+        "500":
+          $ref: "_common.yaml#/components/responses/InternalServerError"
+
+  /datasets/{dataset_id}/attachments/bams/{name}:
     get:
+      tags:
+        - BAM
       summary: Download a BAM file
       description: >-
-        Download a BAM file attached to a dataset given by its identifier (EUFID)
-      operationId: getName
+        Download a BAM file attached to a dataset given by its identifier
+        (EUFID).
       parameters:
-        - in: path
-          name: dataset_id
-          required: true
-          schema:
-            type: string
-          description: Dataset identifier (EUFID)
-        - in: path
-          name: name
-          required: true
-          schema:
-            type: string
-          description: BAM original file name
+        - $ref: "#/components/parameters/datasetIdPathParam"
+        - $ref: "#/components/parameters/nameBamPathParam"
       responses:
         "200":
           description: OK
@@ -83,27 +54,137 @@ paths:
                 type: string
                 format: binary
         "400":
-          description: Invalid dataset identifier or BAM file name (malformed)
-          content:
-            application/json:
-              schema:
-                $ref: "_common.yaml#/components/schemas/Error"
+          $ref: "#/components/responses/ClientResponseException400"
         "404":
-          description: >-
-            Unknown dataset identifier, unknown BAM file name, or BAM
-            file is not an attachment of this dataset
+          $ref: "#/components/responses/ClientResponseException404"
+        "500":
+          $ref: "_common.yaml#/components/responses/InternalServerError"
+    put:
+      tags:
+        - BAM
+      summary: Upload (create or replace) a BAM file
+      description: >-
+        Upload a BAM file attachment to a dataset given by its identifier
+        (EUFID). If a BAM file with the given `name` already exists for
+        this dataset, it is replaced (204); otherwise a new attachment is
+        created (201). The raw request body is streamed to storage, so the
+        request is sent as `application/octet-stream` (not
+        `multipart/form-data`). A file size limit may apply.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/datasetIdPathParam"
+        - $ref: "#/components/parameters/nameBamPathParam"
+      requestBody:
+        required: true
+        description: Raw BAM file content
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        "201":
+          description: Created - a new BAM file attachment was created
           content:
             application/json:
               schema:
-                $ref: "_common.yaml#/components/schemas/Error"
+                type: object
+                properties:
+                  original_file_name:
+                    type: string
+                    description: Name of the newly created BAM file attachment
+        "204":
+          description: No Content - an existing BAM file attachment was updated
+        "400":
+          $ref: "#/components/responses/ClientResponseException400"
+        "401":
+          $ref: "_common.yaml#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "_common.yaml#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/ClientResponseException404"
+        "413":
+          $ref: "_common.yaml#/components/responses/TooLargeError"
+        "422":
+          $ref: "_common.yaml#/components/responses/UnauthorizedErrorContent"
+        "500":
+          $ref: "_common.yaml#/components/responses/InternalServerError"
+    delete:
+      tags:
+        - BAM
+      summary: Delete a BAM file
+      description: >-
+        Delete a BAM file attached to a dataset given by its identifier
+        (EUFID).
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/datasetIdPathParam"
+        - $ref: "#/components/parameters/nameBamPathParam"
+      responses:
+        "204":
+          description: No Content - BAM file attachment deleted
+        "400":
+          $ref: "#/components/responses/ClientResponseException400"
+        "401":
+          $ref: "_common.yaml#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "_common.yaml#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/ClientResponseException404"
+        "422":
+          $ref: "_common.yaml#/components/responses/UnauthorizedErrorContent"
+        "500":
+          $ref: "_common.yaml#/components/responses/InternalServerError"
 
 components:
   securitySchemes:
     BearerAuth:
       $ref: "_common.yaml#/components/securitySchemes/BearerAuth"
-  schemas:
-    Error:
-      $ref: "_common.yaml#/components/schemas/Error"
+  parameters:
+    datasetIdPathParam:
+      in: path
+      name: dataset_id
+      required: true
+      schema:
+        type: string
+      description: Dataset identifier (EUFID)
+    nameBamPathParam:
+      in: path
+      name: name
+      required: true
+      schema:
+        type: string
+      description: BAM file attachment (original file) name
   responses:
-    UnauthorizedError:
-      $ref: "_common.yaml#/components/responses/UnauthorizedError"
+    ClientResponseException400:
+      description: Bad Request - invalid dataset identifier or BAM file name
+      content:
+        application/json:
+          schema:
+            $ref: "_common.yaml#/components/schemas/Error"
+    ClientResponseException404:
+      description: >-
+        Not Found - dataset identifier or BAM file name,
+        or the BAM file is not an attachment of this dataset
+      content:
+        application/json:
+          schema:
+            $ref: "_common.yaml#/components/schemas/Error"
+  schemas:
+    BamFileList:
+      type: array
+      items:
+        type: object
+        properties:
+          original_file_name:
+            type: string
+            description: Original file name
+          size_in_bytes:
+            type: integer
+            description: File size in bytes
+          mtime_epoch:
+            type: integer
+            description: >-
+              POSIX time stamp corresponding to time of last modification

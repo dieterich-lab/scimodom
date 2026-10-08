@@ -1,0 +1,47 @@
+info:
+  title: analytics REST API
+  description: >-
+    Primarily intended for use by the frontend rather than for general API consumption.
+
+tags:
+  - name: charts
+    description: Database summary statistics
+
+paths:
+  /charts/sunbursts/{sunburst_type}:
+    get:
+      tags:
+        - charts
+      # not a general-purpose API endpoint
+      x-internal: true
+      summary: Get sunburst chart data
+      description: >-
+        Retrieve a JSON object to generate one of the sunburst charts.
+      parameters:
+        - in: path
+          name: sunburst_type
+          required: true
+          schema:
+            type: string
+            enum: [search, browse]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Sunburst chart data
+        "400":
+          description: Bad Request - invalid chart type
+          content:
+            application/json:
+              schema:
+                $ref: "_common.yaml#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+components:
+  responses:
+    InternalServerError:
+      $ref: "_common.yaml#/components/responses/InternalServerError"

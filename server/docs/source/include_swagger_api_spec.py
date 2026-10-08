@@ -1,3 +1,5 @@
+"""Include complete Swagger API specs from fragments."""
+
 import copy
 from pathlib import Path
 from typing import Any
@@ -9,6 +11,20 @@ COMMON_FILE = OPENAPI_DIR / "_common.yaml"
 INCLUDE_DIR = OPENAPI_DIR / "_include"
 
 _COMMON_REF_PREFIX = "_common.yaml#"
+
+
+def _get_api_version(fallback: str) -> str:
+    try:
+        from scimodom.services.url import API_VERSION
+
+        return API_VERSION
+    except ImportError as exc:
+        print(
+            "WARNING: could not import scimodom.services.url.API_VERSION: "
+            f"{exc}; falling back to _common.yaml info.version '{fallback}'."
+            f"Install: `pip install '.[docs]'` from server/ to fix this."
+        )
+        return fallback
 
 
 def _rewrite_common_refs(node: Any) -> Any:
@@ -27,13 +43,12 @@ def _rewrite_common_refs(node: Any) -> Any:
 def write() -> list[Path]:
     """Write complete Swagger API specs from fragments.
 
-    This function merges shared version, info, servers, and components
-    from _common.yaml into each fragment under docs/source/openapi, so
-    those only need to be edited in one place. Each fragment only needs
-    paths and endpoint-specific components. This keeps every generated
-    file independent; no runtime cross-file resolution required from
-    Swagger UI or openapi-spec-validator, no need to copy _common.yaml
-    into the build's _static output.
+    This function merges shared info, servers, and components from
+    _common.yaml into each fragment under docs/source/openapi.
+    Each fragment only needs paths and endpoint-specific components:
+    no runtime resolution, no need to copy _common.yaml into the
+    build's _static output. The API version is the one exception:
+    it's read from scimodom.services.url.API_VERSION.
 
     The .rst pages must point the swagger-plugin directive at the
     generated files, not the fragments.
@@ -45,7 +60,8 @@ def write() -> list[Path]:
         openapi-spec-validator docs/source/openapi/_include/*.yaml
     """
     common = yaml.safe_load(COMMON_FILE.read_text())
-    common_info = common["info"]
+    common_info = dict(common["info"])
+    common_info["version"] = _get_api_version(common_info["version"])
     common_servers = copy.deepcopy(common["servers"])
     common_servers[0].setdefault("variables", {})["version"] = {
         "default": common_info["version"]
@@ -72,10 +88,8 @@ def write() -> list[Path]:
 
         # Fragment-local components win over shared ones on name collision,
         # EXCEPT when the fragment's entry is just "$ref: _common.yaml#/
-        # components/<section>/<name>" pointing at itself - that's a
-        # readability aid meaning "this one comes from _common.yaml", not
-        # a real override, and must not replace the already-inlined
-        # common definition with a (now self-referential) ref.
+        # components/<section>/<name>" pointing at itself, which means
+        # "this one comes from _common.yaml", not a real override.
         merged_components = copy.deepcopy(common_components)
         for section, entries in fragment.get("components", {}).items():
             dest = merged_components.setdefault(section, {})

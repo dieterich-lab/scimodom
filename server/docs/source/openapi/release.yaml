@@ -1,0 +1,67 @@
+info:
+  title: info REST API
+  description: >-
+    Release and build information.
+
+tags:
+  - name: version
+    description: Build version
+
+paths:
+  /info:
+    get:
+      tags:
+        - version
+      summary: Get version information
+      description: Retrieve build, API, and database-revision information
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  build:
+                    type: object
+                    properties:
+                      tag:
+                        type: string
+                        nullable: true
+                        description: Git tag or null outside a packaged build
+                      commit:
+                        type: string
+                        nullable: true
+                        description: Git commit or null outside a packaged build
+                      commit_date:
+                        type: string
+                        nullable: true
+                        description: Commit timestamp or null outside a packaged build
+                      version:
+                        type: string
+                        description: Source version
+                      generated_at:
+                        type: string
+                        description: Build timestamp
+                  api:
+                    type: object
+                    properties:
+                      version:
+                        type: string
+                        description: REST API version
+                  database:
+                    type: object
+                    properties:
+                      current_revision:
+                        type: string
+                        description: Alembic revision (build)
+                      expected_revision:
+                        type: string
+                        description: Alembic revision (source)
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+components:
+  responses:
+    InternalServerError:
+      $ref: "_common.yaml#/components/responses/InternalServerError"

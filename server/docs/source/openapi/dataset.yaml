@@ -1,7 +1,9 @@
 info:
   title: Dataset REST API
   description: >-
-    Dataset access and comparison, including file transfer endpoints.
+    Dataset access and comparison, including file upload for comparison
+    (dataset import/ingestion is documented separately, see
+    `POST /datasets`).
 
 tags:
   - name: list
@@ -12,7 +14,7 @@ tags:
     description: Perform complex queries with dataset
 
 paths:
-  /dataset/list_all:
+  /datasets:
     get:
       tags:
         - list
@@ -28,13 +30,61 @@ paths:
                 $ref: "#/components/schemas/Dataset"
         "500":
           $ref: "#/components/responses/InternalServerError"
-  /dataset/list_mine:
+  /datasets/summary:
+    get:
+      tags:
+        - list
+      summary: Get dataset count
+      description: >-
+        Retrieve the number of available dataset.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                    description: Number of datasets
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /datasets/{dataset_id}/bedrmod:
+    get:
+      tags:
+        - transfer
+      summary: Export dataset
+      description: Download dataset in bedRMod format
+      parameters:
+        - in: path
+          name: dataset_id
+          required: true
+          schema:
+            type: string
+          description: Dataset identifier (EUFID)
+      responses:
+        "200":
+          description: OK
+          content:
+            text/csv:
+              schema:
+                type: string
+        "404":
+          description: Dataset not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+  /users/me/datasets:
     get:
       tags:
         - list
       summary: Get dataset per user
       description: >-
-        Retrieve metadata for dataset submitted per user.
+        Retrieve metadata for dataset submitted by the current user.
       security:
         - BearerAuth: []
       responses:
@@ -60,12 +110,15 @@ paths:
                 $ref: "#/components/schemas/Error"
         "500":
           $ref: "#/components/responses/InternalServerError"
-  /transfer/dataset/{dataset_id}:
+  /users/me/datasets/{dataset_id}/permissions:
     get:
       tags:
-        - transfer
-      summary: Export dataset
-      description: Download dataset in bedRMod format
+        - list
+      summary: Get user dataset permissions
+      description: >-
+        Check whether the current user is allowed to modify the given dataset.
+      security:
+        - BearerAuth: []
       parameters:
         - in: path
           name: dataset_id
@@ -77,39 +130,58 @@ paths:
         "200":
           description: OK
           content:
-            test/csv:
+            application/json:
               schema:
-                type: string
+                type: object
+                properties:
+                  write_access:
+                    type: boolean
+                    description: >-
+                      True if the current user is allowed to modify this dataset.
+        "401":
+          description: >-
+            Unauthorized (expired token, missing header)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
           description: Dataset not found
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "422":
+          description: >-
+            Unprocessable Content (not enough segments, signature verification failed)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "500":
           $ref: "#/components/responses/InternalServerError"
-  /transfer/tmp_upload:
+  /uploads:
     post:
       tags:
         - transfer
       summary: Upload a temporary file
       description: >-
-        Upload a file (e.g. a BED/bedRMod file for dataset comparison, or
-        a bedRMod file for import via `POST /management/dataset`).
-        No authentication is required. Files are subject to a
-        size limit. Files under this endpoint's storage path are deleted
-        automatically.
+        Upload a temporary file (e.g. a BED/bedRMod file for dataset
+        comparison via `GET /datasets/comparisons/intersect`, `closest`,
+        or `subtract`; or a bedRMod file for import via `POST /datasets`).
+        No authentication is required. Files are subject to a size limit
+        (50 MB). Files are stored under a temporary upload path and are
+        deleted automatically after some time.
       requestBody:
         required: true
-        description: Path to file
         content:
-          application/json:
+          application/octet-stream:
             schema:
               type: string
               format: binary
       responses:
-        "200":
-          description: OK
+        "201":
+          description: Created
           content:
             application/json:
               schema:
@@ -129,13 +201,14 @@ paths:
                 $ref: "#/components/schemas/Error"
         "500":
           $ref: "#/components/responses/InternalServerError"
-  /dataset/intersect:
+  /datasets/comparisons/intersect:
     get:
       tags:
         - compare
       summary: Search for overlaps
       description: >-
-        Search for overlaps between dataset A and B (intersection).
+        Search for overlaps between dataset A (`reference`) and dataset B
+        (`comparison` or `upload`), i.e. intersection.
       operationId: getIntersectQueryParam
       parameters:
         - $ref: "#/components/parameters/referenceQueryParam"
@@ -168,20 +241,21 @@ paths:
                 $ref: "#/components/schemas/Error"
         "422":
           description: >-
-            Unprocessable Content (empty file or too many skipped records)
+            Unprocessable Content (empty file, invalid file format, or too many skipped records)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
         "500":
           $ref: "#/components/responses/InternalServerError"
-  /dataset/closest:
+  /datasets/comparisons/closest:
     get:
       tags:
         - compare
       summary: Search for closest non-overlaps
       description: >-
-        Search for closest non-overlaps in dataset B wrt dataset A (closest).
+        Search for closest non-overlaps in dataset B (`comparison` or
+        `upload`) with respect to dataset A (`reference`).
       operationId: getClosestQueryParam
       parameters:
         - $ref: "#/components/parameters/referenceQueryParam"
@@ -214,20 +288,21 @@ paths:
                 $ref: "#/components/schemas/Error"
         "422":
           description: >-
-            Unprocessable Content (empty file or too many skipped records)
+            Unprocessable Content (empty file, invalid file format, or too many skipped records)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
         "500":
           $ref: "#/components/responses/InternalServerError"
-  /dataset/subtract:
+  /datasets/comparisons/subtract:
     get:
       tags:
         - compare
       summary: Search for strict non-overlaps
       description: >-
-        Search for strict non-overlaps in dataset A wrt dataset B.
+        Search for strict non-overlaps in dataset A (`reference`) with
+        respect to dataset B (`comparison` or `upload`).
       operationId: getSubtractQueryParam
       parameters:
         - $ref: "#/components/parameters/referenceQueryParam"
@@ -260,7 +335,7 @@ paths:
                 $ref: "#/components/schemas/Error"
         "422":
           description: >-
-            Unprocessable Content (empty file or too many skipped records)
+            Unprocessable Content (empty file, invalid file format, or too many skipped records)
           content:
             application/json:
               schema:
@@ -285,7 +360,7 @@ components:
           type: string
       style: form
       explode: true
-      description: Up to 3 reference EUFID (dataset A)
+      description: Up to 3 reference EUFID (dataset A).
     comparisonQueryparam:
       in: query
       name: comparison
@@ -297,8 +372,8 @@ components:
       style: form
       explode: true
       description: >-
-        Up to 3 EUFID for comparison (dataset B). This is required
-        if `upload` is not used. This parameter is incompatible with `upload`.
+        Up to 3 EUFID for comparison (dataset B). Required if `upload` is
+        not used; mutually exclusive with `upload`.
     strandQueryParam:
       in: query
       name: strand
@@ -314,16 +389,18 @@ components:
       schema:
         type: string
       description: >-
-        `file_id` of the uploaded BED or bedRMod file. This is required
-        if `comparison` is not used. This parameter is incompatible with `comparison`.
+        `file_id` of a temporary uploaded BED or bedRMod file (dataset B),
+        as returned by `POST /uploads`. Required if `comparison` is not
+        used; mutually exclusive with `comparison`.
     uploadNameQueryParam:
       in: query
       name: uploadName
       required: false
       schema:
         type: string
-        default: uploaded file
-      description: File name or description. Only used if `upload` is used.
+        default: upload
+      description: >-
+        File name or description. Only used (optionally) if `upload` is used.
     eufQueryParam:
       in: query
       name: euf
@@ -332,8 +409,9 @@ components:
         type: boolean
         default: false
       description: >-
-        If true, the uploaded file must follow the latest euf-specs, else it
-        is considered as a BED6. Only used if `upload` is used.
+        If true, the uploaded file must follow the latest bedRMod (EUF)
+        specifications, else it is treated as a BED6 file (`score`
+        and `coverage` default to 1). Only used if `upload` is used.
     taxaQueryParam:
       in: query
       name: taxaId
@@ -341,8 +419,9 @@ components:
       schema:
         type: integer
       description: >-
-        NCBI taxonomic identifier for `reference`. This is only
-        required if `euf` is true, and thus if `upload` is used.
+        NCBI taxonomic identifier used to validate the uploaded file
+        header against the reference assembly. Required if `euf` is
+        true (and thus only relevant if `upload` is used).
   responses:
     UnauthorizedError:
       description: Missing authorization header
@@ -356,8 +435,9 @@ components:
     GetFileById:
       description: >-
         The `file_id` returned in the response can be used
-        as `upload` query parameter in `GET dataset/intersect`,
-        `subtract`, or `closest`.
+        as `upload` query parameter in `GET /datasets/comparisons/intersect`,
+        `/closest`, or `/subtract`, or as `file_id` in the request body
+        of `POST /datasets`.
       operationId: getIntersectQueryParam
       parameters:
         upload: "$response.body#/file_id"
@@ -390,7 +470,8 @@ components:
             description: Dataset title
           doi:
             type: string
-            description: A list of DOIs associated with this project
+            nullable: true
+            description: A comma-separated list of DOIs associated with this project
           experiment:
             type: string
             nullable: true
@@ -399,10 +480,13 @@ components:
               and design (header EUF specification)
           modomics_sname:
             type: string
-            description: MODOMICS short name for modifications reported in this dataset
+            description: >-
+              Comma-separated MODOMICS short name(s) for modifications
+              reported in this dataset
           pmid:
             type: string
-            description: A list of PMIDs associated with this project
+            nullable: true
+            description: A comma-separated list of PMIDs associated with this project
           project_id:
             type: string
             description: Project identifier (SMID)
@@ -443,27 +527,44 @@ components:
         name:
           type: string
           description: >-
-            Feature name (MODOMICS short name if
-            `comparison` is used).
+            Feature name (MODOMICS short name if `comparison` is used,
+            or the uploaded file's own name column if `upload` is used).
         score:
           type: integer
           description: >-
-            Feature confidence (valid coverage or coverage
-            if `comparison` is used).
+            Feature score (valid coverage if `comparison` is used, or the
+            uploaded file's own score column if `upload` is used).
         strand:
           type: string
+          enum:
+            - "+"
+            - "-"
+            - "."
           description: Feature strand
         coverage:
           type: integer
-          description: Feature coverage (or 1 if `upload` and `euf` is false)
+          description: >-
+            Feature coverage, or 1 if `upload` is used and `euf` is false
         frequency:
           type: number
           description: >-
-            Feature frequency (percentage of modification or 1 if `upload`
-            and `euf` is false.
+            Feature frequency (percentage of modification), or 1 if
+            `upload` is used and `euf` is false
         eufid:
           type: string
-          description: EUFID or UPLOAD
+          description: >-
+            EUFID (dataset identifier), or `UPLOAD`/`LIFTED` (padded to
+            the EUFID length) if `upload` is used
+      required:
+        - chrom
+        - start
+        - end
+        - name
+        - score
+        - strand
+        - coverage
+        - frequency
+        - eufid
     Intersect:
       type: object
       properties:
@@ -476,6 +577,11 @@ components:
                 $ref: "#/components/schemas/Comparison"
               b:
                 $ref: "#/components/schemas/Comparison"
+            required:
+              - a
+              - b
+      required:
+        - records
     Closest:
       type: object
       properties:
@@ -491,6 +597,12 @@ components:
               distance:
                 type: integer
                 description: Distance to closest feature
+            required:
+              - a
+              - b
+              - distance
+      required:
+        - records
     Subtract:
       type: object
       properties:
@@ -498,3 +610,5 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Comparison"
+      required:
+        - records

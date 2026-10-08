@@ -13,7 +13,7 @@ tags:
     description: Dataset ingestion
 
 paths:
-  /management/project:
+  /projects/requests:
     post:
       tags:
         - project
@@ -31,16 +31,16 @@ paths:
             schema:
               $ref: "#/components/schemas/ProjectTemplate"
       responses:
-        "200":
-          description: OK
+        "201":
+          description: Created
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  message:
+                  request_id:
                     type: string
-                    example: OK
+                    description: Identifier (UUID) of the created project request
         "400":
           description: >-
             Malformed request body, or the template fails validation
@@ -60,14 +60,14 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
-  /management/dataset:
+  /datasets:
     post:
       tags:
         - dataset
       summary: Add a dataset to a project
       description: >-
         Import a previously uploaded bedRMod file (see
-        `POST /transfer/tmp_upload`) into an existing project. The caller
+        `POST /uploads`) into an existing project. The caller
         must be associated with the target project's SMID.
       security:
         - BearerAuth: []
@@ -78,16 +78,24 @@ paths:
             schema:
               $ref: "#/components/schemas/AddDatasetBody"
       responses:
-        "200":
-          description: OK
+        "201":
+          description: Created
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  result:
+                  dataset_id:
                     type: string
-                    example: Ok
+                    description: Newly created dataset identifier (EUFID)
+        "400":
+          description: >-
+            Malformed request body, or the request fails model validation
+            (e.g. missing required fields).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
           $ref: "#/components/responses/UnauthorizedError"
         "403":
@@ -100,26 +108,37 @@ paths:
                 $ref: "#/components/schemas/Error"
         "404":
           description: >-
-            Unknown user, or `file_id` does not match a file previously
-            uploaded via `POST /transfer/tmp_upload`.
+            Unknown RNA type, or unknown selection (RNA type /
+            modification / organism / technology combination).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: A dataset with the same content already exists.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
         "422":
           description: >-
-            The upload was rejected during import: unknown selection
-            (RNA type / modification / organism / technology
-            combination), a header that does not match the selected
-            values, a dataset that already exists, a file that does not
-            conform to the bedRMod format specification, or an empty
-            file.
+            The upload was rejected during import: a header that does
+            not match the selected values, a file that does not conform
+            to the bedRMod format specification, too many malformed
+            records, or an empty file. Also returned for a malformed or
+            expired JWT.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
         "500":
           description: Liftover failed, or an unexpected server error occurred.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "501":
+          description: RNA type not implemented for annotation.
           content:
             application/json:
               schema:
@@ -153,23 +172,22 @@ components:
         file_id:
           type: string
           description: >-
-            Identifier returned by `POST /transfer/tmp_upload` for the
+            Identifier returned by `POST /uploads` for the
             bedRMod file to import
         rna_type:
           type: string
-          description: One of the RNA type IDs returned by `GET /rna-types`
+          description: One of the RNA type IDs returned by `GET /catalogs/rna-types`
         title:
           type: string
           maxLength: 255
         assembly_id:
           type: integer
         modification_id:
-          description: A single modification ID, or a list of IDs
-          oneOf:
-            - type: integer
-            - type: array
-              items:
-                type: integer
+          description: One or more modification identifiers
+          type: array
+          minItems: 1
+          items:
+            type: integer
         organism_id:
           type: integer
         technology_id:

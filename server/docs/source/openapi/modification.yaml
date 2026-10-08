@@ -2,22 +2,35 @@ info:
   title: Modification REST API
 
 paths:
-  # TODO: add csv endpoints
-  /modification/query:
+  /modifications/records:
     get:
-      summary: Get modification sites
-      description: Query by modification, gene or genomic region
+      summary: Get modification records
+      description: >-
+        Query modification data records "by source" (modification, organism,
+        technology) or "by gene" (set `by=gene`). Add `format=csv` to
+        download the result as CSV instead of JSON.
+
+
+        `geneName` and `chrom` are mutually exclusive. For "by source"
+        queries, `chrom` (with optional `chromStart`/`chromEnd`) or
+        `geneName` are optional extra filters. For "by gene" queries, one of
+        `geneName` or `chrom` is required; if `chrom` is used, `chromStart`
+        and `chromEnd` are required too.
       parameters:
+        - $ref: "#/components/parameters/byQueryParam"
+        - $ref: "#/components/parameters/formatQueryParam"
         - $ref: "#/components/parameters/rnaTypeQueryParam"
         - $ref: "#/components/parameters/taxaIdQueryParam"
         - $ref: "#/components/parameters/modificationQueryParam"
         - $ref: "#/components/parameters/organismQueryParam"
         - $ref: "#/components/parameters/technologyQueryParam"
-        - $ref: "#/components/parameters/geneFilterQueryParam"
-        - $ref: "#/components/parameters/multiSortQueryParam"
+        - $ref: "#/components/parameters/geneNameQueryParam"
+        - $ref: "#/components/parameters/biotypesQueryParam"
+        - $ref: "#/components/parameters/featuresQueryParam"
         - $ref: "#/components/parameters/chromQueryParam"
         - $ref: "#/components/parameters/chromStartQueryParam"
         - $ref: "#/components/parameters/chromEndQueryParam"
+        - $ref: "#/components/parameters/multiSortQueryParam"
         - $ref: "#/components/parameters/firstRecordQueryParam"
         - $ref: "#/components/parameters/maxRecordsQueryParam"
       responses:
@@ -27,41 +40,36 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Search"
+            text/csv:
+              schema:
+                type: string
+                description: Present only when `format=csv` is given
         "400":
           $ref: "#/components/responses/ClientResponseException400"
-  /modification/query/gene:
+        "404":
+          $ref: "#/components/responses/ClientResponseException404"
+        "501":
+          $ref: "#/components/responses/ClientResponseException501"
+  /modifications/records/summary:
     get:
-      summary: Get modification sites for one organism
-      description: Query by organism, gene or genomic region
-      parameters:
-        - $ref: "#/components/parameters/rnaTypeQueryParam"
-        - $ref: "#/components/parameters/taxaIdQueryParam"
-        # in fact these are required and dependent...
-        - $ref: "#/components/parameters/geneFilterQueryParam"
-        - $ref: "#/components/parameters/multiSortQueryParam"
-        - $ref: "#/components/parameters/chromQueryParam"
-        - $ref: "#/components/parameters/chromStartQueryParam"
-        - $ref: "#/components/parameters/chromEndQueryParam"
-        - $ref: "#/components/parameters/firstRecordQueryParam"
-        - $ref: "#/components/parameters/maxRecordsQueryParam"
+      summary: Get count of modification records
+      description: Total number of modification data records
       responses:
         "200":
           description: OK
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Search"
-        "400":
-          $ref: "#/components/responses/ClientResponseException400"
-  /modification/sitewise:
+                $ref: "#/components/schemas/Count"
+  /modifications/sites:
     get:
       summary: Get modification site
       description: Get information related to a modification site
       parameters:
         - $ref: "#/components/parameters/taxaIdQueryParam"
         - $ref: "#/components/parameters/chromSimpleQueryParam"
-        - $ref: "#/components/parameters/chromSimpleStartQueryParam"
-        - $ref: "#/components/parameters/chromSimpleEndQueryParam"
+        - $ref: "#/components/parameters/startQueryParam"
+        - $ref: "#/components/parameters/endQueryParam"
         - $ref: "#/components/parameters/strandQueryParam"
       responses:
         "200":
@@ -74,23 +82,28 @@ paths:
           $ref: "#/components/responses/ClientResponseException400"
         "404":
           $ref: "#/components/responses/ClientResponseException404"
-  /modification/genomic-context/{context}:
+  /modifications/sites/summary:
+    get:
+      summary: Get count of modification sites
+      description: Total number of modification sites
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Count"
+  /modifications/sites/context:
     get:
       summary: Get genomic context
       description: Get genomic context centered on a modification site
       parameters:
-        - in: path
-          name: context
-          required: true
-          schema:
-            type: integer
-          description: >-
-            Context size (nucleotides to add on each side of site)
         - $ref: "#/components/parameters/taxaIdQueryParam"
         - $ref: "#/components/parameters/chromSimpleQueryParam"
-        - $ref: "#/components/parameters/chromSimpleStartQueryParam"
-        - $ref: "#/components/parameters/chromSimpleEndQueryParam"
+        - $ref: "#/components/parameters/startQueryParam"
+        - $ref: "#/components/parameters/endQueryParam"
         - $ref: "#/components/parameters/strandQueryParam"
+        - $ref: "#/components/parameters/windowQueryParam"
       responses:
         "200":
           description: OK
@@ -102,26 +115,18 @@ paths:
           $ref: "#/components/responses/ClientResponseException400"
         "404":
           $ref: "#/components/responses/ClientResponseException404"
-  /modification/target/{type}:
+  /modifications/sites/targets:
     get:
       summary: Get interactome-relevant information
       description: >-
         Get information related to miRNA target and RBP binding sites
         that may be affected by a modification site
       parameters:
-        - in: path
-          name: type
-          required: true
-          schema:
-            type: string
-            enum:
-              - "MIRNA"
-              - "RBP"
-          description: miRNA targets or RBP binding sites
+        - $ref: "#/components/parameters/targetQueryParam"
         - $ref: "#/components/parameters/taxaIdQueryParam"
         - $ref: "#/components/parameters/chromSimpleQueryParam"
-        - $ref: "#/components/parameters/chromSimpleStartQueryParam"
-        - $ref: "#/components/parameters/chromSimpleEndQueryParam"
+        - $ref: "#/components/parameters/startQueryParam"
+        - $ref: "#/components/parameters/endQueryParam"
         - $ref: "#/components/parameters/strandQueryParam"
       responses:
         "200":
@@ -137,6 +142,26 @@ paths:
 
 components:
   parameters:
+    byQueryParam:
+      in: query
+      name: by
+      required: false
+      schema:
+        type: string
+        enum:
+          - "gene"
+      description: >-
+        Switch `/records` from a "by source" query (default) to a "by
+        gene" query
+    formatQueryParam:
+      in: query
+      name: format
+      required: false
+      schema:
+        type: string
+        enum:
+          - "csv"
+      description: Return the records as a CSV file instead of JSON
     rnaTypeQueryParam:
       in: query
       name: rnaType
@@ -154,31 +179,46 @@ components:
     modificationQueryParam:
       in: query
       name: modification
-      required: true
+      required: false # required unless by=gene
       schema:
         type: integer
-      description: Sci-ModoM's modification identifier
+      description: >-
+        Sci-ModoM's modification identifier. Required for "by source"
+        queries (`by` unset)
     organismQueryParam:
       in: query
       name: organism
-      required: true
+      required: false # required unless by=gene
       schema:
         type: integer
-      description: Sci-ModoM's organism identifier
+      description: >-
+        Sci-ModoM's organism identifier. Required for "by source"
+        queries (`by` unset)
     technologyQueryParam:
       in: query
       name: technology
-      required: false # should be true
+      required: false # required unless by=gene
       schema:
         type: array
         items:
           type: integer
       style: form
       explode: true
-      description: Sci-ModoM's technology identifier
-    geneFilterQueryParam:
+      description: >-
+        Sci-ModoM's technology identifier(s). Required for "by source"
+        queries (`by` unset)
+    geneNameQueryParam:
       in: query
-      name: geneFilter
+      name: geneName
+      required: false
+      schema:
+        type: string
+      description: >-
+        Exact gene name match. Mutually exclusive with `chrom`; for "by
+        gene" queries (`by=gene`), one of `geneName` or `chrom` is required
+    biotypesQueryParam:
+      in: query
+      name: biotypes
       required: false
       schema:
         type: array
@@ -186,7 +226,18 @@ components:
           type: string
       style: form
       explode: true
-      description: e.g. `gene_name%2BASB1%2BstartsWith`
+      description: Gene biotype(s) to filter on
+    featuresQueryParam:
+      in: query
+      name: features
+      required: false
+      schema:
+        type: array
+        items:
+          type: string
+      style: form
+      explode: true
+      description: Genomic feature(s) to filter on, e.g. `Exonic`, `Intronic`
     multiSortQueryParam:
       in: query
       name: multiSort
@@ -204,6 +255,9 @@ components:
       required: false
       schema:
         type: string
+      description: >-
+        Mutually exclusive with `geneName`. Required together with
+        `chromStart`/`chromEnd` for "by gene" queries (`by=gene`)
     chromStartQueryParam:
       in: query
       name: chromStart
@@ -222,13 +276,13 @@ components:
       required: true
       schema:
         type: string
-    chromSimpleStartQueryParam:
+    startQueryParam:
       in: query
       name: start
       required: true
       schema:
         type: integer
-    chromSimpleEndQueryParam:
+    endQueryParam:
       in: query
       name: end
       required: true
@@ -237,13 +291,31 @@ components:
     strandQueryParam:
       in: query
       name: strand
-      required: true
+      required: false
       schema:
         type: string
         enum:
           - "+"
           - "-"
           - "."
+        default: "."
+    windowQueryParam:
+      in: query
+      name: window
+      required: true
+      schema:
+        type: integer
+      description: Number of bases to include on each side of the site
+    targetQueryParam:
+      in: query
+      name: target
+      required: true
+      schema:
+        type: string
+        enum:
+          - "MIRNA"
+          - "RBP"
+      description: miRNA targets or RBP binding sites
     firstRecordQueryParam:
       in: query
       name: firstRecord
@@ -261,7 +333,15 @@ components:
       description: Bad Request
     ClientResponseException404:
       description: Unrecognized parameter value
+    ClientResponseException501:
+      description: Not Implemented
   schemas:
+    Count:
+      type: object
+      properties:
+        count:
+          type: integer
+          description: Number of matching records
     BED6:
       type: object
       properties:
