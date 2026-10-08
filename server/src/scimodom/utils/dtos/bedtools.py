@@ -1,12 +1,25 @@
 from decimal import Decimal
 from typing import Annotated, Optional, Self
 
-from pydantic import BaseModel, NonNegativeInt, PositiveInt, Field, model_validator
+from pydantic import (
+    BaseModel,
+    NonNegativeInt,
+    PositiveInt,
+    Field,
+    PlainSerializer,
+    model_validator,
+)
 
 from scimodom.utils.specs.enums import Strand
 
 # sqlalchemy.Numeric(precision=5, scale=2, asdecimal=True)
-NonNegativePercent = Annotated[Decimal, Field(ge=0, le=100)]
+# Decimal in Python, JSON number (not pydantic's string default) when
+# dumped to JSON - model_dump() is not affected.
+NonNegativePercent = Annotated[
+    Decimal,
+    Field(ge=0, le=100),
+    PlainSerializer(float, return_type=float, when_used="json"),
+]
 
 DatasetId = Annotated[str, Field(min_length=12, max_length=12)]
 
@@ -47,7 +60,7 @@ class EufRecord(Bed6Record):
 class ComparisonRecord(Bed6Record):
     coverage: PositiveInt
     frequency: NonNegativePercent
-    eufid: DatasetId
+    dataset_id: DatasetId
 
 
 class SubtractRecord(ComparisonRecord):
@@ -55,13 +68,13 @@ class SubtractRecord(ComparisonRecord):
 
 
 class IntersectRecord(BaseModel):
-    a: ComparisonRecord
-    b: ComparisonRecord
+    reference: ComparisonRecord
+    comparison: ComparisonRecord
 
 
 class ClosestRecord(BaseModel):
-    a: ComparisonRecord
-    b: ComparisonRecord
+    reference: ComparisonRecord
+    comparison: ComparisonRecord
     distance: int
 
 

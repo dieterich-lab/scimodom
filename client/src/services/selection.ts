@@ -4,8 +4,9 @@ import { type Taxa } from '@/services/taxa'
 
 interface ModificationType {
   modification_id: number
-  modomics_sname: string
-  rna_name: string
+  modomics_short_name: string
+  rna_type: string
+  rna_type_name: string
 }
 
 interface Cto extends Taxa {
@@ -26,13 +27,8 @@ interface Selection extends ModificationType, Cto, Technology {
 
 class SelectionCache extends Cache<Selection[]> {
   async getPromise(): Promise<Selection[]> {
-    try {
-      const response = await HTTP.get('/catalogs/selections')
-      return response.data as Selection[]
-    } catch (err) {
-      console.log(`Failed to fetch /catalogs/selections: ${err}`)
-      throw err
-    }
+    const response = await HTTP.get<Selection[]>('/catalogs/selections')
+    return response.data
   }
 }
 
@@ -44,8 +40,9 @@ const modificationTypeSelectionCache: GroupedCache<ModificationType, Selection, 
     (x) => {
       return {
         modification_id: x.modification_id,
-        modomics_sname: x.modomics_sname,
-        rna_name: x.rna_name
+        modomics_short_name: x.modomics_short_name,
+        rna_type: x.rna_type,
+        rna_type_name: x.rna_type_name
       }
     }
   )
@@ -58,7 +55,7 @@ const taxaSelectionCache: GroupedCache<Taxa, Selection, number> = new GroupedCac
     domain: x.domain,
     kingdom: x.kingdom,
     taxa_name: x.taxa_name,
-    taxa_sname: x.taxa_sname
+    taxa_short_name: x.taxa_short_name
   })
 )
 
@@ -71,7 +68,7 @@ const ctoSelectionCache: GroupedCache<Cto, Selection, number> = new GroupedCache
     kingdom: x.kingdom,
     taxa_id: x.taxa_id,
     taxa_name: x.taxa_name,
-    taxa_sname: x.taxa_sname,
+    taxa_short_name: x.taxa_short_name,
     cto: x.cto
   })
 )
@@ -142,8 +139,8 @@ async function getTechnologiesByIds(technologyIds: number[]): Promise<Technology
   }
 }
 
-async function getModificationTypesByRnaName(rnaName: string): Promise<ModificationType[]> {
-  return (await modificationTypeSelectionCache.getData()).filter((x) => x.rna_name === rnaName)
+async function getModificationTypesByRnaType(rnaType: string): Promise<ModificationType[]> {
+  return (await modificationTypeSelectionCache.getData()).filter((x) => x.rna_type === rnaType)
 }
 
 export {
@@ -161,5 +158,5 @@ export {
   getSelectionsByTaxaId,
   getSelectionsByIds,
   getTechnologiesByIds,
-  getModificationTypesByRnaName
+  getModificationTypesByRnaType
 }

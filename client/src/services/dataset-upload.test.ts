@@ -1,5 +1,5 @@
 import { test, expect, vi, beforeEach } from 'vitest'
-import { uploadTemporaryDataset, type UploadResponse } from '@/services/datasetUpload'
+import { uploadTemporaryDataset, type UploadResponse } from '@/services/dataset-upload'
 import { handleRequestWithErrorReporting, HTTPAuth } from '@/services/API'
 import { DIALOG, type DialogStateStore } from '@/stores/DialogState'
 import { type AxiosResponse } from 'axios'
@@ -48,7 +48,7 @@ test('uploadTemporaryDataset accepts a file at exactly the size limit', async ()
   expect(result).toEqual({ name: 'at-limit.bed', id: 'abc' })
 })
 
-// we could test toBeInstanceOf(DatasetTooLarge) if this is exported from datasetUpload
+// we could test toBeInstanceOf(DatasetTooLarge) if this is exported from dataset-upload
 test('uploadTemporaryDataset rejects a file over the size limit without calling the API', async () => {
   const dialogState = makeDialogState()
   const file = makeFile('too-big.bed', MAX_UPLOAD_SIZE + 1)

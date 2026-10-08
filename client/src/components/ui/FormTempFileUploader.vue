@@ -2,7 +2,7 @@
 import { useId } from 'vue'
 import FormFieldWrapper from '@/components/ui/FormFieldWrapper.vue'
 import TempFileUploader, { type TmpUploadExtraProps } from '@/components/ui/TempFileUploader.vue'
-import { type FormFieldProps, FORM_FIELD_DEFAULTS } from '@/utils/ui_style'
+import { type FormFieldProps, FORM_FIELD_DEFAULTS } from '@/utils/ui-style'
 
 interface Props extends FormFieldProps, TmpUploadExtraProps {
   label: string

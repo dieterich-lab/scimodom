@@ -180,5 +180,5 @@ class GtRNAdbAnnotationService(GenericAnnotationService):
             for record in records:
                 buffer.queue(GenomicAnnotation(**record.model_dump()))
 
-    def _annotate_data_in_database(self, taxa_id: int, eufid: str):
+    def _annotate_data_in_database(self, taxa_id: int, dataset_id: str):
         pass

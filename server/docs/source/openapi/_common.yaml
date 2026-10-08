@@ -1,12 +1,7 @@
-# Single source for
-#  - OpenAPI version
-#  - Sci-ModoM API version
-#  - Sci-ModoM API host URL
-#  - Sci-ModoM license
-#  - common components
 # The Sphinx build step copies these values into newly generated specs
-# from fragments, and also uses the Sci-ModoM API version to fill in
-# the {version} server variable below.
+# from fragments. The info.version below is a FALLBACK only.
+# Keep it in sync by hand only as a last resort for a standalone lint
+# run without the package installed.
 
 openapi: 3.0.4
 
@@ -17,7 +12,7 @@ info:
     url: https://github.com/dieterich-lab/scimodom/blob/master/LICENSE
 
 servers:
-  - url: "https://scimodom.dieterichlab.org/api/{version}"
+  - url: "http://127.0.0.1:5000/api/{version}" #"https://scimodom.dieterichlab.org/api/{version}"
 
 components:
   securitySchemes:
@@ -28,27 +23,25 @@ components:
   schemas:
     Error:
       type: object
+      required:
+        - message
       properties:
         message:
           type: string
-          description: Technical error message
+          description: Error message
         user_message:
           type: string
           description: >-
-            Optional. Error caused by user input with
-            additional context.
-      required:
-        - message
+            Error caused by user input with additional context
   responses:
     UnauthorizedError:
-      description: Unauthorized request
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/Error"
+      description: Missing authorization header, invalid credentials
+    ForbiddenError:
+      description: Access or write permission denied
+    TooLargeError:
+      description: File exceeds max. allowed size
+    UnprocessableContentError: # JWT only
+      description: >-
+        JWT signature verification failed, invalid or expired token
     InternalServerError:
       description: Internal Server Error
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/Error"

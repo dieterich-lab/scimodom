@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import Button from 'primevue/button'
-import { type UiStyle, DEFAULT_STYLE } from '@/utils/ui_style'
+import { type UiStyle, DEFAULT_STYLE } from '@/utils/ui-style'
 
 const props = withDefaults(
   defineProps<{

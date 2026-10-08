@@ -9,11 +9,11 @@ async function postTemporaryFile(
   file: File,
   dialogState: DialogStateStore
 ): Promise<PostFileResponse> {
-  return await handleRequestWithErrorReporting<PostFileResponse>(
-    HTTPAuth.post('/uploads', file),
+  return await handleRequestWithErrorReporting(
+    HTTPAuth.post<PostFileResponse>('/uploads', file),
     `Failed to upload '${file.name}'`,
     dialogState
   )
 }
 
-export { postTemporaryFile }
+export { type PostFileResponse, postTemporaryFile }

@@ -2,11 +2,11 @@ import { HTTP, HTTPAuth } from '@/services/API'
 import { ByKeyCache, Cache } from '@/utils/cache'
 
 interface Project {
-  pmid: string
+  pmid: string | null
   project_title: string
   project_id: string
   project_summary: string
-  doi: string
+  doi: string | null
   date_added: number
   date_published: number | null
   contact_name: string
@@ -15,25 +15,15 @@ interface Project {
 
 class AllProjectsCache extends Cache<Project[]> {
   async getPromise(): Promise<Project[]> {
-    try {
-      const response = await HTTP.get('/projects')
-      return response.data as Project[]
-    } catch (err) {
-      console.log(`Failed to fetch projects: ${err}`)
-      throw err
-    }
+    const response = await HTTP.get<Project[]>('/projects')
+    return response.data
   }
 }
 
 class MyProjectsCache extends Cache<Project[]> {
   async getPromise(): Promise<Project[]> {
-    try {
-      const response = await HTTPAuth.get('/users/me/projects')
-      return response.data as Project[]
-    } catch (err) {
-      console.log(`Failed to fetch my projects: ${err}`)
-      throw err
-    }
+    const response = await HTTPAuth.get<Project[]>('/users/me/projects')
+    return response.data
   }
 }
 

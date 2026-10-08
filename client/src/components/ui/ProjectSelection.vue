@@ -5,7 +5,7 @@ import Dialog from 'primevue/dialog'
 import type { Project } from '@/services/project'
 import ProjectSelectionBox from '@/components/ui/ProjectSelectionBox.vue'
 import InputText, { type InputTextPassThroughOptions } from 'primevue/inputtext'
-import { GENERIC_FIELD_DEFAULTS, type GenericFieldProps } from '@/utils/ui_style'
+import { GENERIC_FIELD_DEFAULTS, type GenericFieldProps } from '@/utils/ui-style'
 
 const props = withDefaults(defineProps<GenericFieldProps>(), GENERIC_FIELD_DEFAULTS)
 
@@ -14,7 +14,7 @@ const emits = defineEmits<{
   (e: 'change', project: Project): void
 }>()
 const dialogVisible = ref<boolean>(false)
-const smid = ref<string>('')
+const projectId = ref<string>('')
 
 function openDialog() {
   dialogVisible.value = true
@@ -22,7 +22,7 @@ function openDialog() {
 
 function change(project: Project) {
   model.value = project
-  smid.value = project.project_id
+  projectId.value = project.project_id
   dialogVisible.value = false
   emits('change', project)
 }
@@ -41,7 +41,7 @@ const pt: InputTextPassThroughOptions = {
   <div class="flex flex-row">
     <InputText
       :id="id"
-      v-model="smid"
+      v-model="projectId"
       type="text"
       placeholder="XXXXXXXX"
       :disabled="true"

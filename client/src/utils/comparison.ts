@@ -1,9 +1,9 @@
 import type { EufRecord } from '@/utils/bed6'
-
 import type { Dataset } from '@/services/dataset'
-import type { UploadedFile } from '@/services/datasetUpload'
+import type { UploadedFile } from '@/services/dataset-upload'
 import type { ComparisonParams } from '@/services/comparison'
 import { isReactive } from 'vue'
+import { formatFrequency } from '@/utils/frequency'
 
 interface UploadDescriptor extends UploadedFile {
   isEUF: boolean
@@ -56,7 +56,7 @@ function getCompareParams(
     taxaId: resultStepA.taxaId,
     reference: resultStepA.datasets.map((x) => x.dataset_id),
     ...paramsStepB,
-    strand: resultStepC?.strandAware === true
+    strandAware: resultStepC?.strandAware === true
   }
 }
 
@@ -69,12 +69,12 @@ interface ComparisonRecordString {
   strand: string
   coverage: string
   frequency: string
-  eufid: string
+  dataset_id: string
 }
 
 interface ComparisonDisplayRecord {
-  a: ComparisonRecordString
-  b: ComparisonRecordString
+  reference: ComparisonRecordString
+  comparison: ComparisonRecordString
   distance: string
 }
 
@@ -92,7 +92,7 @@ const NULL_COMPARISON_RECORD: ComparisonRecordString = {
   strand: '',
   coverage: '',
   frequency: '',
-  eufid: ''
+  dataset_id: ''
 }
 
 function getComparisonDisplayRecord(
@@ -102,8 +102,8 @@ function getComparisonDisplayRecord(
 ): ComparisonDisplayRecord {
   const { distance, isEUF = true } = options
   return {
-    a: recordToStrings(true, a),
-    b: recordToStrings(isEUF, b),
+    reference: recordToStrings(true, a),
+    comparison: recordToStrings(isEUF, b),
     distance: distance !== undefined ? `${distance}` : ''
   }
 }
@@ -119,7 +119,7 @@ function recordToStrings(isEUF: boolean, x?: EufRecord): ComparisonRecordString 
     score: `${x.score}`,
     strand: `${x.strand}`,
     coverage: isEUF ? `${x.coverage}` : '',
-    frequency: isEUF ? `${x.frequency}` : ''
+    frequency: isEUF ? formatFrequency(x.frequency) : ''
   }
 }
 

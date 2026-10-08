@@ -117,11 +117,11 @@ class GenericAnnotationService(ABC):
             return True
         return False
 
-    def annotate_data(self, taxa_id: int, eufid: str, selection_ids: list[int]):
-        self._annotate_data_in_database(taxa_id, eufid)
+    def annotate_data(self, taxa_id: int, dataset_id: str, selection_ids: list[int]):
+        self._annotate_data_in_database(taxa_id, dataset_id)
         for selection_id in selection_ids:
             self._gene_service.update_gene_cache(selection_id)
 
     @abstractmethod
-    def _annotate_data_in_database(self, taxa_id: int, eufid: str):
+    def _annotate_data_in_database(self, taxa_id: int, dataset_id: str):
         pass

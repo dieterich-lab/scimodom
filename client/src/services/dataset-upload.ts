@@ -24,11 +24,11 @@ async function uploadTemporaryDataset(
     dialogState.state = DIALOG.ALERT
     throw new DatasetTooLarge()
   }
-  const result = (await handleRequestWithErrorReporting(
-    HTTPAuth.post('/uploads', file),
+  const result = await handleRequestWithErrorReporting(
+    HTTPAuth.post<UploadResponse>('/uploads', file),
     `Failed to upload '${file.name}'`,
     dialogState
-  )) as UploadResponse
+  )
   return {
     name: file.name,
     id: result.file_id

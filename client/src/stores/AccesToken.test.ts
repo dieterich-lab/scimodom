@@ -1,6 +1,7 @@
 import { test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useAccessToken } from '@/stores/AccessToken'
+import type { AxiosResponse } from 'axios'
 import { HTTPAuth } from '@/services/API'
 import { jwtDecode } from 'jwt-decode'
 
@@ -14,6 +15,10 @@ vi.mock('jwt-decode', () => ({
 
 const mockedPost = vi.mocked(HTTPAuth.post)
 const mockedDecode = vi.mocked(jwtDecode)
+// only the fields used by the store are provided
+function okResponse(data: unknown): AxiosResponse<unknown> {
+  return { status: 200, data } as AxiosResponse<unknown>
+}
 
 const NOW_SECONDS = 1_700_000_000
 
@@ -129,7 +134,7 @@ test('considerToRefresh unsets the store when the token has expired', () => {
 
 test('considerToRefresh refreshes when within the grace period', async () => {
   decodeWithExp(NOW_SECONDS + 60) // 60s left within the 30min grace period
-  mockedPost.mockResolvedValueOnce({ status: 200, data: { access_token: 'new' } })
+  mockedPost.mockResolvedValueOnce(okResponse({ access_token: 'new' }))
   decodeWithExp(NOW_SECONDS + 3600) // the new token's expiry
 
   const store = useAccessToken()
@@ -143,7 +148,7 @@ test('considerToRefresh refreshes when within the grace period', async () => {
 
 test('considerToRefresh refreshes again after the retry interval', async () => {
   decodeWithExp(NOW_SECONDS + 60)
-  mockedPost.mockResolvedValueOnce({ status: 200, data: { access_token: 'new' } })
+  mockedPost.mockResolvedValueOnce(okResponse({ access_token: 'new' }))
   decodeWithExp(NOW_SECONDS + 3600)
 
   const store = useAccessToken()
@@ -160,7 +165,7 @@ test('refresh GETs /sessions/refresh and updates the token', async () => {
   decodeWithExp(NOW_SECONDS + 3600)
   const store = useAccessToken()
   store.set('a@b.c', 'old')
-  mockedPost.mockResolvedValueOnce({ status: 200, data: { access_token: 'new' } })
+  mockedPost.mockResolvedValueOnce(okResponse({ access_token: 'new' }))
   decodeWithExp(NOW_SECONDS + 7200)
 
   store.refresh()

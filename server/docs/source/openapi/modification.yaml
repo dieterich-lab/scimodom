@@ -1,23 +1,36 @@
 info:
-  title: Modification REST API
+  title: modifications
+  description: >-
+    Modification records and sites
+
+tags:
+  - name: Record
+    description: Modification records
+  - name: Site
+    description: Modification sites
 
 paths:
-  # TODO: add csv endpoints
-  /modification/query:
+  /modifications/records:
     get:
-      summary: Get modification sites
-      description: Query by modification, gene or genomic region
+      tags:
+        - Record
+      summary: Get modification records
+      description: Sci-ModoM's Search interface
       parameters:
+        - $ref: "#/components/parameters/byQueryParam"
+        - $ref: "#/components/parameters/formatQueryParam"
         - $ref: "#/components/parameters/rnaTypeQueryParam"
         - $ref: "#/components/parameters/taxaIdQueryParam"
         - $ref: "#/components/parameters/modificationQueryParam"
         - $ref: "#/components/parameters/organismQueryParam"
         - $ref: "#/components/parameters/technologyQueryParam"
-        - $ref: "#/components/parameters/geneFilterQueryParam"
-        - $ref: "#/components/parameters/multiSortQueryParam"
+        - $ref: "#/components/parameters/geneNameQueryParam"
+        - $ref: "#/components/parameters/biotypesQueryParam"
+        - $ref: "#/components/parameters/featuresQueryParam"
         - $ref: "#/components/parameters/chromQueryParam"
         - $ref: "#/components/parameters/chromStartQueryParam"
         - $ref: "#/components/parameters/chromEndQueryParam"
+        - $ref: "#/components/parameters/multiSortQueryParam"
         - $ref: "#/components/parameters/firstRecordQueryParam"
         - $ref: "#/components/parameters/maxRecordsQueryParam"
       responses:
@@ -27,41 +40,41 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Search"
+            text/csv:
+              schema:
+                type: string
+                description: >-
+                  CSV with header row: chrom, chromStart, chromEnd, name, score,
+                  strand, coverage, frequency, EUFID, Technology, Organism,
+                  Cell/Tissue, Feature, Gene, Biotype
         "400":
           $ref: "#/components/responses/ClientResponseException400"
-  /modification/query/gene:
+        "404":
+          $ref: "#/components/responses/ClientResponseException404"
+        "501":
+          $ref: "#/components/responses/ClientResponseException501"
+  /modifications/records/summary:
     get:
-      summary: Get modification sites for one organism
-      description: Query by organism, gene or genomic region
-      parameters:
-        - $ref: "#/components/parameters/rnaTypeQueryParam"
-        - $ref: "#/components/parameters/taxaIdQueryParam"
-        # in fact these are required and dependent...
-        - $ref: "#/components/parameters/geneFilterQueryParam"
-        - $ref: "#/components/parameters/multiSortQueryParam"
-        - $ref: "#/components/parameters/chromQueryParam"
-        - $ref: "#/components/parameters/chromStartQueryParam"
-        - $ref: "#/components/parameters/chromEndQueryParam"
-        - $ref: "#/components/parameters/firstRecordQueryParam"
-        - $ref: "#/components/parameters/maxRecordsQueryParam"
+      tags:
+        - Record
+      summary: Get count of modification records
       responses:
         "200":
           description: OK
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Search"
-        "400":
-          $ref: "#/components/responses/ClientResponseException400"
-  /modification/sitewise:
+                $ref: "#/components/schemas/Count"
+  /modifications/sites:
     get:
+      tags:
+        - Site
       summary: Get modification site
-      description: Get information related to a modification site
       parameters:
         - $ref: "#/components/parameters/taxaIdQueryParam"
-        - $ref: "#/components/parameters/chromSimpleQueryParam"
-        - $ref: "#/components/parameters/chromSimpleStartQueryParam"
-        - $ref: "#/components/parameters/chromSimpleEndQueryParam"
+        - $ref: "#/components/parameters/chromRequiredQueryParam"
+        - $ref: "#/components/parameters/chromStartRequiredQueryParam"
+        - $ref: "#/components/parameters/chromEndRequiredQueryParam"
         - $ref: "#/components/parameters/strandQueryParam"
       responses:
         "200":
@@ -74,22 +87,30 @@ paths:
           $ref: "#/components/responses/ClientResponseException400"
         "404":
           $ref: "#/components/responses/ClientResponseException404"
-  /modification/genomic-context/{context}:
+  /modifications/sites/summary:
     get:
+      tags:
+        - Site
+      summary: Get count of modification sites
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Count"
+  /modifications/sites/context:
+    get:
+      tags:
+        - Site
       summary: Get genomic context
-      description: Get genomic context centered on a modification site
+      description: Genomic sequence context centered on a modification site
       parameters:
-        - in: path
-          name: context
-          required: true
-          schema:
-            type: integer
-          description: >-
-            Context size (nucleotides to add on each side of site)
+        - $ref: "#/components/parameters/windowQueryParam"
         - $ref: "#/components/parameters/taxaIdQueryParam"
-        - $ref: "#/components/parameters/chromSimpleQueryParam"
-        - $ref: "#/components/parameters/chromSimpleStartQueryParam"
-        - $ref: "#/components/parameters/chromSimpleEndQueryParam"
+        - $ref: "#/components/parameters/chromRequiredQueryParam"
+        - $ref: "#/components/parameters/chromStartRequiredQueryParam"
+        - $ref: "#/components/parameters/chromEndRequiredQueryParam"
         - $ref: "#/components/parameters/strandQueryParam"
       responses:
         "200":
@@ -102,26 +123,20 @@ paths:
           $ref: "#/components/responses/ClientResponseException400"
         "404":
           $ref: "#/components/responses/ClientResponseException404"
-  /modification/target/{type}:
+  /modifications/sites/targets:
     get:
-      summary: Get interactome-relevant information
+      tags:
+        - Site
+      summary: Get interactome information
       description: >-
-        Get information related to miRNA target and RBP binding sites
+        miRNA targets and RBP binding sites
         that may be affected by a modification site
       parameters:
-        - in: path
-          name: type
-          required: true
-          schema:
-            type: string
-            enum:
-              - "MIRNA"
-              - "RBP"
-          description: miRNA targets or RBP binding sites
+        - $ref: "#/components/parameters/targetQueryParam"
         - $ref: "#/components/parameters/taxaIdQueryParam"
-        - $ref: "#/components/parameters/chromSimpleQueryParam"
-        - $ref: "#/components/parameters/chromSimpleStartQueryParam"
-        - $ref: "#/components/parameters/chromSimpleEndQueryParam"
+        - $ref: "#/components/parameters/chromRequiredQueryParam"
+        - $ref: "#/components/parameters/chromStartRequiredQueryParam"
+        - $ref: "#/components/parameters/chromEndRequiredQueryParam"
         - $ref: "#/components/parameters/strandQueryParam"
       responses:
         "200":
@@ -137,48 +152,81 @@ paths:
 
 components:
   parameters:
+    byQueryParam:
+      in: query
+      name: by
+      required: false
+      schema:
+        type: string
+        enum:
+          - "gene"
+      description: >-
+        Switch from a *Modification* (default) to a *Gene/Chrom* query.
+        If `by=gene`, `geneName` or `chrom` are required, else `modification`,
+        `organism`, and `technology` are required.
+    formatQueryParam:
+      in: query
+      name: format
+      required: false
+      schema:
+        type: string
+        enum:
+          - "csv"
+      description: Return the records as a CSV file
     rnaTypeQueryParam:
       in: query
       name: rnaType
       required: true
       schema:
         type: string
-      description: A valid RNA type (currently only `WTS`)
+      description: RNA type identifier
     taxaIdQueryParam:
       in: query
       name: taxaId
       required: true
       schema:
         type: integer
-      description: A valid NCBI taxonomic identifier
+      description: NCBI taxon
     modificationQueryParam:
       in: query
       name: modification
-      required: true
+      required: false # required unless by=gene
       schema:
         type: integer
-      description: Sci-ModoM's modification identifier
+      description: >-
+        Sci-ModoM's modification identifier. Required unless `by=gene`
     organismQueryParam:
       in: query
       name: organism
-      required: true
+      required: false # required unless by=gene
       schema:
         type: integer
-      description: Sci-ModoM's organism identifier
+      description: >-
+        Sci-ModoM's organism identifier. Required unless `by=gene`
     technologyQueryParam:
       in: query
       name: technology
-      required: false # should be true
+      required: false # required unless by=gene
       schema:
         type: array
         items:
           type: integer
       style: form
       explode: true
-      description: Sci-ModoM's technology identifier
-    geneFilterQueryParam:
+      description: >-
+        Sci-ModoM's technology identifier(s). Required unless `by=gene`
+    geneNameQueryParam:
       in: query
-      name: geneFilter
+      name: geneName
+      required: false
+      schema:
+        type: string
+      description: >-
+        Exact gene name match. Mutually exclusive with `chrom`;
+        if `by=gene`, one of `geneName` or `chrom` is required
+    biotypesQueryParam:
+      in: query
+      name: biotypes
       required: false
       schema:
         type: array
@@ -186,7 +234,18 @@ components:
           type: string
       style: form
       explode: true
-      description: e.g. `gene_name%2BASB1%2BstartsWith`
+      description: Gene biotype(s) to filter on
+    featuresQueryParam:
+      in: query
+      name: features
+      required: false
+      schema:
+        type: array
+        items:
+          type: string
+      style: form
+      explode: true
+      description: Genomic feature(s) to filter on
     multiSortQueryParam:
       in: query
       name: multiSort
@@ -197,104 +256,168 @@ components:
           type: string
       style: form
       explode: true
-      description: e.g. `coverage%2Bdesc`
+      description: >-
+        Sort query in ascending `asc` or descending `desc` order,
+        by `chrom`, `start`, `score`, `coverage`, or `frequency`, e.g.
+        `chrom%2Basc`
     chromQueryParam:
       in: query
       name: chrom
       required: false
       schema:
         type: string
+      description: >-
+        Mutually exclusive with `geneName`. If `by=gene`,
+        one of `geneName` or `chrom` is required
     chromStartQueryParam:
       in: query
       name: chromStart
       required: false
       schema:
         type: integer
+      description: >-
+        If `by=gene`, `chrom` is required
     chromEndQueryParam:
       in: query
       name: chromEnd
       required: false
       schema:
         type: integer
-    chromSimpleQueryParam:
+      description: >-
+        If `by=gene`, `chrom` and `chromStart` are required
+    chromRequiredQueryParam:
       in: query
       name: chrom
       required: true
       schema:
         type: string
-    chromSimpleStartQueryParam:
+    chromStartRequiredQueryParam:
       in: query
-      name: start
+      name: chromStart
       required: true
       schema:
         type: integer
-    chromSimpleEndQueryParam:
+    chromEndRequiredQueryParam:
       in: query
-      name: end
+      name: chromEnd
       required: true
       schema:
         type: integer
     strandQueryParam:
       in: query
       name: strand
-      required: true
+      required: false
       schema:
         type: string
         enum:
           - "+"
           - "-"
           - "."
+        default: "."
+    windowQueryParam:
+      in: query
+      name: window
+      required: true
+      schema:
+        type: integer
+      description: Number of bases to include on each side of the site
+    targetQueryParam:
+      in: query
+      name: target
+      required: true
+      schema:
+        type: string
+        enum:
+          - "MIRNA"
+          - "RBP"
+      description: miRNA targets or RBP binding sites
     firstRecordQueryParam:
       in: query
-      name: firstRecord
+      name: offset
       required: false
       schema:
         type: integer
     maxRecordsQueryParam:
       in: query
-      name: maxRecords
+      name: limit
       required: false
       schema:
         type: integer
   responses:
     ClientResponseException400:
-      description: Bad Request
+      description: Invalid request format or validation error
     ClientResponseException404:
-      description: Unrecognized parameter value
+      description: Parameter not found
+    ClientResponseException501:
+      description: Not Implemented
   schemas:
+    Count:
+      type: object
+      required:
+        - count
+      properties:
+        count:
+          type: integer
+          description: Number of data records or sites
     BED6:
       type: object
+      required:
+        - records
       properties:
         records:
           type: array
           items:
             type: object
+            required:
+              - chrom
+              - start
+              - end
+              - name
+              - score
+              - strand
             properties:
               chrom:
                 type: string
-                description: Chromosome name
               start:
                 type: integer
-                description: Feature start position
               end:
                 type: integer
-                description: Feature end position
               name:
                 type: string
-                description: Feature name
               score:
                 type: integer
-                description: Feature score
               strand:
                 type: string
-                description: Feature strand
+                enum: ["+", "-", "."]
     Search:
       type: object
+      required:
+        - records
+        - total
       properties:
         records:
           type: array
           items:
             type: object
+            required:
+              - chrom
+              - start
+              - end
+              - name
+              - score
+              - strand
+              - coverage
+              - frequency
+              - reference_id
+              - tech
+              - taxa_id
+              - cto
+              - gene_id
+              - gene_name
+              - gene_biotype
+              - feature
+              - id
+              - dataset_id
             properties:
               chrom:
                 type: string
@@ -313,6 +436,7 @@ components:
                 description: Feature confidence (valid coverage or coverage)
               strand:
                 type: string
+                enum: ["+", "-", "."]
                 description: Feature strand
               coverage:
                 type: integer
@@ -322,44 +446,66 @@ components:
                 description: Feature frequency (percentage of modification)
               reference_id:
                 type: integer
-                description: MODOMICS reference identifier for this modification
+                description: MODOMICS reference identifier
               tech:
                 type: string
                 description: Detection technology
               taxa_id:
                 type: integer
-                description: NCBI's taxonomic identifier
+                description: NCBI taxon
               cto:
                 type: string
                 description: Cell, tissue, or organism
               gene_id:
                 type: string
+                nullable: true
                 description: Gene identifier
               gene_name:
                 type: string
+                nullable: true
                 description: Gene name
               gene_biotype:
                 type: string
+                nullable: true
                 description: Gene biotype
               feature:
                 type: string
+                nullable: true
                 description: Gene feature
               id:
                 type: integer
-                description: Data id
+                description: Data record identifier
               dataset_id:
-                type: integer
-                description: EUFID
-        totalRecords:
+                type: string
+                description: Dataset identifier (EUFID)
+        total:
           type: integer
           description: Total number of records matching the query
     Site:
       type: object
+      required:
+        - records
       properties:
         records:
           type: array
           items:
             type: object
+            required:
+              - chrom
+              - start
+              - end
+              - name
+              - score
+              - strand
+              - coverage
+              - frequency
+              - rna_type
+              - reference_id
+              - modification_id
+              - taxa_short_name
+              - tech
+              - cto
+              - dataset_id
             properties:
               chrom:
                 type: string
@@ -378,6 +524,7 @@ components:
                 description: Feature confidence (valid coverage or coverage)
               strand:
                 type: string
+                enum: ["+", "-", "."]
                 description: Feature strand
               coverage:
                 type: integer
@@ -385,18 +532,18 @@ components:
               frequency:
                 type: number
                 description: Feature frequency (percentage of modification)
-              rna:
+              rna_type:
                 type: string
-                description: RNA type
+                description: RNA type identifier (see `GET /catalogs/rna-types`)
               reference_id:
                 type: integer
-                description: MODOMICS reference identifier for this modification
+                description: MODOMICS reference identifier
               modification_id:
                 type: integer
-                description: Sci-ModoM's modification identifier
-              short_name:
+                description: Modification identifier (MODOMICS code, `rna_type`)
+              taxa_short_name:
                 type: string
-                description: Modification short name (MODOMICS)
+                description: NCBI short name for taxon
               tech:
                 type: string
                 description: Detection technology
@@ -404,10 +551,12 @@ components:
                 type: string
                 description: Cell, tissue, or organism
               dataset_id:
-                type: integer
-                description: EUFID
+                type: string
+                description: Dataset identifier (EUFID)
     Context:
       type: object
+      required:
+        - context
       properties:
         context:
           type: string

@@ -9,7 +9,7 @@ import DialogButtonGroup from '@/components/ui/DialogButtonGroup.vue'
 import DialogButton from '@/components/ui/DialogButton.vue'
 import DialogText from '@/components/ui/DialogText.vue'
 import FormLink from '@/components/ui/FormLink.vue'
-import { PRIMARY_DIALOG_STYLE } from '@/utils/ui_style'
+import { PRIMARY_DIALOG_STYLE } from '@/utils/ui-style'
 import { login } from '@/services/user'
 import { trashRequestErrors } from '@/services/API'
 

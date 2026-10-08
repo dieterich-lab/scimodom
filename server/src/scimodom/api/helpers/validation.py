@@ -5,6 +5,8 @@
 - Permission validation
 """
 
+from dataclasses import dataclass
+
 from flask import request
 from flask_jwt_extended import get_jwt_identity
 from sqlalchemy.exc import NoResultFound
@@ -32,32 +34,32 @@ from .input import (
     _validate_file_name,
     get_positive_int,
     get_non_negative_int,
+    get_optional_positive_int,
+    get_optional_non_negative_int,
     get_required_list,
     get_optional_list,
     validate_file_name,
 )
 
 
-# Domain and business constraints validation
+@dataclass(frozen=True)
+class ValidCoords:
+    """A validated chromosome interval."""
+
+    chrom: str
+    start: int
+    end: int
+    chrom_size: int
 
 
-def validate_chrom(
-    taxa_id: int, chrom: str, start: int | None, end: int | None
-) -> None:
-    """Validate chromosome, start and/or end.
+@dataclass(frozen=True)
+class OptionalValidCoords:
+    """A validated chromosome search filter."""
 
-    NOTE: Presence or absence of start/end, where
-    relevant, must be validated by the caller.
-
-    :param taxa_id: A fully validated taxon identifier
-    :param chrom: A syntactically valid chromosome
-    :param start: A syntactically valid chromosome
-    start or None
-    :param end: A syntactically valid chromosome
-    end or None
-    :raises ClientResponseException: 400, 404
-    """
-    _validate_chrom(taxa_id, chrom, start, end)
+    chrom: str | None
+    start: int | None
+    end: int | None
+    chrom_size: int | None
 
 
 # Validation helpers (input and domain validation)
@@ -69,7 +71,7 @@ def get_valid_rna_type() -> str:
     :raises ClientResponseException: 400, 404
     :return: The validated RNA type
     """
-    rna_type = _get_required_query_param("rnaType")
+    rna_type: str = _get_required_query_param("rnaType")
     _validate_rna_type(rna_type)
     return rna_type
 
@@ -81,7 +83,7 @@ def parse_valid_rna_type(raw: str) -> str:
     :raises ClientResponseException: 400, 404
     :return: The validated RNA type
     """
-    rna_type = _parse_param("rnaType", raw)
+    rna_type: str = _parse_param("rnaType", raw)
     _validate_rna_type(rna_type)
     return rna_type
 
@@ -104,7 +106,7 @@ def parse_valid_taxa_id(raw: str) -> int:
     :raises ClientResponseException: 400, 404
     :return: The validated taxon identifier
     """
-    taxa_id = _parse_param("taxa_id", raw, _positive_int)
+    taxa_id: int = _parse_param("taxa_id", raw, _positive_int)
     _validate_taxa_id(taxa_id)
     return taxa_id
 
@@ -152,40 +154,94 @@ def get_valid_selections() -> tuple[int, int, list[int]]:
     return modification_id, organism_id, technology_ids
 
 
-def get_valid_coords(
-    context: int = 0,
-) -> tuple[str, int, int, Strand]:
-    """Parse query for coordinates and validate.
+def get_valid_coords(taxa_id: int) -> ValidCoords:
+    """Parse query for required coordinates and validate.
 
-    NOTE: This function uses "start" and "end",
-    not "chromStart", "chromEnd".
-
-    :param context: Number of bases to include in
-    context around start-end.
+    :param taxa_id: Validated taxon identifier
     :raises ClientResponseException: 400, 404
-    :return: Coordinates as (chrom, start, end, strand)
-    where strand defaults to Strand.UNDEFINED (".")
+    :return: Coordinates as ValidCoords
     """
-    taxa_id = get_valid_taxa_id()
-    chrom = _get_required_query_param("chrom")
-    start = get_non_negative_int("start")
-    end = get_positive_int("end")
-    chrom_sizes = _get_chroms(taxa_id)
-    _validate_chrom(taxa_id, chrom, start, end, chrom_sizes)
+    chrom: str = _get_required_query_param("chrom")
+    start = get_non_negative_int("chromStart")
+    end = get_positive_int("chromEnd")
+    chrom_size = _get_valid_chrom_size(taxa_id, chrom, start, end)
+    return ValidCoords(chrom, start, end, chrom_size)
 
+
+def get_optional_valid_coords(
+    taxa_id: int, chrom: str | None, *, is_bounded: bool = False
+) -> OptionalValidCoords:
+    """Parse query for optional coordinates and validate.
+
+    :param taxa_id: Validated taxon identifier
+    :param chrom: Chromosome
+    :param is_bounded: chromStart/chromEnd are required
+    if True
+    :raises ClientResponseException: 400, 404
+    :return: Coordinates as OptionalValidCoords
+    """
+    start = get_optional_non_negative_int("chromStart")
+    end = get_optional_positive_int("chromEnd")
+
+    if chrom is None:
+        if start is not None or end is not None:
+            raise ClientResponseException(
+                400,
+                "Unused parameters: 'chromStart' and 'chromEnd' require 'chrom'",
+            )
+        return OptionalValidCoords(None, None, None, None)
+
+    if end is not None and start is None:
+        raise ClientResponseException(
+            400,
+            "Unused parameter: 'chromEnd' requires 'chromStart'",
+        )
+
+    if is_bounded:
+        if start is None:
+            raise ClientResponseException(
+                400,
+                "Missing required parameter: 'chromStart'",
+            )
+        if end is None:
+            raise ClientResponseException(
+                400,
+                "Missing required parameter: 'chromEnd'",
+            )
+
+    chrom_size = _get_valid_chrom_size(taxa_id, chrom, start, end)
+    return OptionalValidCoords(chrom, start, end, chrom_size)
+
+
+def get_valid_strand() -> Strand:
+    """Parse optional genomic strand.
+
+    NOTE: strand defaults to Strand.UNDEFINED (".")
+
+    :raises ClientResponseException: 400, 404
+    :return: Strand
+    """
     strand = request.args.get("strand", default=".", type=str)
     try:
-        strand_dto = Strand(strand)
+        return Strand(strand)
     except ValueError:
         _invalid_choice("strand", strand, "+, -, or .")
 
-    if context > 0:
-        start = start - context
-        start = max(start, 0)
-        end = end + context
-        end = min(end, chrom_sizes[chrom])
 
-    return chrom, start, end, strand_dto
+def expand_coords_context(coords: ValidCoords, context: int) -> ValidCoords:
+    """Expand a validated interval.
+
+    :param coords: Validated coordinates
+    :param context: Number of bases to include in
+    context around start-end.
+    :return: New coordinates
+    """
+    return ValidCoords(
+        chrom=coords.chrom,
+        start=max(coords.start - context, 0),
+        end=min(coords.end + context, coords.chrom_size),
+        chrom_size=coords.chrom_size,
+    )
 
 
 def parse_valid_dataset(raw: str) -> Dataset:
@@ -195,7 +251,7 @@ def parse_valid_dataset(raw: str) -> Dataset:
     :raises ClientResponseException: 400, 404.
     :return: Dataset
     """
-    dataset_id = _parse_param("datasetId", raw)
+    dataset_id: str = _parse_param("datasetId", raw)
     dataset_service = get_dataset_service()
     return _get_valid_dataset_by_id(dataset_id, dataset_service)
 
@@ -268,25 +324,25 @@ def get_optional_valid_tmp_file_id(name: str) -> str | None:
 # Permission validation
 
 
-def validate_project_write_permission(smid: str) -> None:
+def validate_project_write_permission(project_id: str) -> None:
     """Validate if user is allowed to add datasets to the given project.
 
-    :param smid: Project identifier (SMID)
+    :param project_id: Project identifier (SMID)
     :raises ClientResponseException: 403, 404
     """
     permission_service = get_permission_service()
     user = _get_valid_user()
-    if not permission_service.may_change_project(user, smid):
+    if not permission_service.may_change_project(user, project_id):
         raise ClientResponseException(
             403,
-            f"Forbidden to access project '{smid}'",
+            f"Forbidden to access project '{project_id}'",
         )
 
 
 def validate_dataset_write_permission(dataset: Dataset) -> None:
     """Validate if a user is allowed to modify a dataset.
 
-    :param smid: Dataset
+    :param project_id: Dataset
     :raises ClientResponseException: 403, 404
     """
     permission_service = get_permission_service()
@@ -314,10 +370,8 @@ def _validate_chrom(
     chrom: str,
     start: int | None,
     end: int | None,
-    chrom_sizes: dict[str, int] | None = None,
+    chrom_sizes: dict[str, int],
 ) -> None:
-    if chrom_sizes is None:
-        chrom_sizes = _get_chroms(taxa_id)
     if chrom not in chrom_sizes:
         raise ClientResponseException(
             404, f"chrom '{chrom}' for taxaId '{taxa_id}' not found"
@@ -329,15 +383,26 @@ def _validate_chrom(
     if end <= start:
         raise ClientResponseException(
             400,
-            "Parameter 'end'/'chromEnd' must be greater than "
-            f"'start'/'chromStart' (start is: {start}, got end: {end})",
+            "Parameter 'chromEnd' must be greater than "
+            f"'chromStart' (chromStart is: {start}, got '{end}')",
         )
     if not end <= this_chrom_size:
         raise ClientResponseException(
             400,
-            "Parameter 'end'/'chromEnd' is greater than chrom size "
+            "Parameter 'chromEnd' is greater than chrom size "
             f"(max. allowed: {this_chrom_size}, got '{end}')",
         )
+
+
+def _get_valid_chrom_size(
+    taxa_id: int,
+    chrom: str,
+    start: int | None,
+    end: int | None,
+) -> int:
+    chrom_sizes = _get_chroms(taxa_id)
+    _validate_chrom(taxa_id, chrom, start, end, chrom_sizes)
+    return chrom_sizes[chrom]
 
 
 def _validate_rna_type(rna_type: str) -> None:

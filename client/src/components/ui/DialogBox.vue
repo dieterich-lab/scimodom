@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useDialogState } from '@/stores/DialogState.js'
-import { type UiStyle, DEFAULT_STYLE } from '@/utils/ui_style'
+import { type UiStyle, DEFAULT_STYLE } from '@/utils/ui-style'
 import FormErrorMessage from '@/components/ui/FormErrorMessage.vue'
 
 const props = withDefaults(

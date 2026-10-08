@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import FileUpload, { type FileUploadUploaderEvent } from 'primevue/fileupload'
-import { type UiStyle, DEFAULT_STYLE } from '@/utils/ui_style'
+import { type UiStyle, DEFAULT_STYLE } from '@/utils/ui-style'
 import LabeledItem from '@/components/ui/LabeledItem.vue'
 
 const props = withDefaults(

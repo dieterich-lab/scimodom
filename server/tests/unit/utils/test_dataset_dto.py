@@ -1,9 +1,8 @@
 from scimodom.utils.dtos.dataset import DatasetPostRequest
 
-
 EXAMPLE_BODY = """
 {
-    "smid": "abcdef12",
+    "project_id": "abcdef12",
     "file_id": "id",
     "rna_type": "WTS",
     "modification_id": [1, 2],

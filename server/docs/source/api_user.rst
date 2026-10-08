@@ -1,7 +1,7 @@
 .. _user_api:
+.. rst-class:: api-page
 
-Manage users
-============
+Users
+=====
 
 .. swagger-plugin:: openapi/_include/user.yaml
-   :swagger-options: {"supportedSubmitMethods": ["get"]}

@@ -1,5 +1,5 @@
 import { test, expect, vi, beforeEach } from 'vitest'
-import { type DetectionMethod, detectionMethodCache } from '@/services/detectionMethod'
+import { type DetectionMethod, detectionMethodCache } from '@/services/detection-method'
 import { HTTP } from '@/services/API'
 import { type AxiosResponse } from 'axios'
 
@@ -31,14 +31,9 @@ test('getPromise does not swallow failures', async () => {
   await expect(detectionMethodCache.getPromise()).rejects.toBe(error)
 })
 
-test('getPromise logs and rethrows on failure', async () => {
+test('getPromise propagates error on failure', async () => {
   const error = new Error()
-  const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
   mockedGet.mockRejectedValueOnce(error)
 
   await expect(detectionMethodCache.getPromise()).rejects.toBe(error)
-  expect(consoleSpy).toHaveBeenCalledWith(
-    expect.stringContaining('Failed to fetch /catalogs/methods:')
-  )
-  consoleSpy.mockRestore()
 })

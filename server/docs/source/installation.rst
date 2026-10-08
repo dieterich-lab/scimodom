@@ -69,7 +69,8 @@ Get the source code and install:
   git clone https://github.com/dieterich-lab/scimodom.git
   cd scimodom/server
   pip install --upgrade pip setuptools
-  pip --verbose install -e '.[dev,tests,docs]' 2>&1 | tee install.log
+  pip --verbose install -e . --group dev 2>&1 | tee install.log
+  # or uv pip install -e . --group dev
 
 
 .. note::

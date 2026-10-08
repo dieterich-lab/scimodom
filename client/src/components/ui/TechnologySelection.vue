@@ -5,7 +5,7 @@ import {
   type Technology,
   getTechnologiesByModificationIdsAndOrganismId
 } from '@/services/selection'
-import { type GenericFieldProps, GENERIC_FIELD_DEFAULTS } from '@/utils/ui_style'
+import { type GenericFieldProps, GENERIC_FIELD_DEFAULTS } from '@/utils/ui-style'
 import {
   type TechnologySelectionExtraProps,
   TECHNOLOGY_SELECTION_DEFAULTS

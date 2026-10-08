@@ -14,7 +14,13 @@ beforeEach(() => {
 })
 
 const taxa: Taxa[] = [
-  { domain: 'domain', kingdom: 'kingdom', taxa_id: 123, taxa_name: 'name', taxa_sname: 'sname' }
+  {
+    domain: 'domain',
+    kingdom: 'kingdom',
+    taxa_id: 123,
+    taxa_name: 'name',
+    taxa_short_name: 'sname'
+  }
 ]
 
 test('getPromise calls /catalogs/taxa and returns the response', async () => {
@@ -33,14 +39,9 @@ test('getPromise does not swallow failures', async () => {
   await expect(taxaCache.getPromise()).rejects.toBe(error)
 })
 
-test('getPromise logs and rethrows on failure', async () => {
+test('getPromise propagates error on failure', async () => {
   const error = new Error()
-  const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
   mockedGet.mockRejectedValueOnce(error)
 
   await expect(taxaCache.getPromise()).rejects.toBe(error)
-  expect(consoleSpy).toHaveBeenCalledWith(
-    expect.stringContaining('Failed to fetch /catalogs/taxa:')
-  )
-  consoleSpy.mockRestore()
 })

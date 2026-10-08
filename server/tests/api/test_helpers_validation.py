@@ -5,7 +5,7 @@ from sqlalchemy.exc import NoResultFound
 from scimodom.services.user import NoSuchUser
 from scimodom.api.helpers import (
     ClientResponseException,
-    validate_chrom,
+    ValidCoords,
     get_valid_rna_type,
     parse_valid_rna_type,
     get_valid_taxa_id,
@@ -14,6 +14,9 @@ from scimodom.api.helpers import (
     get_optional_valid_features,
     get_valid_selections,
     get_valid_coords,
+    get_optional_valid_coords,
+    get_valid_strand,
+    expand_coords_context,
     parse_valid_dataset,
     parse_valid_bam,
     # get_optional_valid_dataset_id_list, # test_comparison_api
@@ -79,8 +82,8 @@ class MockAssemblyService:
 
 class MockDatasetService:
     @staticmethod
-    def get_by_id(eufid):
-        if eufid != "ABCDEFGHIJKL":
+    def get_by_id(dataset_id):
+        if dataset_id != "ABCDEFGHIJKL":
             raise NoResultFound
 
 
@@ -94,8 +97,8 @@ class MockUtilitiesService:
     @staticmethod
     def get_rna_types():
         return [
-            {"id": "Type1", "label": "Description"},
-            {"id": "Type2", "label": "Description2"},
+            {"id": "Type1", "name": "Description"},
+            {"id": "Type2", "name": "Description2"},
         ]
 
     @staticmethod
@@ -104,7 +107,7 @@ class MockUtilitiesService:
             {
                 "taxa_id": 9606,
                 "taxa_name": "Homo sapiens",
-                "taxa_sname": "H. sapiens",
+                "taxa_short_name": "H. sapiens",
                 "domain": "Eukarya",
                 "kingdom": "Animalia",
                 "phylum": "Chordata",
@@ -125,14 +128,14 @@ class MockUtilitiesService:
                 "kingdom": "Animalia",
                 "meth": "Chemical-assisted sequencing",
                 "modification_id": 2,
-                "modomics_sname": "m6A",
+                "modomics_short_name": "m6A",
                 "organism_id": 3,
-                "rna": "WTS",
-                "rna_name": "whole transcriptome",
+                "rna_type": "WTS",
+                "rna_type_name": "whole transcriptome",
                 "selection_id": 3,
                 "taxa_id": 9606,
                 "taxa_name": "Homo sapiens",
-                "taxa_sname": "H. sapiens",
+                "taxa_short_name": "H. sapiens",
                 "tech": "MePMe-seq",
                 "technology_id": 2,
             },
@@ -143,55 +146,18 @@ class MockUtilitiesService:
                 "kingdom": "Animalia",
                 "meth": "Enzyme/protein-assisted sequencing",
                 "modification_id": 2,
-                "modomics_sname": "m6A",
+                "modomics_short_name": "m6A",
                 "organism_id": 3,
-                "rna": "WTS",
-                "rna_name": "whole transcriptome",
+                "rna_type": "WTS",
+                "rna_type_name": "whole transcriptome",
                 "selection_id": 29,
                 "taxa_id": 9606,
                 "taxa_name": "Homo sapiens",
-                "taxa_sname": "H. sapiens",
+                "taxa_short_name": "H. sapiens",
                 "tech": "eTAM-seq",
                 "technology_id": 7,
             },
         ]
-
-
-# tests: domain and business constraints validation
-
-
-@pytest.mark.parametrize(
-    "chrom,start,end,http_status,message",
-    [
-        ("2", None, None, 404, "chrom '2' for taxaId '9606' not found"),
-        (
-            "1",
-            248956422,
-            None,
-            400,
-            "Parameter 'end'/'chromEnd' must be greater than 'start'/'chromStart' "
-            "(start is: 248956422, got end: 248956422)",
-        ),
-        (
-            "1",
-            1,
-            248956423,
-            400,
-            "Parameter 'end'/'chromEnd' is greater than chrom size "
-            "(max. allowed: 248956422, got '248956423')",
-        ),
-    ],
-)
-def test_validate_chrom_fail(mocker, chrom, start, end, http_status, message):
-    mocker.patch(
-        "scimodom.api.helpers.validation.get_assembly_service",
-        return_value=MockAssemblyService(),
-    )
-    with pytest.raises(ClientResponseException) as exc:
-        validate_chrom(9606, chrom, start, end)
-    returned_message, returned_status = exc.value.response_tuple
-    assert returned_status == http_status
-    assert returned_message["message"] == message
 
 
 # tests: validation helpers (only domain validation)
@@ -326,24 +292,137 @@ def test_get_valid_selections_fail(
         assert returned_message["user_message"] == user_message
 
 
-@pytest.mark.parametrize(
-    "strand,decoded",
-    [("a", "a"), ("+", " ")],
-)
-def test_get_valid_coords_fail(app, mocker, strand, decoded):
+def test_get_valid_coords(app, mocker):
     mocker.patch(
         "scimodom.api.helpers.validation.get_assembly_service",
         return_value=MockAssemblyService(),
     )
+    with app.test_request_context("/?chrom=1&chromStart=10&chromEnd=20"):
+        assert get_valid_coords(9606) == ValidCoords(
+            chrom="1",
+            start=10,
+            end=20,
+            chrom_size=248956422,
+        )
+
+
+@pytest.mark.parametrize(
+    "url,http_status,message",
+    [
+        (
+            "/?chrom=2&chromStart=1&chromEnd=2",
+            404,
+            "chrom '2' for taxaId '9606' not found",
+        ),
+        (
+            "/?chrom=1&chromStart=248956422&chromEnd=248956422",
+            400,
+            "Parameter 'chromEnd' must be greater than 'chromStart' "
+            "(chromStart is: 248956422, got '248956422')",
+        ),
+        (
+            "/?chrom=1&chromStart=1&chromEnd=248956423",
+            400,
+            "Parameter 'chromEnd' is greater than chrom size "
+            "(max. allowed: 248956422, got '248956423')",
+        ),
+    ],
+)
+def test_get_valid_coords_validation_fail(app, mocker, url, http_status, message):
     mocker.patch(
-        "scimodom.api.helpers.validation.get_utilities_service",
-        return_value=MockUtilitiesService(),
+        "scimodom.api.helpers.validation.get_assembly_service",
+        return_value=MockAssemblyService(),
     )
-    with app.test_request_context(
-        f"/?chrom=1&start=1&end=2&strand={strand}&taxaId=9606", method="GET"
-    ):
+    with pytest.raises(ClientResponseException) as exc:
+        with app.test_request_context(url):
+            get_valid_coords(9606)
+    returned_message, returned_status = exc.value.response_tuple
+    assert returned_status == http_status
+    assert returned_message["message"] == message
+
+
+def test_get_optional_valid_coords_empty(app, mocker):
+    assembly_service = mocker.patch(
+        "scimodom.api.helpers.validation.get_assembly_service",
+        return_value=MockAssemblyService(),
+    )
+    with app.test_request_context("/"):
+        coords = get_optional_valid_coords(9606, None)
+    assert (coords.chrom, coords.start, coords.end, coords.chrom_size) == (
+        None,
+        None,
+        None,
+        None,
+    )
+    assembly_service.get_chroms.assert_not_called()
+
+
+def test_get_optional_valid_coords(app, mocker):
+    mocker.patch(
+        "scimodom.api.helpers.validation.get_assembly_service",
+        return_value=MockAssemblyService(),
+    )
+    with app.test_request_context("/?chromStart=10"):
+        coords = get_optional_valid_coords(9606, "1")
+    assert (coords.chrom, coords.start, coords.end, coords.chrom_size) == (
+        "1",
+        10,
+        None,
+        248956422,
+    )
+
+
+@pytest.mark.parametrize(
+    "chrom,bounded,url,expected_message",
+    [
+        (
+            None,
+            False,
+            "/?chromStart=1",
+            "Unused parameters: 'chromStart' and 'chromEnd' require 'chrom'",
+        ),
+        (
+            "1",
+            False,
+            "/?chrom=1&chromEnd=2",
+            "Unused parameter: 'chromEnd' requires 'chromStart'",
+        ),
+        ("1", True, "/?chrom=1", "Missing required parameter: 'chromStart'"),
+        ("1", True, "/?chrom=1&chromStart=1", "Missing required parameter: 'chromEnd'"),
+    ],
+)
+def test_get_optional_valid_coords_fail(
+    app, chrom, bounded, url, expected_message, mocker
+):
+    mocker.patch(
+        "scimodom.api.helpers.validation.get_assembly_service",
+        return_value=MockAssemblyService(),
+    )
+    with pytest.raises(ClientResponseException) as exc:
+        with app.test_request_context(url):
+            get_optional_valid_coords(9606, chrom, is_bounded=bounded)
+    returned_message, returned_status = exc.value.response_tuple
+    assert returned_message["message"] == expected_message
+    assert returned_status == 400
+
+
+def test_get_valid_strand(app):
+    with app.test_request_context("/"):
+        assert get_valid_strand() == Strand(".")
+
+
+@pytest.mark.parametrize(
+    "strand,decoded",
+    [("a", "a"), ("+", " ")],
+)
+def test_get_valid_strand_fail(app, mocker, strand, decoded):
+    mocker.patch(
+        "scimodom.api.helpers.validation.get_assembly_service",
+        return_value=MockAssemblyService(),
+    )
+    with app.test_request_context(f"/?strand={strand}", method="GET"):
         with pytest.raises(ClientResponseException) as exc:
-            get_valid_coords()
+            get_valid_strand()
     returned_message, returned_status = exc.value.response_tuple
     assert returned_status == 400
     assert (
@@ -355,40 +434,36 @@ def test_get_valid_coords_fail(app, mocker, strand, decoded):
 @pytest.mark.parametrize(
     "start,end,result",
     [
-        (1, 2, ("1", 0, 7, Strand("."))),
-        (248956421, 248956422, ("1", 248956416, 248956422, Strand("."))),
+        (1, 2, (0, 7)),
+        (248956421, 248956422, (248956416, 248956422)),
     ],
 )
-def test_get_valid_coords(app, mocker, start, end, result):
-    mocker.patch(
-        "scimodom.api.helpers.validation.get_assembly_service",
-        return_value=MockAssemblyService(),
+def test_expand_coord_context(start, end, result):
+    coords = ValidCoords("1", start, end, 248956422)
+
+    assert expand_coords_context(coords, 5) == ValidCoords(
+        chrom="1",
+        start=result[0],
+        end=result[1],
+        chrom_size=248956422,
     )
-    mocker.patch(
-        "scimodom.api.helpers.validation.get_utilities_service",
-        return_value=MockUtilitiesService(),
-    )
-    with app.test_request_context(
-        f"/?chrom=1&start={start}&end={end}&taxaId=9606", method="GET"
-    ):
-        assert get_valid_coords(context=5) == result
 
 
 @pytest.mark.parametrize(
-    "eufid,expected_status,expected_message",
+    "dataset_id,expected_status,expected_message",
     [
         ("ABCDEFGHIJKLM", 400, "Invalid datasetId 'ABCDEFGHIJKLM'"),
         ("AB!DEF.HIJ/L", 400, "Invalid datasetId 'AB!DEF.HIJ/L'"),
         ("aBCDEFGHIJKL", 404, "datasetId 'aBCDEFGHIJKL' not found"),
     ],
 )
-def test_parse_valid_dataset(eufid, expected_status, expected_message, mocker):
+def test_parse_valid_dataset(dataset_id, expected_status, expected_message, mocker):
     mocker.patch(
         "scimodom.api.helpers.validation.get_dataset_service",
         return_value=MockDatasetService(),
     )
     with pytest.raises(ClientResponseException) as exc:
-        parse_valid_dataset(eufid)
+        parse_valid_dataset(dataset_id)
     returned_message, returned_status = exc.value.response_tuple
     assert returned_message["message"] == expected_message
     assert returned_status == expected_status
@@ -404,7 +479,7 @@ def test_parse_valid_bam(bam_file, mocker, dataset):
     returned_message, returned_status = exc.value.response_tuple
     assert (
         returned_message["message"]
-        == "BAM file 'file_name.bam' not found or no association with dataset 'dataset_id01'"
+        == "BAM file 'file_name.bam' not found or no association with dataset 'dataset00001'"
     )
     assert returned_status == 404
 
@@ -446,4 +521,4 @@ def test_validate_dataset_write_permission_forbidden(mock_user_services, dataset
         validate_dataset_write_permission(dataset[0])
     returned_message, returned_status = exc.value.response_tuple
     assert returned_status == 403
-    assert returned_message["message"] == "Forbidden to access dataset 'dataset_id01'"
+    assert returned_message["message"] == "Forbidden to access dataset 'dataset00001'"

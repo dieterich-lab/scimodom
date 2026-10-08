@@ -7,7 +7,7 @@ interface ComparisonParams {
   comparison?: string[]
   upload?: string
   uploadName?: string
-  strand: boolean
+  strandAware: boolean
   euf?: boolean
   taxaId?: number
 }
@@ -15,13 +15,13 @@ interface ComparisonParams {
 interface SubtractRecord extends EufRecord {}
 
 interface IntersectRecord {
-  a: EufRecord
-  b: EufRecord
+  reference: EufRecord
+  comparison: EufRecord
 }
 
 interface ClosestRecord {
-  a: EufRecord
-  b: EufRecord
+  reference: EufRecord
+  comparison: EufRecord
   distance: number
 }
 
@@ -34,11 +34,11 @@ async function doHttpGet<T>(
   params: ComparisonParams,
   dialogState: DialogStateStore
 ): Promise<T[]> {
-  const response = (await handleRequestWithErrorReporting(
-    HTTP.get(`/datasets/comparisons/${operation}`, { params: params }),
+  const response = await handleRequestWithErrorReporting(
+    HTTP.get<Records<T>>(`/datasets/comparisons/${operation}`, { params: params }),
     `Comparison failed: ${operation}`,
     dialogState
-  )) as Records<T>
+  )
   return response.records
 }
 

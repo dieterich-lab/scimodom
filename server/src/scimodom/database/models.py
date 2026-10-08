@@ -20,7 +20,13 @@ from scimodom.utils.specs.enums import Strand, UserState
 
 
 class RNAType(Base):
-    """RNA types (nomenclature)."""
+    """RNA types (nomenclature).
+
+    NOTE: Annotation-bound RNA type of a selection,
+    exposed in the API as `rna_type`/`rna_type_name`.
+    It is not the same as `Dataset.modification_type`
+    (euf-specs header field).
+    """
 
     __tablename__ = "rna_type"
 
@@ -355,7 +361,7 @@ class Dataset(Base):
     # bedRMod header
     modification_type: Mapped[str] = mapped_column(
         String(32), nullable=False
-    )  # DNA or RNA
+    )  # not an RNAType; currently only used to reconstruct the header on export
     sequencing_platform: Mapped[str] = mapped_column(String(255), nullable=True)
     basecalling: Mapped[str] = mapped_column(Text, nullable=True)
     bioinformatics_workflow: Mapped[str] = mapped_column(Text, nullable=True)

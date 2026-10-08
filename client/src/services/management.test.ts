@@ -25,7 +25,7 @@ beforeEach(() => {
 
 function makeDatasetRequest(): DatasetPostRequest {
   return {
-    smid: 'SMID001',
+    project_id: 'SMID001',
     file_id: 'file-abc',
     rna_type: 'WTS',
     modification_id: [7],
@@ -56,7 +56,7 @@ function makeProjectRequest(): ProjectPostRequest {
           taxa_id: 9606,
           cto: 'HeLa',
           assembly_name: 'GRCh38',
-          assembly_id: '1' // string (form data)!
+          assembly_id: 1
         }
       }
     ]

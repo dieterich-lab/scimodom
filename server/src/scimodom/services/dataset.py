@@ -66,13 +66,13 @@ class DatasetService:
         self._file_service = file_service
         self._validator_service = validator_service
 
-    def get_by_id(self, eufid: str) -> Dataset:
+    def get_by_id(self, dataset_id: str) -> Dataset:
         """Retrieve dataset by EUFID.
 
-        :param eufid: EUFID
+        :param dataset_id: EUFID
         :return: Dataset instance
         """
-        return self._session.get_one(Dataset, eufid)
+        return self._session.get_one(Dataset, dataset_id)
 
     def get_dataset_count(self, user: Optional[User] = None) -> int:
         """Count datasets.
@@ -83,10 +83,9 @@ class DatasetService:
         query = select(func.count(Dataset.id))
         if user is not None:
             query = (
-                query.join_from(Dataset, Project, Dataset.inst_project)
-                .join(
+                query.join(
                     UserProjectAssociation,
-                    UserProjectAssociation.project_id == Project.id,
+                    UserProjectAssociation.project_id == Dataset.project_id,
                 )
                 .join(User, User.id == UserProjectAssociation.user_id)
                 .where(User.id == user.id)
@@ -97,7 +96,7 @@ class DatasetService:
         self,
         user: Optional[User] = None,
     ) -> List[Dict[str, str]]:
-        """Get all datasets.
+        """Get all datasets (metadata and selection).
 
         :param user: Restricts results based on projects associated with user.
         :return: JSON array with dataset-related information
@@ -107,29 +106,20 @@ class DatasetService:
                 Dataset.project_id,
                 Dataset.id.label("dataset_id"),
                 Dataset.title.label("dataset_title"),
+                Dataset.modification_type,
                 Dataset.sequencing_platform,
                 Dataset.basecalling,
                 Dataset.bioinformatics_workflow,
                 Dataset.experiment,
-                Project.title.label("project_title"),
-                Project.summary.label("project_summary"),
-                func.group_concat(ProjectSource.doi.distinct()).label("doi"),
-                func.group_concat(ProjectSource.pmid.distinct()).label("pmid"),
-                Modification.rna,
+                Dataset.external_source,
+                Modification.rna.label("rna_type"),
                 func.group_concat(Modomics.short_name.distinct()).label(
-                    "modomics_sname"
+                    "modifications"
                 ),
                 DetectionTechnology.tech,
-                Taxa.short_name.label("taxa_sname"),
+                Taxa.short_name.label("taxa_short_name"),
                 Taxa.id.label("taxa_id"),
                 Organism.cto,
-            )
-            .join_from(Dataset, Project, Dataset.inst_project)
-            .join_from(
-                Project,
-                ProjectSource,
-                Project.sources,
-                isouter=True,
             )
             .join_from(Dataset, DatasetModificationAssociation, Dataset.associations)
             .join_from(
@@ -146,7 +136,7 @@ class DatasetService:
             query = (
                 query.join(
                     UserProjectAssociation,
-                    UserProjectAssociation.project_id == Project.id,
+                    UserProjectAssociation.project_id == Dataset.project_id,
                 )
                 .join(User, User.id == UserProjectAssociation.user_id)
                 .where(User.id == user.id)
@@ -158,7 +148,7 @@ class DatasetService:
         self,
         stream: TextIO,
         source: str,
-        smid: str,
+        project_id: str,
         title: str,
         assembly_id: int,
         modification_ids: list[int],
@@ -166,7 +156,7 @@ class DatasetService:
         technology_id: int,
         annotation_source: AnnotationSource,
         dry_run_flag: bool = False,
-        eufid: str | None = None,
+        dataset_id: str | None = None,
     ) -> str:
         """Import dataset and records from bedRMod formatted file
         and write into the database.
@@ -175,8 +165,8 @@ class DatasetService:
         :type stream: TextIO
         :param source: Import file name
         :type source: str
-        :param smid: Project SMID
-        :type smid: str
+        :param project_id: Project SMID
+        :type project_id: str
         :param title: Datatset title
         :type title: str
         :param assembly_id: Assembly ID
@@ -191,23 +181,23 @@ class DatasetService:
         :type annotation_source: AnnotationSource
         :param dry_run_flag: If true, validate data w/o writing into the database. Default is False.
         :type dry_run_flag: bool
-        :param eufid: Update data and data annotation records for this EUFID (dataset). This is silently
+        :param dataset_id: Update data and data annotation records for this EUFID (dataset). This is silently
         ignored if 'dry_run_flag' is set. Default is None.
-        :type eufid: str | None
+        :type dataset_id: str | None
         :returns: EUFID - in case of a dry run the value 'DRYRUNDRYRUN' is returned.
         :rtype: str
         """
         update_flag = False
         if dry_run_flag:
-            eufid = "DRYRUNDRYRUN"
-        elif eufid is not None:
+            dataset_id = "DRYRUNDRYRUN"
+        elif dataset_id is not None:
             try:
-                self._session.get_one(Dataset, eufid)
+                self._session.get_one(Dataset, dataset_id)
             except NoResultFound:
-                raise DatasetUpdateError(f"No such dataset: '{eufid}'.")
+                raise DatasetUpdateError(f"No such dataset: '{dataset_id}'.")
             update_flag = True
         else:
-            eufid = self._generate_eufid()
+            dataset_id = self._generate_eufid()
 
         checkpoint = None
         if not dry_run_flag:
@@ -216,8 +206,8 @@ class DatasetService:
             importer = EufImporter(stream=stream, source=source)
             self._validator_service.create_import_context(
                 importer=importer,
-                smid=smid,
-                eufid=eufid,
+                project_id=project_id,
+                dataset_id=dataset_id,
                 title=title,
                 modification_ids=modification_ids,
                 organism_id=organism_id,
@@ -233,7 +223,7 @@ class DatasetService:
                 checkpoint.rollback()
             raise
 
-        return eufid
+        return dataset_id
 
     def delete_dataset(self, dataset: Dataset) -> None:
         """Delete a dataset and all associated data.
@@ -272,7 +262,7 @@ class DatasetService:
     def _get_data_record(record: EufRecord, context: _DatasetImportContext):
         modification_names = context.modification_names.get(record.name)
         return Data(
-            dataset_id=context.eufid,
+            dataset_id=context.dataset_id,
             modification_id=modification_names.get("id"),
             chrom=record.chrom,
             start=record.start,
@@ -288,8 +278,8 @@ class DatasetService:
         )
 
     def _generate_eufid(self) -> str:
-        eufids = self._session.execute(select(Dataset.id)).scalars().all()
-        return gen_short_uuid(Identifiers.EUFID.length, eufids)
+        dataset_ids = self._session.execute(select(Dataset.id)).scalars().all()
+        return gen_short_uuid(Identifiers.EUFID.length, dataset_ids)
 
     def _import_dataset_with_context(self, importer: EufImporter) -> None:
         context = self._validator_service.get_import_context()
@@ -301,13 +291,13 @@ class DatasetService:
                 self._annotation_service.annotate_data(
                     taxa_id=context.taxa_id,
                     annotation_source=context.annotation_source,
-                    eufid=context.eufid,
+                    dataset_id=context.dataset_id,
                     selection_ids=context.selection_ids,
                 )
                 self._session.commit()
 
                 logger.info(
-                    f"Added dataset {context.eufid} to project {context.smid} with title = {context.title}, "
+                    f"Added dataset {context.dataset_id} to project {context.project_id} with title = {context.title}, "
                     f"and the following selections: {context.selection_ids}. "
                 )
 
@@ -317,8 +307,8 @@ class DatasetService:
         header = self._validator_service.get_validated_header()
         if header is not None:
             dataset = Dataset(
-                id=context.eufid,
-                project_id=context.smid,
+                id=context.dataset_id,
+                project_id=context.project_id,
                 organism_id=context.organism_id,
                 technology_id=context.technology_id,
                 title=context.title,
@@ -345,7 +335,7 @@ class DatasetService:
                 self._get_data_record(record, context)
         else:
             if context.update_flag:
-                self._delete_data_records(context.eufid)
+                self._delete_data_records(context.dataset_id)
             with InsertBuffer[Data](self._session) as buffer:
                 for record in self._validator_service.get_validated_records(
                     importer, context
@@ -353,23 +343,23 @@ class DatasetService:
                     data = self._get_data_record(record, context)
                     buffer.queue(data)
 
-    def _delete_data_records(self, eufid: str):
+    def _delete_data_records(self, dataset_id: str):
         data_ids_to_delete = (
-            self._session.execute(select(Data.id).filter_by(dataset_id=eufid))
+            self._session.execute(select(Data.id).filter_by(dataset_id=dataset_id))
             .scalars()
             .all()
         )
         self._session.execute(
             delete(DataAnnotation).where(DataAnnotation.data_id.in_(data_ids_to_delete))
         )
-        self._session.execute(delete(Data).filter_by(dataset_id=eufid))
+        self._session.execute(delete(Data).filter_by(dataset_id=dataset_id))
 
     def _add_association(self, context: _DatasetImportContext) -> None:
         if context.update_flag or context.dry_run_flag:
             return
         for mid in context.modification_ids:
             association = DatasetModificationAssociation(
-                dataset_id=context.eufid, modification_id=mid
+                dataset_id=context.dataset_id, modification_id=mid
             )
             self._session.add(association)
         self._session.flush()

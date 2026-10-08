@@ -95,13 +95,13 @@ class ExporterMock(Exporter):
         pass
 
     def get_dataset_file_name(self, dataset_id: str) -> str:
-        if dataset_id == "dataset_id01":
+        if dataset_id == "dataset00001":
             return "foo"
         else:
             raise NoSuchDataset(f"No {dataset_id}")
 
     def generate_dataset(self, dataset_id: str) -> Generator[bytes, None, None]:
-        if dataset_id == "dataset_id01":
+        if dataset_id == "dataset00001":
             yield b"Line 1\n"
             yield b"Line 2\n"
         else:
@@ -265,7 +265,7 @@ def test_add_dataset_unauthenticated(unauthenticated_client, mocker):
 
 
 def test_export_dataset_simple(unauthenticated_client, exporter):
-    result = unauthenticated_client.get("/datasets/dataset_id01/bedrmod")
+    result = unauthenticated_client.get("/datasets/dataset00001/bedrmod")
     assert result.status == "200 OK"
     assert result.data == b"Line 1\nLine 2\n"
     assert result.headers.get("Content-Disposition") == 'attachment; filename="foo"'
@@ -273,5 +273,5 @@ def test_export_dataset_simple(unauthenticated_client, exporter):
 
 
 def test_export_dataset_not_found(unauthenticated_client, exporter):
-    result = unauthenticated_client.get("/datasets/dataset_id02/bedrmod")
+    result = unauthenticated_client.get("/datasets/dataset00002/bedrmod")
     assert result.status == "404 NOT FOUND"

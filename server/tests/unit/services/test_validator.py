@@ -27,7 +27,7 @@ from scimodom.utils.specs.enums import AnnotationSource, ImportLimits, Strand
 from scimodom.utils.dtos.bedtools import EufRecord
 
 InputSelection = namedtuple(
-    "InputSelection", "smid modification organism technology assembly"
+    "InputSelection", "project_id modification organism technology assembly"
 )
 
 
@@ -137,8 +137,8 @@ class MockAnnotationService:
 @pytest.fixture
 def input_ctx(selection, project):  # noqa
     yield {
-        "smid": project[0].id,
-        "eufid": "NEWNEWNEWNEW",
+        "project_id": project[0].id,
+        "dataset_id": "NEWNEWNEWNEW",
         "title": "dataset title",
         "modification_ids": [1],
         "organism_id": 1,
@@ -250,8 +250,8 @@ def test_create_import_context(Session, input_ctx):
     service.create_import_context(importer=importer, **input_ctx)
 
     assert service.get_import_context() == _DatasetImportContext(
-        smid="12345678",
-        eufid="NEWNEWNEWNEW",
+        project_id="12345678",
+        dataset_id="NEWNEWNEWNEW",
         title="dataset title",
         modification_ids=[1],
         organism_id=1,
@@ -340,7 +340,7 @@ def test_import_context_fail(
 ):
     importer = EufImporter(stream=StringIO(GOOD_EUF_FILE), source="test")
     service = _get_validator_service(Session(), check_source_result=check_src)
-    input_ctx["smid"] = input_selection.smid
+    input_ctx["project_id"] = input_selection.project_id
     input_ctx["modification_ids"] = input_selection.modification
     input_ctx["organism_id"] = input_selection.organism
     input_ctx["technology_id"] = input_selection.technology
@@ -381,7 +381,7 @@ def test_import_fail(
     euf_file = GOOD_EUF_FILE.replace(regexp, replacement)
     importer = EufImporter(stream=StringIO(euf_file), source="test")
     service = _get_validator_service(Session())
-    input_ctx["smid"] = input_selection.smid
+    input_ctx["project_id"] = input_selection.project_id
     input_ctx["modification_ids"] = input_selection.modification
     input_ctx["organism_id"] = input_selection.organism
     input_ctx["technology_id"] = input_selection.technology
@@ -660,27 +660,27 @@ def test_validate_records_fail(
 
 
 @pytest.mark.parametrize(
-    "eufid,update,exception,message",
+    "dataset_id,update,exception,message",
     [
         (
             "XXXXXXXXXXXX",
             False,
             DatasetExistsError,
-            "Suspected duplicate dataset 'dataset_id01' (SMID '12345678'), and title 'dataset title'.",
+            "Suspected duplicate dataset 'dataset00001' (SMID '12345678'), and title 'dataset title'.",
         ),
         (
-            "dataset_id02",
+            "dataset00002",
             True,
             DatasetUpdateError,
-            "Provided dataset 'dataset_id02', but found 'dataset_id01' with title 'dataset title' (SMID '12345678').",
+            "Provided dataset 'dataset00002', but found 'dataset00001' with title 'dataset title' (SMID '12345678').",
         ),
     ],
 )
 def test_check_duplicate_dataset_fail(
-    eufid, update, exception, message, Session, input_ctx, dataset
+    dataset_id, update, exception, message, Session, input_ctx, dataset
 ):  # noqa
     importer = EufImporter(stream=StringIO(GOOD_EUF_FILE), source="test")
-    input_ctx["eufid"] = eufid
+    input_ctx["dataset_id"] = dataset_id
     input_ctx["update_flag"] = update
     service = _get_validator_service(Session())
     with pytest.raises(exception) as exc:

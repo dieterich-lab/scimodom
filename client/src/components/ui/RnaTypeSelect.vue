@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { type RnaType, rnaTypeCache } from '@/services/rnaType'
-import { type GenericFieldProps, GENERIC_FIELD_DEFAULTS } from '@/utils/ui_style'
+import { type RnaType, rnaTypeCache } from '@/services/rna-type'
+import { type GenericFieldProps, GENERIC_FIELD_DEFAULTS } from '@/utils/ui-style'
 import Dropdown, { type DropdownChangeEvent } from 'primevue/dropdown'
 
 const props = withDefaults(defineProps<GenericFieldProps>(), GENERIC_FIELD_DEFAULTS)
@@ -30,7 +30,7 @@ function change(event: DropdownChangeEvent) {
     v-model="model"
     :id="id"
     :options="rnaTypes"
-    option-label="label"
+    option-label="name"
     placeholder="Select RNA type"
     :class="markAsError ? props.uiStyle.errorClasses : undefined"
     @change="change"

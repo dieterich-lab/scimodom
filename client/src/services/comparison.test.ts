@@ -21,24 +21,32 @@ function makeParams(overrides: Partial<ComparisonParams> = {}): ComparisonParams
   return {
     reference: ['d1'],
     comparison: ['d2', 'd3'],
-    strand: true,
+    strandAware: true,
     ...overrides
   }
 }
 
 const subtractRecords = [
-  { chrom: '1', start: 1, end: 2, name: 'x', score: 0, strand: '+', eufid: 'd1' }
+  { chrom: '1', start: 1, end: 2, name: 'x', score: 0, strand: '+', dataset_id: 'd1' }
 ]
 const intersectRecords = [
   {
-    a: { chrom: '1', start: 1, end: 2, name: 'x', score: 0, strand: '+', eufid: 'd1' },
-    b: { chrom: '1', start: 3, end: 4, name: 'y', score: 0, strand: '+', eufid: 'd2' }
+    reference: { chrom: '1', start: 1, end: 2, name: 'x', score: 0, strand: '+', dataset_id: 'd1' },
+    comparison: { chrom: '1', start: 3, end: 4, name: 'y', score: 0, strand: '+', dataset_id: 'd2' }
   }
 ]
 const closestRecords = [
   {
-    a: { chrom: '1', start: 1, end: 2, name: 'x', score: 0, strand: '+', eufid: 'd1' },
-    b: { chrom: '1', start: 5, end: 6, name: 'y', score: 0, strand: '+', eufid: 'd2' },
+    reference: { chrom: '1', start: 1, end: 2, name: 'x', score: 0, strand: '+', dataset_id: 'd1' },
+    comparison: {
+      chrom: '1',
+      start: 5,
+      end: 6,
+      name: 'y',
+      score: 0,
+      strand: '+',
+      dataset_id: 'd2'
+    },
     distance: 3
   }
 ]
@@ -55,7 +63,7 @@ test.each([
     const result = await fn(makeParams(), dialogState)
 
     expect(mockedGet).toHaveBeenCalledWith(`/datasets/comparisons/${operation}`, {
-      params: expect.objectContaining({ reference: ['d1'], strand: true })
+      params: expect.objectContaining({ reference: ['d1'], strandAware: true })
     })
     expect(mockedHandle).toHaveBeenCalledWith(
       expect.anything(),
@@ -73,7 +81,7 @@ test('comparison forwards all supplied parameters', async () => {
     comparison: ['d2'],
     upload: 'file-abc',
     uploadName: 'my.bed',
-    strand: false,
+    strandAware: false,
     euf: true,
     taxaId: 9606
   }
@@ -88,7 +96,7 @@ test('comparison forwards all supplied parameters', async () => {
         comparison: ['d2'],
         upload: 'file-abc',
         uploadName: 'my.bed',
-        strand: false,
+        strandAware: false,
         euf: true,
         taxaId: 9606
       }

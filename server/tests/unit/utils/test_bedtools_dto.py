@@ -1,3 +1,5 @@
+import json
+from decimal import Decimal
 from collections import namedtuple
 
 import pytest
@@ -82,7 +84,7 @@ def test_comparison_record():
             name="m6A",
             score=10,
             strand=Strand.FORWARD,
-            eufid="X",
+            dataset_id="X",
             coverage=10,
             frequency=100,
         )
@@ -96,7 +98,7 @@ def test_intersect_record():
         name="A1 the Great",
         score=105,
         strand=Strand.FORWARD,
-        eufid="afsdfasd1234",
+        dataset_id="afsdfasd1234",
         coverage=17,
         frequency=17,
     )
@@ -107,13 +109,13 @@ def test_intersect_record():
         name="B1 the Tiny",
         score=500,
         strand=Strand.REVERSE,
-        eufid="afsdfasd1234",
+        dataset_id="afsdfasd1234",
         coverage=100,
         frequency=27,
     )
-    i = IntersectRecord(a=a, b=b)
-    assert i.a.end == 20
-    assert i.b.strand == Strand.REVERSE
+    i = IntersectRecord(reference=a, comparison=b)
+    assert i.reference.end == 20
+    assert i.comparison.strand == Strand.REVERSE
 
 
 @pytest.mark.parametrize(
@@ -145,3 +147,20 @@ def test_data_annotation_record(idx, feature):
             data_id=1,
             feature=feature,
         )
+
+
+def test_frequency_is_decimal_in_python_but_a_number_in_json():
+    record = ComparisonRecord(
+        chrom="1",
+        start=1,
+        end=2,
+        name="m6A",
+        score=1,
+        strand=Strand.FORWARD,
+        coverage=10,
+        frequency="5.40",
+        dataset_id="datasetidAxx",
+    )
+    assert record.model_dump()["frequency"] == Decimal("5.40")  # internal use
+    assert isinstance(record.model_dump()["frequency"], Decimal)
+    assert json.loads(record.model_dump_json())["frequency"] == 5.4

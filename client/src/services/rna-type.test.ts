@@ -1,5 +1,5 @@
 import { test, expect, vi, beforeEach } from 'vitest'
-import { rnaTypeCache, type RnaType } from '@/services/rnaType'
+import { rnaTypeCache, type RnaType } from '@/services/rna-type'
 import { HTTP } from '@/services/API'
 import { type AxiosResponse } from 'axios'
 
@@ -13,7 +13,7 @@ beforeEach(() => {
   mockedGet.mockReset()
 })
 
-const rna: RnaType[] = [{ id: 'WTS', label: 'Wild type' }]
+const rna: RnaType[] = [{ id: 'WTS', name: 'Wild type' }]
 
 test('getPromise calls /catalogs/rna-types and returns the response', async () => {
   mockedGet.mockResolvedValueOnce({ data: rna } as AxiosResponse)
@@ -31,14 +31,9 @@ test('getPromise does not swallow failures', async () => {
   await expect(rnaTypeCache.getPromise()).rejects.toBe(error)
 })
 
-test('getPromise logs and rethrows on failure', async () => {
+test('getPromise propagates error on failure', async () => {
   const error = new Error()
-  const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
   mockedGet.mockRejectedValueOnce(error)
 
   await expect(rnaTypeCache.getPromise()).rejects.toBe(error)
-  expect(consoleSpy).toHaveBeenCalledWith(
-    expect.stringContaining('Failed to fetch /catalogs/rna-types:')
-  )
-  consoleSpy.mockRestore()
 })

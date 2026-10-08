@@ -12,19 +12,15 @@ import FormTaxaSelect from '@/components/ui/FormTaxaSelect.vue'
 import FormAssemblySelect from '@/components/ui/FormAssemblySelect.vue'
 import FormTextInput from '@/components/ui/FormTextInput.vue'
 import FormTextArea from '@/components/ui/FormTextArea.vue'
-import { type RnaType } from '@/services/rnaType'
+import { type RnaType } from '@/services/rna-type'
 import { type ProjectMetaData, type ProjectOrganism } from '@/services/management'
 import { type Modomics } from '@/services/modomics'
-import { type DetectionMethod } from '@/services/detectionMethod'
+import { type DetectionMethod } from '@/services/detection-method'
 import { type Taxa } from '@/services/taxa'
 import { type Assembly } from '@/services/assembly'
 
-interface FormOrganism extends Partial<Omit<ProjectOrganism, 'taxa_id'>> {
-  taxa_id?: string
-}
-
 interface FormDataMetadata extends Partial<Omit<ProjectMetaData, 'organism'>> {
-  organism: FormOrganism
+  organism: Partial<ProjectOrganism>
 }
 
 interface FormData {
@@ -60,10 +56,7 @@ const validationSchema = object({
         cto: string()
           .max(255, 'At most 255 characters allowed!')
           .required('Cell, tissue, or organ is required!'),
-        assembly_id: number()
-          .integer()
-          .typeError('Assembly ID must be a number!')
-          .transform((_, val) => (val !== '' ? Number(val) : null)),
+        assembly_id: number().integer().nullable(),
         assembly_name: string()
           .max(128, 'At most 128 characters allowed!')
           .required(
@@ -79,10 +72,7 @@ function getFormDataFromModel(): FormData | null {
   if (model.value) {
     const metadata: FormDataMetadata[] = model.value.map((x) => ({
       ...x,
-      organism: {
-        ...x.organism,
-        taxa_id: String(x.organism.taxa_id)
-      }
+      organism: x.organism
     }))
     return { metadata }
   } else {
@@ -98,14 +88,7 @@ const { remove, push, fields } = useFieldArray<FormDataMetadata>('metadata')
 
 const onSubmit = handleSubmit((values, ctx) => {
   model.value = values.metadata.map(
-    (x) =>
-      ({
-        ...x,
-        organism: {
-          ...x.organism,
-          taxa_id: x.organism?.taxa_id ? +x.organism.taxa_id : undefined
-        }
-      }) as ProjectMetaData
+    (x) => ({ ...x, organism: { ...x.organism } }) as ProjectMetaData
   )
   props.nextCallback(ctx?.evt as Event)
 })
@@ -127,11 +110,11 @@ function selectDetectionMethod(field: FieldEntry<FormDataMetadata>, data: Detect
 }
 
 function selectTaxa(field: FieldEntry<FormDataMetadata>, data: Taxa) {
-  field.value.organism.taxa_id = String(data.taxa_id)
+  field.value.organism.taxa_id = data.taxa_id
 }
 
 function selectAssembly(field: FieldEntry<FormDataMetadata>, data: Assembly) {
-  field.value.organism.assembly_id = String(data.id)
+  field.value.organism.assembly_id = data.id
   field.value.organism.assembly_name = data.name
 }
 </script>
@@ -204,7 +187,7 @@ function selectAssembly(field: FieldEntry<FormDataMetadata>, data: Assembly) {
           </FormTextInput>
 
           <FormAssemblySelect
-            :taxa-id="field.value.organism.taxa_id ? +field.value.organism.taxa_id : undefined"
+            :taxa-id="field.value.organism.taxa_id"
             @change="(data) => selectAssembly(field, data)"
             :error="errors[`metadata[${idx}].organism.assembly_id`]"
           />

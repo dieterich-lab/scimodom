@@ -32,84 +32,126 @@ const emptyMessage = computed(() =>
 )
 
 const COLUMNS = [
-  { field: 'a.chrom', header: 'Chrom', exportHeader: 'chrom_ref', sortable: true, tooltip: '' },
   {
-    field: 'a.start',
+    field: 'reference.chrom',
+    header: 'Chrom',
+    exportHeader: 'chrom_ref',
+    sortable: true,
+    tooltip: ''
+  },
+  {
+    field: 'reference.start',
     header: 'Start',
     exportHeader: 'chromStart_ref',
     sortable: true,
     tooltip: ''
   },
   {
-    field: 'a.end',
+    field: 'reference.end',
     header: 'End',
     exportHeader: 'chromEnd_ref',
     sortable: false,
     tooltip: 'Open (end excluded)'
   },
-  { field: 'a.name', header: 'Name', exportHeader: 'name_ref', sortable: false, tooltip: '' },
   {
-    field: 'a.score',
+    field: 'reference.name',
+    header: 'Name',
+    exportHeader: 'name_ref',
+    sortable: false,
+    tooltip: ''
+  },
+  {
+    field: 'reference.score',
     header: 'Score',
     exportHeader: 'score_ref',
     sortable: true,
     tooltip: 'Valid coverage'
   },
-  { field: 'a.strand', header: 'Strand', exportHeader: 'strand_ref', sortable: false, tooltip: '' },
   {
-    field: 'a.eufid',
+    field: 'reference.strand',
+    header: 'Strand',
+    exportHeader: 'strand_ref',
+    sortable: false,
+    tooltip: ''
+  },
+  {
+    field: 'reference.dataset_id',
     header: 'EUFID',
     exportHeader: 'EUFID_ref',
     sortable: false,
     tooltip: 'Dataset ID'
   },
   {
-    field: 'a.coverage',
+    field: 'reference.coverage',
     header: 'Coverage',
     exportHeader: 'coverage_ref',
     sortable: true
   },
   {
-    field: 'a.frequency',
+    field: 'reference.frequency',
     header: 'Frequency',
     exportHeader: 'frequency_ref',
     sortable: true,
     tooltip: 'Modification stoichiometry'
   },
-  { field: 'b.chrom', header: 'Chrom', exportHeader: 'chrom', sortable: true, tooltip: '' },
-  { field: 'b.start', header: 'Start', exportHeader: 'chromStart', sortable: true, tooltip: '' },
   {
-    field: 'b.end',
+    field: 'comparison.chrom',
+    header: 'Chrom',
+    exportHeader: 'chrom',
+    sortable: true,
+    tooltip: ''
+  },
+  {
+    field: 'comparison.start',
+    header: 'Start',
+    exportHeader: 'chromStart',
+    sortable: true,
+    tooltip: ''
+  },
+  {
+    field: 'comparison.end',
     header: 'End',
     exportHeader: 'chromEnd',
     sortable: false,
     tooltip: 'Open (end excluded)'
   },
-  { field: 'b.name', header: 'Name', exportHeader: 'name', sortable: false, tooltip: '' },
   {
-    field: 'b.score',
+    field: 'comparison.name',
+    header: 'Name',
+    exportHeader: 'name',
+    sortable: false,
+    tooltip: ''
+  },
+  {
+    field: 'comparison.score',
     header: 'Score',
     exportHeader: 'score',
     sortable: true,
     tooltip: 'Valid coverage'
   },
-  { field: 'b.strand', header: 'Strand', exportHeader: 'strand', sortable: false, tooltip: '' },
   {
-    field: 'b.eufid',
+    field: 'comparison.strand',
+    header: 'Strand',
+    exportHeader: 'strand',
+    sortable: false,
+    tooltip: ''
+  },
+  {
+    field: 'comparison.dataset_id',
     header: 'EUFID',
     exportHeader: 'EUFID',
     sortable: false,
     tooltip: 'Dataset ID or upload'
   },
   {
-    field: 'b.coverage',
+    field: 'comparison.coverage',
     header: 'Coverage',
     exportHeader: 'coverage',
     sortable: true,
     tooltip: 'Coverage or 1 for BED6'
   },
   {
-    field: 'b.frequency',
+    field: 'comparison.frequency',
     header: 'Frequency',
     exportHeader: 'frequency',
     sortable: true,
@@ -162,12 +204,17 @@ async function loadData(
   switch (operation) {
     case ComparisonOperation.intersect: {
       const raw = await intersect(params, dialogState)
-      return raw.map((x) => getComparisonDisplayRecord(x.a, x.b, { isEUF: params.euf }))
+      return raw.map((x) =>
+        getComparisonDisplayRecord(x.reference, x.comparison, { isEUF: params.euf })
+      )
     }
     case ComparisonOperation.closest: {
       const raw = await closest(params, dialogState)
       return raw.map((x) =>
-        getComparisonDisplayRecord(x.a, x.b, { distance: x.distance, isEUF: params.euf })
+        getComparisonDisplayRecord(x.reference, x.comparison, {
+          distance: x.distance,
+          isEUF: params.euf
+        })
       )
     }
     case ComparisonOperation.subtract: {

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import InputText, { type InputTextPassThroughOptions } from 'primevue/inputtext'
 import FormFieldWrapper from '@/components/ui/FormFieldWrapper.vue'
-import { FORM_FIELD_DEFAULTS, type FormFieldProps } from '@/utils/ui_style'
+import { FORM_FIELD_DEFAULTS, type FormFieldProps } from '@/utils/ui-style'
 import { useId } from 'vue'
 
 interface Props extends FormFieldProps {

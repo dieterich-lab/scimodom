@@ -3,18 +3,13 @@ import { HTTP } from '@/services/API'
 
 interface RnaType {
   id: string
-  label: string
+  name: string
 }
 
 class RnaTypeCache extends Cache<RnaType[]> {
   async getPromise(): Promise<RnaType[]> {
-    try {
-      const response = await HTTP.get('/catalogs/rna-types')
-      return response.data as RnaType[]
-    } catch (err) {
-      console.log(`Failed to fetch /catalogs/rna-types: ${err}`)
-      throw err
-    }
+    const response = await HTTP.get<RnaType[]>('/catalogs/rna-types')
+    return response.data
   }
 }
 

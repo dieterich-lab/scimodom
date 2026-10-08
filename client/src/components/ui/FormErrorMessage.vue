@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { type UiStyle, DEFAULT_STYLE } from '@/utils/ui_style'
+import { type UiStyle, DEFAULT_STYLE } from '@/utils/ui-style'
 
 withDefaults(defineProps<{ uiStyle?: UiStyle }>(), { uiStyle: () => DEFAULT_STYLE })
 </script>

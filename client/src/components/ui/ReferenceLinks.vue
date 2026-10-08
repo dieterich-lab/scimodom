@@ -1,11 +1,11 @@
 <script setup lang="ts">
 const props = defineProps<{
   type: 'DOI' | 'PMID'
-  data?: string
+  data?: string | null
 }>()
 
 const urlPrefix = props.type === 'DOI' ? 'https://doi.org/' : 'http://www.ncbi.nlm.nih.gov/pubmed/'
-function splitStr(str?: string) {
+function splitStr(str?: string | null) {
   if (str) {
     return str.split(',')
   } else {

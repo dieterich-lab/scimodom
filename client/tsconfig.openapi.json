@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.vitest.json",
+  "include": ["env.d.ts", "tests/openapi/**/*"],
+  "compilerOptions": {
+    "composite": false,
+    "noEmit": true,
+    "tsBuildInfoFile": null
+  }
+}

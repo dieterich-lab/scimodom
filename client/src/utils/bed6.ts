@@ -12,7 +12,7 @@ interface Bed6Record {
 interface EufRecord extends Bed6Record {
   coverage: number
   frequency: number
-  eufid: string
+  dataset_id: string
 }
 
 export { type Strand, type Bed6Record, type EufRecord }

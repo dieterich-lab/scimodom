@@ -1,0 +1,56 @@
+info:
+  title: analytics
+  description: >-
+    Primarily intended for use by the frontend rather than for general API consumption
+
+tags:
+  - name: charts
+    description: Database summary statistics
+
+paths:
+  /charts/sunbursts:
+    get:
+      tags:
+        - charts
+      # not a general-purpose API endpoint
+      x-internal: true
+      summary: Get sunburst chart data
+      description: >-
+        Retrieve a JSON object to generate one of the sunburst charts
+      parameters:
+        - in: query
+          name: view
+          required: true
+          schema:
+            type: string
+            enum: [search, browse]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                description: Sunburst chart data
+                items:
+                  $ref: "#/components/schemas/SunburstNode"
+        "400":
+          description: Invalid chart type
+
+components:
+  schemas:
+    SunburstNode:
+      type: object
+      description: >-
+        One node of a sunburst chart; internal nodes have `children`, leaves have `size`
+      required: [name]
+      properties:
+        name:
+          type: string
+        size:
+          type: integer
+          minimum: 0
+        children:
+          type: array
+          items:
+            $ref: "#/components/schemas/SunburstNode"

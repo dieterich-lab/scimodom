@@ -1,7 +1,7 @@
 .. _modification_api:
+.. rst-class:: api-page
 
-Search RNA modification
-=======================
+Modifications (Search)
+======================
 
 .. swagger-plugin:: openapi/_include/modification.yaml
-   :swagger-options: {"supportedSubmitMethods": ["get"]}

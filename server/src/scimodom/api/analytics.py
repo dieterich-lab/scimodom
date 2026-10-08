@@ -4,7 +4,7 @@ from scimodom.services.sunburst import get_sunburst_service
 
 from scimodom.api.helpers import (
     ClientResponseException,
-    parse_valid_sunburst_type,
+    get_valid_sunburst_type,
 )
 
 analytics_api = Blueprint("analytics_api", __name__)
@@ -12,11 +12,11 @@ analytics_api = Blueprint("analytics_api", __name__)
 BUFFER_SIZE = 1024 * 1024
 
 
-@analytics_api.get("/charts/sunbursts/<sunburst_type>")
-def get_sunburst_chart(sunburst_type):
+@analytics_api.get("/charts/sunbursts")
+def get_sunburst_chart():
     """Get sunburst chart data.
 
-    :param sunburst_type: Sunburst chart type
+    :param request: The request with view.
     :return: JSON object to generate one of the
     sunburst charts.
     :statuscode 200: OK
@@ -24,7 +24,7 @@ def get_sunburst_chart(sunburst_type):
     :statuscode 500: Internal Server Error
     """
     try:
-        valid_sunburst_type = parse_valid_sunburst_type(sunburst_type)
+        valid_sunburst_type = get_valid_sunburst_type()
         sunburst_service = get_sunburst_service()
     except ClientResponseException as exc:
         return exc.response_tuple

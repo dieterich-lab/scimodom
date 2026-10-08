@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { useId } from 'vue'
-import { type DetectionMethod } from '@/services/detectionMethod'
+import { type DetectionMethod } from '@/services/detection-method'
 import FormFieldWrapper from '@/components/ui/FormFieldWrapper.vue'
 import DetectionMethodSelect from '@/components/ui/DetectionMethodSelect.vue'
-import { type FormFieldProps, FORM_FIELD_DEFAULTS } from '@/utils/ui_style'
+import { type FormFieldProps, FORM_FIELD_DEFAULTS } from '@/utils/ui-style'
 
 withDefaults(defineProps<FormFieldProps>(), FORM_FIELD_DEFAULTS)
 

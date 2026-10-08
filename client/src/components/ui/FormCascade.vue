@@ -1,7 +1,7 @@
 <script setup lang="ts" generic="T, K extends keyof T">
 import { ref, useId, watch } from 'vue'
 import { type CascadeSelectProps, type CascadeSelectChangeEvent } from 'primevue/cascadeselect'
-import { DEFAULT_STYLE, type FormFieldProps, type FormFieldWrapperProps } from '@/utils/ui_style'
+import { DEFAULT_STYLE, type FormFieldProps, type FormFieldWrapperProps } from '@/utils/ui-style'
 import FormFieldWrapper from '@/components/ui/FormFieldWrapper.vue'
 import { type CascadeItem, getOptionsForPrimvueCascadeSelect } from '@/utils/primevue'
 

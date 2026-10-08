@@ -88,7 +88,7 @@ class MockUtilitiesService:
             {
                 "taxa_id": 9606,
                 "taxa_name": "Homo sapiens",
-                "taxa_sname": "H. sapiens",
+                "taxa_short_name": "H. sapiens",
                 "domain": "Eukarya",
                 "kingdom": "Animalia",
                 "phylum": "Chordata",
@@ -96,7 +96,7 @@ class MockUtilitiesService:
             {
                 "taxa_id": 10090,
                 "taxa_name": "Mus musculus",
-                "taxa_sname": "M. musculus",
+                "taxa_short_name": "M. musculus",
                 "domain": "Eukarya",
                 "kingdom": "Animalia",
                 "phylum": "Chordata",
@@ -104,7 +104,7 @@ class MockUtilitiesService:
             {
                 "taxa_id": 7227,
                 "taxa_name": "Drosophila melanogaster",
-                "taxa_sname": "D. melanogaster",
+                "taxa_short_name": "D. melanogaster",
                 "domain": "Eukarya",
                 "kingdom": "Animalia",
                 "phylum": "Arthropoda",
@@ -132,14 +132,14 @@ class MockUtilitiesService:
                 "kingdom": "Animalia",
                 "meth": "Chemical-assisted sequencing",
                 "modification_id": 2,
-                "modomics_sname": "m6A",
+                "modomics_short_name": "m6A",
                 "organism_id": 3,
-                "rna": "WTS",
-                "rna_name": "whole transcriptome",
+                "rna_type": "WTS",
+                "rna_type_name": "whole transcriptome",
                 "selection_id": 3,
                 "taxa_id": 9606,
                 "taxa_name": "Homo sapiens",
-                "taxa_sname": "H. sapiens",
+                "taxa_short_name": "H. sapiens",
                 "tech": "MePMe-seq",
                 "technology_id": 2,
             },
@@ -150,14 +150,14 @@ class MockUtilitiesService:
                 "kingdom": "Animalia",
                 "meth": "Enzyme/protein-assisted sequencing",
                 "modification_id": 2,
-                "modomics_sname": "m6A",
+                "modomics_short_name": "m6A",
                 "organism_id": 3,
-                "rna": "WTS",
-                "rna_name": "whole transcriptome",
+                "rna_type": "WTS",
+                "rna_type_name": "whole transcriptome",
                 "selection_id": 29,
                 "taxa_id": 9606,
                 "taxa_name": "Homo sapiens",
-                "taxa_sname": "H. sapiens",
+                "taxa_short_name": "H. sapiens",
                 "tech": "eTAM-seq",
                 "technology_id": 7,
             },
@@ -265,7 +265,7 @@ class MockModificationService:
             "strand": Strand.FORWARD,
             "coverage": 43,
             "frequency": 100,
-            "dataset_id": "dataset_id01",
+            "dataset_id": "dataset00001",
             "feature": None,
             "gene_id": None,
             "gene_name": None,
@@ -285,7 +285,7 @@ class MockModificationService:
             "strand": Strand.REVERSE,
             "coverage": 378,
             "frequency": 9,
-            "dataset_id": "dataset_id03",
+            "dataset_id": "dataset00003",
             "feature": "CDS",
             "gene_id": "ENSG1",
             "gene_name": "GENE1",
@@ -307,7 +307,7 @@ class MockModificationService:
             "modification_id": 5,
             "name": "Am",
             "reference_id": 127,
-            "rna": "WTS",
+            "rna_type": "WTS",
             "score": 0,
             "short_name": "H. sapiens",
             "start": 944239,
@@ -324,7 +324,7 @@ class MockModificationService:
             "modification_id": 5,
             "name": "Am",
             "reference_id": 127,
-            "rna": "WTS",
+            "rna_type": "WTS",
             "score": 0,
             "short_name": "H. sapiens",
             "start": 944239,
@@ -343,37 +343,37 @@ class MockModificationService:
 
     @staticmethod
     def get_modification_records_by_selection(
-        annotation_source: AnnotationSource,  # pylint: disable=unused-argument
-        taxa_id: int,  # pylint: disable=unused-argument
-        modification_id: int,  # pylint: disable=unused-argument
-        organism_id: int,  # pylint: disable=unused-argument
-        technology_ids: list[int],  # pylint: disable=unused-argument
-        search_params: SearchParams,  # pylint: disable=unused-argument
-        page_params: PageParams,  # pylint: disable=unused-argument
-    ) -> dict[str, Any]:
+        annotation_source: AnnotationSource,
+        taxa_id: int,
+        modification_id: int,
+        organism_id: int,
+        technology_ids: list[int],
+        search_params: SearchParams,
+        page_params: PageParams,
+    ) -> dict[str, Any]:  # noqa
         return {
-            "totalRecords": 1,
+            "total": 1,
             "records": [MockModificationService.RECORDS[0].copy()],
         }
 
     @staticmethod
     def get_modification_records_by_gene(
-        annotation_source: AnnotationSource,  # pylint: disable=unused-argument
-        taxa_id: int,  # pylint: disable=unused-argument
-        search_params: SearchParams,  # pylint: disable=unused-argument
-        page_params: PageParams,  # pylint: disable=unused-argument
-    ) -> dict[str, Any]:
+        annotation_source: AnnotationSource,
+        taxa_id: int,
+        search_params: SearchParams,
+        page_params: PageParams,
+    ) -> dict[str, Any]:  # noqa
         return {
-            "totalRecords": 1,
+            "total": 1,
             "records": [MockModificationService.RECORDS[1].copy()],
         }
 
     @staticmethod
     def get_modification_site(
-        chrom: str,  # pylint: disable=unused-argument
-        start: int,  # pylint: disable=unused-argument
-        end: int,  # pylint: disable=unused-argument
-    ) -> dict[str, list[str, Any]]:
+        chrom: str,
+        start: int,
+        end: int,
+    ) -> dict[str, list[str, Any]]:  # noqa
         return {"records": MockModificationService.SITEWISE_RECORDS.copy()}
 
 
@@ -459,10 +459,10 @@ def test_get_modification_records(
 
 def test_page_limit(test_client, mock_services):
     result = test_client.get(
-        "/records?by=gene&rnaType=WTS&taxaId=9606&geneName=ANY&maxRecords=0"
+        "/records?by=gene&rnaType=WTS&taxaId=9606&geneName=ANY&limit=0"
     )
     assert result.status_code == 400
-    assert result.json["message"] == "Parameter 'maxRecords' must be a positive integer"
+    assert result.json["message"] == "Parameter 'limit' must be a positive integer"
 
 
 @pytest.mark.parametrize(
@@ -510,7 +510,7 @@ def test_get_modification_records_as_csv(test_client, mock_services):
             "strand": "+",
             "coverage": "43",
             "frequency": "100",
-            "EUFID": "dataset_id01",
+            "EUFID": "dataset00001",
             "Technology": "Technology 1",
             "Organism": "9606",
             "Cell/Tissue": "Cell type 1",
@@ -522,7 +522,7 @@ def test_get_modification_records_as_csv(test_client, mock_services):
 
 
 def test_get_modification_sites(test_client, mock_services):
-    url = "/sites?chrom=1&start=944239&end=944240&strand=-&taxaId=9606"
+    url = "/sites?chrom=1&chromStart=944239&chromEnd=944240&strand=-&taxaId=9606"
     response = test_client.get(url)
     expected_records = [
         {**r, "strand": r["strand"].value}
@@ -534,7 +534,7 @@ def test_get_modification_sites(test_client, mock_services):
 
 def test_get_modification_context(test_client, mock_services):
     response = test_client.get(
-        "/sites/context?window=1&chrom=1&end=944240&start=944239&strand=-&taxaId=9606"
+        "/sites/context?window=1&chrom=1&chromEnd=944240&chromStart=944239&strand=-&taxaId=9606"
     )
     assert response.status_code == 200
     assert response.json == {"context": "ACGTAACCGCC"}
@@ -550,7 +550,7 @@ def test_get_modification_context_file_not_found(
     )
 
     response = test_client.get(
-        "/sites/context?window=5&chrom=1&end=944240&start=944239&strand=-&taxaId=9606"
+        "/sites/context?window=5&chrom=1&chromEnd=944240&chromStart=944239&strand=-&taxaId=9606"
     )
     assert response.status_code == 200
     assert response.json == {"context": ""}
@@ -562,8 +562,8 @@ def test_get_modification_context_file_not_found(
 @pytest.mark.parametrize(
     "url",
     [
-        "/sites/targets?target=MIRNA&taxaId=9606&chrom=1&start=3284723&end=3284724&strand=%2B",
-        "sites/targets?target=RBP&taxaId=9606&chrom=1&start=2403131&end=2403132&strand=%2B",
+        "/sites/targets?target=MIRNA&taxaId=9606&chrom=1&chromStart=3284723&chromEnd=3284724&strand=%2B",
+        "sites/targets?target=RBP&taxaId=9606&chrom=1&chromStart=2403131&chromEnd=2403132&strand=%2B",
     ],
 )
 def test_get_modification_targets(test_client, mock_services, url):
@@ -576,7 +576,7 @@ def test_get_modification_targets(test_client, mock_services, url):
 
 
 def test_get_modification_targets_empty(test_client, mock_services, caplog):
-    url = "/sites/targets?target=MIRNA&taxaId=7227&chrom=1&start=3284723&end=3284724&strand=%2B"
+    url = "/sites/targets?target=MIRNA&taxaId=7227&chrom=1&chromStart=3284723&chromEnd=3284724&strand=%2B"
     result = test_client.get(url)
     assert result.status == "200 OK"
     assert (

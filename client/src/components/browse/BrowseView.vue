@@ -8,7 +8,8 @@ import Column from 'primevue/column'
 import DataTable from 'primevue/datatable'
 
 import { getApiUrl } from '@/services/API.js'
-import { allDatasetsCache, type Dataset } from '@/services/dataset'
+import { allDatasetsCache, type DatasetWithProject } from '@/services/dataset'
+import { allProjectsByIdCache } from '@/services/project'
 import StyledHeadline from '@/components/ui/StyledHeadline.vue'
 import SubTitle from '@/components/ui/SubTitle.vue'
 import DatasetInfo from '@/components/browse/DatasetInfo.vue'
@@ -20,9 +21,9 @@ const props = defineProps<{
   initialSearchString?: string
 }>()
 
-const records = ref<Dataset[]>([])
+const records = ref<DatasetWithProject[]>([])
 const showDetails = ref<boolean>(false)
-const selectedDataset = ref<Dataset>()
+const selectedDataset = ref<DatasetWithProject>()
 const dt = ref()
 
 // todo
@@ -33,11 +34,11 @@ type MyFilters = DataTableFilterMeta & { global: DataTableFilterMetaData }
 function getFilters(searchString: string = ''): MyFilters {
   return {
     global: { value: searchString, matchMode: FilterMatchMode.CONTAINS },
-    rna: {
+    rna_type: {
       operator: FilterOperator.AND,
       constraints: [{ value: null, matchMode: FilterMatchMode.EQUALS }]
     },
-    modomics_sname: {
+    modifications: {
       operator: FilterOperator.AND,
       constraints: [{ value: null, matchMode: FilterMatchMode.EQUALS }]
     },
@@ -45,7 +46,7 @@ function getFilters(searchString: string = ''): MyFilters {
       operator: FilterOperator.AND,
       constraints: [{ value: null, matchMode: FilterMatchMode.EQUALS }]
     },
-    taxa_sname: {
+    taxa_short_name: {
       operator: FilterOperator.AND,
       constraints: [{ value: null, matchMode: FilterMatchMode.EQUALS }]
     },
@@ -76,13 +77,26 @@ const onExport = () => {
   dt.value.exportCSV()
 }
 
-const onOverlay = (record: Dataset) => {
+const onOverlay = (record: DatasetWithProject) => {
   selectedDataset.value = { ...record }
   showDetails.value = true
 }
 
 onMounted(async () => {
-  records.value = [...(await allDatasetsCache.getData())]
+  const [datasets, projectsById] = await Promise.all([
+    allDatasetsCache.getData(),
+    allProjectsByIdCache.getData()
+  ])
+  records.value = datasets.map((dataset) => {
+    const project = projectsById.get(dataset.project_id)
+    return {
+      ...dataset,
+      project_title: project?.project_title ?? '',
+      project_summary: project?.project_summary ?? '',
+      doi: project?.doi ?? null,
+      pmid: project?.pmid ?? null
+    }
+  })
 })
 </script>
 
@@ -116,10 +130,10 @@ onMounted(async () => {
               'date_added',
               'doi',
               'pmid',
-              'rna',
-              'modomics_sname',
+              'rna_type',
+              'modifications',
               'tech',
-              'taxa_sname',
+              'taxa_short_name',
               'cto'
             ]"
             paginatorTemplate="FirstPageLink PrevPageLink CurrentPageReport NextPageLink LastPageLink  RowsPerPageDropdown"
@@ -177,9 +191,9 @@ onMounted(async () => {
             <Column field="project_title" header="Project title" style="display: none"></Column>
             <Column field="dataset_id" header="EUFID" style="width: 5%"></Column>
             <Column field="dataset_title" header="Dataset title" style="width: 30%"></Column>
-            <Column field="rna" header="RNA" filterField="rna" style="width: 5%">
+            <Column field="rna_type" header="RNA" filterField="rna_type" style="width: 5%">
               <template #body="{ data }">
-                {{ data.rna }}
+                {{ data.rna_type }}
               </template>
               <template #filter="{ filterModel }">
                 <InputText
@@ -191,13 +205,13 @@ onMounted(async () => {
               </template>
             </Column>
             <Column
-              field="modomics_sname"
+              field="modifications"
               header="Modification"
-              filterField="modomics_sname"
+              filterField="modifications"
               style="width: 10%"
             >
               <template #body="{ data }">
-                {{ data.modomics_sname }}
+                {{ data.modifications }}
               </template>
               <template #filter="{ filterModel }">
                 <InputText
@@ -209,13 +223,13 @@ onMounted(async () => {
               </template>
             </Column>
             <Column
-              field="taxa_sname"
+              field="taxa_short_name"
               header="Organism"
-              filterField="taxa_sname"
+              filterField="taxa_short_name"
               style="width: 10%"
             >
               <template #body="{ data }">
-                {{ data.taxa_sname }}
+                {{ data.taxa_short_name }}
               </template>
               <template #filter="{ filterModel }">
                 <InputText

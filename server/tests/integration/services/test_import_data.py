@@ -26,7 +26,6 @@ from scimodom.services.validator import ValidatorService
 from scimodom.utils.specs.enums import AnnotationSource, SunburstChartType
 from tests.mocks.enums import MockEnsembl
 
-
 EXON = """1\t65000\t65300\tGENE1\t.\t+\tENSG00000000001\tprotein_coding
 1\t65418\t65433\tGENE2\t.\t+\tENSG00000000002\tprotein_coding
 1\t65418\t65500\tGENE3\t.\t-\tENSG00000000003\tunprocessed_pseudogene
@@ -280,10 +279,10 @@ def test_import_data(Session, selection, project, test_data, tmp_path, freezer, 
     service = _get_dataset_service(Session(), tmp_path)
     file_handle = StringIO(EUF_FILE)
     freezer.move_to("2024-06-20 12:00:00")
-    eufid = service.import_dataset(
+    dataset_id = service.import_dataset(
         file_handle,
         source="test",
-        smid=project[0].id,
+        project_id=project[0].id,
         title="Dataset title",
         assembly_id=1,
         modification_ids=[1],
@@ -296,7 +295,7 @@ def test_import_data(Session, selection, project, test_data, tmp_path, freezer, 
     sunburst_service.do_background_update()
 
     with Session() as session:
-        dataset = session.get_one(Dataset, eufid)
+        dataset = session.get_one(Dataset, dataset_id)
         assert dataset.title == "Dataset title"
         assert dataset.project_id == "12345678"
         assert dataset.technology_id == 1

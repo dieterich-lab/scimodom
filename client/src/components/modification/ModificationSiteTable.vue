@@ -8,6 +8,7 @@ import { useRouter } from 'vue-router'
 import { getSiteWiseInfo, type Modification, type SiteWiseInfo } from '@/services/modification'
 import { useDialogState } from '@/stores/DialogState'
 import { trashRequestErrors } from '@/services/API'
+import { formatFrequency } from '@/utils/frequency'
 
 const props = defineProps<{
   modification?: Modification
@@ -39,6 +40,10 @@ watch(
 )
 
 // table-related utilities
+// CSV export, replaces PrimeVue's default quote escaping
+const exportCell = ({ data, field }: { data: unknown; field: string }) =>
+  field === 'frequency' ? formatFrequency(data as number) : String(data).replace(/"/g, '""')
+
 const getFileName = () => {
   let stamp = new Date()
   return 'scimodom_per_site_' + stamp.toISOString().replace(/:/g, '')
@@ -48,8 +53,8 @@ const onExport = () => {
   dt.value.exportCSV()
 }
 
-const navigateTo = (eufid: string) => {
-  const { href } = router.resolve({ name: 'browse', params: { initialSearchString: eufid } })
+const navigateTo = (datasetId: string) => {
+  const { href } = router.resolve({ name: 'browse', params: { initialSearchString: datasetId } })
   window.open(href, '_blank')
 }
 </script>
@@ -60,6 +65,7 @@ const navigateTo = (eufid: string) => {
     dataKey="id"
     ref="dt"
     :exportFilename="getFileName()"
+    :exportFunction="exportCell"
     paginator
     :loading="loading"
     :rows="5"
@@ -100,7 +106,7 @@ const navigateTo = (eufid: string) => {
         />
       </template>
     </Column>
-    <Column field="rna" header="RNA"></Column>
+    <Column field="rna_type" header="RNA"></Column>
     <Column field="name" header="Name" exportHeader="name">
       <template #body="{ data }">
         <a
@@ -112,7 +118,7 @@ const navigateTo = (eufid: string) => {
         </a>
       </template>
     </Column>
-    <Column field="short_name" header="Organism"></Column>
+    <Column field="taxa_short_name" header="Organism"></Column>
     <Column field="cto" header="Cell/Tissue"></Column>
     <Column field="tech" header="Technology"></Column>
     <Column field="chrom" exportHeader="chrom" style="display: none"></Column>
@@ -121,6 +127,8 @@ const navigateTo = (eufid: string) => {
     <Column field="strand" exportHeader="strand" style="display: none"></Column>
     <Column field="score" header="Score" :sortable="true" exportHeader="score"></Column>
     <Column field="coverage" header="Coverage" :sortable="true" exportHeader="coverage"></Column>
-    <Column field="frequency" header="Frequency" :sortable="true" exportHeader="frequency"></Column>
+    <Column field="frequency" header="Frequency" :sortable="true" exportHeader="frequency">
+      <template #body="{ data }">{{ formatFrequency(data.frequency) }}</template>
+    </Column>
   </DataTable>
 </template>

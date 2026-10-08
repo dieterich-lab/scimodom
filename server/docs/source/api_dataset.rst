@@ -1,7 +1,7 @@
 .. _dataset_api:
+.. rst-class:: api-page
 
-Browse, upload, download, and compare datasets
-==============================================
+Datasets
+========
 
 .. swagger-plugin:: openapi/_include/dataset.yaml
-   :swagger-options: {"supportedSubmitMethods": ["get"]}

@@ -104,21 +104,21 @@ class EnsemblAnnotationService(GenericAnnotationService):
             shutil.rmtree(release_path)
             raise
 
-    def _annotate_data_in_database(self, taxa_id: int, eufid: str) -> None:
+    def _annotate_data_in_database(self, taxa_id: int, dataset_id: str) -> None:
         """Annotate Data: add entries to DataAnnotation
         for a given dataset.
 
         :param taxa_id: Taxonomy ID
         :type taxa_id: int
-        :param eufid: EUF ID
-        :type eufid: str
+        :param dataset_id: EUF ID
+        :type dataset_id: str
         """
         annotation = self.get_annotation(taxa_id)
         release_path = self.get_release_path(annotation)
 
-        logger.debug(f"Annotating records for EUFID {eufid}...")
+        logger.debug(f"Annotating records for EUFID {dataset_id}...")
 
-        records = list(self._data_service.get_by_dataset(eufid))
+        records = list(self._data_service.get_by_dataset(dataset_id))
 
         features = {**self.FEATURES["conventional"], **self.FEATURES["extended"]}
         annotated_records = self._bedtools_service.annotate_data_using_ensembl(

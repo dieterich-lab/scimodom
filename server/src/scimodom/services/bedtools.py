@@ -405,7 +405,7 @@ class BedToolsService:
         for s in stream:
             a = self._get_comparison_record_from_bedtool(s[:9])
             b = self._get_comparison_record_from_bedtool(s[9:])
-            r = IntersectRecord(a=a, b=b)
+            r = IntersectRecord(reference=a, comparison=b)
             yield r
 
     def closest_comparison_records(
@@ -454,8 +454,8 @@ class BedToolsService:
         )
         for s in stream:
             yield ClosestRecord(
-                a=self._get_comparison_record_from_bedtool(s[:9]),
-                b=self._get_comparison_record_from_bedtool(s[9:18]),
+                reference=self._get_comparison_record_from_bedtool(s[:9]),
+                comparison=self._get_comparison_record_from_bedtool(s[9:18]),
                 distance=s[18],
             )
 
@@ -623,7 +623,7 @@ class BedToolsService:
                         record.name,
                         record.score,
                         record.strand.value,
-                        record.eufid,
+                        record.dataset_id,
                         record.coverage,
                         str(record.frequency),
                     ]
@@ -651,7 +651,7 @@ class BedToolsService:
             name=s[3],
             score=s[4],
             strand=Strand(s[5]),
-            eufid=s[6],
+            dataset_id=s[6],
             coverage=s[7],
             frequency=s[8],
         )

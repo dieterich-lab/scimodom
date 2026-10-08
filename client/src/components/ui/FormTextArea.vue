@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import Textarea from 'primevue/textarea'
-import { type UiStyle, DEFAULT_STYLE } from '@/utils/ui_style'
+import { type UiStyle, DEFAULT_STYLE } from '@/utils/ui-style'
 
 const model = defineModel<string>()
 const props = withDefaults(

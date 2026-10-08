@@ -8,7 +8,7 @@ import DatasetSelectionMulti from '@/components/ui/DatasetSelectionMulti.vue'
 import { useDialogState } from '@/stores/DialogState'
 import type { Dataset } from '@/services/dataset'
 import type { FileUploadUploaderEvent } from 'primevue/fileupload'
-import { uploadTemporaryDataset } from '@/services/datasetUpload'
+import { uploadTemporaryDataset } from '@/services/dataset-upload'
 import { type ResultStepA, type ResultStepB } from '@/utils/comparison'
 import { trashRequestErrors } from '@/services/API'
 

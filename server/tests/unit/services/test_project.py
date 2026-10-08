@@ -28,9 +28,9 @@ class MockFileService:
         self.deleted_requests: list[str] = []
         self.deleted_projects: list[str] = []
 
-    def create_project_metadata_file(self, smid: str) -> TextIO:
+    def create_project_metadata_file(self, project_id: str) -> TextIO:
         metadata_file = Path(
-            self._get_project_metadata_dir(), f"{smid}.json"
+            self._get_project_metadata_dir(), f"{project_id}.json"
         ).as_posix()
         new_file = MockStringIO()
         self.files_by_name[metadata_file] = new_file
@@ -48,8 +48,8 @@ class MockFileService:
         name = self._get_project_request_file_path(request_uuid).as_posix()
         self.deleted_requests.append(name)
 
-    def delete_project_metadata_file(self, smid) -> None:
-        name = Path(self._get_project_metadata_dir(), f"{smid}.json").as_posix()
+    def delete_project_metadata_file(self, project_id) -> None:
+        name = Path(self._get_project_metadata_dir(), f"{project_id}.json").as_posix()
         self.deleted_projects.append(name)
 
     def _get_project_metadata_dir(self) -> Path:
@@ -195,9 +195,9 @@ def test_get_projects(Session, file_service, project):
 def test_create_project(Session, file_service, setup, freezer):
     freezer.move_to("2024-06-20 12:00:00")
     service = _get_project_service(Session, file_service)
-    smid = service.create_project(PROJECT, "abcdef123456")
+    project_id = service.create_project(PROJECT, "abcdef123456")
     assert (
-        file_service.files_by_name[f"/data/metadata/{smid}.json"].final_content
+        file_service.files_by_name[f"/data/metadata/{project_id}.json"].final_content
         == EXPECTED_PROJECT_TEMPLATE
     )
     assert file_service.deleted_requests == [
@@ -205,7 +205,7 @@ def test_create_project(Session, file_service, setup, freezer):
     ]
 
     with Session() as session:
-        project = session.get_one(Project, smid)
+        project = session.get_one(Project, project_id)
         assert project.title == "Title"
         assert project.summary == "Summary"
         assert project.date_published == datetime(2024, 1, 1)
@@ -216,13 +216,13 @@ def test_create_project(Session, file_service, setup, freezer):
         assert contact.contact_email == "email@example.com"
         source = session.execute(select(ProjectSource)).scalars().all()
         assert len(source) == 1
-        assert source[0].project_id == smid
+        assert source[0].project_id == project_id
         assert source[0].doi == "DOI"
         assert source[0].pmid == 12345678
 
 
 def test_create_project_existing_entry(Session, file_service):
-    smid = "12345678"
+    project_id = "12345678"
     with Session() as session, session.begin():
         contact = ProjectContact(
             contact_name="Contact Name",
@@ -232,14 +232,14 @@ def test_create_project_existing_entry(Session, file_service):
         session.add(contact)
         session.flush()
         project = Project(
-            id=smid,
+            id=project_id,
             title="Title",
             summary="Summary",
             contact_id=contact.id,
             date_published=datetime.fromisoformat("2024-01-01"),
             date_added=datetime.now(),
         )
-        source = ProjectSource(project_id=smid, doi="DOI", pmid=12345678)
+        source = ProjectSource(project_id=project_id, doi="DOI", pmid=12345678)
         session.add_all([project, source])
         session.commit()
 
@@ -271,9 +271,9 @@ def test_create_project_existing_contact(Session, file_service, setup):
         session.commit()
 
     service = _get_project_service(Session, file_service)
-    smid = service.create_project(PROJECT, "abcdef123456")
+    project_id = service.create_project(PROJECT, "abcdef123456")
     assert (
-        file_service.files_by_name[f"/data/metadata/{smid}.json"].final_content
+        file_service.files_by_name[f"/data/metadata/{project_id}.json"].final_content
         == EXPECTED_PROJECT_TEMPLATE
     )
     assert file_service.deleted_requests == [

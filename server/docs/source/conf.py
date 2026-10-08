@@ -45,8 +45,10 @@ include_swagger_api_spec.write()
 html_theme = "furo"
 html_title = ""
 html_static_path = ["_static"]
+html_css_files = ["css/custom.css"]
 html_theme_options = {
     "light_logo": "logo.png",
     "dark_logo": "logo_dark.png",
+    "sidebar_hide_name": True,
 }
 html_favicon = "_static/favicon.ico"

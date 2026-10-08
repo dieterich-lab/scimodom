@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue'
 import { type Taxa, taxaCache } from '@/services/taxa'
 import CascadeSelect, { type CascadeSelectChangeEvent } from 'primevue/cascadeselect'
 import { type CascadeItem, getOptionsForPrimvueCascadeSelect } from '@/utils/primevue'
-import { GENERIC_FIELD_DEFAULTS, type GenericFieldProps } from '@/utils/ui_style'
+import { GENERIC_FIELD_DEFAULTS, type GenericFieldProps } from '@/utils/ui-style'
 
 interface Props extends GenericFieldProps {
   placeholder?: string
@@ -28,7 +28,7 @@ onMounted(() => {
     const rawOptions = data.map((x) => {
       return { ...x, kingdom: x.kingdom ? x.kingdom : x.domain }
     })
-    options.value = getOptionsForPrimvueCascadeSelect(rawOptions, ['kingdom', 'taxa_sname'])
+    options.value = getOptionsForPrimvueCascadeSelect(rawOptions, ['kingdom', 'taxa_short_name'])
   })
 })
 
@@ -42,7 +42,7 @@ function change(data: CascadeSelectChangeEvent) {
     v-model="model"
     :id="id"
     :options="options"
-    optionLabel="taxa_sname"
+    optionLabel="taxa_short_name"
     optionGroupLabel="label"
     :optionGroupChildren="['cChildren']"
     :placeholder="placeholder"

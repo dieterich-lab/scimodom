@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import logging
 from datetime import datetime, timezone
 from io import StringIO
-from typing import Iterable, TextIO
+from typing import Iterable, TextIO, Any
 
 from flask import Blueprint, Response
 from pydantic import BaseModel
@@ -18,16 +18,18 @@ from scimodom.services.modification import (
 from scimodom.api.helpers import (
     ClientResponseException,
     get_optional_str,
-    get_positive_int,
     get_non_negative_int,
     get_optional_positive_int,
     get_optional_non_negative_int,
-    validate_chrom,
     get_valid_rna_type,
     get_optional_valid_biotypes,
     get_optional_valid_features,
     get_valid_taxa_id,
     get_valid_coords,
+    get_optional_valid_coords,
+    get_valid_strand,
+    expand_coords_context,
+    ValidCoords,
     get_valid_target_type,
     get_valid_selections,
     get_response_from_pydantic_object,
@@ -131,12 +133,15 @@ def get_modification_sites():
     :statuscode 500: Internal Server Error
     """
     try:
-        chrom, start, end, _ = get_valid_coords()
+        taxa_id = get_valid_taxa_id()
+        coords = get_valid_coords(taxa_id)
     except ClientResponseException as exc:
         return exc.response_tuple
 
     modification_service = get_modification_service()
-    records = modification_service.get_modification_site(chrom, start, end)
+    records = modification_service.get_modification_site(
+        coords.chrom, coords.start, coords.end
+    )
     records["records"] = [
         {**r, "strand": r["strand"].value} for r in records["records"]
     ]
@@ -169,7 +174,8 @@ def get_modification_site_context():
     try:
         taxa_id = get_valid_taxa_id()
         context = get_non_negative_int("window")
-        coords = get_valid_coords(context=context)
+        coords = expand_coords_context(get_valid_coords(taxa_id), context)
+        strand = get_valid_strand()
     except ClientResponseException as exc:
         return exc.response_tuple
 
@@ -178,9 +184,9 @@ def get_modification_site_context():
 
     try:
         fasta_file = file_service.get_assembly_file_path(
-            taxa_id, file_type=AssemblyFileType.DNA, chrom=coords[0]
+            taxa_id, file_type=AssemblyFileType.DNA, chrom=coords.chrom
         )
-        records = _get_bed6_records_from_request(coords)
+        records = _get_bed6_records_from_request(coords, strand)
         seq_file = bedtools_service.getfasta(records, fasta_file, is_strand=True)
         sequence = file_service.read_sequence_context(seq_file)
     except FileNotFoundError:
@@ -225,14 +231,15 @@ class _ModificationContext:
         self._target_type = get_valid_target_type()
         self._is_strand = True
         self._taxa_id = get_valid_taxa_id()
-        self._coords = get_valid_coords()
+        self._coords = get_valid_coords(self._taxa_id)
+        self._strand = get_valid_strand()
 
     def __enter__(self) -> Ctx:
         file_service = get_file_service()
         bedtools_service = get_bedtools_service()
         try:
             self._annotation_targets_file = file_service.open_annotation_targets_file(
-                self._taxa_id, self._target_type, chrom=self._coords[0]
+                self._taxa_id, self._target_type, chrom=self._coords.chrom
             )
         except FileNotFoundError:
             logger.warning(
@@ -243,7 +250,7 @@ class _ModificationContext:
                 temp_file
             )
 
-        records = _get_bed6_records_from_request(self._coords)
+        records = _get_bed6_records_from_request(self._coords, self._strand)
 
         return self.Ctx(
             bedtools_service=bedtools_service,
@@ -257,21 +264,22 @@ class _ModificationContext:
 
 
 def _get_bed6_records_from_request(
-    coords: tuple[str, int, int, Strand]
+    coords: ValidCoords,
+    strand: Strand,
 ) -> Iterable[Bed6Record]:
     return [
         Bed6Record(
-            chrom=coords[0],
-            start=coords[1],
-            end=coords[2],
+            chrom=coords.chrom,
+            start=coords.start,
+            end=coords.end,
             name="-",
             score=1,
-            strand=coords[3],
+            strand=strand,
         )
     ]
 
 
-def _get_modification_records(by_gene: bool):
+def _get_modification_records(by_gene: bool) -> dict[str, Any]:
     modification_service = get_modification_service()
 
     rna_type = get_valid_rna_type()
@@ -327,8 +335,6 @@ def _get_valid_search_query_params(
 ) -> SearchParams:
     gene_name = get_optional_str("geneName")
     chrom = get_optional_str("chrom")
-    chrom_start = get_optional_non_negative_int("chromStart")
-    chrom_end = get_optional_positive_int("chromEnd")
 
     if gene_name is not None and chrom is not None:
         raise ClientResponseException(
@@ -336,25 +342,9 @@ def _get_valid_search_query_params(
             "Too many parameters: use 'geneName' xor 'chrom'",
         )
 
-    if chrom is None:
-        if chrom_start is not None or chrom_end is not None:
-            raise ClientResponseException(
-                400,
-                "Unused parameters: 'chromStart' and 'chromEnd' require 'chrom'",
-            )
-    else:
-        if chrom_end is not None and chrom_start is None:
-            raise ClientResponseException(
-                400,
-                "Unused parameter: 'chromEnd' requires 'chromStart'",
-            )
-        if by_gene:
-            chrom_start = get_non_negative_int("chromStart")
-            chrom_end = get_positive_int("chromEnd")
+    coords = get_optional_valid_coords(taxa_id, chrom, is_bounded=by_gene)
 
-        validate_chrom(taxa_id, chrom, chrom_start, chrom_end)
-
-    if by_gene and gene_name is None and chrom is None:
+    if by_gene and gene_name is None and coords.chrom is None:
         raise ClientResponseException(
             400,
             "Missing required parameter: 'geneName' xor 'chrom'",
@@ -364,15 +354,15 @@ def _get_valid_search_query_params(
         gene_name=gene_name,
         biotypes=get_optional_valid_biotypes(),
         features=get_optional_valid_features(),
-        chrom=chrom,
-        chrom_start=chrom_start,
-        chrom_end=chrom_end,
+        chrom=coords.chrom,
+        chrom_start=coords.start,
+        chrom_end=coords.end,
     )
 
 
 def _get_valid_page_query_params() -> PageParams:
     return PageParams(
-        offset=get_optional_non_negative_int("firstRecord"),
-        limit=get_optional_positive_int("maxRecords"),
+        offset=get_optional_non_negative_int("offset"),
+        limit=get_optional_positive_int("limit"),
         sort=get_optional_list("multiSort", str),
     )

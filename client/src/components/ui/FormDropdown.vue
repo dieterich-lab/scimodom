@@ -1,7 +1,7 @@
 <script setup lang="ts" generic="T">
 import { useId } from 'vue'
 import Dropdown, { type DropdownProps } from 'primevue/dropdown'
-import { DEFAULT_STYLE, type FormFieldProps, type FormFieldWrapperProps } from '@/utils/ui_style'
+import { DEFAULT_STYLE, type FormFieldProps, type FormFieldWrapperProps } from '@/utils/ui-style'
 import FormFieldWrapper from '@/components/ui/FormFieldWrapper.vue'
 
 interface Props extends DropdownProps, FormFieldProps {

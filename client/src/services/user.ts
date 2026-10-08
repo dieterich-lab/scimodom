@@ -18,20 +18,18 @@ async function login(
   accessToken: AccessTokenStore,
   dialogState: DialogStateStore
 ): Promise<void> {
-  const request = HTTP.post('/sessions', { email, password })
-  const result = await handleRequestWithErrorReporting<LoginResponse>(
-    request,
-    'While logging in',
-    dialogState,
-    { state: DIALOG.LOGIN, email }
-  )
+  const request = HTTP.post<LoginResponse>('/sessions', { email, password })
+  const result = await handleRequestWithErrorReporting(request, 'While logging in', dialogState, {
+    state: DIALOG.LOGIN,
+    email
+  })
   accessToken.set(email, result.access_token)
   dialogState.state = DIALOG.NONE
   prepareAPI(false)
 }
 
 async function changePassword(password: string, dialogState: DialogStateStore): Promise<void> {
-  const request = HTTPAuth.put('/users/me/password', { password })
+  const request = HTTPAuth.put<void>('/users/me/password', { password })
   await handleRequestWithErrorReporting(request, 'Failed to change password', dialogState).then(
     () => {
       dialogState.message = 'Password changed successfully.'
@@ -46,7 +44,7 @@ async function resetPassword(
   token: string,
   dialogState: DialogStateStore
 ): Promise<void> {
-  const request = HTTP.post('/users/password/reset', {
+  const request = HTTP.post<void>('/users/password/reset', {
     email,
     password,
     token
@@ -64,7 +62,7 @@ async function registerUser(
   password: string,
   dialogState: DialogStateStore
 ): Promise<void> {
-  const request = HTTP.post('/users', { email, password })
+  const request = HTTP.post<void>('/users', { email, password })
   const errorState = { state: DIALOG.REGISTER_ENTER_DATA }
   await handleRequestWithErrorReporting(
     request,
@@ -79,7 +77,7 @@ async function registerUser(
 }
 
 async function requestPasswordReset(email: string, dialogState: DialogStateStore): Promise<void> {
-  const request = HTTP.post('/users/password/request', { email })
+  const request = HTTP.post<void>('/users/password/request', { email })
   await handleRequestWithErrorReporting(request, 'Failed to request password reset', dialogState, {
     state: DIALOG.RESET_PASSWORD_REQUEST
   })
@@ -91,4 +89,11 @@ async function requestPasswordReset(email: string, dialogState: DialogStateStore
     .catch((e) => trashRequestErrors(e))
 }
 
-export { login, changePassword, resetPassword, registerUser, requestPasswordReset }
+export {
+  type LoginResponse,
+  login,
+  changePassword,
+  resetPassword,
+  registerUser,
+  requestPasswordReset
+}

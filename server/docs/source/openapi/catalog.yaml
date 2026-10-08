@@ -1,0 +1,404 @@
+info:
+  title: catalogs
+  description: >-
+    Reference, catalogs, shared lookup, and definition tables
+
+tags:
+  - name: Assembly
+    description: Database tables for taxon and assemblies
+  - name: RNA
+    description: Database tables for RNA types and annotations
+  - name: Modification
+    description: Database tables for reference modifications
+  - name: Content
+    description: Database tables for content selection
+
+paths:
+  /catalogs/rna-types:
+    get:
+      tags:
+        - RNA
+      summary: Get RNA types
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RNAType"
+  /catalogs/rna-types/{rna_type}/biotypes:
+    get:
+      tags:
+        - RNA
+      summary: Get biotypes
+      description: >-
+        The biotypes are currently independent of `rna_type`;
+        the path parameter is accepted but not used to filter the result
+      parameters:
+        - in: path
+          name: rna_type
+          required: true
+          schema:
+            type: string
+          description: RNA type identifier
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Biotype"
+  /catalogs/rna-types/{rna_type}/features:
+    get:
+      tags:
+        - RNA
+      summary: Get genomic features
+      parameters:
+        - in: path
+          name: rna_type
+          required: true
+          schema:
+            type: string
+          description: RNA type identifier
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Feature"
+        "400":
+          description: Invalid RNA type
+        "404":
+          description: RNA type not found
+        "501":
+          description: RNA type annotation not implemented
+  /catalogs/taxa:
+    get:
+      tags:
+        - Assembly
+      summary: Get species with taxonomic information
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Taxon"
+  /catalogs/taxa/{taxa_id}/chromosomes:
+    get:
+      tags:
+        - Assembly
+      summary: Get chromosomes and their size
+      description: >-
+        Only the current assembly version is returned
+      parameters:
+        - in: path
+          name: taxa_id
+          required: true
+          schema:
+            type: integer
+          description: NCBI taxon
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Chromosome"
+        "400":
+          description: Invalid NCBI taxon
+        "404":
+          description: NCBI taxon or chromosome data not found
+  /catalogs/taxa/{taxa_id}/assemblies:
+    get:
+      tags:
+        - Assembly
+      summary: Get assemblies
+      parameters:
+        - in: path
+          name: taxa_id
+          required: true
+          schema:
+            type: integer
+          description: NCBI taxon
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Assembly"
+        "400":
+          description: Invalid NCBI taxon
+        "404":
+          description: NCBI taxon not found
+  /catalogs/modomics:
+    get:
+      tags:
+        - Modification
+      summary: Get modifications nomenclature
+      description: Reference modifications annotated by MODOMICS
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Modomics"
+  /catalogs/methods:
+    get:
+      tags:
+        - Modification
+      summary: Get detection methods and classification
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Method"
+  /catalogs/selections:
+    get:
+      tags:
+        - Content
+      summary: Get selections
+      description: >-
+        Available combinations of modification, organism, and technology
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Selection"
+  /catalogs/genes:
+    get:
+      tags:
+        - Content
+      summary: Get genes
+      description: >-
+        Genes associated with one or more selection(s)
+        (modification, organism, technology).
+      parameters:
+        - in: query
+          name: selection
+          required: true
+          schema:
+            type: array
+            items:
+              type: integer
+          style: form
+          explode: true
+          description: One or more selection identifier(s)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Gene"
+        "400":
+          description: Invalid or missing selection(s)
+        "404":
+          description: Selection identifier(s) not found
+
+components:
+  schemas:
+    RNAType:
+      type: array
+      items:
+        type: object
+        required:
+          - id
+          - name
+        properties:
+          id:
+            type: string
+            description: RNA type identifier
+          name:
+            type: string
+            description: RNA type name (description)
+    Biotype:
+      type: object
+      required:
+        - biotypes
+      properties:
+        biotypes:
+          type: array
+          items:
+            type: string
+            description: Biotypes display categories
+    Feature:
+      type: object
+      required:
+        - features
+      properties:
+        features:
+          type: array
+          items:
+            type: string
+            description: Genomic features
+    Taxon:
+      type: array
+      items:
+        type: object
+        required:
+          - domain
+          - kingdom
+          - phylum
+          - taxa_id
+          - taxa_name
+          - taxa_short_name
+        properties:
+          domain:
+            type: string
+          kingdom:
+            type: string
+            nullable: true
+          phylum:
+            type: string
+            nullable: true
+          taxa_id:
+            type: integer
+            description: NCBI taxon
+          taxa_name:
+            type: string
+            description: NCBI name for `taxa_id`
+          taxa_short_name:
+            type: string
+            description: Abbreviation for `taxa_name`
+    Chromosome:
+      type: array
+      items:
+        type: object
+        required:
+          - chrom
+          - size
+        properties:
+          chrom:
+            type: string
+            description: Chromosome name
+          size:
+            type: integer
+            description: Chromosome size
+    Assembly:
+      type: array
+      items:
+        type: object
+        required:
+          - id
+          - name
+        properties:
+          id:
+            type: integer
+          name:
+            type: string
+    Modomics:
+      type: array
+      items:
+        type: object
+        required:
+          - id
+          - modomics_short_name
+        properties:
+          id:
+            type: string
+            description: MODOMICS code
+          modomics_short_name:
+            type: string
+            description: MODOMICS short name
+    Method:
+      type: array
+      items:
+        type: object
+        required:
+          - id
+          - cls
+          - meth
+        properties:
+          id:
+            type: string
+            description: Detection method identifier
+          cls:
+            type: string
+            description: Classification
+          meth:
+            type: string
+            description: Detection method name
+    Selection:
+      type: array
+      items:
+        type: object
+        required:
+          - cls
+          - cto
+          - domain
+          - kingdom
+          - meth
+          - modification_id
+          - modomics_short_name
+          - organism_id
+          - rna_type
+          - rna_type_name
+          - selection_id
+          - taxa_id
+          - taxa_name
+          - taxa_short_name
+          - tech
+          - technology_id
+        properties:
+          cls:
+            type: string
+            description: Detection method classification
+          cto:
+            type: string
+            description: Cell, tissue, or organism
+          domain:
+            type: string
+            description: Taxonomic domain
+          kingdom:
+            type: string
+            nullable: true
+            description: Taxonomic kingdom
+          meth:
+            type: string
+            description: Detection method
+          modification_id:
+            type: integer
+            description: Modification identifier (MODOMICS code, `rna_type`)
+          modomics_short_name:
+            type: string
+            description: MODOMICS short name
+          organism_id:
+            type: integer
+            description: Organism identifier (`taxa_id`, `cto`)
+          rna_type:
+            type: string
+            description: RNA type identifier (see `GET /catalogs/rna-types`)
+          rna_type_name:
+            type: string
+            description: RNA type name (description)
+          selection_id:
+            type: integer
+            description: Selection identifier
+          taxa_id:
+            type: integer
+            description: NCBI taxon
+          taxa_name:
+            type: string
+            description: NCBI name for `taxa_id`
+          taxa_short_name:
+            type: string
+            description: Abbreviation for `taxa_name`
+          tech:
+            type: string
+            description: Detection technology
+          technology_id:
+            type: integer
+            description: Detection technology identifier (`meth`, `tech`)
+    Gene:
+      type: array
+      items:
+        type: string
+        description: Gene symbol

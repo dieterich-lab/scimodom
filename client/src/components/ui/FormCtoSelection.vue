@@ -3,7 +3,7 @@ import { useId } from 'vue'
 import { type Cto } from '@/services/selection'
 import FormFieldWrapper from '@/components/ui/FormFieldWrapper.vue'
 import CtoSelection from '@/components/ui/CtoSelection.vue'
-import { type FormFieldProps, FORM_FIELD_DEFAULTS } from '@/utils/ui_style'
+import { type FormFieldProps, FORM_FIELD_DEFAULTS } from '@/utils/ui-style'
 
 interface Props extends FormFieldProps {
   modificationIds?: number[]

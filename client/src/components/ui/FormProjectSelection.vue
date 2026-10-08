@@ -3,7 +3,7 @@ import { useId } from 'vue'
 import type { Project } from '@/services/project'
 import FormFieldWrapper from '@/components/ui/FormFieldWrapper.vue'
 import ProjectSelection from '@/components/ui/ProjectSelection.vue'
-import { FORM_FIELD_DEFAULTS, type FormFieldProps } from '@/utils/ui_style'
+import { FORM_FIELD_DEFAULTS, type FormFieldProps } from '@/utils/ui-style'
 
 withDefaults(defineProps<FormFieldProps>(), FORM_FIELD_DEFAULTS)
 

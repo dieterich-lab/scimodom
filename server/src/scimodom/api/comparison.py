@@ -172,7 +172,7 @@ class _CompareContext:
         )
         self._upload_id = get_optional_valid_tmp_file_id("upload")
         self._upload_name = get_valid_file_name("uploadName")
-        is_strand = get_optional_bool("strand")
+        is_strand = get_optional_bool("strandAware")
         self._is_strand = True if is_strand is None else is_strand
         is_euf = get_optional_bool("euf")
         self._is_euf = False if is_euf is None else is_euf
@@ -246,7 +246,7 @@ class _CompareContext:
                     name=data.name,
                     score=data.score,
                     strand=data.strand,
-                    eufid=data.dataset_id,
+                    dataset_id=data.dataset_id,
                     coverage=data.coverage,
                     frequency=data.frequency,
                 )
@@ -288,7 +288,7 @@ class _CompareContext:
         self,
     ) -> tuple[Generator[EufRecord | Bed6Record, None, None], dict[str, str | int]]:
         local_context: dict[str, str | int] = {
-            "eufid": "UPLOAD".ljust(Identifiers.EUFID.length)
+            "dataset_id": "UPLOAD".ljust(Identifiers.EUFID.length)
         }
         if self._is_euf:
             try:
@@ -300,7 +300,9 @@ class _CompareContext:
                 )
                 context = self._validator_service.get_read_only_context()
                 if context.is_liftover:
-                    local_context["eufid"] = "LIFTED".ljust(Identifiers.EUFID.length)
+                    local_context["dataset_id"] = "LIFTED".ljust(
+                        Identifiers.EUFID.length
+                    )
                 return (
                     self._validator_service.get_validated_records(
                         euf_importer, context

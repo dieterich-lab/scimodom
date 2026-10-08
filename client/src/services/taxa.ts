@@ -8,18 +8,13 @@ interface Taxa {
   phylum?: string | null
   taxa_id: number
   taxa_name: string
-  taxa_sname: string
+  taxa_short_name: string
 }
 
 class TaxaCache extends Cache<Taxa[]> {
   async getPromise(): Promise<Taxa[]> {
-    try {
-      const response = await HTTP.get('/catalogs/taxa')
-      return response.data as Taxa[]
-    } catch (err) {
-      console.log(`Failed to fetch /catalogs/taxa: ${err}`)
-      throw err
-    }
+    const response = await HTTP.get<Taxa[]>('/catalogs/taxa')
+    return response.data
   }
 }
 

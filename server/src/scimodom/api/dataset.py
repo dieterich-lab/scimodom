@@ -84,7 +84,7 @@ def add_dataset():
     """
     try:
         dataset_form = DatasetPostRequest.model_validate_json(request.get_data())
-        validate_project_write_permission(dataset_form.smid)
+        validate_project_write_permission(dataset_form.project_id)
         dataset_id = _import_dataset(dataset_form)
     except ValidationError:
         return create_error_response(
@@ -192,7 +192,7 @@ def _import_dataset(dataset_form: DatasetPostRequest) -> str:
             return dataset_service.import_dataset(
                 fh,
                 source=file_id,
-                smid=dataset_form.smid,
+                project_id=dataset_form.project_id,
                 title=dataset_form.title,
                 assembly_id=dataset_form.assembly_id,
                 modification_ids=dataset_form.modification_id,

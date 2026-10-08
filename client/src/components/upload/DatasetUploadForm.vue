@@ -21,7 +21,7 @@ import { type Project } from '@/services/project'
 import { type ModificationType, type Cto, type Technology } from '@/services/selection'
 
 import { type DatasetPostRequest, postDataset } from '@/services/management'
-import { type RnaType } from '@/services/rnaType'
+import { type RnaType } from '@/services/rna-type'
 import { type Assembly } from '@/services/assembly'
 import { allDatasetsCache } from '@/services/dataset'
 import { trashRequestErrors } from '@/services/API'
@@ -39,7 +39,7 @@ const technologyRef = ref<Technology>()
 const loading = ref(false)
 
 const validationSchema = object({
-  smid: string()
+  project_id: string()
     .min(8, 'SMID has 8 characters exactly!')
     .max(8, 'SMID has 8 characters exactly!')
     .required('SMID is required!'),
@@ -76,7 +76,7 @@ const { defineField, handleSubmit, errors, resetField } = useForm<DatasetPostReq
   validationSchema: validationSchema
 })
 
-const [smid] = defineField('smid')
+const [project_id] = defineField('project_id')
 const [file_id] = defineField('file_id')
 const [rna_type] = defineField('rna_type')
 const [modification_id] = defineField('modification_id')
@@ -102,7 +102,7 @@ const onSubmit = handleSubmit((values: DatasetPostRequest) => {
 })
 
 function selectProject(project: Project) {
-  smid.value = project.project_id
+  project_id.value = project.project_id
 }
 
 const dropForm = () => {
@@ -167,7 +167,7 @@ function selectTechnology(data: Technology) {
         the latter case, all information that you entered will be lost.
       </InstructionsText>
       <div class="grid grid-cols-2 gap-y-2 gap-x-8">
-        <FormProjectSelection :error="errors.smid" @change="selectProject" />
+        <FormProjectSelection :error="errors.project_id" @change="selectProject" />
 
         <div />
 
@@ -191,7 +191,7 @@ function selectTechnology(data: Technology) {
 
         <FormMultiModificationTypeSelection
           v-model="modificationTypes"
-          :rna-type-name="rnaTypeRef?.label"
+          :rna-type="rnaTypeRef?.id"
           :error="errors.modification_id"
           @change="selectModificationTypes"
         />

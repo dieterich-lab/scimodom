@@ -138,6 +138,19 @@ def get_valid_target_type() -> TargetsFileType:
     )
 
 
+def get_valid_sunburst_type() -> SunburstChartType:
+    """Parse query for type and return chart type value.
+
+    :raises ClientResponseException: 400
+    :return: The value corresponding chart type
+    """
+    return _parse_enum_member(
+        "view",
+        request.args.get("view"),
+        SunburstChartType,
+    )
+
+
 def get_valid_file_name(name: str, default: str = "upload") -> str:
     """Get a valid file name, e.g. for tmp uploads.
 
@@ -157,7 +170,7 @@ def get_valid_file_name(name: str, default: str = "upload") -> str:
 # Route parameter parsing/conversion
 
 
-def validate_file_name(name: str, raw: str) -> str:
+def validate_file_name(name: str, raw: str) -> None:
     """Parse and validate a file name.
 
     NOTE: Contrary to `get_valid_file_name`,
@@ -169,20 +182,6 @@ def validate_file_name(name: str, raw: str) -> str:
     :return: Parsed name
     """
     _validate_file_name(name, _parse_param(name, raw))
-
-
-def parse_valid_sunburst_type(raw: str) -> SunburstChartType:
-    """Parse raw chart type and return chart type value.
-
-    :param raw: Route parameter for chart type
-    :raises ClientResponseException: 400
-    :return: The value corresponding to raw chart type
-    """
-    return _parse_enum_member(
-        "sunburstType",
-        _parse_param("sunburstType", raw),
-        SunburstChartType,
-    )
 
 
 # JSON body parsing/structural validation
@@ -322,7 +321,7 @@ def _parse_param(
     return _convert_param(name, raw, converter)
 
 
-def _parse_enum_member(name: str, raw: str, enum_cls: type[T]) -> T:
+def _parse_enum_member(name: str, raw: str | None, enum_cls: type[T]) -> T:
     try:
         return enum_cls[raw]
     except KeyError:

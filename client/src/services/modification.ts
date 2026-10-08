@@ -1,4 +1,4 @@
-import { type Bed6Record, type Strand } from '@/utils/bed6'
+import { type Bed6Record, type EufRecord, type Strand } from '@/utils/bed6'
 import type { DialogStateStore } from '@/stores/DialogState'
 import { getApiUrl, handleRequestWithErrorReporting, HTTP } from '@/services/API'
 import type { DataTableSortMeta } from 'primevue/datatable'
@@ -16,9 +16,11 @@ interface Modification {
   coverage: number
   frequency: number
   dataset_id: string
-  feature: string
-  gene_id: string
-  gene_name: string
+  feature: string | null
+  gene_id: string | null
+  gene_name: string | null
+  gene_biotype: string | null
+  reference_id: number
   tech: string
   taxa_id: number
   cto: string
@@ -36,14 +38,14 @@ interface ModificationRequest {
   chrom?: string
   chromStart?: number
   chromEnd?: number
-  firstRecord?: number
-  maxRecords?: number
+  offset?: number
+  limit?: number
   multiSort?: string[]
 }
 
 interface ModificationResponse {
   records: Modification[]
-  totalRecords: number
+  total: number
 }
 
 interface SiteSummaryResponse {
@@ -53,8 +55,8 @@ interface SiteSummaryResponse {
 interface SiteParams {
   taxaId: number
   chrom: string
-  start: number
-  end: number
+  chromStart: number
+  chromEnd: number
   strand: Strand
 }
 
@@ -66,15 +68,13 @@ interface GenomicContextResponse {
   context: string
 }
 
-interface SiteWiseInfo extends Bed6Record {
-  dataset_id: string
+interface SiteWiseInfo extends EufRecord {
+  reference_id: number
   modification_id: number
-  rna: string
-  short_name: string
+  rna_type: string
+  taxa_short_name: string
   cto: string
   tech: string
-  coverage: number
-  frequency: number
 }
 
 interface SiteWiseResponse {
@@ -84,8 +84,8 @@ interface SiteWiseResponse {
 // TODO: call records summary; should be sites summary
 // add both records and sites to HomeRelease
 async function getSitesSummary(dialogState: DialogStateStore): Promise<SiteSummaryResponse> {
-  return await handleRequestWithErrorReporting<SiteSummaryResponse>(
-    HTTP.get('/modifications/records/summary'),
+  return await handleRequestWithErrorReporting(
+    HTTP.get<SiteSummaryResponse>('/modifications/records/summary'),
     'Failed to load modification sites summary',
     dialogState
   )
@@ -101,11 +101,11 @@ async function getModifications(
   const params = {
     ...getQueryParametersFromSearchParameters(searchParameters, sortMetas),
     by: searchParameters.searchBy === 'Gene/Chrom' ? 'gene' : undefined,
-    firstRecord: offset,
-    maxRecords: limit
+    offset: offset,
+    limit: limit
   }
-  return await handleRequestWithErrorReporting<ModificationResponse>(
-    HTTP.get('/modifications/records', { params: params }),
+  return await handleRequestWithErrorReporting(
+    HTTP.get<ModificationResponse>('/modifications/records', { params: params }),
     'Failed to load modification records',
     dialogState
   )
@@ -156,8 +156,11 @@ function getModificationExportLink(
 
 function getSiteParams(modification: Modification): SiteParams {
   return {
-    ...modification,
-    taxaId: modification.taxa_id
+    taxaId: modification.taxa_id,
+    chrom: modification.chrom,
+    chromStart: modification.start,
+    chromEnd: modification.end,
+    strand: modification.strand
   }
 }
 
@@ -167,8 +170,10 @@ async function getTargetSites(
   dialogState: DialogStateStore
 ): Promise<Bed6Record[]> {
   const params = getSiteParams(modification)
-  const data = await handleRequestWithErrorReporting<TargetSitesResponse>(
-    HTTP.get('/modifications/sites/targets', { params: { ...params, target } }),
+  const data = await handleRequestWithErrorReporting(
+    HTTP.get<TargetSitesResponse>('/modifications/sites/targets', {
+      params: { ...params, target }
+    }),
     `Failed to load target sites: '${target}'`,
     dialogState
   )
@@ -181,8 +186,10 @@ async function getGenomicContext(
   dialogState: DialogStateStore
 ): Promise<string> {
   const params = getSiteParams(modification)
-  const data = await handleRequestWithErrorReporting<GenomicContextResponse>(
-    HTTP.get('/modifications/sites/context', { params: { ...params, window: context } }),
+  const data = await handleRequestWithErrorReporting(
+    HTTP.get<GenomicContextResponse>('/modifications/sites/context', {
+      params: { ...params, window: context }
+    }),
     `Failed to load site context: '${context}'`,
     dialogState
   )
@@ -194,8 +201,8 @@ async function getSiteWiseInfo(
   dialogState: DialogStateStore
 ): Promise<SiteWiseInfo[]> {
   const params = getSiteParams(modification)
-  const data = await handleRequestWithErrorReporting<SiteWiseResponse>(
-    HTTP.get('/modifications/sites', { params }),
+  const data = await handleRequestWithErrorReporting(
+    HTTP.get<SiteWiseResponse>('/modifications/sites', { params }),
     'Failed to load modification sites',
     dialogState
   )
@@ -207,6 +214,9 @@ export {
   type ModificationResponse,
   type SiteWiseInfo,
   type SiteSummaryResponse,
+  type TargetSitesResponse,
+  type GenomicContextResponse,
+  type SiteWiseResponse,
   getSitesSummary,
   getModifications,
   getModificationExportLink,

@@ -60,7 +60,7 @@ def test_get_comparison_record_from_bedtool():
     assert record.name == "Y"
     assert record.score == 190
     assert record.strand == Strand.FORWARD
-    assert record.eufid == "iMuwPsi24Yka"
+    assert record.dataset_id == "iMuwPsi24Yka"
     assert record.coverage == 576
     assert record.frequency == 19
 
@@ -108,7 +108,7 @@ def test_get_comparison_record_to_bedtool():
                 name="Y",
                 score=190,
                 strand=Strand.FORWARD,
-                eufid="iMuwPsi24Yka",
+                dataset_id="iMuwPsi24Yka",
                 coverage=576,
                 frequency=19,
             ),
@@ -119,7 +119,7 @@ def test_get_comparison_record_to_bedtool():
                 name="Y",
                 score=1,
                 strand=Strand.FORWARD,
-                eufid="iMuwPsi24Yka",
+                dataset_id="iMuwPsi24Yka",
                 coverage=57,
                 frequency=10,
             ),

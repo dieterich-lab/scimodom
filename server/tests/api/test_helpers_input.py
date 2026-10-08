@@ -15,9 +15,9 @@ from scimodom.api.helpers import (
     get_required_list,
     get_optional_list,
     get_valid_target_type,
+    get_valid_sunburst_type,
     get_valid_file_name,
     validate_file_name,
-    parse_valid_sunburst_type,
     get_required_json_fields,
     validate_request_size,
     _get_required_query_param,
@@ -173,7 +173,7 @@ def test_get_required_list_fail(app, url, ltype, message):
     assert returned_message["message"] == message
 
 
-def test_get_valid_target_type(app, mocker):
+def test_get_valid_target_type_fail(app, mocker):
     mocker.patch(
         "scimodom.api.helpers.input.TargetsFileType",
         MockTargetsFileType,
@@ -215,18 +215,19 @@ def test_parse_and_validate_file_name():
     assert returned_status == 400
 
 
-def test_parse_valid_sunburst_type(mocker):
+def test_get_valid_sunburst_type(app, mocker):
     mocker.patch(
         "scimodom.api.helpers.input.SunburstChartType",
         MockSunburstChartType,
     )
     with pytest.raises(ClientResponseException) as exc:
-        parse_valid_sunburst_type(" ")
+        with app.test_request_context("/?view=", method="GET"):
+            get_valid_sunburst_type()
     returned_message, returned_status = exc.value.response_tuple
     assert returned_status == 400
     assert (
         returned_message["message"]
-        == "Invalid value for 'sunburstType' (allowed: ['search', 'browse'], got: ' ')"
+        == "Invalid value for 'view' (allowed: ['search', 'browse'], got: '')"
     )
 
 

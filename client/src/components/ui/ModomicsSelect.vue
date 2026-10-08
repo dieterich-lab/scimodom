@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { type Modomics, modomicsCache } from '@/services/modomics'
-import { GENERIC_FIELD_DEFAULTS, type GenericFieldProps } from '@/utils/ui_style'
+import { GENERIC_FIELD_DEFAULTS, type GenericFieldProps } from '@/utils/ui-style'
 import Dropdown, { type DropdownChangeEvent } from 'primevue/dropdown'
 
 const props = withDefaults(defineProps<GenericFieldProps>(), GENERIC_FIELD_DEFAULTS)
@@ -29,7 +29,7 @@ function change(event: DropdownChangeEvent) {
     v-model="model"
     :id="id"
     :options="options"
-    option-label="modomics_sname"
+    option-label="modomics_short_name"
     placeholder="Select modification"
     :class="markAsError ? props.uiStyle.errorClasses : undefined"
     @change="change"

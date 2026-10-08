@@ -3,7 +3,7 @@ import { DIALOG, useDialogState } from '@/stores/DialogState.js'
 import DialogBox from '@/components/ui/DialogBox.vue'
 import FormButtonGroup from '@/components/ui/DialogButtonGroup.vue'
 import DialogButton from '@/components/ui/DialogButton.vue'
-import { PRIMARY_DIALOG_STYLE, type UiStyle } from '@/utils/ui_style'
+import { PRIMARY_DIALOG_STYLE, type UiStyle } from '@/utils/ui-style'
 
 withDefaults(
   defineProps<{

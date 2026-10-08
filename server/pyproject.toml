@@ -52,9 +52,17 @@ Issues = "https://github.com/dieterich-lab/scimodom/issues"
 Discussions = "https://github.com/dieterich-lab/scimodom/discussions"
 Documentation = "https://dieterich-lab.github.io/scimodom"
 
-[project.optional-dependencies]
-dev = ["pre-commit", "SQLAlchemy[mypy]", "types-Flask-Cors", "types-requests", "openapi-spec-validator", "PyYAML"]
-tests = ["pytest", "pytest-cov", "pytest-depends", "pytest-mock", "pytest-freezer", "pytest-datafiles"]
+[dependency-groups]
+tests = [
+  "pytest",
+  "pytest-cov",
+  "pytest-depends",
+  "pytest-mock",
+  "pytest-freezer",
+  "pytest-datafiles",
+  "openapi-spec-validator",
+]
+
 docs = [
   "ipykernel",
   "matplotlib",
@@ -66,8 +74,19 @@ docs = [
   "sphinx-argparse",
   "sphinx-copybutton",
   "sphinx-issues",
-  "swagger-plugin-for-sphinx"
+  "swagger-plugin-for-sphinx",
 ]
+
+dev = [
+  { include-group = "tests" },
+  "pre-commit",
+  "SQLAlchemy[mypy]",
+  "types-Flask-Cors",
+  "types-requests",
+  "PyYAML",
+  "openapi-core",
+]
+
 
 [tool.setuptools.dynamic]
 version = { attr = "scimodom.__version__" }

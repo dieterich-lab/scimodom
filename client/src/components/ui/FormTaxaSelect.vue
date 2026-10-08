@@ -3,7 +3,7 @@ import { useId } from 'vue'
 import type { Taxa } from '@/services/taxa'
 import FormFieldWrapper from '@/components/ui/FormFieldWrapper.vue'
 import TaxaSelect from '@/components/ui/TaxaSelect.vue'
-import { type FormFieldProps, FORM_FIELD_DEFAULTS } from '@/utils/ui_style'
+import { type FormFieldProps, FORM_FIELD_DEFAULTS } from '@/utils/ui-style'
 
 withDefaults(defineProps<FormFieldProps>(), FORM_FIELD_DEFAULTS)
 

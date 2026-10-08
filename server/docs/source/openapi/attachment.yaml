@@ -1,79 +1,39 @@
 info:
-  title: Attachment REST API
+  title: datasets
+  description: >-
+    Dataset attachments
+
+tags:
+  - name: BAM
+    description: BAM file attachments
 
 paths:
-  /bam_file/all/{dataset_id}:
+  /datasets/{dataset_id}/attachments/bams:
     get:
-      summary: Get BAM file attachment metadata
-      description: >-
-        Retrieve metadata for all BAM files attachments associated
-        with the given dataset identifier (EUFID).
+      tags:
+        - BAM
+      summary: Get dataset BAM file attachment metadata
       parameters:
-        - in: path
-          name: dataset_id
-          required: true
-          schema:
-            type: string
-          description: Dataset identifier (EUFID)
+        - $ref: "#/components/parameters/datasetIdPathParam"
       responses:
         "200":
           description: OK
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    original_file_name:
-                      type: string
-                      description: Original file name
-                    size_in_bytes:
-                      type: integer
-                      description: File size in bytes
-                    mtime_epoch:
-                      type: integer
-                      description: >-
-                        POSIX time stamp corresponding to time of last modification
-          links:
-            GetFileName:
-              operationId: getName
-              description: >-
-                The `original_file_name` returned in the response can be used
-                as `name` parameter in `GET bam_file/{dataset_id}/{name}`,
-              parameters:
-                name: $response.body#/original_file_name
+                $ref: "#/components/schemas/BamFileList"
         "400":
-          description: Invalid dataset identifier (malformed)
-          content:
-            application/json:
-              schema:
-                $ref: "_common.yaml#/components/schemas/Error"
+          $ref: "#/components/responses/ClientResponseException400"
         "404":
-          description: Unknown dataset identifier
-          content:
-            application/json:
-              schema:
-                $ref: "_common.yaml#/components/schemas/Error"
-  /bam_file/{dataset_id}/{name}:
+          $ref: "#/components/responses/ClientResponseException404"
+  /datasets/{dataset_id}/attachments/bams/{name}:
     get:
-      summary: Download a BAM file
-      description: >-
-        Download a BAM file attached to a dataset given by its identifier (EUFID)
-      operationId: getName
+      tags:
+        - BAM
+      summary: Download dataset BAM file
       parameters:
-        - in: path
-          name: dataset_id
-          required: true
-          schema:
-            type: string
-          description: Dataset identifier (EUFID)
-        - in: path
-          name: name
-          required: true
-          schema:
-            type: string
-          description: BAM original file name
+        - $ref: "#/components/parameters/datasetIdPathParam"
+        - $ref: "#/components/parameters/nameBamPathParam"
       responses:
         "200":
           description: OK
@@ -83,27 +43,134 @@ paths:
                 type: string
                 format: binary
         "400":
-          description: Invalid dataset identifier or BAM file name (malformed)
-          content:
-            application/json:
-              schema:
-                $ref: "_common.yaml#/components/schemas/Error"
+          $ref: "#/components/responses/ClientResponseException400"
         "404":
-          description: >-
-            Unknown dataset identifier, unknown BAM file name, or BAM
-            file is not an attachment of this dataset
+          $ref: "#/components/responses/ClientResponseException404"
+    put:
+      tags:
+        - BAM
+      summary: Upload (create or replace) a BAM file
+      description: >-
+        Attach a BAM file to a dataset. If a BAM file with the given
+        `name` already exists for this dataset, it is replaced (204);
+        otherwise a new attachment is created (201). The raw request
+        body is streamed to storage. A file size limit may apply.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/datasetIdPathParam"
+        - $ref: "#/components/parameters/nameBamPathParam"
+      requestBody:
+        required: true
+        description: Raw BAM file content
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        "201":
+          description: Created
           content:
             application/json:
               schema:
-                $ref: "_common.yaml#/components/schemas/Error"
+                $ref: "#/components/schemas/BamCreated"
+        "204":
+          description: No Content
+        "400":
+          $ref: "#/components/responses/ClientResponseException400"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/ClientResponseException404"
+        "413":
+          $ref: "#/components/responses/TooLargeError"
+        "422":
+          $ref: "#/components/responses/UnprocessableContentError"
+    delete:
+      tags:
+        - BAM
+      summary: Remove a BAM file
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/datasetIdPathParam"
+        - $ref: "#/components/parameters/nameBamPathParam"
+      responses:
+        "204":
+          description: No Content
+        "400":
+          $ref: "#/components/responses/ClientResponseException400"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "#/components/responses/ForbiddenError"
+        "404":
+          $ref: "#/components/responses/ClientResponseException404"
+        "422":
+          $ref: "#/components/responses/UnprocessableContentError"
 
 components:
   securitySchemes:
     BearerAuth:
       $ref: "_common.yaml#/components/securitySchemes/BearerAuth"
-  schemas:
-    Error:
-      $ref: "_common.yaml#/components/schemas/Error"
+  parameters:
+    datasetIdPathParam:
+      in: path
+      name: dataset_id
+      required: true
+      schema:
+        type: string
+      description: Dataset identifier (EUFID)
+    nameBamPathParam:
+      in: path
+      name: name
+      required: true
+      schema:
+        type: string
+      description: BAM file attachment (original file) name
   responses:
+    ClientResponseException400:
+      description: Invalid dataset identifier or BAM file name
+    ClientResponseException404:
+      description: >-
+        Dataset identifier or BAM file name not found,
+        BAM file is not an attachment of this dataset
     UnauthorizedError:
       $ref: "_common.yaml#/components/responses/UnauthorizedError"
+    ForbiddenError:
+      $ref: "_common.yaml#/components/responses/ForbiddenError"
+    TooLargeError:
+      $ref: "_common.yaml#/components/responses/TooLargeError"
+    UnprocessableContentError:
+      $ref: "_common.yaml#/components/responses/UnprocessableContentError"
+  schemas:
+    BamCreated:
+      type: object
+      required:
+        - original_file_name
+      properties:
+        original_file_name:
+          type: string
+          description: Name of the newly created BAM file attachment
+    BamFileList:
+      type: array
+      items:
+        type: object
+        required:
+          - original_file_name
+          - size_in_bytes
+          - mtime_epoch
+        properties:
+          original_file_name:
+            type: string
+            description: Original file name
+          size_in_bytes:
+            type: integer
+            description: File size in bytes
+          mtime_epoch:
+            type: number
+            description: >-
+              Time of last modification

@@ -28,7 +28,6 @@ from scimodom.utils.dtos.project import (
 )
 from scimodom.utils.specs.enums import AnnotationSource
 
-
 dataset_cli = Blueprint("dataset", __name__)
 
 
@@ -133,7 +132,7 @@ def add_dataset(
             eufid = dataset_service.import_dataset(
                 fp,
                 source=filename,
-                smid=smid,
+                project_id=smid,
                 title=title,
                 assembly_id=assembly_id,
                 modification_ids=list(modification_ids),
@@ -141,7 +140,7 @@ def add_dataset(
                 technology_id=technology_id,
                 annotation_source=annotation_source,
                 dry_run_flag=dry_run,
-                eufid=eufid,
+                dataset_id=eufid,
             )
         click.secho(
             f"   ... {succes_msg} dataset with EUFID: '{eufid}'.",
@@ -260,7 +259,7 @@ def add_dataset_in_batch(input_directory: str, request_uuid: str, annotation: st
                 eufid = dataset_service.import_dataset(
                     fp,
                     source=file_path.as_posix(),
-                    smid=smid,
+                    project_id=smid,
                     title=title,
                     assembly_id=metadata.organism.assembly_id,
                     modification_ids=modification_ids,

@@ -13,7 +13,7 @@ beforeEach(() => {
   mockedGet.mockReset()
 })
 
-const modomics: Modomics[] = [{ id: '123', modomics_sname: 'short_name' }]
+const modomics: Modomics[] = [{ id: '123', modomics_short_name: 'short_name' }]
 
 test('getPromise calls /catalogs/modomics and returns the response', async () => {
   mockedGet.mockResolvedValueOnce({ data: modomics } as AxiosResponse)
@@ -31,14 +31,9 @@ test('getPromise does not swallow failures', async () => {
   await expect(modomicsCache.getPromise()).rejects.toBe(error)
 })
 
-test('getPromise logs and rethrows on failure', async () => {
+test('getPromise propagates error on failure', async () => {
   const error = new Error()
-  const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
   mockedGet.mockRejectedValueOnce(error)
 
   await expect(modomicsCache.getPromise()).rejects.toBe(error)
-  expect(consoleSpy).toHaveBeenCalledWith(
-    expect.stringContaining('Failed to fetch /catalogs/modomics:')
-  )
-  consoleSpy.mockRestore()
 })

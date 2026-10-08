@@ -5,7 +5,7 @@ import FormFieldWrapper from '@/components/ui/FormFieldWrapper.vue'
 import MultiModificationTypeSelection, {
   type MultiModificationTypeSelectionExtraProps
 } from '@/components/ui/MultiModificationTypeSelection.vue'
-import { FORM_FIELD_DEFAULTS, type FormFieldProps } from '@/utils/ui_style'
+import { FORM_FIELD_DEFAULTS, type FormFieldProps } from '@/utils/ui-style'
 
 interface Props extends FormFieldProps, MultiModificationTypeSelectionExtraProps {}
 
@@ -29,7 +29,7 @@ const id = useId()
     <template v-slot:field>
       <MultiModificationTypeSelection
         v-model="model"
-        :rna-type-name="rnaTypeName"
+        :rna-type="rnaType"
         :id="id"
         :markAsError="!!error"
         :ui-style="uiStyle"

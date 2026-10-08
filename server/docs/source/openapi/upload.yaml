@@ -1,0 +1,52 @@
+info:
+  title: uploads
+  description: >-
+    Dataset upload
+
+tags:
+  - name: Upload
+    description: Temporary upload
+
+paths:
+  /uploads:
+    post:
+      tags:
+        - Upload
+      summary: Upload a temporary file
+      description: >-
+        Upload a temporary BED or bedRMod file for dataset
+        comparison via `GET /datasets/comparisons/intersect`, `closest`,
+        or `subtract`; or a bedRMod file for import via `POST /datasets`.
+        No authentication is required. Files are subject to a size limit.
+        Files are stored under a temporary upload path and are
+        deleted automatically after some time
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Upload"
+        "413":
+          $ref: "#/components/responses/TooLargeError"
+
+components:
+  responses:
+    TooLargeError:
+      $ref: "_common.yaml#/components/responses/TooLargeError"
+  schemas:
+    Upload:
+      type: object
+      required:
+        - file_id
+      properties:
+        file_id:
+          type: string
+          description: Temporary file identifier

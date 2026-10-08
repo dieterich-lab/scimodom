@@ -1,7 +1,7 @@
 .. _scimodom:
 
-Sci-ModoM documentation
-=======================
+Advanced usage
+==============
 
 .. toctree::
    :maxdepth: 1

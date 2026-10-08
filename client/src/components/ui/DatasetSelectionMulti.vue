@@ -47,10 +47,9 @@ function change(event: MultiSelectChangeEvent) {
     :filterFields="[
       'dataset_id',
       'dataset_title',
-      'project_title',
       'project_id',
-      'rna',
-      'modomics_sname',
+      'rna_type',
+      'modifications',
       'cto',
       'tech'
     ]"

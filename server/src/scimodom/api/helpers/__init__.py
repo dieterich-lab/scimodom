@@ -20,7 +20,7 @@ from .input import (
     get_valid_target_type,
     get_valid_file_name,
     validate_file_name,
-    parse_valid_sunburst_type,
+    get_valid_sunburst_type,
     get_required_json_fields,
     validate_request_size,
     _positive_int,
@@ -32,7 +32,6 @@ from .input import (
 )
 
 from .validation import (
-    validate_chrom,
     get_valid_rna_type,
     parse_valid_rna_type,
     get_valid_taxa_id,
@@ -41,6 +40,11 @@ from .validation import (
     get_optional_valid_features,
     get_valid_selections,
     get_valid_coords,
+    get_optional_valid_coords,
+    get_valid_strand,
+    expand_coords_context,
+    ValidCoords,
+    OptionalValidCoords,
     parse_valid_dataset,
     parse_valid_bam,
     get_optional_valid_dataset_id_list,
@@ -52,6 +56,8 @@ from .validation import (
 from .response import get_response_from_pydantic_object
 
 from .handlers import register_error_handlers
+
+from .serialisation import set_json_provider
 
 __all__ = [
     "ClientResponseException",
@@ -70,7 +76,7 @@ __all__ = [
     "get_valid_target_type",
     "get_valid_file_name",
     "validate_file_name",
-    "parse_valid_sunburst_type",
+    "get_valid_sunburst_type",
     "get_required_json_fields",
     "validate_request_size",
     "_positive_int",
@@ -79,7 +85,6 @@ __all__ = [
     "_parse_param",
     "_is_valid_identifier",
     "_validate_file_name",
-    "validate_chrom",
     "get_valid_rna_type",
     "parse_valid_rna_type",
     "get_valid_taxa_id",
@@ -88,6 +93,11 @@ __all__ = [
     "get_optional_valid_features",
     "get_valid_selections",
     "get_valid_coords",
+    "get_optional_valid_coords",
+    "get_valid_strand",
+    "expand_coords_context",
+    "ValidCoords",
+    "OptionalValidCoords",
     "parse_valid_dataset",
     "parse_valid_bam",
     "get_optional_valid_dataset_id_list",
@@ -96,4 +106,5 @@ __all__ = [
     "validate_dataset_write_permission",
     "get_response_from_pydantic_object",
     "register_error_handlers",
+    "set_json_provider",
 ]

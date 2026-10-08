@@ -14,43 +14,39 @@ interface Dataset {
   project_id: string
   dataset_id: string
   dataset_title: string
+  modification_type: string
   sequencing_platform: string | null
   basecalling: string | null
   bioinformatics_workflow: string | null
   experiment: string | null
-  project_title: string
-  project_summary: string
-  doi?: string
-  pmid?: number
-  rna: string
-  modomics_sname: string
+  rna_type: string
+  external_source: string | null
+  modifications: string
   tech: string
-  taxa_sname: string
+  taxa_short_name: string
   taxa_id: number
   cto: string
 }
 
+// extend dataset metadata with parent project
+interface DatasetWithProject extends Dataset {
+  project_title: string
+  project_summary: string
+  doi: string | null
+  pmid: string | null // concat
+}
+
 class AllDatasetCache extends Cache<Dataset[]> {
   async getPromise(): Promise<Dataset[]> {
-    try {
-      const response = await HTTP.get('/datasets')
-      return response.data as Dataset[]
-    } catch (err) {
-      console.log(`Failed to fetch datasets: ${err}`)
-      throw err
-    }
+    const response = await HTTP.get<Dataset[]>('/datasets')
+    return response.data
   }
 }
 
 class MyDatasetCache extends Cache<Dataset[]> {
   async getPromise(): Promise<Dataset[]> {
-    try {
-      const response = await HTTPAuth.get('/users/me/datasets')
-      return response.data as Dataset[]
-    } catch (err) {
-      console.log(`Failed to fetch my datasets: ${err}`)
-      throw err
-    }
+    const response = await HTTPAuth.get<Dataset[]>('/users/me/datasets')
+    return response.data
   }
 }
 
@@ -67,8 +63,8 @@ async function mayChangeDataset(
   datasetId: string,
   dialogState: DialogStateStore
 ): Promise<boolean> {
-  const data = await handleRequestWithErrorReporting<MayChangeDatasetResponse>(
-    HTTPAuth.get(`/users/me/datasets/${datasetId}/permissions`),
+  const data = await handleRequestWithErrorReporting(
+    HTTPAuth.get<MayChangeDatasetResponse>(`/users/me/datasets/${datasetId}/permissions`),
     `Failed to load dataset '${datasetId}' permission for user`,
     dialogState
   )
@@ -76,8 +72,8 @@ async function mayChangeDataset(
 }
 
 async function getDatasetSummary(dialogState: DialogStateStore): Promise<DatasetSummaryResponse> {
-  return await handleRequestWithErrorReporting<DatasetSummaryResponse>(
-    HTTP.get('/datasets/summary'),
+  return await handleRequestWithErrorReporting(
+    HTTP.get<DatasetSummaryResponse>('/datasets/summary'),
     'Failed to load dataset summary',
     dialogState
   )
@@ -85,7 +81,9 @@ async function getDatasetSummary(dialogState: DialogStateStore): Promise<Dataset
 
 export {
   type Dataset,
+  type DatasetWithProject,
   type DatasetSummaryResponse,
+  type MayChangeDatasetResponse,
   allDatasetsCache,
   allDatasetsByIdCache,
   myDatasetsCache,

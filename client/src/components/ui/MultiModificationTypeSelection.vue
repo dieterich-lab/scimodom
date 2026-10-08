@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import MultiSelect from 'primevue/multiselect'
-import { type ModificationType, getModificationTypesByRnaName } from '@/services/selection'
-import { type GenericFieldProps, GENERIC_FIELD_DEFAULTS } from '@/utils/ui_style'
+import { type ModificationType, getModificationTypesByRnaType } from '@/services/selection'
+import { type GenericFieldProps, GENERIC_FIELD_DEFAULTS } from '@/utils/ui-style'
 
 export interface MultiModificationTypeSelectionExtraProps {
-  rnaTypeName?: string
+  rnaType?: string
 }
 interface Props extends GenericFieldProps, MultiModificationTypeSelectionExtraProps {}
 
@@ -22,10 +22,10 @@ const options = ref<ModificationType[]>([])
 const disabled = computed(() => !options.value?.length)
 
 watch(
-  () => props.rnaTypeName,
+  () => props.rnaType,
   () => {
-    if (props.rnaTypeName) {
-      getModificationTypesByRnaName(props.rnaTypeName).then((data) => {
+    if (props.rnaType) {
+      getModificationTypesByRnaType(props.rnaType).then((data) => {
         options.value = [...data]
       })
     } else {
@@ -40,7 +40,7 @@ watch(
     v-model="model"
     :id="id"
     :options="options"
-    optionLabel="modomics_sname"
+    optionLabel="modomics_short_name"
     placeholder="Select modification"
     :disabled="disabled"
     :class="markAsError ? props.uiStyle.errorClasses : undefined"

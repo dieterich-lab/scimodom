@@ -53,15 +53,15 @@ class ProjectService:
             fp.write(project_template.model_dump_json(indent=4))
         return uuid
 
-    def get_by_id(self, smid: str) -> Project:
+    def get_by_id(self, project_id: str) -> Project:
         """Retrieve project by SMID.
 
-        :param smid: SMID
-        :type smid: str
+        :param project_id: SMID
+        :type project_id: str
         :return: Project
         :rtype: Project
         """
-        return self._session.get_one(Project, smid)
+        return self._session.get_one(Project, project_id)
 
     def get_projects(self, user: User | None = None) -> list[dict[str, Any]]:
         """Retrieve all projects.
@@ -117,10 +117,10 @@ class ProjectService:
             self._selection_service.create_selection(
                 project_template.metadata, is_flush_only=True
             )
-            smid = self._add_project(project_template)
-            self._write_project_template(project_template, smid, request_uuid)
+            project_id = self._add_project(project_template)
+            self._write_project_template(project_template, project_id, request_uuid)
             self._session.commit()
-            return smid
+            return project_id
         except Exception:
             self._session.rollback()
             raise
@@ -138,8 +138,8 @@ class ProjectService:
         - project
         - project_contact
 
-        :param smid: Project instance
-        :type smid: Project
+        :param project_id: Project instance
+        :type project_id: Project
         :raises Exception: If fail to delete project, project source,
         project contact, user project association, or metadata files.
         """
@@ -197,10 +197,10 @@ class ProjectService:
             .where(Project.title == project_template.title)
         )
         query = query.where(self._get_prj_src(project_template))
-        smid = self._session.execute(query).scalar_one_or_none()
-        if smid:
+        project_id = self._session.execute(query).scalar_one_or_none()
+        if project_id:
             raise DuplicateProjectError(
-                f"Suspected duplicate project with SMID '{smid}' and title '{project_template.title}'."
+                f"Suspected duplicate project with SMID '{project_id}' and title '{project_template.title}'."
             )
 
     def _add_contact_if_none(self, project_template: ProjectTemplate) -> int:
@@ -223,12 +223,12 @@ class ProjectService:
         return contact_id
 
     def _add_project(self, project_template: ProjectTemplate) -> str:
-        smids = self._session.execute(select(Project.id)).scalars().all()
-        smid = gen_short_uuid(Identifiers.SMID.length, smids)
+        project_ids = self._session.execute(select(Project.id)).scalars().all()
+        project_id = gen_short_uuid(Identifiers.SMID.length, project_ids)
         contact_id = self._add_contact_if_none(project_template)
         stamp = datetime.now(timezone.utc)  # .isoformat()
         project = Project(
-            id=smid,
+            id=project_id,
             title=project_template.title,
             summary=project_template.summary,
             contact_id=contact_id,
@@ -238,21 +238,21 @@ class ProjectService:
         sources = []
         for source_dto in project_template.external_sources:
             source = ProjectSource(
-                project_id=smid, doi=source_dto.doi, pmid=source_dto.pmid
+                project_id=project_id, doi=source_dto.doi, pmid=source_dto.pmid
             )
             sources.append(source)
 
-        logger.info(f"Adding project_template {smid}...")
+        logger.info(f"Adding project_template {project_id}...")
 
         self._session.add(project)
         self._session.add_all(sources)
         self._session.flush()
-        return smid
+        return project_id
 
     def _write_project_template(
-        self, project_template: ProjectTemplate, smid: str, request_uuid: str
+        self, project_template: ProjectTemplate, project_id: str, request_uuid: str
     ) -> None:
-        with self._file_service.create_project_metadata_file(smid) as fh:
+        with self._file_service.create_project_metadata_file(project_id) as fh:
             fh.write(project_template.model_dump_json(indent=4))
         self._file_service.delete_project_request_file(request_uuid)
 

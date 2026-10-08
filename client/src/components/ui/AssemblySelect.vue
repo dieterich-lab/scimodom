@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { useDialogState } from '@/stores/DialogState'
 import { type Assembly, getAssembliesByTaxaId } from '@/services/assembly'
-import { type GenericFieldProps, GENERIC_FIELD_DEFAULTS } from '@/utils/ui_style'
+import { type GenericFieldProps, GENERIC_FIELD_DEFAULTS } from '@/utils/ui-style'
 import Dropdown, { type DropdownChangeEvent } from 'primevue/dropdown'
 import { trashRequestErrors } from '@/services/API'
 

@@ -184,6 +184,7 @@ def get_genes():
     organism, and technology)
     :return: Array with gene symbols
     :statuscode 200: OK
+    :statuscode 400: Bad Request - missing selection
     :statuscode 404: Not Found - selection identifier
     :statuscode 500: Internal Server Error
     """

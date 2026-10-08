@@ -226,11 +226,11 @@ class AnnotationService:
         self,
         taxa_id: int,
         annotation_source: AnnotationSource,
-        eufid: str,
+        dataset_id: str,
         selection_ids: list[int],
     ):
         self._services_by_annotation_source[annotation_source].annotate_data(
-            taxa_id, eufid, selection_ids
+            taxa_id, dataset_id, selection_ids
         )
 
     def get_features_by_rna_type(self, rna_type: str) -> list[str]:

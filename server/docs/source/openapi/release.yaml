@@ -1,0 +1,79 @@
+info:
+  title: info
+  description: >-
+    Build, API, and database version information
+
+tags:
+  - name: Version
+    description: Build version
+
+paths:
+  /info:
+    get:
+      tags:
+        - Version
+      summary: Get version information
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Version"
+
+components:
+  schemas:
+    Version:
+      type: object
+      required:
+        - build
+        - api
+        - database
+      properties:
+        build:
+          type: object
+          required:
+            - tag
+            - commit
+            - commit_date
+            - version
+            - generated_at
+          nullable: true
+          properties:
+            tag:
+              type: string
+              description: Git tag
+            commit:
+              type: string
+              description: Git commit
+            commit_date:
+              type: string
+              description: Commit timestamp
+            version:
+              type: string
+              description: Source version
+            generated_at:
+              type: string
+              description: Build timestamp
+        api:
+          type: object
+          required:
+            - version
+          nullable: true
+          properties:
+            version:
+              type: string
+              description: REST API version
+        database:
+          type: object
+          required:
+            - current_revision
+          properties:
+            current_revision:
+              type: string
+              nullable: true
+              description: Alembic revision (build)
+            expected_revision:
+              type: string
+              nullable: false
+              description: Alembic revision (source)

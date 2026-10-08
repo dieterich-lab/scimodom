@@ -65,7 +65,7 @@ class MockAnnotationService:
         self,
         taxa_id: int,
         annotation_source: AnnotationSource,
-        eufid: str,
+        dataset_id: str,
         selection_ids: list[int],
     ):
         self._annotated = True
@@ -135,7 +135,7 @@ GOOD_EUF_FILE = """#fileformat=bedRModvXX
 
 def test_dataset_get_by_id(Session, dataset):  # noqa
     service = _get_dataset_service(Session())
-    d1 = service.get_by_id("dataset_id01")
+    d1 = service.get_by_id("dataset00001")
     assert d1.title == "dataset title"
     assert d1.organism_id == 1
     assert d1.external_source == "ext. source 1"
@@ -147,15 +147,28 @@ def test_get_dataset_count(Session, dataset):
     assert service.get_dataset_count() == 4
 
 
+def test_get_dataset_count_for_user(Session, project, dataset):
+    with Session() as session:
+        user = session.get_one(User, 1)
+    service = _get_dataset_service(Session())
+    assert service.get_dataset_count(user) == 3
+
+
 def test_get_datasets(Session, project, dataset):  # noqa
     service = _get_dataset_service(Session())
     datasets = service.get_datasets()
     assert len(datasets) == 4
     assert datasets[3]["project_id"] == "ABCDEFGH"
-    assert datasets[3]["dataset_id"] == "dataset_id04"
-    assert datasets[3]["modomics_sname"] == "m5C"
-    assert datasets[3]["taxa_sname"] == "H. sapiens"
+    assert datasets[3]["dataset_id"] == "dataset00004"
+    assert datasets[3]["rna_type"] == "WTS"
+    assert datasets[3]["modifications"] == "m5C"
+    assert datasets[3]["modification_type"] == "RNA"
+    assert datasets[3]["taxa_short_name"] == "H. sapiens"
     assert datasets[3]["cto"] == "Cell type 2"
+    assert "project_title" not in datasets[3]
+    assert "project_summary" not in datasets[3]
+    assert "doi" not in datasets[3]
+    assert "pmid" not in datasets[3]
 
 
 def test_get_datasets_for_user(Session, project, dataset):  # noqa
@@ -183,10 +196,10 @@ def test_import_dataset(
     file = StringIO(euf_file)
     project_id = project[0].id
     freezer.move_to("2017-05-20 11:00:23")
-    eufid = service.import_dataset(
+    dataset_id = service.import_dataset(
         file,
         source="test",
-        smid=project_id,
+        project_id=project_id,
         title="title",
         assembly_id=1,
         modification_ids=[1],
@@ -196,7 +209,7 @@ def test_import_dataset(
     )
 
     with Session() as session:
-        dataset = session.get_one(Dataset, eufid)
+        dataset = session.get_one(Dataset, dataset_id)
         assert dataset.title == "title"
         assert dataset.project_id == project_id
         assert dataset.technology_id == 1
@@ -213,11 +226,11 @@ def test_import_dataset(
             session.execute(select(DatasetModificationAssociation)).scalars().all()
         )
         assert len(association) == 1
-        assert association[0].dataset_id == eufid
+        assert association[0].dataset_id == dataset_id
         assert association[0].modification_id == 1
 
         data = (
-            session.execute(select(Data).where(Data.dataset_id == eufid))
+            session.execute(select(Data).where(Data.dataset_id == dataset_id))
             .scalars()
             .all()
         )
@@ -235,10 +248,10 @@ def test_import_dataset_dry_run(Session, selection, project, freezer):  # noqa
     service = _get_dataset_service(Session())
     file = StringIO(GOOD_EUF_FILE)
     freezer.move_to("2017-05-20 11:00:23")
-    eufid = service.import_dataset(
+    dataset_id = service.import_dataset(
         file,
         source="test",
-        smid=project[0].id,
+        project_id=project[0].id,
         title="title",
         assembly_id=1,
         modification_ids=[1],
@@ -246,10 +259,10 @@ def test_import_dataset_dry_run(Session, selection, project, freezer):  # noqa
         organism_id=1,
         annotation_source=AnnotationSource.ENSEMBL,
         dry_run_flag=True,
-        eufid="XXXXXXXXXXXX",
+        dataset_id="XXXXXXXXXXXX",
     )
 
-    assert eufid == "DRYRUNDRYRUN"
+    assert dataset_id == "DRYRUNDRYRUN"
     with Session() as session:
         datasets = session.execute(select(Dataset)).all()
         assert len(datasets) == 0
@@ -265,10 +278,10 @@ def test_import_dataset_update_no_change(Session, selection, project, freezer): 
     service = _get_dataset_service(Session())
     freezer.move_to("2017-05-20 11:00:23")
     project_id = project[0].id
-    eufid = service.import_dataset(
+    dataset_id = service.import_dataset(
         StringIO(GOOD_EUF_FILE),
         source="test",
-        smid=project_id,
+        project_id=project_id,
         title="title",
         assembly_id=1,
         modification_ids=[1],
@@ -280,22 +293,22 @@ def test_import_dataset_update_no_change(Session, selection, project, freezer): 
     with Session() as session:
         assert session.scalar(select(func.count()).select_from(Dataset)) == 1
 
-    new_eufid = service.import_dataset(
+    new_dataset_id = service.import_dataset(
         StringIO(GOOD_EUF_FILE),
         source="test",
-        smid=project_id,
+        project_id=project_id,
         title="title",
         assembly_id=1,
         modification_ids=[1],
         technology_id=1,
         organism_id=1,
         annotation_source=AnnotationSource.ENSEMBL,
-        eufid=eufid,
+        dataset_id=dataset_id,
     )
 
-    assert new_eufid == eufid
+    assert new_dataset_id == dataset_id
     with Session() as session:
-        dataset = session.get_one(Dataset, eufid)
+        dataset = session.get_one(Dataset, dataset_id)
         assert dataset.title == "title"
         assert dataset.project_id == project_id
         assert dataset.technology_id == 1
@@ -303,7 +316,7 @@ def test_import_dataset_update_no_change(Session, selection, project, freezer): 
         assert dataset.date_added == datetime(2017, 5, 20, 11, 0, 23)
 
         data = (
-            session.execute(select(Data).where(Data.dataset_id == eufid))
+            session.execute(select(Data).where(Data.dataset_id == dataset_id))
             .scalars()
             .all()
         )
@@ -321,10 +334,10 @@ def test_import_dataset_update_with_change(
     service = _get_dataset_service(Session())
     freezer.move_to("2017-05-20 11:00:23")
     project_id = project[0].id
-    eufid = service.import_dataset(
+    dataset_id = service.import_dataset(
         StringIO(GOOD_EUF_FILE),
         source="test",
-        smid=project_id,
+        project_id=project_id,
         title="title",
         assembly_id=1,
         modification_ids=[1],
@@ -336,22 +349,22 @@ def test_import_dataset_update_with_change(
     with Session() as session:
         assert session.scalar(select(func.count()).select_from(Dataset)) == 1
 
-    new_eufid = service.import_dataset(
+    new_dataset_id = service.import_dataset(
         StringIO(GOOD_EUF_FILE.replace("1000", "555")),
         source="test",
-        smid=project_id,
+        project_id=project_id,
         title="title",
         assembly_id=1,
         modification_ids=[1],
         technology_id=1,
         organism_id=1,
         annotation_source=AnnotationSource.ENSEMBL,
-        eufid=eufid,
+        dataset_id=dataset_id,
     )
 
-    assert new_eufid == eufid
+    assert new_dataset_id == dataset_id
     with Session() as session:
-        dataset = session.get_one(Dataset, eufid)
+        dataset = session.get_one(Dataset, dataset_id)
         assert dataset.title == "title"
         assert dataset.project_id == project_id
         assert dataset.technology_id == 1
@@ -359,7 +372,7 @@ def test_import_dataset_update_with_change(
         assert dataset.date_added == datetime(2017, 5, 20, 11, 0, 23)
 
         data = (
-            session.execute(select(Data).where(Data.dataset_id == eufid))
+            session.execute(select(Data).where(Data.dataset_id == dataset_id))
             .scalars()
             .all()
         )
@@ -377,14 +390,14 @@ def test_import_dataset_update_fail(Session, selection, dataset, project):  # no
         service.import_dataset(
             StringIO(GOOD_EUF_FILE),
             source="test",
-            smid=project[0].id,
+            project_id=project[0].id,
             title="dataset title",
             assembly_id=1,
             modification_ids=[1],
             technology_id=1,
             organism_id=1,
             annotation_source=AnnotationSource.ENSEMBL,
-            eufid="XXXXXXXXXXXX",
+            dataset_id="XXXXXXXXXXXX",
         )
     assert str(exc.value) == "No such dataset: 'XXXXXXXXXXXX'."
     assert exc.type == DatasetUpdateError
@@ -403,30 +416,32 @@ def test_delete_dataset(Session, dataset, bam_file):
         eufid1 = dataset[1].id
         eufid2 = dataset[2].id
         eufid3 = dataset[3].id
-        for eufid, expected_length in zip(
+        for dataset_id, expected_length in zip(
             [eufid0, eufid1, eufid2, eufid3], [0, 1, 0, 0]
         ):
             data = (
-                session.execute(select(Data).where(Data.dataset_id == eufid))
+                session.execute(select(Data).where(Data.dataset_id == dataset_id))
                 .scalars()
                 .all()
             )
             assert len(data) == expected_length
             dataset_association = (
                 session.execute(
-                    select(DatasetModificationAssociation).filter_by(dataset_id=eufid)
+                    select(DatasetModificationAssociation).filter_by(
+                        dataset_id=dataset_id
+                    )
                 )
                 .scalars()
                 .all()
             )
             assert len(dataset_association) == expected_length
             bam_list = (
-                session.execute(select(BamFile).filter_by(dataset_id=eufid))
+                session.execute(select(BamFile).filter_by(dataset_id=dataset_id))
                 .scalars()
                 .all()
             )
             assert len(bam_list) == expected_length
         assert service._file_service.deleted_bam_files == [
-            "dataset_id01_1.bam",
-            "dataset_id01_2.bam",
+            "dataset00001_1.bam",
+            "dataset00001_2.bam",
         ]

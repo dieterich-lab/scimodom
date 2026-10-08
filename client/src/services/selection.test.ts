@@ -10,7 +10,7 @@ import {
   getSelectionsByIds,
   getSelectionsByTaxaId,
   getTechnologiesByIds,
-  getModificationTypesByRnaName,
+  getModificationTypesByRnaType,
   type Selection
 } from '@/services/selection'
 import { HTTP } from '@/services/API'
@@ -30,13 +30,14 @@ const selection: Selection[] = [
   {
     selection_id: 1,
     modification_id: 5,
-    modomics_sname: 'm6A',
-    rna_name: 'WTS',
+    modomics_short_name: 'm6A',
+    rna_type: 'WTS',
+    rna_type_name: 'whole transcriptome',
     organism_id: 1,
     cto: 'HeLa',
     taxa_id: 9606,
     taxa_name: 'Homo sapiens',
-    taxa_sname: 'H. sapiens',
+    taxa_short_name: 'H. sapiens',
     domain: 'Eukaryota',
     kingdom: 'Animalia',
     technology_id: 1,
@@ -47,13 +48,14 @@ const selection: Selection[] = [
   {
     selection_id: 2,
     modification_id: 6,
-    modomics_sname: 'm5C',
-    rna_name: 'WTS',
+    modomics_short_name: 'm5C',
+    rna_type: 'WTS',
+    rna_type_name: 'whole transcriptome',
     organism_id: 2,
     cto: 'HEK293T',
     taxa_id: 9606,
     taxa_name: 'Homo sapiens',
-    taxa_sname: 'H. sapiens',
+    taxa_short_name: 'H. sapiens',
     domain: 'Eukaryota',
     kingdom: 'Animalia',
     technology_id: 2,
@@ -64,13 +66,14 @@ const selection: Selection[] = [
   {
     selection_id: 3,
     modification_id: 5,
-    modomics_sname: 'm6A',
-    rna_name: 'RNA',
+    modomics_short_name: 'm6A',
+    rna_type: 'RNA',
+    rna_type_name: 'whole transcriptome',
     organism_id: 3,
     cto: 'Heart',
     taxa_id: 10090,
     taxa_name: 'Mus musculus',
-    taxa_sname: 'M. musculus',
+    taxa_short_name: 'M. musculus',
     domain: 'Eukaryota',
     kingdom: 'Animalia',
     technology_id: 3,
@@ -81,13 +84,14 @@ const selection: Selection[] = [
   {
     selection_id: 4,
     modification_id: 7,
-    modomics_sname: 'm1A',
-    rna_name: 'RNA',
+    modomics_short_name: 'm1A',
+    rna_type: 'RNA',
+    rna_type_name: 'whole transcriptome',
     organism_id: 3,
     cto: 'Heart',
     taxa_id: 10090,
     taxa_name: 'Mus musculus',
-    taxa_sname: 'M. musculus',
+    taxa_short_name: 'M. musculus',
     domain: 'Eukaryota',
     kingdom: 'Animalia',
     technology_id: 4,
@@ -122,16 +126,11 @@ test('getPromise does not swallow failures', async () => {
   await expect(selectionsCache.getPromise()).rejects.toBe(error)
 })
 
-test('getPromise logs and rethrows on failure', async () => {
+test('getPromise propagates error on failure', async () => {
   const error = new Error()
-  const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
   mockedGet.mockRejectedValueOnce(error)
 
   await expect(selectionsCache.getPromise()).rejects.toBe(error)
-  expect(consoleSpy).toHaveBeenCalledWith(
-    expect.stringContaining('Failed to fetch /catalogs/selections:')
-  )
-  consoleSpy.mockRestore()
 })
 
 test('getCtosByModificationIds', async () => {
@@ -182,10 +181,10 @@ test('getTechnologiesByIds throws an error', async () => {
   await expect(getTechnologiesByIds([5, 6])).rejects.toThrow(/Technologies '5,6' not found/)
 })
 
-test('getModificationTypesByRnaName', async () => {
+test('getModificationTypesByRnaType', async () => {
   mockResponse(selection)
 
-  const mods = await getModificationTypesByRnaName('WTS')
+  const mods = await getModificationTypesByRnaType('WTS')
 
   expect(mods).toHaveLength(2)
   expect(mods.map((m) => m.modification_id).sort()).toEqual([5, 6])

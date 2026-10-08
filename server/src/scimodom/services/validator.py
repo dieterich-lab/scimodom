@@ -51,8 +51,8 @@ class _ReadOnlyImportContext:
 
 @dataclass(kw_only=True)
 class _DatasetImportContext(_ReadOnlyImportContext):
-    smid: str
-    eufid: str
+    project_id: str
+    dataset_id: str
     title: str
     modification_ids: list[int]
     organism_id: int
@@ -367,10 +367,10 @@ class ValidatorService:
             self._context
         )
         is_found = self._session.query(
-            exists().where(Project.id == self._context.smid)
+            exists().where(Project.id == self._context.project_id)
         ).scalar()
         if not is_found:
-            raise DatasetImportError(f"No such SMID: {self._context.smid}.")
+            raise DatasetImportError(f"No such SMID: {self._context.project_id}.")
         self._sanitize_modification_ids()
         try:
             _ = self._get_technology(self._context.technology_id)
@@ -432,11 +432,11 @@ class ValidatorService:
                 )
 
     def _check_for_duplicate_dataset(self) -> None:
-        eufid = self._session.execute(
+        dataset_id = self._session.execute(
             select(func.distinct(Dataset.id))
             .join(DatasetModificationAssociation, Dataset.associations, isouter=True)
             .where(
-                Dataset.project_id == self._context.smid,
+                Dataset.project_id == self._context.project_id,
                 Dataset.title == self._context.title,
                 DatasetModificationAssociation.modification_id.in_(
                     self._context.modification_ids
@@ -446,15 +446,15 @@ class ValidatorService:
             )
         ).scalar_one_or_none()
         if self._context.update_flag:
-            if eufid != self._context.eufid:
+            if dataset_id != self._context.dataset_id:
                 raise DatasetUpdateError(
-                    f"Provided dataset '{self._context.eufid}', but found '{eufid}' with "
-                    f"title '{self._context.title}' (SMID '{self._context.smid}')."
+                    f"Provided dataset '{self._context.dataset_id}', but found '{dataset_id}' with "
+                    f"title '{self._context.title}' (SMID '{self._context.project_id}')."
                 )
         else:
-            if eufid:
+            if dataset_id:
                 raise DatasetExistsError(
-                    f"Suspected duplicate dataset '{eufid}' (SMID '{self._context.smid}'), "
+                    f"Suspected duplicate dataset '{dataset_id}' (SMID '{self._context.project_id}'), "
                     f"and title '{self._context.title}'."
                 )
 

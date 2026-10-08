@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { DEFAULT_STYLE, type FormFieldWrapperProps } from '@/utils/ui_style'
+import { DEFAULT_STYLE, type FormFieldWrapperProps } from '@/utils/ui-style'
 
 const props = withDefaults(defineProps<FormFieldWrapperProps>(), {
   error: '',

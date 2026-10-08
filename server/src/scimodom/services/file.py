@@ -359,24 +359,24 @@ class FileService:
 
     # Project related
 
-    def create_project_metadata_file(self, smid: str) -> TextIO:
+    def create_project_metadata_file(self, project_id: str) -> TextIO:
         """Open a metadata file for writing.
 
-        :param smid: Sci-ModoM ID (SMID)
-        :type smid: str
+        :param project_id: Sci-ModoM ID (SMID)
+        :type project_id: str
         :returns: File handle
         :rtype: TextIO
         """
-        metadata_file = Path(self._get_project_metadata_dir(), f"{smid}.json")
+        metadata_file = Path(self._get_project_metadata_dir(), f"{project_id}.json")
         return open(metadata_file, "w", opener=write_opener)
 
-    def delete_project_metadata_file(self, smid: str) -> None:
+    def delete_project_metadata_file(self, project_id: str) -> None:
         """Remove a metadata file.
 
-        :param smid: Sci-ModoM ID (SMID)
-        :type smid: str
+        :param project_id: Sci-ModoM ID (SMID)
+        :type project_id: str
         """
-        path = Path(self._get_project_metadata_dir(), f"{smid}.json")
+        path = Path(self._get_project_metadata_dir(), f"{project_id}.json")
         path.unlink()
 
     def create_project_request_file(self, request_uuid) -> TextIO:

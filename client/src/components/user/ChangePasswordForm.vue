@@ -7,7 +7,7 @@ import FormTextInput from '@/components/ui/FormTextInput.vue'
 import DialogButtonGroup from '@/components/ui/DialogButtonGroup.vue'
 import DialogButton from '@/components/ui/DialogButton.vue'
 import DialogText from '@/components/ui/DialogText.vue'
-import { PRIMARY_DIALOG_STYLE } from '@/utils/ui_style'
+import { PRIMARY_DIALOG_STYLE } from '@/utils/ui-style'
 import { changePassword, resetPassword } from '@/services/user'
 import { trashRequestErrors } from '@/services/API'
 

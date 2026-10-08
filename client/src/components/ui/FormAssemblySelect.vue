@@ -3,7 +3,7 @@ import { useId } from 'vue'
 import { type Assembly } from '@/services/assembly'
 import FormFieldWrapper from '@/components/ui/FormFieldWrapper.vue'
 import AssemblySelect from '@/components/ui/AssemblySelect.vue'
-import { type FormFieldProps, FORM_FIELD_DEFAULTS } from '@/utils/ui_style'
+import { type FormFieldProps, FORM_FIELD_DEFAULTS } from '@/utils/ui-style'
 
 interface Props extends FormFieldProps {
   taxaId?: number

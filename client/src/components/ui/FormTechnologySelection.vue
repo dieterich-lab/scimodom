@@ -3,7 +3,7 @@ import { useId } from 'vue'
 import { type Technology } from '@/services/selection'
 import FormFieldWrapper from '@/components/ui/FormFieldWrapper.vue'
 import TechnologySelection from '@/components/ui/TechnologySelection.vue'
-import { type FormFieldProps, FORM_FIELD_DEFAULTS } from '@/utils/ui_style'
+import { type FormFieldProps, FORM_FIELD_DEFAULTS } from '@/utils/ui-style'
 import { type TechnologySelectionExtraProps } from '@/utils/technology'
 
 interface Props extends FormFieldProps, TechnologySelectionExtraProps {}

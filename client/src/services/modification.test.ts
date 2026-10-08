@@ -40,7 +40,7 @@ function makeSearchParameters(overrides: Partial<SearchParameters> = {}): Search
     taxa: {
       taxa_id: 123,
       taxa_name: 'name',
-      taxa_sname: 'sname',
+      taxa_short_name: 'sname',
       domain: 'domain',
       kingdom: 'kingdom'
     },
@@ -77,7 +77,7 @@ test.each<{ searchBy: SearchBy; expectedBy: string | undefined }>([
 ])(
   'getModifications with searchBy=$searchBy sends by=$expectedBy',
   async ({ searchBy, expectedBy }) => {
-    const expectedResponse = { records: [], totalRecords: 0 }
+    const expectedResponse = { records: [], total: 0 }
     mockedHandle.mockResolvedValueOnce(expectedResponse)
 
     const response = await getModifications(makeSearchParameters({ searchBy }), dialogState)
@@ -100,13 +100,18 @@ test('getModifications maps SearchParameters into the request', async () => {
     chrom: { chrom: '1', size: 1000 },
     chromStart: 1,
     chromEnd: 2,
-    modificationType: { modification_id: 7, modomics_sname: 'm6A', rna_name: 'rRNA' },
+    modificationType: {
+      modification_id: 7,
+      modomics_short_name: 'm6A',
+      rna_type: 'rRNA',
+      rna_type_name: 'rRNA'
+    },
     cto: {
       organism_id: 1,
       cto: 'cell-type',
       taxa_id: 123,
       taxa_name: 'name',
-      taxa_sname: 'sname',
+      taxa_short_name: 'sname',
       domain: 'domain',
       kingdom: 'kingdom'
     },
@@ -132,8 +137,8 @@ test('getModifications maps SearchParameters into the request', async () => {
       chromStart: 1,
       chromEnd: 2,
       multiSort: [],
-      firstRecord: 1,
-      maxRecords: 10
+      offset: 1,
+      limit: 10
     }
   })
 })
@@ -209,6 +214,8 @@ function makeModification(overrides: Partial<Modification> = {}): Modification {
     feature: 'exon',
     gene_id: 'ENSG1',
     gene_name: 'GENE1',
+    gene_biotype: 'protein_coding',
+    reference_id: 1,
     tech: 'tech',
     taxa_id: 9606,
     cto: 'cell-type',
@@ -227,23 +234,11 @@ test("getTargetSites calls '/modifications/sites/targets' and returns records", 
     '/modifications/sites/targets',
     {
       params: {
-        id: 15,
-        chrom: '1',
-        start: 1,
-        end: 2,
-        name: 'm6A',
-        score: 0,
-        strand: '+',
-        coverage: 10,
-        frequency: 50,
-        dataset_id: 'd1',
-        feature: 'exon',
-        gene_id: 'ENSG1',
-        gene_name: 'GENE1',
-        tech: 'tech',
-        taxa_id: 9606,
-        cto: 'cell-type',
         taxaId: modification.taxa_id,
+        chrom: '1',
+        chromStart: 1,
+        chromEnd: 2,
+        strand: '+',
         target: 'TARGET'
       }
     }
@@ -274,23 +269,11 @@ test("getGenomicContext calls '/modifications/sites/context' and returns a strin
     '/modifications/sites/context',
     {
       params: {
-        id: 15,
-        chrom: '1',
-        start: 1,
-        end: 2,
-        name: 'm6A',
-        score: 0,
-        strand: '+',
-        coverage: 10,
-        frequency: 50,
-        dataset_id: 'd1',
-        feature: 'exon',
-        gene_id: 'ENSG1',
-        gene_name: 'GENE1',
-        tech: 'tech',
-        taxa_id: 9606,
-        cto: 'cell-type',
         taxaId: modification.taxa_id,
+        chrom: '1',
+        chromStart: 1,
+        chromEnd: 2,
+        strand: '+',
         window: 5
       }
     }
@@ -321,8 +304,8 @@ test("getSiteWiseInfo calls '/modification/sites' and returns records", async ()
       strand: '+',
       dataset_id: 'd1',
       modification_id: 15,
-      rna: 'WTS',
-      short_name: 'sname',
+      rna_type: 'WTS',
+      taxa_short_name: 'sname',
       cto: 'cell-type',
       tech: 'tech',
       coverage: 10,
@@ -338,23 +321,11 @@ test("getSiteWiseInfo calls '/modification/sites' and returns records", async ()
     '/modifications/sites',
     {
       params: {
-        id: 15,
+        taxaId: modification.taxa_id,
         chrom: '1',
-        start: 1,
-        end: 2,
-        name: 'm6A',
-        score: 0,
-        strand: '+',
-        coverage: 10,
-        frequency: 50,
-        dataset_id: 'd1',
-        feature: 'exon',
-        gene_id: 'ENSG1',
-        gene_name: 'GENE1',
-        tech: 'tech',
-        taxa_id: 9606,
-        cto: 'cell-type',
-        taxaId: modification.taxa_id
+        chromStart: 1,
+        chromEnd: 2,
+        strand: '+'
       }
     }
   ])

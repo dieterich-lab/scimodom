@@ -23,7 +23,10 @@ const options = ref<CascadeItem<ModificationType>[]>([])
 
 onMounted(async () => {
   modificationTypeSelectionCache.getData().then((data) => {
-    options.value = getOptionsForPrimvueCascadeSelect(data, ['rna_name', 'modomics_sname'])
+    options.value = getOptionsForPrimvueCascadeSelect(data, [
+      'rna_type_name',
+      'modomics_short_name'
+    ])
   })
 })
 </script>
@@ -33,7 +36,7 @@ onMounted(async () => {
     v-model="model"
     :options="options"
     :placeholder="placeholder"
-    option-label="modomics_sname"
+    option-label="modomics_short_name"
     option-group-children="cChildren"
     option-group-label="label"
     :pt="{

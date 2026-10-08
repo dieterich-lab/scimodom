@@ -1,8 +1,37 @@
-import axios, { type AxiosResponse, type InternalAxiosRequestConfig } from 'axios'
+import axios, {
+  type AxiosRequestConfig,
+  type AxiosResponse,
+  type InternalAxiosRequestConfig
+} from 'axios'
 import { type AccessTokenStore, useAccessToken } from '@/stores/AccessToken.js'
 import { DIALOG, type DialogStateStore, useDialogState } from '@/stores/DialogState.js'
 
-const API_PREFIX = '/api/v0/'
+const API_VERSION = 'v0'
+const API_PREFIX = `/api/${API_VERSION}/`
+
+// The response type is a compile-time assertion made at the call site;
+// Axios does not validate it. Unlike Axios' own signatures, the type parameter
+// defaults to `unknown` instead of `any`, so a forgotten annotation fails to compile
+// as soon as the data is used, instead of silently disabling type checking.
+interface ApiClient {
+  get<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>>
+  delete<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>>
+  post<T = unknown>(
+    url: string,
+    data?: unknown,
+    config?: AxiosRequestConfig
+  ): Promise<AxiosResponse<T>>
+  put<T = unknown>(
+    url: string,
+    data?: unknown,
+    config?: AxiosRequestConfig
+  ): Promise<AxiosResponse<T>>
+  patch<T = unknown>(
+    url: string,
+    data?: unknown,
+    config?: AxiosRequestConfig
+  ): Promise<AxiosResponse<T>>
+}
 
 interface ErrorResponse {
   message: string
@@ -23,7 +52,7 @@ class RequestError extends Error {
 }
 
 function isErrorResponse(x: unknown): x is ErrorResponse {
-  return (x as ErrorResponse).message !== undefined
+  return typeof x === 'object' && x !== null && 'message' in x && x.message !== undefined
 }
 
 function getApiBaseUrl(): string {
@@ -34,14 +63,14 @@ function getApiBaseUrl(): string {
   }
 }
 
-const HTTPAuth = axios.create({
+const httpAuthInstance = axios.create({
   baseURL: getApiBaseUrl(),
   withCredentials: false,
   paramsSerializer: { indexes: null }
   // default xsrfCookieName: 'XSRF-TOKEN'
 })
 
-const HTTP = axios.create({
+const httpInstance = axios.create({
   baseURL: getApiBaseUrl(),
   withCredentials: false,
   paramsSerializer: { indexes: null },
@@ -51,6 +80,9 @@ const HTTP = axios.create({
   }
 })
 
+const HTTPAuth: ApiClient = httpAuthInstance
+const HTTP: ApiClient = httpInstance
+
 let cachedAccessToken: string | null = null
 
 function prepareAPI(isAuthRequired: boolean) {
@@ -58,8 +90,8 @@ function prepareAPI(isAuthRequired: boolean) {
   const currentToken = accessToken.token
   if (currentToken !== cachedAccessToken) {
     // use appends an interceptor; it does not replace the previous one...
-    HTTPAuth.interceptors.request.clear()
-    HTTPAuth.interceptors.request.use(
+    httpAuthInstance.interceptors.request.clear()
+    httpAuthInstance.interceptors.request.use(
       (config) => handleHTTPAuthRequest(config, accessToken),
       (error) => Promise.reject(error)
     )
@@ -87,8 +119,10 @@ function getApiUrl(endpoint: string): string {
   return `${base}/${endpoint.replace(/^\//, '')}`
 }
 
+// The response type T is declared once, where the request is made
+// and inferred here. T is not validated at runtime.
 async function handleRequest<T>(
-  request: Promise<AxiosResponse>,
+  request: Promise<AxiosResponse<T>>,
   error_context?: string
 ): Promise<T> {
   let messages: undefined | ErrorMessages
@@ -96,17 +130,17 @@ async function handleRequest<T>(
     const response = await request
     // axios' default validateStatus resolves this promise for 2xx
     if (response.status >= 200 && response.status < 300) {
-      return response.data as T
+      return response.data
     }
     messages = getErrorMessagesFromResponse(response, error_context)
   } catch (err) {
-    messages = getErrorMessagesFromException(err as object, error_context)
+    messages = getErrorMessagesFromException(err, error_context)
   }
   throw new RequestError(messages)
 }
 
 function getErrorMessagesFromResponse(
-  response: AxiosResponse,
+  response: AxiosResponse<unknown>,
   error_context?: string
 ): ErrorMessages {
   const prefix = error_context ? `${error_context}: ` : ''
@@ -133,12 +167,12 @@ function getErrorMessagesFromResponse(
   }
 }
 
-function getErrorMessagesFromException(err: object, error_context?: string): ErrorMessages {
-  if ('response' in err) {
-    return getErrorMessagesFromResponse(err.response as AxiosResponse, error_context)
+function getErrorMessagesFromException(err: unknown, error_context?: string): ErrorMessages {
+  if (axios.isAxiosError(err) && err.response !== undefined) {
+    return getErrorMessagesFromResponse(err.response, error_context)
   } else {
     const prefix = error_context ? `${error_context}: ` : ''
-    const message = err.toString()
+    const message = String(err)
     const technical_message = `${prefix}${message}`
     return {
       userMessage: technical_message,
@@ -148,7 +182,7 @@ function getErrorMessagesFromException(err: object, error_context?: string): Err
 }
 
 async function handleRequestWithErrorReporting<T>(
-  request: Promise<AxiosResponse>,
+  request: Promise<AxiosResponse<T>>,
   error_context: string,
   dialogState: DialogStateStore,
   dialogStateTemplate?: Partial<DialogStateStore>
@@ -203,5 +237,6 @@ export {
   prepareAPI,
   handleRequest,
   handleRequestWithErrorReporting,
+  RequestError,
   trashRequestErrors
 }

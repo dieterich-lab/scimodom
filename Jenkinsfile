@@ -4,11 +4,39 @@ pipeline {
         stage('Prepare Python venv') {
             steps {
                 sh '''
-                    python3 -m venv venv
+                    uv --python 3.11 venv venv
                     . ./venv/bin/activate
-                    pip install --upgrade pip setuptools
                     cd server
-                    pip --verbose install '.[dev,tests]'
+                    uv pip install -e . --group dev'
+                '''
+            }
+        }
+        stage('Validate OpenAPI specs') {
+            steps {
+                sh '''
+                    . ./venv/bin/activate
+                    cd server
+                    python docs/source/include_swagger_api_spec.py
+                    openapi-spec-validator docs/source/openapi/_include/*.yaml
+                '''
+            }
+        }
+        stage('Check API version') {
+            steps {
+                sh '''
+                    . ./venv/bin/activate
+
+                    SERVER_VERSION=$(grep -oP 'API_VERSION = "\K[^"]+' server/src/scimodom/services/url.py)
+                    CLIENT_VERSION=$(grep -oP "API_VERSION = '\K[^']+" client/src/services/API.ts)
+                    echo "server=$SERVER_VERSION  client=$CLIENT_VERSION"
+                    if [ -z "$SERVER_VERSION" ] || [ -z "$CLIENT_VERSION" ]; then
+                        echo "Could not extract API_VERSION"
+                        exit 1
+                    fi
+                    if [ "$SERVER_VERSION" != "$CLIENT_VERSION" ]; then
+                        echo "API_VERSION mismatch"
+                        exit 1
+                    fi
                 '''
             }
         }
@@ -25,7 +53,7 @@ pipeline {
                 '''
             }
         }
-        stage('Python Testing') {
+        stage('Run server tests') {
             steps {
                 sh '''
                     export PATH="$(pwd)/bin:$PATH"
@@ -36,32 +64,39 @@ pipeline {
                 '''
             }
         }
-        //
-        // Ot seems that the issue described in
-        //
-        // https://github.com/nodejs/node/issues/51477
-        //
-        // 1) Is present in Debian 12
-        // 2) actually matters if mode_modules (or ~/.npm ??) ist located on BeeGFS.
-        //
-        // So so no Jenkins tests for the client part - until Debian 13 or so
-        //
-        // stage('Setup NodeJS') {
-        //     steps {
-        //         sh '''
-        //             cd client
-        //             npm install --save-dev
-        //         '''
-        //     }
-        // }
-        // stage('Test Frontend') {
-        //     steps {
-        //         sh '''
-        //             cd client
-        //             npm run test:unit run
-        //         '''
-        //     }
-        // }
+        stage('Setup NodeJS') {
+            steps {
+                sh '''
+                    cd client
+                    npm ci
+                '''
+            }
+        }
+        stage('Run client tests') {
+            steps {
+                sh '''
+                    cd client
+                    npm run test:unit:ci
+                '''
+            }
+        }
+        stage('Type check client') {
+            steps {
+                sh '''
+                    cd client
+                    npm run type-check
+                '''
+            }
+        }
+        // needs the merged specs from 'Validate OpenAPI specs'
+        stage('Run API contract (client) tests') {
+            steps {
+                sh '''
+                    cd client
+                    npm run test:openapi
+                '''
+            }
+        }
     }
     post {
         always {

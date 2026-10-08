@@ -32,3 +32,6 @@ coverage
 
 # Projetc specific
 jsons/
+
+# openapi tests
+tests/openapi/.schemas/

@@ -34,7 +34,7 @@ RECORDS = [
         "strand": Strand.REVERSE,
         "coverage": 378,
         "frequency": 9,
-        "dataset_id": "dataset_id03",
+        "dataset_id": "dataset00003",
         "feature": "CDS,Exonic",
         "gene_id": "ENSG1",
         "gene_name": "GENE1",
@@ -54,7 +54,7 @@ RECORDS = [
         "strand": Strand.FORWARD,
         "coverage": 183,
         "frequency": 6,
-        "dataset_id": "dataset_id03",
+        "dataset_id": "dataset00003",
         "feature": "Intergenic",
         "gene_id": "ENSIntergenic",
         "gene_name": None,
@@ -74,7 +74,7 @@ RECORDS = [
         "strand": Strand.REVERSE,
         "coverage": 183,
         "frequency": 4,
-        "dataset_id": "dataset_id03",
+        "dataset_id": "dataset00003",
         "feature": None,
         "gene_id": None,
         "gene_name": None,
@@ -94,7 +94,7 @@ RECORDS = [
         "strand": Strand.FORWARD,
         "coverage": 19,
         "frequency": 47,
-        "dataset_id": "dataset_id03",
+        "dataset_id": "dataset00003",
         "feature": "Intronic,Exonic",
         "gene_id": "ENSG2,ENSG3",
         "gene_name": "ENSG2,GENE3",
@@ -114,7 +114,7 @@ RECORDS = [
         "strand": Strand.FORWARD,
         "coverage": 43,
         "frequency": 100,
-        "dataset_id": "dataset_id01",
+        "dataset_id": "dataset00001",
         "feature": None,
         "gene_id": None,
         "gene_name": None,
@@ -134,7 +134,7 @@ RECORDS = [
         "strand": Strand.REVERSE,
         "coverage": 378,
         "frequency": 9,
-        "dataset_id": "dataset_id03",
+        "dataset_id": "dataset00003",
         "feature": "CDS",
         "gene_id": "ENSG1",
         "gene_name": "GENE1",
@@ -154,7 +154,7 @@ RECORDS = [
         "strand": Strand.FORWARD,
         "coverage": 19,
         "frequency": 47,
-        "dataset_id": "dataset_id03",
+        "dataset_id": "dataset00003",
         "feature": "Intronic",
         "gene_id": "ENSG2",
         "gene_name": "ENSG2",
@@ -494,7 +494,7 @@ def test_get_modifications_records_by_selection(
         search_params=search_params,
         page_params=page_params,
     )
-    assert response["totalRecords"] == expected_total
+    assert response["total"] == expected_total
     assert response["records"] == expected_records
 
 
@@ -537,7 +537,7 @@ def test_get_modification_records_by_gene(
         search_params=search_params,
         page_params=PageParams(),
     )
-    assert response["totalRecords"] == expected_total
+    assert response["total"] == expected_total
     assert response["records"] == expected_records
 
 
@@ -574,7 +574,7 @@ def test_get_modification_records_by_gene_no_filters(
         search_params=search_params,
         page_params=PageParams(),
     )
-    assert response["totalRecords"] == expected_total
+    assert response["total"] == expected_total
     assert [r["id"] for r in response["records"]] == expected_ids
 
 
@@ -584,11 +584,17 @@ def test_get_modification_site(Session, dataset):  # noqa
     assert len(response["records"]) == 2
     # query has no ORDER BY, so the row order is DB-dependent!
     # It's just the insertion order in SQLite; it will not be guaranteed in MySQL.
-    assert response["records"][0]["dataset_id"] == "dataset_id01"
-    assert response["records"][1]["dataset_id"] == "dataset_id02"
+    assert response["records"][0]["dataset_id"] == "dataset00001"
+    assert response["records"][1]["dataset_id"] == "dataset00002"
     assert response["records"][0]["cto"] == "Cell type 1"
     assert response["records"][1]["cto"] == "Cell type 2"
     assert response["records"][0]["tech"] == "Technology 1"
     assert response["records"][1]["tech"] == "Technology 2"
     assert response["records"][0]["score"] == 1000
     assert response["records"][1]["score"] == 10
+
+
+def test_get_modification_site_no_site(Session, dataset):  # noqa
+    modification_service = _get_modification_service(Session())
+    response = modification_service.get_modification_site("17", 100001, 100003)
+    assert len(response["records"]) == 0
