@@ -20,7 +20,7 @@ from scimodom.utils.specs.enums import Strand, UserState
 
 
 class RNAType(Base):
-    """RNA types (nomenclature)"""
+    """RNA types (nomenclature)."""
 
     __tablename__ = "rna_type"
 
@@ -33,7 +33,7 @@ class RNAType(Base):
 
 
 class Modomics(Base):
-    """Modified residues"""
+    """Modified residues."""
 
     __tablename__ = "modomics"
 
@@ -53,7 +53,7 @@ class Modomics(Base):
 
 
 class Modification(Base):
-    """Modification (RNA type)"""
+    """Modification (RNA type)."""
 
     __tablename__ = "modification"
 
@@ -76,7 +76,7 @@ class Modification(Base):
 
 
 class DetectionMethod(Base):
-    """Detection methods (nomenclature)"""
+    """Detection methods (nomenclature)."""
 
     __tablename__ = "method"
 
@@ -90,7 +90,7 @@ class DetectionMethod(Base):
 
 
 class DetectionTechnology(Base):
-    """Detection methods (technology)"""
+    """Detection methods (technology)."""
 
     __tablename__ = "technology"
 
@@ -109,7 +109,7 @@ class DetectionTechnology(Base):
 
 
 class Taxonomy(Base):
-    """Taxonomic rank (up to phylum)"""
+    """Taxonomic rank (up to phylum)."""
 
     __tablename__ = "taxonomy"
 
@@ -122,7 +122,7 @@ class Taxonomy(Base):
 
 
 class Taxa(Base):
-    """NCBI Taxonomy i.e. species records"""
+    """NCBI Taxonomy i.e. species records."""
 
     __tablename__ = "ncbi_taxa"
 
@@ -139,7 +139,7 @@ class Taxa(Base):
 
 
 class Organism(Base):
-    """Organism (cell, tissue, organ) per species (taxa_id)"""
+    """Organism (cell, tissue, organ) per taxon."""
 
     __tablename__ = "organism"
 
@@ -157,11 +157,12 @@ class Organism(Base):
 
 class Selection(Base):
     """Association: Modification, Organism, DetectionTechnology.
+
     This table defines the selections or combinations
-    of modification, organism, and technology IDs that are
-    actually available in the database, i.e. not all combinations
-    of modification, organism, and technology IDs may be
-    available."""
+    of modification, organism, and technology identifiers that are
+    currently available in the database, i.e. not all possible
+    combinations.
+    """
 
     __tablename__ = "selection"
 
@@ -188,7 +189,7 @@ class Selection(Base):
 
 
 class Assembly(Base):
-    """Assembly releases"""
+    """Assembly releases."""
 
     __tablename__ = "assembly"
 
@@ -209,7 +210,7 @@ class Assembly(Base):
 
 
 class AssemblyVersion(Base):
-    """Assembly version"""
+    """Assembly version."""
 
     __tablename__ = "assembly_version"
 
@@ -219,7 +220,7 @@ class AssemblyVersion(Base):
 
 
 class Annotation(Base):
-    """Annotation"""
+    """Annotation."""
 
     __tablename__ = "annotation"
 
@@ -243,7 +244,7 @@ class Annotation(Base):
 
 
 class AnnotationVersion(Base):
-    """Annotation version"""
+    """Annotation version."""
 
     __tablename__ = "annotation_version"
 
@@ -253,7 +254,7 @@ class AnnotationVersion(Base):
 
 
 class GenomicAnnotation(Base):
-    """Gene annotation"""
+    """Gene annotation."""
 
     __tablename__ = "genomic_annotation"
 
@@ -268,7 +269,10 @@ class GenomicAnnotation(Base):
         String(255), nullable=True
     )  # Ensembl gene biotype or tRNA
 
-    __table_args__ = (Index("idx_genomic", "annotation_id", "biotype", "name"),)
+    __table_args__ = (
+        Index("idx_genomic", "annotation_id", "biotype", "name"),
+        Index("idx_genomic_name", "annotation_id", "name"),
+    )
 
     inst_annotation: Mapped["Annotation"] = relationship(back_populates="annotations")
 
@@ -280,7 +284,7 @@ class GenomicAnnotation(Base):
 # for Project and Dataset, allow Optional (None in Python), but nullable=False (NOT NULL)
 # to instantiate class, assign later?
 class Project(Base):
-    """Project metadata"""
+    """Project metadata."""
 
     __tablename__ = "project"
 
@@ -306,7 +310,7 @@ class Project(Base):
 
 
 class ProjectContact(Base):
-    """Project contact"""
+    """Project contact."""
 
     __tablename__ = "project_contact"
 
@@ -319,7 +323,7 @@ class ProjectContact(Base):
 
 
 class ProjectSource(Base):
-    """Project external source"""
+    """Project external source."""
 
     __tablename__ = "project_source"
 
@@ -334,7 +338,7 @@ class ProjectSource(Base):
 
 
 class Dataset(Base):
-    """Dataset metadata"""
+    """Dataset metadata."""
 
     __tablename__ = "dataset"
 
@@ -373,7 +377,7 @@ class Dataset(Base):
 
 
 class Data(Base):
-    """Dataset (records)"""
+    """Dataset (records)."""
 
     __tablename__ = "data"
 
@@ -428,7 +432,7 @@ class Data(Base):
 
 
 class DatasetModificationAssociation(Base):
-    """Association: Dataset, Modification"""
+    """Association: Dataset, Modification."""
 
     __tablename__ = "dataset_modification_association"
 
@@ -447,7 +451,7 @@ class DatasetModificationAssociation(Base):
 
 
 class DataAnnotation(Base):
-    """Association: GenomicAnnotation, Data"""
+    """Association: GenomicAnnotation, Data."""
 
     __tablename__ = "data_annotation"
 
@@ -468,7 +472,10 @@ class DataAnnotation(Base):
 
 
 class User(Base):
+    """User."""
+
     __tablename__ = "user"
+
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(
         String(320), nullable=False, index=True, unique=True
@@ -479,7 +486,10 @@ class User(Base):
 
 
 class BamFile(Base):
+    """Attachment: BAM file."""
+
     __tablename__ = "bam_file"
+
     id: Mapped[int] = mapped_column(primary_key=True)
     original_file_name: Mapped[str] = mapped_column(String(1024))
     storage_file_name: Mapped[str] = mapped_column(String(256), unique=True)
@@ -487,7 +497,10 @@ class BamFile(Base):
 
 
 class UserProjectAssociation(Base):
+    """Association: User, Project."""
+
     __tablename__ = "user_project_association"
+
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), index=True)
     project_id: Mapped[str] = mapped_column(ForeignKey("project.id"), index=True)

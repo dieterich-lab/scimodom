@@ -10,6 +10,8 @@ from pydantic import BaseModel
 
 from scimodom.services.annotation import AnnotationService
 from scimodom.services.modification import (
+    SearchParams,
+    PageParams,
     MultiSortError,
     get_modification_service,
 )
@@ -60,18 +62,6 @@ FIELDS_TO_CSV_HEADER_MAP = {
     "gene_name": "Gene",
     "gene_biotype": "Biotype",
 }
-
-
-@dataclass
-class SearchQueryParams:
-    """DTO for Search query parameters."""
-
-    gene_name: str | None
-    biotypes: list[str]
-    features: list[str]
-    chrom: str | None = None
-    chrom_start: int | None = None
-    chrom_end: int | None = None
 
 
 class IntersectResponse(BaseModel):
@@ -294,45 +284,28 @@ def _get_modification_records(by_gene: bool):
         raise ClientResponseException(501, f"rnaType '{rna_type}' not implemented")
 
     search_query_params = _get_valid_search_query_params(taxa_id, by_gene)
-    multi_sort = get_optional_list("multiSort", str)
-    first_record = get_optional_non_negative_int("firstRecord")
-    max_records = get_optional_positive_int("maxRecords")
+    page_query_params = _get_valid_page_query_params()
 
     try:
         if by_gene:
-            return modification_service.get_modifications_by_gene(
+            return modification_service.get_modification_records_by_gene(
                 annotation_source=annotation_source,
                 taxa_id=taxa_id,
-                gene_name=search_query_params.gene_name,
-                biotypes=search_query_params.biotypes,
-                features=search_query_params.features,
-                chrom=search_query_params.chrom,
-                chrom_start=search_query_params.chrom_start,
-                chrom_end=search_query_params.chrom_end,
-                first_record=first_record,
-                max_records=max_records,
-                multi_sort=multi_sort,
+                search_params=search_query_params,
+                page_params=page_query_params,
             )
-        else:
-            modification_id, organism_id, technology_ids = get_valid_selections()
-            return modification_service.get_modifications_by_source(
-                annotation_source=annotation_source,
-                modification_id=modification_id,
-                organism_id=organism_id,
-                technology_ids=technology_ids,
-                taxa_id=taxa_id,
-                gene_name=search_query_params.gene_name,
-                biotypes=search_query_params.biotypes,
-                features=search_query_params.features,
-                chrom=search_query_params.chrom,
-                chrom_start=search_query_params.chrom_start,
-                chrom_end=search_query_params.chrom_end,
-                first_record=first_record,
-                max_records=max_records,
-                multi_sort=multi_sort,
-            )
+        modification_id, organism_id, technology_ids = get_valid_selections()
+        return modification_service.get_modification_records_by_selection(
+            annotation_source=annotation_source,
+            taxa_id=taxa_id,
+            modification_id=modification_id,
+            organism_id=organism_id,
+            technology_ids=technology_ids,
+            search_params=search_query_params,
+            page_params=page_query_params,
+        )
     except MultiSortError as exc:
-        raise ClientResponseException(400, str(exc))
+        raise ClientResponseException(400, str(exc)) from exc
 
 
 def _get_csv_from_modification_records(records):
@@ -351,7 +324,7 @@ def _get_csv_from_modification_records(records):
 def _get_valid_search_query_params(
     taxa_id: int,
     by_gene: bool,
-) -> SearchQueryParams:
+) -> SearchParams:
     gene_name = get_optional_str("geneName")
     chrom = get_optional_str("chrom")
     chrom_start = get_optional_non_negative_int("chromStart")
@@ -387,11 +360,19 @@ def _get_valid_search_query_params(
             "Missing required parameter: 'geneName' xor 'chrom'",
         )
 
-    return SearchQueryParams(
-        gene_name,
-        get_optional_valid_biotypes(),
-        get_optional_valid_features(),
-        chrom,
-        chrom_start,
-        chrom_end,
+    return SearchParams(
+        gene_name=gene_name,
+        biotypes=get_optional_valid_biotypes(),
+        features=get_optional_valid_features(),
+        chrom=chrom,
+        chrom_start=chrom_start,
+        chrom_end=chrom_end,
+    )
+
+
+def _get_valid_page_query_params() -> PageParams:
+    return PageParams(
+        offset=get_optional_non_negative_int("firstRecord"),
+        limit=get_optional_positive_int("maxRecords"),
+        sort=get_optional_list("multiSort", str),
     )

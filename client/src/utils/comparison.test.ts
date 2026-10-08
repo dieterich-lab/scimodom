@@ -67,7 +67,7 @@ test('getComparisonDisplayRecord bed6', () => {
       coverage: 98,
       frequency: 60,
       score: 11,
-      eufig: 'UPLOAD'
+      eufid: 'UPLOAD'
     },
     { isEUF: false }
   )
