@@ -7,6 +7,8 @@ import pytest
 from flask import Flask
 
 from scimodom.api.modification import (
+    SearchParams,
+    PageParams,
     modification_api,
     IntersectResponse,
 )
@@ -170,7 +172,7 @@ class MockFileService:
     }
 
     @staticmethod
-    def open_file_for_reading(path):  # noqa
+    def open_file_for_reading(path):  # pylint: disable=unused-argument
         return StringIO("")
 
     @staticmethod
@@ -185,7 +187,7 @@ class MockFileService:
             raise FileNotFoundError
 
     @staticmethod
-    def get_assembly_file_path(
+    def get_assembly_file_path(  # noqa
         taxa_id: int,
         file_type: AssemblyFileType,
         assembly_name: str | None = None,
@@ -194,7 +196,9 @@ class MockFileService:
         return Path("path")
 
     @staticmethod
-    def read_sequence_context(fasta_file: str) -> str:
+    def read_sequence_context(
+        fasta_file: str,
+    ) -> str:  # pylint: disable=unused-argument
         return "ACGTAACCGCC"
 
 
@@ -220,17 +224,18 @@ class MockBedtoolsService:
 
     @staticmethod
     def create_temp_file_from_records(
-        records: Iterable[Sequence[Any]], sort: bool = True
+        records: Iterable[Sequence[Any]],
+        sort: bool = True,  # pylint: disable=unused-argument
     ) -> str:  # noqa
         MockBedtoolsService.INTERSECTION_RECORDS = []
         return "/tmp/pybedtools.tmp"
 
     @staticmethod
     def intersect_bed6_records(
-        a_records: Iterable[Bed6Record],
+        a_records: Iterable[Bed6Record],  # pylint: disable=unused-argument
         b_stream: StringIO,
-        is_strand: bool,
-        is_sorted: bool = True,
+        is_strand: bool,  # pylint: disable=unused-argument
+        is_sorted: bool = True,  # pylint: disable=unused-argument
     ) -> Iterable[Bed6Record]:  # noqa
         line = b_stream.getvalue()
         if "TargetScan" in line:
@@ -241,7 +246,9 @@ class MockBedtoolsService:
 
     @staticmethod
     def getfasta(
-        records: Iterable[Bed6Record], fasta_file: Path, is_strand: bool
+        records: Iterable[Bed6Record],
+        fasta_file: Path,
+        is_strand: bool,  # pylint: disable=unused-argument
     ) -> str:
         return "fasta_file"
 
@@ -335,21 +342,14 @@ class MockModificationService:
         return 1
 
     @staticmethod
-    def get_modifications_by_source(
-        annotation_source: AnnotationSource,
-        modification_id: int,
-        organism_id: int,
-        technology_ids: list[int],
-        taxa_id: int,
-        gene_name: str | None,
-        biotypes: list[str],
-        features: list[str],
-        chrom: str | None,
-        chrom_start: int | None,
-        chrom_end: int | None,
-        first_record: int | None,
-        max_records: int | None,
-        multi_sort: list[str],
+    def get_modification_records_by_selection(
+        annotation_source: AnnotationSource,  # pylint: disable=unused-argument
+        taxa_id: int,  # pylint: disable=unused-argument
+        modification_id: int,  # pylint: disable=unused-argument
+        organism_id: int,  # pylint: disable=unused-argument
+        technology_ids: list[int],  # pylint: disable=unused-argument
+        search_params: SearchParams,  # pylint: disable=unused-argument
+        page_params: PageParams,  # pylint: disable=unused-argument
     ) -> dict[str, Any]:
         return {
             "totalRecords": 1,
@@ -357,18 +357,11 @@ class MockModificationService:
         }
 
     @staticmethod
-    def get_modifications_by_gene(
-        annotation_source: AnnotationSource,
-        taxa_id: int,
-        gene_name: str | None,
-        biotypes: list[str],
-        features: list[str],
-        chrom: str | None,
-        chrom_start: int | None,
-        chrom_end: int | None,
-        first_record: int | None,
-        max_records: int | None,
-        multi_sort: list[str],
+    def get_modification_records_by_gene(
+        annotation_source: AnnotationSource,  # pylint: disable=unused-argument
+        taxa_id: int,  # pylint: disable=unused-argument
+        search_params: SearchParams,  # pylint: disable=unused-argument
+        page_params: PageParams,  # pylint: disable=unused-argument
     ) -> dict[str, Any]:
         return {
             "totalRecords": 1,
@@ -377,9 +370,9 @@ class MockModificationService:
 
     @staticmethod
     def get_modification_site(
-        chrom: str,
-        start: int,
-        end: int,
+        chrom: str,  # pylint: disable=unused-argument
+        start: int,  # pylint: disable=unused-argument
+        end: int,  # pylint: disable=unused-argument
     ) -> dict[str, list[str, Any]]:
         return {"records": MockModificationService.SITEWISE_RECORDS.copy()}
 
@@ -434,6 +427,11 @@ def test_get_modification_sites_summary(test_client, mocker):
             "Unused parameter: 'chromEnd' requires 'chromStart'",
         ),
         (
+            "/records?by=gene&rnaType=WTS&taxaId=9606&geneName=ANY",
+            200,
+            None,
+        ),
+        (
             "/records?by=gene&rnaType=WTS&taxaId=9606&chrom=1&chromStart=2",
             400,
             "Missing required parameter: 'chromEnd'",
@@ -459,16 +457,24 @@ def test_get_modification_records(
         assert result.json["message"] == message
 
 
+def test_page_limit(test_client, mock_services):
+    result = test_client.get(
+        "/records?by=gene&rnaType=WTS&taxaId=9606&geneName=ANY&maxRecords=0"
+    )
+    assert result.status_code == 400
+    assert result.json["message"] == "Parameter 'maxRecords' must be a positive integer"
+
+
 @pytest.mark.parametrize(
     "url,func",
     [
         (
             "/records?modification=2&organism=3&technology=2&rnaType=WTS&taxaId=9606",
-            "get_modifications_by_source",
+            "get_modification_records_by_selection",
         ),
         (
             "/records?by=gene&rnaType=WTS&taxaId=9606&chrom=1&chromStart=1&chromEnd=10000",
-            "get_modifications_by_gene",
+            "get_modification_records_by_gene",
         ),
     ],
 )

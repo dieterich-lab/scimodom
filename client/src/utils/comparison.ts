@@ -102,13 +102,13 @@ function getComparisonDisplayRecord(
 ): ComparisonDisplayRecord {
   const { distance, isEUF = true } = options
   return {
-    a: recordToStrings(a, true),
-    b: recordToStrings(b, isEUF),
+    a: recordToStrings(true, a),
+    b: recordToStrings(isEUF, b),
     distance: distance !== undefined ? `${distance}` : ''
   }
 }
 
-function recordToStrings(x?: EufRecord, isEUF: boolean): ComparisonRecordString {
+function recordToStrings(isEUF: boolean, x?: EufRecord): ComparisonRecordString {
   if (x === undefined) {
     return NULL_COMPARISON_RECORD
   }

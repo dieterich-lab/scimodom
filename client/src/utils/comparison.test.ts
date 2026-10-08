@@ -67,7 +67,7 @@ test('getComparisonDisplayRecord bed6', () => {
       coverage: 98,
       frequency: 60,
       score: 11,
-      eufig: 'UPLOAD'
+      eufid: 'UPLOAD'
     },
     { isEUF: false }
   )
@@ -117,7 +117,7 @@ test('getCompareParams - upload', () => {
   expect(result).toStrictEqual({
     reference: ['d1', 'd2'],
     upload: 'fileId1',
-    uploadName: 'fil1.bedrmod',
+    uploadName: 'file1.bedrmod',
     strand: false,
     euf: true,
     taxaId: 7

@@ -1,7 +1,7 @@
 from collections import namedtuple
 
 import pytest
-from sqlalchemy import select, func
+from sqlalchemy import select, func, and_
 
 from scimodom.database.models import (
     Annotation,
@@ -14,6 +14,8 @@ from scimodom.database.models import (
     Organism,
 )
 from scimodom.services.modification import (
+    SearchParams,
+    PageParams,
     ModificationService,
     MultiSortError,
 )
@@ -182,7 +184,43 @@ class MockAnnotationService:
         ).scalar_one()
 
 
-def _mock_get_base_search_query(isouter=False):
+def _mock_build_query(
+    annotation: Annotation,
+    search_params: SearchParams,
+):
+    # NOTE: mirrors the real ModificationService._build_query, minus
+    # the .op("ORDER BY") inside group_concat (not supported by SQLite, which
+    # these tests run against) - see #194.
+    gene_name = search_params.gene_name
+    biotypes = search_params.biotypes
+    features = search_params.features
+
+    data_annotation_on = Data.id == DataAnnotation.data_id
+    if features:
+        data_annotation_on = and_(
+            data_annotation_on, DataAnnotation.feature.in_(features)
+        )
+
+    genomic_annotation_on = GenomicAnnotation.id == DataAnnotation.gene_id
+    genomic_annotation_isouter = True
+    if gene_name or biotypes or features:
+        genomic_annotation_on = and_(
+            genomic_annotation_on,
+            GenomicAnnotation.annotation_id == annotation.id,
+        )
+    if gene_name or biotypes:
+        genomic_annotation_isouter = False
+    if gene_name:
+        genomic_annotation_on = and_(
+            genomic_annotation_on, GenomicAnnotation.name == gene_name
+        )
+    if biotypes:
+        # hard coded: only these values will pass the tests
+        raw_biotypes = ["Protein coding", "lncRNA"]
+        genomic_annotation_on = and_(
+            genomic_annotation_on, GenomicAnnotation.biotype.in_(raw_biotypes)
+        )
+
     query = (
         select(
             Data.id,
@@ -209,12 +247,12 @@ def _mock_get_base_search_query(isouter=False):
             Organism.taxa_id,
             Organism.cto,
         )
-        .join_from(Data, DataAnnotation, Data.annotations, isouter=isouter)
+        .join_from(Data, DataAnnotation, data_annotation_on, isouter=True)
         .join_from(
             DataAnnotation,
             GenomicAnnotation,
-            DataAnnotation.inst_genomic,
-            isouter=isouter,
+            genomic_annotation_on,
+            isouter=genomic_annotation_isouter,
         )
         .join_from(Data, Dataset, Data.inst_dataset)
         .join_from(Dataset, DetectionTechnology, Dataset.inst_technology)
@@ -243,27 +281,31 @@ def test_get_modification_sites_count(Session, dataset):
 
 
 @pytest.mark.parametrize(
-    "multi_sort,message",
+    "sort,message",
     [
         (["star+asc"], "Invalid sort column: 'star'"),
         (["start+ascending"], "Invalid sort direction: 'ascending'"),
+        (["start"], "Invalid sort: 'start'"),
+        (["start+asc+any"], "Invalid sort: 'start+asc+any'"),
     ],
 )
-def test_get_multi_sort_fail(Session, mocker, annotation, multi_sort, message):
+def test_apply_sort_fail(Session, annotation, sort, message):
     modification_service = _get_modification_service(Session())
-    # patch base query, cf. #154
-    mocker.patch.object(
-        modification_service, "_get_base_search_query", _mock_get_base_search_query
-    )
-    query = modification_service._get_base_search_query()
     with pytest.raises(MultiSortError) as exc:
-        modification_service._get_multi_sort(query, multi_sort)
+        modification_service._apply_sort(select(Data), PageParams(sort=sort))
     assert (str(exc.value)) == message
     assert exc.type == MultiSortError
 
 
+# API-semantics enforce "geneName XOR chrom" (required if by=gene),
+# "chromStart/chromEnd require chrom", and "chromEnd requires chromStart".
+# The service layer is intentionally agnostic: it applies whatever
+# filters it receives, never raises on a missing companion, and
+# "silently" applies chrom filters.
+
+
 @pytest.mark.parametrize(
-    "technology_ids,coord,gene_name,biotypes,features,multi_sort,first_record,max_records,expected_records,total",
+    "technology_ids,coord,gene_name,biotypes,features,sort,offset,limit,expected_records,expected_total",
     [
         ([1], Coord(None, 0, None), None, [], [], [], 0, 10, [RECORDS[4]], 1),
         (
@@ -300,6 +342,18 @@ def test_get_multi_sort_fail(Session, mocker, annotation, multi_sort, message):
             0,
             10,
             [RECORDS[5]],
+            1,
+        ),
+        (
+            [1, 2],
+            Coord(None, 0, None),
+            "ENSG2",
+            [],
+            [],
+            [],
+            0,
+            10,
+            [RECORDS[6]],
             1,
         ),
         (
@@ -386,77 +440,150 @@ def test_get_multi_sort_fail(Session, mocker, annotation, multi_sort, message):
             [RECORDS[3]],
             1,
         ),
+        (
+            [1, 2],
+            Coord(None, 0, None),
+            None,
+            [],
+            [],
+            [],
+            100,
+            10,
+            [],
+            5,
+        ),
     ],
 )
-def test_get_modifications_by_source(
+def test_get_modifications_records_by_selection(
     technology_ids,
     coord,
     gene_name,
     biotypes,
     features,
-    multi_sort,
-    first_record,
-    max_records,
+    sort,
+    offset,
+    limit,
     expected_records,
-    total,
+    expected_total,
     Session,
     mocker,
     annotation,
 ):  # noqa
     modification_service = _get_modification_service(Session())
     # patch base query, cf. #154
-    mocker.patch.object(
-        modification_service, "_get_base_search_query", _mock_get_base_search_query
-    )
-
-    response = modification_service.get_modifications_by_source(
-        annotation_source=AnnotationSource.ENSEMBL,
-        modification_id=1,
-        organism_id=1,
-        technology_ids=technology_ids,
-        taxa_id=9606,
+    mocker.patch.object(modification_service, "_build_query", _mock_build_query)
+    search_params = SearchParams(
         gene_name=gene_name,
         biotypes=biotypes,
         features=features,
         chrom=coord.chrom,
         chrom_start=coord.start,
         chrom_end=coord.end,
-        first_record=first_record,
-        max_records=max_records,
-        multi_sort=multi_sort,
     )
-    assert response["totalRecords"] == total
+    page_params = PageParams(
+        offset=offset,
+        limit=limit,
+        sort=sort,
+    )
+    response = modification_service.get_modification_records_by_selection(
+        annotation_source=AnnotationSource.ENSEMBL,
+        taxa_id=9606,
+        modification_id=1,
+        organism_id=1,
+        technology_ids=technology_ids,
+        search_params=search_params,
+        page_params=page_params,
+    )
+    assert response["totalRecords"] == expected_total
     assert response["records"] == expected_records
 
 
-def test_get_modifications_by_gene(Session, mocker, annotation):  # noqa
+@pytest.mark.parametrize(
+    "coord,gene_name,expected_total,expected_records",
+    [
+        # gene
+        (Coord(None, None, None), "GENE1", 1, [RECORDS[0]]),
+        # full chrom range
+        (Coord("1", 20000000, 105000000), None, 3, RECORDS[:3]),
+        # chrom_end w/o chrom_start
+        (Coord("1", None, 30000000), None, 4, RECORDS[0:4]),
+        # chrom and gene, disjoint
+        (Coord("17", None, None), "GENE1", 0, []),
+        # chrom and gene, intersecting
+        (Coord("1", None, None), "GENE1", 1, [RECORDS[0]]),
+    ],
+)
+def test_get_modification_records_by_gene(
+    Session,
+    mocker,
+    annotation,
+    coord,
+    gene_name,
+    expected_total,
+    expected_records,
+):  # noqa
     modification_service = _get_modification_service(Session())
     # patch base query, cf. #154
-    mocker.patch.object(
-        modification_service, "_get_base_search_query", _mock_get_base_search_query
+    mocker.patch.object(modification_service, "_build_query", _mock_build_query)
+    search_params = SearchParams(
+        gene_name=gene_name,
+        chrom=coord.chrom,
+        chrom_start=coord.start,
+        chrom_end=coord.end,
     )
-
-    response = modification_service.get_modifications_by_gene(
+    response = modification_service.get_modification_records_by_gene(
         annotation_source=AnnotationSource.ENSEMBL,
         taxa_id=9606,
-        gene_name="GENE1",
-        biotypes=[],
-        features=[],
-        chrom=None,
-        chrom_start=0,
-        chrom_end=None,
-        first_record=0,
-        max_records=10,
-        multi_sort=[],
+        search_params=search_params,
+        page_params=PageParams(),
     )
-    assert response["totalRecords"] == 1
-    assert response["records"] == [RECORDS[0]]
+    assert response["totalRecords"] == expected_total
+    assert response["records"] == expected_records
+
+
+@pytest.mark.parametrize(
+    "coord,gene_name,expected_total,expected_ids",
+    [
+        # start/end given w/o chrom: chrom filter skipped
+        (Coord(None, 20000000, 30000000), None, 7, [4, 5, 6, 7, 1, 3, 2]),
+        # nothing given
+        (Coord(None, None, None), None, 7, [4, 5, 6, 7, 1, 3, 2]),
+    ],
+)
+def test_get_modification_records_by_gene_no_filters(
+    Session,
+    mocker,
+    annotation,
+    coord,
+    gene_name,
+    expected_total,
+    expected_ids,
+):  # noqa
+    modification_service = _get_modification_service(Session())
+    # patch base query, cf. #154
+    mocker.patch.object(modification_service, "_build_query", _mock_build_query)
+    search_params = SearchParams(
+        gene_name=gene_name,
+        chrom=coord.chrom,
+        chrom_start=coord.start,
+        chrom_end=coord.end,
+    )
+    response = modification_service.get_modification_records_by_gene(
+        annotation_source=AnnotationSource.ENSEMBL,
+        taxa_id=9606,
+        search_params=search_params,
+        page_params=PageParams(),
+    )
+    assert response["totalRecords"] == expected_total
+    assert [r["id"] for r in response["records"]] == expected_ids
 
 
 def test_get_modification_site(Session, dataset):  # noqa
     modification_service = _get_modification_service(Session())
     response = modification_service.get_modification_site("17", 100001, 100002)
     assert len(response["records"]) == 2
+    # query has no ORDER BY, so the row order is DB-dependent!
+    # It's just the insertion order in SQLite; it will not be guaranteed in MySQL.
     assert response["records"][0]["dataset_id"] == "dataset_id01"
     assert response["records"][1]["dataset_id"] == "dataset_id02"
     assert response["records"][0]["cto"] == "Cell type 1"
