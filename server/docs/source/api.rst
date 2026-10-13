@@ -1,6 +1,6 @@
 .. _api:
 
-Sci-ModoM REST API
+REST API Reference
 ==================
 
 .. toctree::
@@ -10,8 +10,9 @@ Sci-ModoM REST API
    api_catalog
    api_modification
    api_project
+   api_comparison
    api_dataset
    api_attachment
-   api_management
+   api_upload
    api_user
    api_analytics

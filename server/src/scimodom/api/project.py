@@ -38,6 +38,8 @@ def create_project_request():
     :statuscode 201: Created
     :statuscode 400: Bad request - model validation
     :statuscode 401: Missing Authorization Header
+    :statuscode 422: Unprocessable Content (not enough segments,
+    signature verification failed)
     :statuscode 500: Internal Server Error (or failed notification)
     """
     project_service = get_project_service()

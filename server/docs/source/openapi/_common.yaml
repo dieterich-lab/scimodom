@@ -37,33 +37,12 @@ components:
   responses:
     UnauthorizedError:
       description: Missing Authorization Header
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/Error"
     ForbiddenError:
-      description: Forbidden - access or write permission
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/Error"
+      description: Access or write permission denied
     TooLargeError:
-      description: Content Too Large - file exceeds max. size allowed
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/Error"
+      description: File exceeds max. allowed size
     UnauthorizedErrorContent:
       description: >-
-        Unprocessable Content - the Bearer token has too few/many
-        segments, or its signature verification failed
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/Error"
+        JWT signature verification failed, invalid or expired token
     InternalServerError:
       description: Internal Server Error
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/Error"

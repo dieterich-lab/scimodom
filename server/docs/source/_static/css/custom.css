@@ -1,0 +1,7 @@
+.swagger-ui .response-col_links {
+  display: none;
+}
+
+.swagger-ui .info hgroup.main > a.link {
+  display: none;
+}

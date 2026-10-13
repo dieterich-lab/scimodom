@@ -1,7 +1,7 @@
 .. _user_api:
 
-Manage users
-============
+Users
+=====
 
 .. swagger-plugin:: openapi/_include/user.yaml
    :swagger-options: {"supportedSubmitMethods": ["get"]}

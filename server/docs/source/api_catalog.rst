@@ -1,7 +1,7 @@
 .. _catalog_api:
 
-Reference
-=========
+Reference tables
+================
 
 .. swagger-plugin:: openapi/_include/catalog.yaml
    :swagger-options: {"supportedSubmitMethods": ["get"]}

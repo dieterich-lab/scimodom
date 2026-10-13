@@ -1,99 +1,71 @@
 info:
-  title: User REST API
+  title: users
+  description: >-
+    Users and sessions
 
 tags:
-  - name: login
-    description: User registration and login
-  - name: password
-    description: Manage access
+  - name: User
+    description: User registration and management
+  - name: Session
+    description: Login and access
 
 paths:
   /users:
     post:
       tags:
-        - login
+        - User
       summary: Register a new user
       description: >-
-        Creates a new, inactive user and e-mails a confirmation link.
+        Creates a new, inactive user and e-mails a confirmation link
       requestBody:
         $ref: "#/components/requestBodies/LoginBody"
       responses:
         "204":
           description: No Content
         "400":
-          description: Bad request (malformed request body, missing fields)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
+          $ref: "#/components/responses/ClientResponseException400"
         "409":
           description: User already exists
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
         "500":
-          description: >-
-            Internal server error (may be a failed registration e-mail).
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
+          description: SMTP exception or internal server error
   /users/confirmation:
     post:
       tags:
-        - login
+        - User
       summary: Confirm registration
-      description: Activate a registered user using the confirmation link.
+      description: >-
+        Activate a registered user using the confirmation link.
       requestBody:
         $ref: "#/components/requestBodies/ConfirmBody"
       responses:
         "204":
           description: No Content
         "400":
-          description: Bad request (malformed request body, missing fields)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
+          $ref: "#/components/responses/ClientResponseException400"
         "401":
-          description: Wrong username, wrong or expired confirmation token
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "500":
-          $ref: "#/components/responses/InternalServerError"
+          description: Bad credentials, bad or expired confirmation token
   /users/password/request:
     post:
       tags:
-        - password
+        - User
       summary: Request a password reset
       description: >-
-        Reset confirmation token and e-mails the password reset link.
+        Reset confirmation token and e-mails the password reset link
       requestBody:
         $ref: "#/components/requestBodies/UserBody"
       responses:
         "204":
           description: No Content
         "400":
-          description: Bad request (malformed request body, missing fields)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
+          $ref: "#/components/responses/ClientResponseException400"
         "404":
-          description: Unknown user or wrong email address
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
+          description: User not found
         "500":
-          $ref: "#/components/responses/InternalServerError"
+          description: SMTP exception or internal server error
   /users/password/reset:
     post:
       tags:
-        - password
+        - User
       summary: Reset a password
       description: >-
         Set a new password using the token e-mailed by
@@ -104,24 +76,49 @@ paths:
         "204":
           description: No Content
         "400":
-          description: Bad request (malformed request body, missing fields)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
+          $ref: "#/components/responses/ClientResponseException400"
         "401":
-          description: >-
-            Wrong username, wrong, used, or expired reset token
+          description: Bad credentials, bad or expired confirmation token
+  /users/me:
+    get:
+      tags:
+        - User
+      summary: Get username
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: OK
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-        "500":
-          $ref: "#/components/responses/InternalServerError"
+                $ref: "#/components/schemas/Username"
+        "401":
+          $ref: "_common.yaml#/components/responses/UnauthorizedError"
+        "422":
+          $ref: "_common.yaml#/components/responses/UnauthorizedErrorContent"
+  /users/me/password:
+    put:
+      tags:
+        - User
+      summary: Change the current user's password
+      security:
+        - BearerAuth: []
+      requestBody:
+        $ref: "#/components/requestBodies/PasswordBody"
+      responses:
+        "204":
+          description: No Content
+        "400":
+          $ref: "#/components/responses/ClientResponseException400"
+        "401":
+          $ref: "_common.yaml#/components/responses/UnauthorizedError"
+        "422":
+          $ref: "_common.yaml#/components/responses/UnauthorizedErrorContent"
   /sessions:
     post:
       tags:
-        - login
+        - Session
       summary: Login
       description: Login
       requestBody:
@@ -132,32 +129,18 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  access_token:
-                    type: string
-                    description: JWT
+                $ref: "#/components/schemas/Token"
         "400":
-          description: Bad request (malformed request body, missing fields)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
+          $ref: "#/components/responses/ClientResponseException400"
         "401":
-          description: Wrong user or password
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "500":
-          $ref: "#/components/responses/InternalServerError"
+          description: Bad credentials
   /sessions/refresh:
     post:
       tags:
-        - login
+        - Session
       summary: Refresh the access token
       description: >-
-        Exchange a valid access token for a new one with a fresh expiry.
+        Exchange a valid access token for a new one with a fresh expiry
       security:
         - BearerAuth: []
       responses:
@@ -166,107 +149,32 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  access_token:
-                    type: string
-                    description: JWT
+                $ref: "#/components/schemas/Token"
         "401":
-          description: >-
-            Unauthorized (expired token, missing header)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
+          $ref: "_common.yaml#/components/responses/UnauthorizedError"
         "422":
-          description: >-
-            Unprocessable Content (not enough segments, signature verification failed)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "500":
-          $ref: "#/components/responses/InternalServerError"
-  /users/me/password:
-    put:
-      tags:
-        - password
-      summary: Change the current user's password
-      security:
-        - BearerAuth: []
-      requestBody:
-        $ref: "#/components/requestBodies/PasswordBody"
-      responses:
-        "204":
-          description: No Content
-        "400":
-          description: Bad request (malformed request body, missing fields)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "401":
-          description: >-
-            Unauthorized (expired token, missing header)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "422":
-          description: >-
-            Unprocessable Content (not enough segments, signature verification failed)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "500":
-          $ref: "#/components/responses/InternalServerError"
-  /users/me:
-    get:
-      summary: Get username
-      description: Retrieve the e-mail address of the authenticated user
-      security:
-        - BearerAuth: []
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  email:
-                    type: string
-                    description: username (e-mail address)
-        "401":
-          description: >-
-            Unauthorized (expired token, missing header)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "422":
-          description: >-
-            Unprocessable Content (not enough segments, signature verification failed)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "500":
-          $ref: "#/components/responses/InternalServerError"
+          $ref: "_common.yaml#/components/responses/UnauthorizedErrorContent"
 
 components:
   securitySchemes:
     BearerAuth:
       $ref: "_common.yaml#/components/securitySchemes/BearerAuth"
   schemas:
-    Error:
-      $ref: "_common.yaml#/components/schemas/Error"
+    Username:
+      type: object
+      properties:
+        email:
+          type: string
+          description: username (e-mail address)
+    Token:
+      type: object
+      properties:
+        access_token:
+          type: string
+          description: JWT
   responses:
-    UnauthorizedError:
-      $ref: "_common.yaml#/components/responses/UnauthorizedError"
-    InternalServerError:
-      $ref: "_common.yaml#/components/responses/InternalServerError"
+    ClientResponseException400:
+      description: Malformed request body, missing fields
   requestBodies:
     UserBody:
       description: JSON object with username

@@ -1,7 +1,7 @@
 .. _euf:
 
-The bedRMod format
-==================
+bedRMod format
+==============
 
 The go-to resource and primary reference is the official `EU format specifications <https://dieterich-lab.github.io/euf-specs/>`_.
 Users should always refer to the latest version.

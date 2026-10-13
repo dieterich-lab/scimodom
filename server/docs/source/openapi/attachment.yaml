@@ -1,9 +1,7 @@
 info:
-  title: datasets REST API
+  title: datasets
   description: >-
-    Dataset attachments. Attachments can be listed, downloaded, uploaded
-    (create or replace), and deleted. Uploading and deleting an attachment
-    require authentication and that the user has write permission on the dataset.
+    Dataset attachments
 
 tags:
   - name: BAM
@@ -14,10 +12,7 @@ paths:
     get:
       tags:
         - BAM
-      summary: Get BAM file attachment metadata
-      description: >-
-        Retrieve metadata for BAM file attachments associated with the
-        given dataset identifier (EUFID).
+      summary: Get dataset BAM file attachment metadata
       parameters:
         - $ref: "#/components/parameters/datasetIdPathParam"
       responses:
@@ -31,17 +26,12 @@ paths:
           $ref: "#/components/responses/ClientResponseException400"
         "404":
           $ref: "#/components/responses/ClientResponseException404"
-        "500":
-          $ref: "_common.yaml#/components/responses/InternalServerError"
 
   /datasets/{dataset_id}/attachments/bams/{name}:
     get:
       tags:
         - BAM
-      summary: Download a BAM file
-      description: >-
-        Download a BAM file attached to a dataset given by its identifier
-        (EUFID).
+      summary: Download dataset BAM file
       parameters:
         - $ref: "#/components/parameters/datasetIdPathParam"
         - $ref: "#/components/parameters/nameBamPathParam"
@@ -57,19 +47,15 @@ paths:
           $ref: "#/components/responses/ClientResponseException400"
         "404":
           $ref: "#/components/responses/ClientResponseException404"
-        "500":
-          $ref: "_common.yaml#/components/responses/InternalServerError"
     put:
       tags:
         - BAM
       summary: Upload (create or replace) a BAM file
       description: >-
-        Upload a BAM file attachment to a dataset given by its identifier
-        (EUFID). If a BAM file with the given `name` already exists for
-        this dataset, it is replaced (204); otherwise a new attachment is
-        created (201). The raw request body is streamed to storage, so the
-        request is sent as `application/octet-stream` (not
-        `multipart/form-data`). A file size limit may apply.
+        Attach a BAM file to a dataset. If a BAM file with the given
+        `name` already exists for this dataset, it is replaced (204);
+        otherwise a new attachment is created (201). The raw request
+        body is streamed to storage. A file size limit may apply.
       security:
         - BearerAuth: []
       parameters:
@@ -85,17 +71,13 @@ paths:
               format: binary
       responses:
         "201":
-          description: Created - a new BAM file attachment was created
+          description: Created
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  original_file_name:
-                    type: string
-                    description: Name of the newly created BAM file attachment
+                $ref: "#/components/schemas/BamCreated"
         "204":
-          description: No Content - an existing BAM file attachment was updated
+          description: No Content
         "400":
           $ref: "#/components/responses/ClientResponseException400"
         "401":
@@ -108,15 +90,10 @@ paths:
           $ref: "_common.yaml#/components/responses/TooLargeError"
         "422":
           $ref: "_common.yaml#/components/responses/UnauthorizedErrorContent"
-        "500":
-          $ref: "_common.yaml#/components/responses/InternalServerError"
     delete:
       tags:
         - BAM
-      summary: Delete a BAM file
-      description: >-
-        Delete a BAM file attached to a dataset given by its identifier
-        (EUFID).
+      summary: Remove a BAM file
       security:
         - BearerAuth: []
       parameters:
@@ -124,7 +101,7 @@ paths:
         - $ref: "#/components/parameters/nameBamPathParam"
       responses:
         "204":
-          description: No Content - BAM file attachment deleted
+          description: No Content
         "400":
           $ref: "#/components/responses/ClientResponseException400"
         "401":
@@ -135,8 +112,6 @@ paths:
           $ref: "#/components/responses/ClientResponseException404"
         "422":
           $ref: "_common.yaml#/components/responses/UnauthorizedErrorContent"
-        "500":
-          $ref: "_common.yaml#/components/responses/InternalServerError"
 
 components:
   securitySchemes:
@@ -159,20 +134,18 @@ components:
       description: BAM file attachment (original file) name
   responses:
     ClientResponseException400:
-      description: Bad Request - invalid dataset identifier or BAM file name
-      content:
-        application/json:
-          schema:
-            $ref: "_common.yaml#/components/schemas/Error"
+      description: Invalid dataset identifier or BAM file name
     ClientResponseException404:
       description: >-
-        Not Found - dataset identifier or BAM file name,
-        or the BAM file is not an attachment of this dataset
-      content:
-        application/json:
-          schema:
-            $ref: "_common.yaml#/components/schemas/Error"
+        Dataset identifier or BAM file name not found,
+        BAM file is not an attachment of this dataset
   schemas:
+    BamCreated:
+      type: object
+      properties:
+        original_file_name:
+          type: string
+          description: Name of the newly created BAM file attachment
     BamFileList:
       type: array
       items:

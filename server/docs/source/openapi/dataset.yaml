@@ -1,26 +1,20 @@
 info:
-  title: Dataset REST API
+  title: datasets
   description: >-
-    Dataset access and comparison, including file upload for comparison
-    (dataset import/ingestion is documented separately, see
-    `POST /datasets`).
+    Dataset access and upload
 
 tags:
-  - name: list
-    description: Dataset and associated metadata
-  - name: transfer
-    description: File transfer (upload and export dataset)
-  - name: compare
-    description: Perform complex queries with dataset
+  - name: Dataset
+    description: Dataset metadata, import and export
+  - name: Permission
+    description: Dataset permissions
 
 paths:
   /datasets:
     get:
       tags:
-        - list
+        - Dataset
       summary: Get dataset
-      description: >-
-        Retrieve metadata for all dataset.
       responses:
         "200":
           description: OK
@@ -28,34 +22,85 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Dataset"
+    post:
+      tags:
+        - Dataset
+      summary: Add dataset and import data
+      description: >-
+        Import a previously uploaded bedRMod file (see
+        `POST /uploads`) into an existing project. The caller
+        must be associated with the target project's SMID.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddDatasetBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DatasetCreated"
+        "400":
+          description: >-
+            Malformed request body or template validation failed
+        "401":
+          $ref: "_common.yaml#/components/responses/UnauthorizedError"
+        "403":
+          $ref: "_common.yaml#/components/responses/ForbiddenError"
+        "404":
+          description: Parameter not found
+        "409":
+          description: A dataset with the same content already exists
+        "422":
+          description: >-
+            The upload was rejected during import (euf-specs).
+            Also returned for a malformed or expired JWT
         "500":
-          $ref: "#/components/responses/InternalServerError"
-  /datasets/summary:
+          description: Liftover failed, or an unexpected server error occurred
+        "501":
+          description: RNA type annotation not implemented
+  /users/me/datasets:
     get:
       tags:
-        - list
-      summary: Get dataset count
+        - Dataset
+      summary: Get dataset per user
       description: >-
-        Retrieve the number of available dataset.
+        Dataset submitted by the current user
+      security:
+        - BearerAuth: []
       responses:
         "200":
           description: OK
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  count:
-                    type: integer
-                    description: Number of datasets
-        "500":
-          $ref: "#/components/responses/InternalServerError"
+                $ref: "#/components/schemas/Dataset"
+        "401":
+          $ref: "_common.yaml#/components/responses/UnauthorizedError"
+        "422":
+          $ref: "_common.yaml#/components/responses/UnauthorizedErrorContent"
+  /datasets/summary:
+    get:
+      tags:
+        - Dataset
+      summary: Get dataset count
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Count"
   /datasets/{dataset_id}/bedrmod:
     get:
       tags:
-        - transfer
-      summary: Export dataset
-      description: Download dataset in bedRMod format
+        - Dataset
+      summary: Export dataset as bedRMod
       parameters:
         - in: path
           name: dataset_id
@@ -70,53 +115,14 @@ paths:
             text/csv:
               schema:
                 type: string
+                description: Consult the euf-specs for more information
         "404":
           description: Dataset not found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "500":
-          $ref: "#/components/responses/InternalServerError"
-  /users/me/datasets:
-    get:
-      tags:
-        - list
-      summary: Get dataset per user
-      description: >-
-        Retrieve metadata for dataset submitted by the current user.
-      security:
-        - BearerAuth: []
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Dataset"
-        "401":
-          description: >-
-            Unauthorized (expired token, missing header)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "422":
-          description: >-
-            Unprocessable Content (not enough segments, signature verification failed)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "500":
-          $ref: "#/components/responses/InternalServerError"
   /users/me/datasets/{dataset_id}/permissions:
     get:
       tags:
-        - list
+        - Permission
       summary: Get user dataset permissions
-      description: >-
-        Check whether the current user is allowed to modify the given dataset.
       security:
         - BearerAuth: []
       parameters:
@@ -132,305 +138,18 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  write_access:
-                    type: boolean
-                    description: >-
-                      True if the current user is allowed to modify this dataset.
+                $ref: "#/components/schemas/Permission"
         "401":
-          description: >-
-            Unauthorized (expired token, missing header)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
+          $ref: "_common.yaml#/components/responses/UnauthorizedError"
+        "422":
+          $ref: "_common.yaml#/components/responses/UnauthorizedErrorContent"
         "404":
           description: Dataset not found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "422":
-          description: >-
-            Unprocessable Content (not enough segments, signature verification failed)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "500":
-          $ref: "#/components/responses/InternalServerError"
-  /uploads:
-    post:
-      tags:
-        - transfer
-      summary: Upload a temporary file
-      description: >-
-        Upload a temporary file (e.g. a BED/bedRMod file for dataset
-        comparison via `GET /datasets/comparisons/intersect`, `closest`,
-        or `subtract`; or a bedRMod file for import via `POST /datasets`).
-        No authentication is required. Files are subject to a size limit
-        (50 MB). Files are stored under a temporary upload path and are
-        deleted automatically after some time.
-      requestBody:
-        required: true
-        content:
-          application/octet-stream:
-            schema:
-              type: string
-              format: binary
-      responses:
-        "201":
-          description: Created
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  file_id:
-                    type: string
-                    description: Temporary file identifier
-          links:
-            GetFileById:
-              $ref: "#/components/links/GetFileById"
-        "413":
-          description: File too large
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "500":
-          $ref: "#/components/responses/InternalServerError"
-  /datasets/comparisons/intersect:
-    get:
-      tags:
-        - compare
-      summary: Search for overlaps
-      description: >-
-        Search for overlaps between dataset A (`reference`) and dataset B
-        (`comparison` or `upload`), i.e. intersection.
-      operationId: getIntersectQueryParam
-      parameters:
-        - $ref: "#/components/parameters/referenceQueryParam"
-        - $ref: "#/components/parameters/comparisonQueryparam"
-        - $ref: "#/components/parameters/strandQueryParam"
-        - $ref: "#/components/parameters/uploadQueryParam"
-        - $ref: "#/components/parameters/uploadNameQueryParam"
-        - $ref: "#/components/parameters/eufQueryParam"
-        - $ref: "#/components/parameters/taxaQueryParam"
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Intersect"
-        "400":
-          description: >-
-            Bad request (malformed or missing parameters, invalid identifiers, too many dataset)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "404":
-          description: >-
-            Dataset, file, or taxon not found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "422":
-          description: >-
-            Unprocessable Content (empty file, invalid file format, or too many skipped records)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "500":
-          $ref: "#/components/responses/InternalServerError"
-  /datasets/comparisons/closest:
-    get:
-      tags:
-        - compare
-      summary: Search for closest non-overlaps
-      description: >-
-        Search for closest non-overlaps in dataset B (`comparison` or
-        `upload`) with respect to dataset A (`reference`).
-      operationId: getClosestQueryParam
-      parameters:
-        - $ref: "#/components/parameters/referenceQueryParam"
-        - $ref: "#/components/parameters/comparisonQueryparam"
-        - $ref: "#/components/parameters/strandQueryParam"
-        - $ref: "#/components/parameters/uploadQueryParam"
-        - $ref: "#/components/parameters/uploadNameQueryParam"
-        - $ref: "#/components/parameters/eufQueryParam"
-        - $ref: "#/components/parameters/taxaQueryParam"
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Closest"
-        "400":
-          description: >-
-            Bad request (malformed or missing parameters, invalid identifiers, too many dataset)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "404":
-          description: >-
-            Dataset, file, or taxon not found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "422":
-          description: >-
-            Unprocessable Content (empty file, invalid file format, or too many skipped records)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "500":
-          $ref: "#/components/responses/InternalServerError"
-  /datasets/comparisons/subtract:
-    get:
-      tags:
-        - compare
-      summary: Search for strict non-overlaps
-      description: >-
-        Search for strict non-overlaps in dataset A (`reference`) with
-        respect to dataset B (`comparison` or `upload`).
-      operationId: getSubtractQueryParam
-      parameters:
-        - $ref: "#/components/parameters/referenceQueryParam"
-        - $ref: "#/components/parameters/comparisonQueryparam"
-        - $ref: "#/components/parameters/strandQueryParam"
-        - $ref: "#/components/parameters/uploadQueryParam"
-        - $ref: "#/components/parameters/uploadNameQueryParam"
-        - $ref: "#/components/parameters/eufQueryParam"
-        - $ref: "#/components/parameters/taxaQueryParam"
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Subtract"
-        "400":
-          description: >-
-            Bad request (malformed or missing parameters, invalid identifiers, too many dataset)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "404":
-          description: >-
-            Dataset, file, or taxon not found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "422":
-          description: >-
-            Unprocessable Content (empty file, invalid file format, or too many skipped records)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "500":
-          $ref: "#/components/responses/InternalServerError"
 
 components:
   securitySchemes:
     BearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
-  parameters:
-    referenceQueryParam:
-      in: query
-      name: reference
-      required: true
-      schema:
-        type: array
-        items:
-          type: string
-      style: form
-      explode: true
-      description: Up to 3 reference EUFID (dataset A).
-    comparisonQueryparam:
-      in: query
-      name: comparison
-      required: false
-      schema:
-        type: array
-        items:
-          type: string
-      style: form
-      explode: true
-      description: >-
-        Up to 3 EUFID for comparison (dataset B). Required if `upload` is
-        not used; mutually exclusive with `upload`.
-    strandQueryParam:
-      in: query
-      name: strand
-      required: false
-      schema:
-        type: boolean
-        default: true
-      description: If true, perform operations on the same strand.
-    uploadQueryParam:
-      in: query
-      name: upload
-      required: false
-      schema:
-        type: string
-      description: >-
-        `file_id` of a temporary uploaded BED or bedRMod file (dataset B),
-        as returned by `POST /uploads`. Required if `comparison` is not
-        used; mutually exclusive with `comparison`.
-    uploadNameQueryParam:
-      in: query
-      name: uploadName
-      required: false
-      schema:
-        type: string
-        default: upload
-      description: >-
-        File name or description. Only used (optionally) if `upload` is used.
-    eufQueryParam:
-      in: query
-      name: euf
-      required: false
-      schema:
-        type: boolean
-        default: false
-      description: >-
-        If true, the uploaded file must follow the latest bedRMod (EUF)
-        specifications, else it is treated as a BED6 file (`score`
-        and `coverage` default to 1). Only used if `upload` is used.
-    taxaQueryParam:
-      in: query
-      name: taxaId
-      required: false
-      schema:
-        type: integer
-      description: >-
-        NCBI taxonomic identifier used to validate the uploaded file
-        header against the reference assembly. Required if `euf` is
-        true (and thus only relevant if `upload` is used).
-  responses:
-    UnauthorizedError:
-      description: Missing authorization header
-    ClientResponseException400:
-      description: Bad Request
-    ClientResponseException404:
-      description: >-
-        Dataset (`reference` or `comparison`) or upload file
-        identifier (`file_id`) not found
+      $ref: "_common.yaml#/components/securitySchemes/BearerAuth"
   links:
     GetFileById:
       description: >-
@@ -442,8 +161,60 @@ components:
       parameters:
         upload: "$response.body#/file_id"
   schemas:
-    Error:
-      $ref: "_common.yaml#/components/schemas/Error"
+    AddDatasetBody:
+      type: object
+      required:
+        - smid
+        - file_id
+        - rna_type
+        - title
+        - assembly_id
+        - modification_id
+        - organism_id
+        - technology_id
+      properties:
+        smid:
+          type: string
+          description: Project SMID the dataset will be added to
+        file_id:
+          type: string
+          description: >-
+            Identifier returned by `POST /uploads` for the
+            bedRMod file to import
+        rna_type:
+          type: string
+          description: >-
+            One of the RNA type IDs returned by `GET /catalogs/rna-types`
+        title:
+          type: string
+          maxLength: 255
+        assembly_id:
+          type: integer
+          description: Assembly identifier
+        modification_id:
+          description: One or more modification identifiers
+          type: array
+          minItems: 1
+          items:
+            type: integer
+        organism_id:
+          type: integer
+          description: Organism identifier
+        technology_id:
+          type: integer
+          description: Technology identifier
+    DatasetCreated:
+      type: object
+      properties:
+        dataset_id:
+          type: string
+          description: Newly created dataset identifier (EUFID)
+    Count:
+      type: object
+      properties:
+        count:
+          type: integer
+          description: Number of dataset
     Dataset:
       type: array
       items:
@@ -452,13 +223,13 @@ components:
           basecalling:
             type: string
             nullable: true
-            description: Basecalling model information (header EUF specification)
+            description: Basecalling model information (euf-specs)
           bioinformatics_workflow:
             type: string
             nullable: true
             description: >-
               Link to bioinformatics workflow; program name, version, and/or call; information
-              relevant to score calculation; etc. (header EUF specification)
+              relevant to score calculation; etc. (euf-specs)
           cto:
             type: string
             description: Cell, tissue, or organism
@@ -477,7 +248,7 @@ components:
             nullable: true
             description: >-
               Information about or link to experimental protocol
-              and design (header EUF specification)
+              and design (euf-specs)
           modomics_sname:
             type: string
             description: >-
@@ -498,117 +269,24 @@ components:
             description: Project title to which this dataset belong
           rna:
             type: string
-            description: RNA type (modification_type header EUF specification)
+            description: RNA type (`modification_type` euf-specs)
           sequencing_platform:
             type: string
             nullable: true
-            description: Sequencing platform (header EUF specification)
+            description: Sequencing platform (euf-specs)
           taxa_id:
             type: integer
-            description: NCBI taxon (header EUF specification)
+            description: NCBI taxon (`organism` euf-specs)
           taxa_sname:
             type: string
             description: NCBI name for `taxa_id`
           tech:
             type: string
             description: Detection technology used in this dataset
-    Comparison:
+    Permission:
       type: object
       properties:
-        chrom:
-          type: string
-          description: Chromosome name
-        start:
-          type: integer
-          description: Feature start position
-        end:
-          type: integer
-          description: Feature end position
-        name:
-          type: string
+        write_access:
+          type: boolean
           description: >-
-            Feature name (MODOMICS short name if `comparison` is used,
-            or the uploaded file's own name column if `upload` is used).
-        score:
-          type: integer
-          description: >-
-            Feature score (valid coverage if `comparison` is used, or the
-            uploaded file's own score column if `upload` is used).
-        strand:
-          type: string
-          enum:
-            - "+"
-            - "-"
-            - "."
-          description: Feature strand
-        coverage:
-          type: integer
-          description: >-
-            Feature coverage, or 1 if `upload` is used and `euf` is false
-        frequency:
-          type: number
-          description: >-
-            Feature frequency (percentage of modification), or 1 if
-            `upload` is used and `euf` is false
-        eufid:
-          type: string
-          description: >-
-            EUFID (dataset identifier), or `UPLOAD`/`LIFTED` (padded to
-            the EUFID length) if `upload` is used
-      required:
-        - chrom
-        - start
-        - end
-        - name
-        - score
-        - strand
-        - coverage
-        - frequency
-        - eufid
-    Intersect:
-      type: object
-      properties:
-        records:
-          type: array
-          items:
-            type: object
-            properties:
-              a:
-                $ref: "#/components/schemas/Comparison"
-              b:
-                $ref: "#/components/schemas/Comparison"
-            required:
-              - a
-              - b
-      required:
-        - records
-    Closest:
-      type: object
-      properties:
-        records:
-          type: array
-          items:
-            type: object
-            properties:
-              a:
-                $ref: "#/components/schemas/Comparison"
-              b:
-                $ref: "#/components/schemas/Comparison"
-              distance:
-                type: integer
-                description: Distance to closest feature
-            required:
-              - a
-              - b
-              - distance
-      required:
-        - records
-    Subtract:
-      type: object
-      properties:
-        records:
-          type: array
-          items:
-            $ref: "#/components/schemas/Comparison"
-      required:
-        - records
+            True if the current user is allowed to modify this dataset

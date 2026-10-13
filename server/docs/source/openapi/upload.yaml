@@ -1,0 +1,60 @@
+info:
+  title: uploads
+  description: >-
+    Dataset upload
+
+tags:
+  - name: Upload
+    description: Temporary upload
+
+paths:
+  /uploads:
+    post:
+      tags:
+        - Upload
+      summary: Upload a temporary file
+      description: >-
+        Upload a temporary BED or bedRMod file for dataset
+        comparison via `GET /datasets/comparisons/intersect`, `closest`,
+        or `subtract`; or a bedRMod file for import via `POST /datasets`.
+        No authentication is required. Files are subject to a size limit.
+        Files are stored under a temporary upload path and are
+        deleted automatically after some time
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Upload"
+          links:
+            GetFileById:
+              $ref: "#/components/links/GetFileById"
+        "413":
+          $ref: "_common.yaml#/components/responses/TooLargeError"
+
+components:
+  schemas:
+    Upload:
+      type: object
+      properties:
+        file_id:
+          type: string
+          description: Temporary file identifier
+  links:
+    GetFileById:
+      description: >-
+        The `file_id` returned in the response can be used
+        as `upload` query parameter in `GET /datasets/comparisons/intersect`,
+        `/closest`, or `/subtract`, or as `file_id` in the request body
+        of `POST /datasets`.
+      operationId: getIntersectQueryParam
+      parameters:
+        upload: "$response.body#/file_id"
