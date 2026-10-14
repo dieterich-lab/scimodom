@@ -36,14 +36,14 @@ interface ModificationRequest {
   chrom?: string
   chromStart?: number
   chromEnd?: number
-  firstRecord?: number
-  maxRecords?: number
+  offset?: number
+  limit?: number
   multiSort?: string[]
 }
 
 interface ModificationResponse {
   records: Modification[]
-  totalRecords: number
+  total: number
 }
 
 interface SiteSummaryResponse {
@@ -101,8 +101,8 @@ async function getModifications(
   const params = {
     ...getQueryParametersFromSearchParameters(searchParameters, sortMetas),
     by: searchParameters.searchBy === 'Gene/Chrom' ? 'gene' : undefined,
-    firstRecord: offset,
-    maxRecords: limit
+    offset: offset,
+    limit: limit
   }
   return await handleRequestWithErrorReporting<ModificationResponse>(
     HTTP.get('/modifications/records', { params: params }),
@@ -156,8 +156,11 @@ function getModificationExportLink(
 
 function getSiteParams(modification: Modification): SiteParams {
   return {
-    ...modification,
-    taxaId: modification.taxa_id
+    taxaId: modification.taxa_id,
+    chrom: modification.chrom,
+    start: modification.start,
+    end: modification.end,
+    strand: modification.strand
   }
 }
 

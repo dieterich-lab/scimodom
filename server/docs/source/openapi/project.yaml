@@ -1,58 +1,20 @@
 info:
   title: projects
   description: >-
-    Project access and requests
+    Project requests
 
 tags:
-  - name: Browse
-    description: Projects metadata
   - name: Request
     description: Project requests
 
 paths:
-  /projects:
-    get:
-      tags:
-        - Browse
-      summary: Get projects
-      description: >-
-        Sci-ModoM's Browse interface
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Project"
-  /users/me/projects:
-    get:
-      tags:
-        - Browse
-      summary: Get projects per user
-      description: >-
-        Projects added after a request submission; these projects
-        remain associated with the current user, who gains permission to
-        upload datasets and modify attachments
-      security:
-        - BearerAuth: []
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Project"
-        "401":
-          $ref: "_common.yaml#/components/responses/UnauthorizedError"
-        "422":
-          $ref: "_common.yaml#/components/responses/UnauthorizedErrorContent"
   /projects/requests:
     post:
       tags:
         - Request
       summary: Create a project request
       description: >-
-        Request submitted for internal review; does not create a project
+        Request submission; does not create a project
       security:
         - BearerAuth: []
       requestBody:
@@ -69,63 +31,32 @@ paths:
               schema:
                 $ref: "#/components/schemas/Request"
         "400":
-          description: Malformed request body or template validation failed
+          description: Payload validation failed
         "401":
-          $ref: "_common.yaml#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/UnauthorizedError"
         "422":
-          $ref: "_common.yaml#/components/responses/UnauthorizedErrorContent"
+          $ref: "#/components/responses/UnprocessableContentError"
         "500":
-          description: Request created, but notification failed
+          description: SMTP error
 
 components:
   securitySchemes:
     BearerAuth:
       $ref: "_common.yaml#/components/securitySchemes/BearerAuth"
+  responses:
+    UnauthorizedError:
+      $ref: "_common.yaml#/components/responses/UnauthorizedError"
+    UnprocessableContentError:
+      $ref: "_common.yaml#/components/responses/UnprocessableContentError"
   schemas:
-    Project:
-      type: array
-      items:
-        type: object
-        properties:
-          contact_institution:
-            type: string
-            description: >-
-              The institution or affiliation of `contact_name`
-          contact_name:
-            type: string
-            description: >-
-              The author of the data or a contact person responsible for adding the data
-          date_added:
-            type: integer
-            description: >-
-              POSIX timestamp corresponding to the date the project was added. In
-              Sci-ModoM (UI), this is converted to YYYY-MM-DD (ISO 8601).
-          date_published:
-            type: integer
-            description: >-
-              POSIX timestamp corresponding to the date of publication. In
-              Sci-ModoM (UI), this is converted to YYYY-MM-DD (ISO 8601).
-          doi:
-            type: string
-            description: A list of DOIs associated with this project
-          pmid:
-            type: string
-            description: A list of PMIDs associated with this project
-          project_id:
-            type: string
-            description: Project identifier (SMID)
-          project_summary:
-            type: string
-            description: Project summary
-          project_title:
-            type: string
-            description: Project title
     Request:
       type: object
+      required:
+        - request_id
       properties:
         request_id:
           type: string
-          description: Identifies the request for internal review
+          description: Identifies the request for review
     ProjectTemplate:
       type: object
       required:
@@ -134,6 +65,7 @@ components:
         - contact_name
         - contact_institution
         - contact_email
+        - date_published
         - external_sources
         - metadata
       properties:
@@ -164,15 +96,16 @@ components:
             properties:
               doi:
                 type: string
-                maxLength: 255
+                nullable: true
               pmid:
                 type: integer
+                nullable: true
         metadata:
           type: array
           minItems: 1
           items:
             type: object
-            required: [rna, modomics_id, tech, method_id, organism]
+            required: [rna, modomics_id, tech, method_id, note, organism]
             properties:
               rna:
                 type: string
@@ -191,7 +124,7 @@ components:
                 nullable: true
               organism:
                 type: object
-                required: [taxa_id, cto, assembly_name]
+                required: [taxa_id, cto, assembly_name, assembly_id]
                 properties:
                   taxa_id:
                     type: integer

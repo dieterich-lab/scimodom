@@ -1,7 +1,27 @@
+/*  swagger UI's links not fully supported cf. https://swagger.io/docs/specification/v3_0/links/ */
+/*  unless maybe they are in one document */
+/*  disable */
 .swagger-ui .response-col_links {
   display: none;
 }
 
 .swagger-ui .info hgroup.main > a.link {
   display: none;
+}
+
+/* override sphinx toctree nav sidebar rendered as <h1> in page */
+/* scope to api-page */
+.api-page > h1 {
+  display: none;
+}
+
+/* ad-hoc */
+.swagger-ui .info hgroup.main {
+  margin-bottom: 0.25em;
+}
+.swagger-ui .info .description p {
+  margin-top: 0;
+}
+.swagger-ui .info hgroup.main {
+  margin-left: -0.6em;
 }

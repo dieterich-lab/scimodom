@@ -26,7 +26,6 @@ paths:
           $ref: "#/components/responses/ClientResponseException400"
         "404":
           $ref: "#/components/responses/ClientResponseException404"
-
   /datasets/{dataset_id}/attachments/bams/{name}:
     get:
       tags:
@@ -81,15 +80,15 @@ paths:
         "400":
           $ref: "#/components/responses/ClientResponseException400"
         "401":
-          $ref: "_common.yaml#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/UnauthorizedError"
         "403":
-          $ref: "_common.yaml#/components/responses/ForbiddenError"
+          $ref: "#/components/responses/ForbiddenError"
         "404":
           $ref: "#/components/responses/ClientResponseException404"
         "413":
-          $ref: "_common.yaml#/components/responses/TooLargeError"
+          $ref: "#/components/responses/TooLargeError"
         "422":
-          $ref: "_common.yaml#/components/responses/UnauthorizedErrorContent"
+          $ref: "#/components/responses/UnprocessableContentError"
     delete:
       tags:
         - BAM
@@ -105,13 +104,13 @@ paths:
         "400":
           $ref: "#/components/responses/ClientResponseException400"
         "401":
-          $ref: "_common.yaml#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/UnauthorizedError"
         "403":
-          $ref: "_common.yaml#/components/responses/ForbiddenError"
+          $ref: "#/components/responses/ForbiddenError"
         "404":
           $ref: "#/components/responses/ClientResponseException404"
         "422":
-          $ref: "_common.yaml#/components/responses/UnauthorizedErrorContent"
+          $ref: "#/components/responses/UnprocessableContentError"
 
 components:
   securitySchemes:
@@ -139,9 +138,19 @@ components:
       description: >-
         Dataset identifier or BAM file name not found,
         BAM file is not an attachment of this dataset
+    UnauthorizedError:
+      $ref: "_common.yaml#/components/responses/UnauthorizedError"
+    ForbiddenError:
+      $ref: "_common.yaml#/components/responses/ForbiddenError"
+    TooLargeError:
+      $ref: "_common.yaml#/components/responses/TooLargeError"
+    UnprocessableContentError:
+      $ref: "_common.yaml#/components/responses/UnprocessableContentError"
   schemas:
     BamCreated:
       type: object
+      required:
+        - original_file_name
       properties:
         original_file_name:
           type: string
@@ -150,6 +159,10 @@ components:
       type: array
       items:
         type: object
+        required:
+          - original_file_name
+          - size_in_bytes
+          - mtime_epoch
         properties:
           original_file_name:
             type: string

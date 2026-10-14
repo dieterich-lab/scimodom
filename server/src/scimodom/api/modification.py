@@ -372,7 +372,7 @@ def _get_valid_search_query_params(
 
 def _get_valid_page_query_params() -> PageParams:
     return PageParams(
-        offset=get_optional_non_negative_int("firstRecord"),
-        limit=get_optional_positive_int("maxRecords"),
+        offset=get_optional_non_negative_int("offset"),
+        limit=get_optional_positive_int("limit"),
         sort=get_optional_list("multiSort", str),
     )

@@ -46,12 +46,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/DatasetCreated"
         "400":
-          description: >-
-            Malformed request body or template validation failed
+          description: Payload validation failed
         "401":
-          $ref: "_common.yaml#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/UnauthorizedError"
         "403":
-          $ref: "_common.yaml#/components/responses/ForbiddenError"
+          $ref: "#/components/responses/ForbiddenError"
         "404":
           description: Parameter not found
         "409":
@@ -61,7 +60,7 @@ paths:
             The upload was rejected during import (euf-specs).
             Also returned for a malformed or expired JWT
         "500":
-          description: Liftover failed, or an unexpected server error occurred
+          description: Liftover failed
         "501":
           description: RNA type annotation not implemented
   /users/me/datasets:
@@ -81,9 +80,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/Dataset"
         "401":
-          $ref: "_common.yaml#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/UnauthorizedError"
         "422":
-          $ref: "_common.yaml#/components/responses/UnauthorizedErrorContent"
+          $ref: "#/components/responses/UnprocessableContentError"
   /datasets/summary:
     get:
       tags:
@@ -140,26 +139,23 @@ paths:
               schema:
                 $ref: "#/components/schemas/Permission"
         "401":
-          $ref: "_common.yaml#/components/responses/UnauthorizedError"
-        "422":
-          $ref: "_common.yaml#/components/responses/UnauthorizedErrorContent"
+          $ref: "#/components/responses/UnauthorizedError"
         "404":
           description: Dataset not found
+        "422":
+          $ref: "#/components/responses/UnprocessableContentError"
 
 components:
   securitySchemes:
     BearerAuth:
       $ref: "_common.yaml#/components/securitySchemes/BearerAuth"
-  links:
-    GetFileById:
-      description: >-
-        The `file_id` returned in the response can be used
-        as `upload` query parameter in `GET /datasets/comparisons/intersect`,
-        `/closest`, or `/subtract`, or as `file_id` in the request body
-        of `POST /datasets`.
-      operationId: getIntersectQueryParam
-      parameters:
-        upload: "$response.body#/file_id"
+  responses:
+    UnauthorizedError:
+      $ref: "_common.yaml#/components/responses/UnauthorizedError"
+    ForbiddenError:
+      $ref: "_common.yaml#/components/responses/ForbiddenError"
+    UnprocessableContentError:
+      $ref: "_common.yaml#/components/responses/UnprocessableContentError"
   schemas:
     AddDatasetBody:
       type: object
@@ -205,12 +201,16 @@ components:
           description: Technology identifier
     DatasetCreated:
       type: object
+      required:
+        - dataset_id
       properties:
         dataset_id:
           type: string
           description: Newly created dataset identifier (EUFID)
     Count:
       type: object
+      required:
+        - count
       properties:
         count:
           type: integer
@@ -219,6 +219,24 @@ components:
       type: array
       items:
         type: object
+        required:
+          - basecalling
+          - bioinformatics_workflow
+          - cto
+          - dataset_id
+          - dataset_title
+          - doi
+          - experiment
+          - modomics_sname
+          - pmid
+          - project_id
+          - project_summary
+          - project_title
+          - rna
+          - sequencing_platform
+          - taxa_id
+          - taxa_sname
+          - tech
         properties:
           basecalling:
             type: string
@@ -285,6 +303,7 @@ components:
             description: Detection technology used in this dataset
     Permission:
       type: object
+      required: _ write_access
       properties:
         write_access:
           type: boolean

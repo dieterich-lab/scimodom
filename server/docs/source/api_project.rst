@@ -1,7 +1,7 @@
 .. _project_api:
+.. rst-class:: api-page
 
-Projects (Browse)
-=================
+Projects
+========
 
 .. swagger-plugin:: openapi/_include/project.yaml
-   :swagger-options: {"supportedSubmitMethods": ["get"]}

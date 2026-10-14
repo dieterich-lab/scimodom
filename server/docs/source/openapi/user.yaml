@@ -27,7 +27,7 @@ paths:
         "409":
           description: User already exists
         "500":
-          description: SMTP exception or internal server error
+          description: SMTP error
   /users/confirmation:
     post:
       tags:
@@ -43,7 +43,7 @@ paths:
         "400":
           $ref: "#/components/responses/ClientResponseException400"
         "401":
-          description: Bad credentials, bad or expired confirmation token
+          description: Invalid credentials or expired confirmation token
   /users/password/request:
     post:
       tags:
@@ -61,7 +61,7 @@ paths:
         "404":
           description: User not found
         "500":
-          description: SMTP exception or internal server error
+          description: SMTP error
   /users/password/reset:
     post:
       tags:
@@ -78,7 +78,7 @@ paths:
         "400":
           $ref: "#/components/responses/ClientResponseException400"
         "401":
-          description: Bad credentials, bad or expired confirmation token
+          description: Invalid credentials or expired confirmation token
   /users/me:
     get:
       tags:
@@ -94,9 +94,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/Username"
         "401":
-          $ref: "_common.yaml#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/UnauthorizedError"
         "422":
-          $ref: "_common.yaml#/components/responses/UnauthorizedErrorContent"
+          $ref: "#/components/responses/UnprocessableContentError"
   /users/me/password:
     put:
       tags:
@@ -112,9 +112,9 @@ paths:
         "400":
           $ref: "#/components/responses/ClientResponseException400"
         "401":
-          $ref: "_common.yaml#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/UnauthorizedError"
         "422":
-          $ref: "_common.yaml#/components/responses/UnauthorizedErrorContent"
+          $ref: "#/components/responses/UnprocessableContentError"
   /sessions:
     post:
       tags:
@@ -133,7 +133,7 @@ paths:
         "400":
           $ref: "#/components/responses/ClientResponseException400"
         "401":
-          description: Bad credentials
+          description: Invalid credentials
   /sessions/refresh:
     post:
       tags:
@@ -151,30 +151,38 @@ paths:
               schema:
                 $ref: "#/components/schemas/Token"
         "401":
-          $ref: "_common.yaml#/components/responses/UnauthorizedError"
+          $ref: "#/components/responses/UnauthorizedError"
         "422":
-          $ref: "_common.yaml#/components/responses/UnauthorizedErrorContent"
+          $ref: "#/components/responses/UnprocessableContentError"
 
 components:
   securitySchemes:
     BearerAuth:
       $ref: "_common.yaml#/components/securitySchemes/BearerAuth"
+  responses:
+    ClientResponseException400:
+      description: Payload validation failed
+    UnauthorizedError:
+      $ref: "_common.yaml#/components/responses/UnauthorizedError"
+    UnprocessableContentError:
+      $ref: "_common.yaml#/components/responses/UnprocessableContentError"
   schemas:
     Username:
       type: object
+      required:
+        - email
       properties:
         email:
           type: string
           description: username (e-mail address)
     Token:
       type: object
+      required:
+        - access_token
       properties:
         access_token:
           type: string
           description: JWT
-  responses:
-    ClientResponseException400:
-      description: Malformed request body, missing fields
   requestBodies:
     UserBody:
       description: JSON object with username

@@ -352,7 +352,7 @@ class MockModificationService:
         page_params: PageParams,  # pylint: disable=unused-argument
     ) -> dict[str, Any]:
         return {
-            "totalRecords": 1,
+            "total": 1,
             "records": [MockModificationService.RECORDS[0].copy()],
         }
 
@@ -364,7 +364,7 @@ class MockModificationService:
         page_params: PageParams,  # pylint: disable=unused-argument
     ) -> dict[str, Any]:
         return {
-            "totalRecords": 1,
+            "total": 1,
             "records": [MockModificationService.RECORDS[1].copy()],
         }
 
@@ -459,10 +459,10 @@ def test_get_modification_records(
 
 def test_page_limit(test_client, mock_services):
     result = test_client.get(
-        "/records?by=gene&rnaType=WTS&taxaId=9606&geneName=ANY&maxRecords=0"
+        "/records?by=gene&rnaType=WTS&taxaId=9606&geneName=ANY&limit=0"
     )
     assert result.status_code == 400
-    assert result.json["message"] == "Parameter 'maxRecords' must be a positive integer"
+    assert result.json["message"] == "Parameter 'limit' must be a positive integer"
 
 
 @pytest.mark.parametrize(

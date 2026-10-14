@@ -496,14 +496,14 @@ class ModificationService:
                 {k: v for k, v in row._asdict().items() if k != "total_count"}
                 for row in rows
             ]
-            return {"totalRecords": total, "records": records}
+            return {"total": total, "records": records}
         # 0 matches - implicitly assumes that LIMIT can't be 0
         if offset is None or offset == 0:
-            return {"totalRecords": 0, "records": []}
+            return {"total": 0, "records": []}
         # offset > 0: truly 0 matches, or OFFSET
         # is past last page - fall back to real COUNT
         total = self._get_fallback_count(query)
-        return {"totalRecords": total, "records": []}
+        return {"total": total, "records": []}
 
 
 @cache

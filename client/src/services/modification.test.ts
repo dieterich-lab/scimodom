@@ -77,7 +77,7 @@ test.each<{ searchBy: SearchBy; expectedBy: string | undefined }>([
 ])(
   'getModifications with searchBy=$searchBy sends by=$expectedBy',
   async ({ searchBy, expectedBy }) => {
-    const expectedResponse = { records: [], totalRecords: 0 }
+    const expectedResponse = { records: [], total: 0 }
     mockedHandle.mockResolvedValueOnce(expectedResponse)
 
     const response = await getModifications(makeSearchParameters({ searchBy }), dialogState)
@@ -132,8 +132,8 @@ test('getModifications maps SearchParameters into the request', async () => {
       chromStart: 1,
       chromEnd: 2,
       multiSort: [],
-      firstRecord: 1,
-      maxRecords: 10
+      offset: 1,
+      limit: 10
     }
   })
 })
@@ -227,23 +227,11 @@ test("getTargetSites calls '/modifications/sites/targets' and returns records", 
     '/modifications/sites/targets',
     {
       params: {
-        id: 15,
+        taxaId: modification.taxa_id,
         chrom: '1',
         start: 1,
         end: 2,
-        name: 'm6A',
-        score: 0,
         strand: '+',
-        coverage: 10,
-        frequency: 50,
-        dataset_id: 'd1',
-        feature: 'exon',
-        gene_id: 'ENSG1',
-        gene_name: 'GENE1',
-        tech: 'tech',
-        taxa_id: 9606,
-        cto: 'cell-type',
-        taxaId: modification.taxa_id,
         target: 'TARGET'
       }
     }
@@ -274,23 +262,11 @@ test("getGenomicContext calls '/modifications/sites/context' and returns a strin
     '/modifications/sites/context',
     {
       params: {
-        id: 15,
+        taxaId: modification.taxa_id,
         chrom: '1',
         start: 1,
         end: 2,
-        name: 'm6A',
-        score: 0,
         strand: '+',
-        coverage: 10,
-        frequency: 50,
-        dataset_id: 'd1',
-        feature: 'exon',
-        gene_id: 'ENSG1',
-        gene_name: 'GENE1',
-        tech: 'tech',
-        taxa_id: 9606,
-        cto: 'cell-type',
-        taxaId: modification.taxa_id,
         window: 5
       }
     }
@@ -338,23 +314,11 @@ test("getSiteWiseInfo calls '/modification/sites' and returns records", async ()
     '/modifications/sites',
     {
       params: {
-        id: 15,
+        taxaId: modification.taxa_id,
         chrom: '1',
         start: 1,
         end: 2,
-        name: 'm6A',
-        score: 0,
-        strand: '+',
-        coverage: 10,
-        frequency: 50,
-        dataset_id: 'd1',
-        feature: 'exon',
-        gene_id: 'ENSG1',
-        gene_name: 'GENE1',
-        tech: 'tech',
-        taxa_id: 9606,
-        cto: 'cell-type',
-        taxaId: modification.taxa_id
+        strand: '+'
       }
     }
   ])

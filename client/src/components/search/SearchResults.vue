@@ -28,10 +28,10 @@ const dialogState = useDialogState()
 const dt = ref()
 const showDetails = ref(false)
 const selectedSite = ref<Modification>()
-const totalRecords = ref(0)
+const total = ref(0)
 const loading = ref(false)
-const firstRecord = ref(0)
-const maxRecords = ref(10)
+const offset = ref(0)
+const limit = ref(10)
 const sortMetas = ref<DataTableSortMeta[]>()
 const records = ref()
 
@@ -52,17 +52,17 @@ function loadData() {
     getModifications(
       props.searchParameters,
       dialogState,
-      firstRecord.value,
-      maxRecords.value,
+      offset.value,
+      limit.value,
       sortMetas.value
     )
       .then((data) => {
         records.value = data.records
-        totalRecords.value = data.totalRecords
+        total.value = data.total
       })
       .catch((e) => {
         records.value = undefined
-        totalRecords.value = 0
+        total.value = 0
         trashRequestErrors(e)
       })
       .finally(() => {
@@ -70,14 +70,14 @@ function loadData() {
       })
   } else {
     records.value = undefined
-    totalRecords.value = 0
+    total.value = 0
   }
 }
 
 function onPageOrSort(event: DataTablePageEvent | DataTableSortEvent) {
   sortMetas.value = event.multiSortMeta
-  firstRecord.value = event.first
-  maxRecords.value = event.rows
+  offset.value = event.first
+  limit.value = event.rows
   loadData()
 }
 
@@ -99,10 +99,10 @@ function onOverlay(record: Modification) {
     ref="dt"
     lazy
     :paginator="true"
-    :totalRecords="totalRecords"
+    :totalRecords="total"
     :loading="loading"
-    :first="firstRecord"
-    :rows="maxRecords"
+    :first="offset"
+    :rows="limit"
     @page="onPageOrSort($event)"
     @sort="onPageOrSort($event)"
     removableSort

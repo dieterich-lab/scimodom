@@ -1,7 +1,7 @@
 info:
   title: catalogs
   description: >-
-    Reference, catalogs, shared lookup, and definition tables.
+    Reference, catalogs, shared lookup, and definition tables
 
 tags:
   - name: Assembly
@@ -40,7 +40,7 @@ paths:
           required: true
           schema:
             type: string
-          description: A valid RNA type identifier
+          description: RNA type identifier
       responses:
         "200":
           description: OK
@@ -59,7 +59,7 @@ paths:
           required: true
           schema:
             type: string
-          description: A valid RNA type identifier
+          description: RNA type identifier
       responses:
         "200":
           description: OK
@@ -98,7 +98,7 @@ paths:
           required: true
           schema:
             type: integer
-          description: A valid NCBI taxon
+          description: NCBI taxon
       responses:
         "200":
           description: OK
@@ -121,7 +121,7 @@ paths:
           required: true
           schema:
             type: integer
-          description: A valid NCBI taxon
+          description: NCBI taxon
       responses:
         "200":
           description: OK
@@ -190,7 +190,7 @@ paths:
               type: integer
           style: form
           explode: true
-          description: One or more selection identifiers
+          description: One or more selection identifier(s)
       responses:
         "200":
           description: OK
@@ -209,6 +209,9 @@ components:
       type: array
       items:
         type: object
+        required:
+          - id
+          - label
         properties:
           id:
             type: string
@@ -218,6 +221,8 @@ components:
             description: RNA type description
     Biotype:
       type: object
+      required:
+        - biotypes
       properties:
         biotypes:
           type: array
@@ -226,6 +231,8 @@ components:
             description: Biotypes display categories
     Feature:
       type: object
+      required:
+        - features
       properties:
         features:
           type: array
@@ -236,16 +243,20 @@ components:
       type: array
       items:
         type: object
+        required:
+          - domain
+          - kingdom
+          - phylum
+          - taxa_id
+          - taxa_name
+          - taxa_sname
         properties:
           domain:
             type: string
-            description: Domain
           kingdom:
             type: string
-            description: Kingdom
           phylum:
             type: string
-            description: Phylum
           taxa_id:
             type: integer
             description: NCBI taxon
@@ -259,6 +270,9 @@ components:
       type: array
       items:
         type: object
+        required:
+          - chrom
+          - size
         properties:
           chrom:
             type: string
@@ -270,17 +284,21 @@ components:
       type: array
       items:
         type: object
+        required:
+          - id
+          - name
         properties:
           id:
             type: string
-            description: Assembly identifier
           name:
             type: string
-            description: Assembly name
     Modomics:
       type: array
       items:
         type: object
+        required:
+          - id
+          - modomics_sname
         properties:
           id:
             type: string
@@ -292,6 +310,10 @@ components:
       type: array
       items:
         type: object
+        required:
+          - id
+          - cls
+          - meth
         properties:
           id:
             type: string
@@ -301,11 +323,28 @@ components:
             description: Classification
           meth:
             type: string
-            description: Detection method
+            description: Detection method name
     Selection:
       type: array
       items:
         type: object
+        required:
+          - cls
+          - cto
+          - domain
+          - kingdom
+          - meth
+          - modification_id
+          - modomics_sname
+          - organism_id
+          - rna
+          - rna_name
+          - selection_id
+          - taxa_id
+          - taxa_name
+          - taxa_sname
+          - tech
+          - technology_id
         properties:
           cls:
             type: string

@@ -494,7 +494,7 @@ def test_get_modifications_records_by_selection(
         search_params=search_params,
         page_params=page_params,
     )
-    assert response["totalRecords"] == expected_total
+    assert response["total"] == expected_total
     assert response["records"] == expected_records
 
 
@@ -537,7 +537,7 @@ def test_get_modification_records_by_gene(
         search_params=search_params,
         page_params=PageParams(),
     )
-    assert response["totalRecords"] == expected_total
+    assert response["total"] == expected_total
     assert response["records"] == expected_records
 
 
@@ -574,7 +574,7 @@ def test_get_modification_records_by_gene_no_filters(
         search_params=search_params,
         page_params=PageParams(),
     )
-    assert response["totalRecords"] == expected_total
+    assert response["total"] == expected_total
     assert [r["id"] for r in response["records"]] == expected_ids
 
 
@@ -592,3 +592,9 @@ def test_get_modification_site(Session, dataset):  # noqa
     assert response["records"][1]["tech"] == "Technology 2"
     assert response["records"][0]["score"] == 1000
     assert response["records"][1]["score"] == 10
+
+
+def test_get_modification_site_no_site(Session, dataset):  # noqa
+    modification_service = _get_modification_service(Session())
+    response = modification_service.get_modification_site("17", 100001, 100003)
+    assert len(response["records"]) == 0

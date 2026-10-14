@@ -16,7 +16,6 @@ paths:
       description: >-
         Intersection between `reference` and `comparison` or `upload`. The response
         returns the reference set of records as `a`; and the records matching the query as `b`
-      operationId: getIntersectQueryParam
       parameters:
         - $ref: "#/components/parameters/referenceQueryParam"
         - $ref: "#/components/parameters/comparisonQueryparam"
@@ -49,7 +48,6 @@ paths:
         Closest non-overlaps in `comparison` or `upload` with respect to `reference`.
         The response returns the reference set of records as `a`; and the records
         matching the query as `b`
-      operationId: getClosestQueryParam
       parameters:
         - $ref: "#/components/parameters/referenceQueryParam"
         - $ref: "#/components/parameters/comparisonQueryparam"
@@ -81,7 +79,6 @@ paths:
       description: >-
         Strict non-overlaps in `reference` with respect to `comparison` or `upload`.
         The response returns the reference set of records matching the query
-      operationId: getSubtractQueryParam
       parameters:
         - $ref: "#/components/parameters/referenceQueryParam"
         - $ref: "#/components/parameters/comparisonQueryparam"
@@ -158,7 +155,7 @@ components:
         type: string
         default: upload
       description: >-
-        File name or description (optional). Only used with `upload`
+        File name or description. Only used with `upload`
     eufQueryParam:
       in: query
       name: euf
@@ -182,29 +179,28 @@ components:
         true (and thus only relevant if `upload` is used)
   responses:
     ClientResponseException400:
-      description: Bad Request
+      description: Invalid request format or validation error
     ClientResponseException404:
       description: >-
-        Dataset (`reference` or `comparison`), upload file
-        (`file_id`), or `taxaId` not found
+        Dataset, uploaded file, or taxon not found
     ClientResponseException422:
       description: >-
-        Data validation failed (euf-specs)
+        Uploaded file validation failed (euf-specs)
     LiftoverFailed:
-      description: Liftover failed (only relevant if `upload` is used)
-  links:
-    GetFileById:
-      description: >-
-        The `file_id` returned in the response can be used
-        as `upload` query parameter in `GET /datasets/comparisons/intersect`,
-        `/closest`, or `/subtract`, or as `file_id` in the request body
-        of `POST /datasets`.
-      operationId: getIntersectQueryParam
-      parameters:
-        upload: "$response.body#/file_id"
+      description: Uploaded file liftover failed
   schemas:
     Comparison:
       type: object
+      required:
+        - chrom
+        - start
+        - end
+        - name
+        - score
+        - strand
+        - coverage
+        - frequency
+        - eufid
       properties:
         chrom:
           type: string
@@ -246,18 +242,10 @@ components:
           description: >-
             EUFID (dataset identifier), or `UPLOAD`/`LIFTED` (padded to
             the EUFID length) if `upload` is used
-      required:
-        - chrom
-        - start
-        - end
-        - name
-        - score
-        - strand
-        - coverage
-        - frequency
-        - eufid
     Intersect:
       type: object
+      required:
+        - records
       properties:
         records:
           type: array
@@ -271,10 +259,10 @@ components:
             required:
               - a
               - b
-      required:
-        - records
     Closest:
       type: object
+      required:
+        - records
       properties:
         records:
           type: array
@@ -292,14 +280,12 @@ components:
               - a
               - b
               - distance
-      required:
-        - records
     Subtract:
       type: object
+      required:
+        - records
       properties:
         records:
           type: array
           items:
             $ref: "#/components/schemas/Comparison"
-      required:
-        - records

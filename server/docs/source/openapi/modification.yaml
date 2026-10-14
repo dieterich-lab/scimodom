@@ -1,7 +1,7 @@
 info:
   title: modifications
   description: >-
-    Modification records and sites.
+    Modification records and sites
 
 tags:
   - name: Record
@@ -15,11 +15,7 @@ paths:
       tags:
         - Record
       summary: Get modification records
-      description: >-
-        Sci-ModoM's Search interface.
-        `geneName` and `chrom` are mutually exclusive, and required
-        when `by=gene`, else `modification`, `organism`, and `technology` are required.
-        Add `format=csv` to download the result as CSV
+      description: Sci-ModoM's Search interface
       parameters:
         - $ref: "#/components/parameters/byQueryParam"
         - $ref: "#/components/parameters/formatQueryParam"
@@ -165,7 +161,9 @@ components:
         enum:
           - "gene"
       description: >-
-        Switch `/records` from a "Modification" query (default) to a "Gene/Chrom" query
+        Switch from a *Modification* (default) to a *Gene/Chrom* query.
+        If `by=gene`, `geneName` or `chrom` are required, else `modification`,
+        `organism`, and `technology` are required.
     formatQueryParam:
       in: query
       name: format
@@ -181,14 +179,14 @@ components:
       required: true
       schema:
         type: string
-      description: A valid RNA type
+      description: RNA type identifier
     taxaIdQueryParam:
       in: query
       name: taxaId
       required: true
       schema:
         type: integer
-      description: A valid NCBI taxon
+      description: NCBI taxon
     modificationQueryParam:
       in: query
       name: modification
@@ -196,8 +194,7 @@ components:
       schema:
         type: integer
       description: >-
-        Sci-ModoM's modification identifier (MODOMICS code, `rna`).
-        Required unless `by=gene`
+        Sci-ModoM's modification identifier. Required unless `by=gene`
     organismQueryParam:
       in: query
       name: organism
@@ -205,8 +202,7 @@ components:
       schema:
         type: integer
       description: >-
-        Sci-ModoM's organism identifier (`taxa_id`, `cto`).
-        Required unless `by=gene`
+        Sci-ModoM's organism identifier. Required unless `by=gene`
     technologyQueryParam:
       in: query
       name: technology
@@ -218,8 +214,7 @@ components:
       style: form
       explode: true
       description: >-
-        Sci-ModoM's technology identifier(s) (`meth`, `tech`).
-        Required unless `by=gene`
+        Sci-ModoM's technology identifier(s). Required unless `by=gene`
     geneNameQueryParam:
       in: query
       name: geneName
@@ -338,21 +333,19 @@ components:
       description: miRNA targets or RBP binding sites
     firstRecordQueryParam:
       in: query
-      name: firstRecord
+      name: offset
       required: false
       schema:
         type: integer
-      description: offset
     maxRecordsQueryParam:
       in: query
-      name: maxRecords
+      name: limit
       required: false
       schema:
         type: integer
-      description: limit
   responses:
     ClientResponseException400:
-      description: Bad request
+      description: Invalid request format or validation error
     ClientResponseException404:
       description: Parameter not found
     ClientResponseException501:
@@ -360,43 +353,70 @@ components:
   schemas:
     Count:
       type: object
+      required:
+        - count
       properties:
         count:
           type: integer
           description: Number of data records or sites
     BED6:
       type: object
+      required:
+        - records
       properties:
         records:
           type: array
           items:
             type: object
+            required:
+              - chrom
+              - start
+              - end
+              - name
+              - score
+              - strand
             properties:
               chrom:
                 type: string
-                description: Chromosome name
               start:
                 type: integer
-                description: Feature start position
               end:
                 type: integer
-                description: Feature end position
               name:
                 type: string
-                description: Feature name
               score:
                 type: integer
-                description: Feature score
               strand:
                 type: string
-                description: Feature strand
     Search:
       type: object
+      required:
+        - records
+        - total
       properties:
         records:
           type: array
           items:
             type: object
+            required:
+              - chrom
+              - start
+              - end
+              - name
+              - score
+              - strand
+              - coverage
+              - frequency
+              - reference_id
+              - tech
+              - taxa_id
+              - cto
+              - gene_id
+              - gene_name
+              - gene_biotype
+              - feature
+              - id
+              - dataset_id
             properties:
               chrom:
                 type: string
@@ -424,7 +444,7 @@ components:
                 description: Feature frequency (percentage of modification)
               reference_id:
                 type: integer
-                description: MODOMICS reference identifier for this modification
+                description: MODOMICS reference identifier
               tech:
                 type: string
                 description: Detection technology
@@ -452,16 +472,34 @@ components:
               dataset_id:
                 type: string
                 description: Dataset identifier (EUFID)
-        totalRecords:
+        total:
           type: integer
           description: Total number of records matching the query
     Site:
       type: object
+      required:
+        - records
       properties:
         records:
           type: array
           items:
             type: object
+            required:
+              - chrom
+              - start
+              - end
+              - name
+              - score
+              - strand
+              - coverage
+              - frequency
+              - rna
+              - reference_id
+              - modification_id
+              - short_name
+              - tech
+              - cto
+              - dataset_id
             properties:
               chrom:
                 type: string
@@ -489,13 +527,13 @@ components:
                 description: Feature frequency (percentage of modification)
               rna:
                 type: string
-                description: RNA type
+                description: RNA type identifier
               reference_id:
                 type: integer
-                description: MODOMICS reference identifier for this modification
+                description: MODOMICS reference identifier
               modification_id:
                 type: integer
-                description: Sci-ModoM's modification identifier (MODOMICS code, `rna`)
+                description: Modification identifier (MODOMICS code, `rna`)
               short_name:
                 type: string
                 description: Modification short name (MODOMICS)
@@ -510,6 +548,8 @@ components:
                 description: Dataset identifier (EUFID)
     Context:
       type: object
+      required:
+        - context
       properties:
         context:
           type: string

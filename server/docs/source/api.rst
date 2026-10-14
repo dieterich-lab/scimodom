@@ -1,7 +1,7 @@
 .. _api:
 
-REST API Reference
-==================
+REST API
+========
 
 .. toctree::
    :maxdepth: 1
@@ -9,8 +9,9 @@ REST API Reference
    api_release
    api_catalog
    api_modification
-   api_project
+   api_browse
    api_comparison
+   api_project
    api_dataset
    api_attachment
    api_upload
