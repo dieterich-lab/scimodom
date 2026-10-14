@@ -53,8 +53,8 @@ interface SiteSummaryResponse {
 interface SiteParams {
   taxaId: number
   chrom: string
-  start: number
-  end: number
+  chromStart: number
+  chromEnd: number
   strand: Strand
 }
 
@@ -158,8 +158,8 @@ function getSiteParams(modification: Modification): SiteParams {
   return {
     taxaId: modification.taxa_id,
     chrom: modification.chrom,
-    start: modification.start,
-    end: modification.end,
+    chromStart: modification.start,
+    chromEnd: modification.end,
     strand: modification.strand
   }
 }

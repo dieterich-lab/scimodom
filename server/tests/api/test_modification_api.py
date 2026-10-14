@@ -343,14 +343,14 @@ class MockModificationService:
 
     @staticmethod
     def get_modification_records_by_selection(
-        annotation_source: AnnotationSource,  # pylint: disable=unused-argument
-        taxa_id: int,  # pylint: disable=unused-argument
-        modification_id: int,  # pylint: disable=unused-argument
-        organism_id: int,  # pylint: disable=unused-argument
-        technology_ids: list[int],  # pylint: disable=unused-argument
-        search_params: SearchParams,  # pylint: disable=unused-argument
-        page_params: PageParams,  # pylint: disable=unused-argument
-    ) -> dict[str, Any]:
+        annotation_source: AnnotationSource,
+        taxa_id: int,
+        modification_id: int,
+        organism_id: int,
+        technology_ids: list[int],
+        search_params: SearchParams,
+        page_params: PageParams,
+    ) -> dict[str, Any]:  # noqa
         return {
             "total": 1,
             "records": [MockModificationService.RECORDS[0].copy()],
@@ -358,11 +358,11 @@ class MockModificationService:
 
     @staticmethod
     def get_modification_records_by_gene(
-        annotation_source: AnnotationSource,  # pylint: disable=unused-argument
-        taxa_id: int,  # pylint: disable=unused-argument
-        search_params: SearchParams,  # pylint: disable=unused-argument
-        page_params: PageParams,  # pylint: disable=unused-argument
-    ) -> dict[str, Any]:
+        annotation_source: AnnotationSource,
+        taxa_id: int,
+        search_params: SearchParams,
+        page_params: PageParams,
+    ) -> dict[str, Any]:  # noqa
         return {
             "total": 1,
             "records": [MockModificationService.RECORDS[1].copy()],
@@ -370,10 +370,10 @@ class MockModificationService:
 
     @staticmethod
     def get_modification_site(
-        chrom: str,  # pylint: disable=unused-argument
-        start: int,  # pylint: disable=unused-argument
-        end: int,  # pylint: disable=unused-argument
-    ) -> dict[str, list[str, Any]]:
+        chrom: str,
+        start: int,
+        end: int,
+    ) -> dict[str, list[str, Any]]:  # noqa
         return {"records": MockModificationService.SITEWISE_RECORDS.copy()}
 
 
@@ -522,7 +522,7 @@ def test_get_modification_records_as_csv(test_client, mock_services):
 
 
 def test_get_modification_sites(test_client, mock_services):
-    url = "/sites?chrom=1&start=944239&end=944240&strand=-&taxaId=9606"
+    url = "/sites?chrom=1&chromStart=944239&chromEnd=944240&strand=-&taxaId=9606"
     response = test_client.get(url)
     expected_records = [
         {**r, "strand": r["strand"].value}
@@ -534,7 +534,7 @@ def test_get_modification_sites(test_client, mock_services):
 
 def test_get_modification_context(test_client, mock_services):
     response = test_client.get(
-        "/sites/context?window=1&chrom=1&end=944240&start=944239&strand=-&taxaId=9606"
+        "/sites/context?window=1&chrom=1&chromEnd=944240&chromStart=944239&strand=-&taxaId=9606"
     )
     assert response.status_code == 200
     assert response.json == {"context": "ACGTAACCGCC"}
@@ -550,7 +550,7 @@ def test_get_modification_context_file_not_found(
     )
 
     response = test_client.get(
-        "/sites/context?window=5&chrom=1&end=944240&start=944239&strand=-&taxaId=9606"
+        "/sites/context?window=5&chrom=1&chromEnd=944240&chromStart=944239&strand=-&taxaId=9606"
     )
     assert response.status_code == 200
     assert response.json == {"context": ""}
@@ -562,8 +562,8 @@ def test_get_modification_context_file_not_found(
 @pytest.mark.parametrize(
     "url",
     [
-        "/sites/targets?target=MIRNA&taxaId=9606&chrom=1&start=3284723&end=3284724&strand=%2B",
-        "sites/targets?target=RBP&taxaId=9606&chrom=1&start=2403131&end=2403132&strand=%2B",
+        "/sites/targets?target=MIRNA&taxaId=9606&chrom=1&chromStart=3284723&chromEnd=3284724&strand=%2B",
+        "sites/targets?target=RBP&taxaId=9606&chrom=1&chromStart=2403131&chromEnd=2403132&strand=%2B",
     ],
 )
 def test_get_modification_targets(test_client, mock_services, url):
@@ -576,7 +576,7 @@ def test_get_modification_targets(test_client, mock_services, url):
 
 
 def test_get_modification_targets_empty(test_client, mock_services, caplog):
-    url = "/sites/targets?target=MIRNA&taxaId=7227&chrom=1&start=3284723&end=3284724&strand=%2B"
+    url = "/sites/targets?target=MIRNA&taxaId=7227&chrom=1&chromStart=3284723&chromEnd=3284724&strand=%2B"
     result = test_client.get(url)
     assert result.status == "200 OK"
     assert (

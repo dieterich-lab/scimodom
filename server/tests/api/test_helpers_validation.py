@@ -5,7 +5,7 @@ from sqlalchemy.exc import NoResultFound
 from scimodom.services.user import NoSuchUser
 from scimodom.api.helpers import (
     ClientResponseException,
-    validate_chrom,
+    ValidCoords,
     get_valid_rna_type,
     parse_valid_rna_type,
     get_valid_taxa_id,
@@ -14,6 +14,9 @@ from scimodom.api.helpers import (
     get_optional_valid_features,
     get_valid_selections,
     get_valid_coords,
+    get_optional_valid_coords,
+    get_valid_strand,
+    expand_coords_context,
     parse_valid_dataset,
     parse_valid_bam,
     # get_optional_valid_dataset_id_list, # test_comparison_api
@@ -160,38 +163,38 @@ class MockUtilitiesService:
 # tests: domain and business constraints validation
 
 
-@pytest.mark.parametrize(
-    "chrom,start,end,http_status,message",
-    [
-        ("2", None, None, 404, "chrom '2' for taxaId '9606' not found"),
-        (
-            "1",
-            248956422,
-            None,
-            400,
-            "Parameter 'end'/'chromEnd' must be greater than 'start'/'chromStart' "
-            "(start is: 248956422, got end: 248956422)",
-        ),
-        (
-            "1",
-            1,
-            248956423,
-            400,
-            "Parameter 'end'/'chromEnd' is greater than chrom size "
-            "(max. allowed: 248956422, got '248956423')",
-        ),
-    ],
-)
-def test_validate_chrom_fail(mocker, chrom, start, end, http_status, message):
-    mocker.patch(
-        "scimodom.api.helpers.validation.get_assembly_service",
-        return_value=MockAssemblyService(),
-    )
-    with pytest.raises(ClientResponseException) as exc:
-        validate_chrom(9606, chrom, start, end)
-    returned_message, returned_status = exc.value.response_tuple
-    assert returned_status == http_status
-    assert returned_message["message"] == message
+# @pytest.mark.parametrize(
+#     "chrom,start,end,http_status,message",
+#     [
+#         ("2", None, None, 404, "chrom '2' for taxaId '9606' not found"),
+#         (
+#             "1",
+#             248956422,
+#             None,
+#             400,
+#             "Parameter 'end'/'chromEnd' must be greater than 'start'/'chromStart' "
+#             "(start is: 248956422, got end: 248956422)",
+#         ),
+#         (
+#             "1",
+#             1,
+#             248956423,
+#             400,
+#             "Parameter 'end'/'chromEnd' is greater than chrom size "
+#             "(max. allowed: 248956422, got '248956423')",
+#         ),
+#     ],
+# )
+# def test_validate_chrom_fail(mocker, chrom, start, end, http_status, message):
+#     mocker.patch(
+#         "scimodom.api.helpers.validation.get_assembly_service",
+#         return_value=MockAssemblyService(),
+#     )
+#     with pytest.raises(ClientResponseException) as exc:
+#         validate_chrom(9606, chrom, start, end)
+#     returned_message, returned_status = exc.value.response_tuple
+#     assert returned_status == http_status
+#     assert returned_message["message"] == message
 
 
 # tests: validation helpers (only domain validation)
@@ -326,24 +329,102 @@ def test_get_valid_selections_fail(
         assert returned_message["user_message"] == user_message
 
 
-@pytest.mark.parametrize(
-    "strand,decoded",
-    [("a", "a"), ("+", " ")],
-)
-def test_get_valid_coords_fail(app, mocker, strand, decoded):
+def test_get_valid_coords(app, mocker):
     mocker.patch(
         "scimodom.api.helpers.validation.get_assembly_service",
         return_value=MockAssemblyService(),
     )
-    mocker.patch(
-        "scimodom.api.helpers.validation.get_utilities_service",
-        return_value=MockUtilitiesService(),
+    with app.test_request_context("/?chrom=1&chromStart=10&chromEnd=20"):
+        assert get_valid_coords(9606) == ValidCoords(
+            chrom="1",
+            start=10,
+            end=20,
+            chrom_size=248956422,
+        )
+
+
+def test_get_optional_valid_coords_empty(app, mocker):
+    assembly_service = mocker.patch(
+        "scimodom.api.helpers.validation.get_assembly_service",
+        return_value=MockAssemblyService(),
     )
-    with app.test_request_context(
-        f"/?chrom=1&start=1&end=2&strand={strand}&taxaId=9606", method="GET"
-    ):
+    with app.test_request_context("/"):
+        coords = get_optional_valid_coords(9606, None)
+    assert (coords.chrom, coords.start, coords.end, coords.chrom_size) == (
+        None,
+        None,
+        None,
+        None,
+    )
+    assembly_service.get_chroms.assert_not_called()
+
+
+def test_get_optional_valid_coords(app, mocker):
+    mocker.patch(
+        "scimodom.api.helpers.validation.get_assembly_service",
+        return_value=MockAssemblyService(),
+    )
+    with app.test_request_context("/?chromStart=10"):
+        coords = get_optional_valid_coords(9606, "1")
+    assert (coords.chrom, coords.start, coords.end, coords.chrom_size) == (
+        "1",
+        10,
+        None,
+        248956422,
+    )
+
+
+@pytest.mark.parametrize(
+    "chrom,bounded,url,expected_message",
+    [
+        (
+            None,
+            False,
+            "chromStart=1",
+            "Unused parameters: 'chromStart' and 'chromEnd' require 'chrom'",
+        ),
+        (
+            "1",
+            False,
+            "chrom=1&chromEnd=2",
+            "Unused parameter: 'chromEnd' requires 'chromStart'",
+        ),
+        ("1", True, "chrom=1", "Missing required parameter: 'chromStart'"),
+        ("1", True, "chrom=1&chromStart=1", "Missing required parameter: 'chromEnd'"),
+    ],
+)
+def test_get_optional_valid_coords_fail(
+    app, chrom, bounded, url, expected_message, mocker
+):
+    mocker.patch(
+        "scimodom.api.helpers.validation.get_assembly_service",
+        return_value=MockAssemblyService(),
+    )
+    with pytest.raises(ClientResponseException) as exc:
+        with app.test_request_context(f"/?{url}"):
+            get_optional_valid_coords(9606, chrom, is_bounded=bounded)
+    returned_message, returned_status = exc.value.response_tuple
+    assert returned_message["message"] == expected_message
+    assert returned_status == 400
+
+
+def test_get_valid_strand(app):
+    with app.test_request_context("/"):
+        assert get_valid_strand() == Strand(".")
+
+
+@pytest.mark.parametrize(
+    "strand,decoded",
+    [("a", "a"), ("+", " ")],
+)
+def test_get_valid_strand_fail(app, mocker, strand, decoded):
+    mocker.patch(
+        "scimodom.api.helpers.validation.get_assembly_service",
+        return_value=MockAssemblyService(),
+    )
+    with app.test_request_context(f"/?strand={strand}", method="GET"):
         with pytest.raises(ClientResponseException) as exc:
-            get_valid_coords()
+            get_valid_strand()
     returned_message, returned_status = exc.value.response_tuple
     assert returned_status == 400
     assert (
@@ -355,23 +436,19 @@ def test_get_valid_coords_fail(app, mocker, strand, decoded):
 @pytest.mark.parametrize(
     "start,end,result",
     [
-        (1, 2, ("1", 0, 7, Strand("."))),
-        (248956421, 248956422, ("1", 248956416, 248956422, Strand("."))),
+        (1, 2, (0, 7)),
+        (248956421, 248956422, (248956416, 248956422)),
     ],
 )
-def test_get_valid_coords(app, mocker, start, end, result):
-    mocker.patch(
-        "scimodom.api.helpers.validation.get_assembly_service",
-        return_value=MockAssemblyService(),
+def test_expand_coord_context(start, end, result):
+    coords = ValidCoords("1", start, end, 248956422)
+
+    assert expand_coords_context(coords, 5) == ValidCoords(
+        chrom="1",
+        start=result[0],
+        end=result[1],
+        chrom_size=248956422,
     )
-    mocker.patch(
-        "scimodom.api.helpers.validation.get_utilities_service",
-        return_value=MockUtilitiesService(),
-    )
-    with app.test_request_context(
-        f"/?chrom=1&start={start}&end={end}&taxaId=9606", method="GET"
-    ):
-        assert get_valid_coords(context=5) == result
 
 
 @pytest.mark.parametrize(

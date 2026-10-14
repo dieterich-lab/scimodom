@@ -482,37 +482,37 @@ def test_intersect_with_liftover(test_client, mock_services, mocker):
     "url,http_status,message,user_message",
     [
         (
-            "/intersect?reference=datasetidAxx&comparison=datasetidBxx&euf=true&strand=true",
+            "/intersect?reference=datasetidAxx&comparison=datasetidBxx&euf=true&strandAware=true",
             400,
             "Missing required parameter: 'taxaId'",
             "Request needs a valid 'taxaId' when 'euf=true'",
         ),
         (
-            "/intersect?reference=datasetidAxx&comparison=datasetidBxx&euf=true&taxaId=XXXX&strand=true",
+            "/intersect?reference=datasetidAxx&comparison=datasetidBxx&euf=true&taxaId=XXXX&strandAware=true",
             400,
             "Parameter 'taxaId' must be a valid _positive_int (got: 'XXXX')",
             "Request needs a valid 'taxaId' when 'euf=true'",
         ),
         (
-            "/intersect?reference=datasetidAxx&comparison=datasetidBxx&euf=true&taxaId=99&strand=true",
+            "/intersect?reference=datasetidAxx&comparison=datasetidBxx&euf=true&taxaId=99&strandAware=true",
             404,
             "taxaId '99' not found",
             "Request needs a valid 'taxaId' when 'euf=true'",
         ),
         (
-            "/intersect?comparison=datasetidBxx&strand=true",
+            "/intersect?comparison=datasetidBxx&strandAware=true",
             400,
             "Missing required parameter: 'reference'",
             None,
         ),
         (
-            "/intersect?reference=datasetidAxx&strand=true",
+            "/intersect?reference=datasetidAxx&strandAware=true",
             400,
             "Missing required parameter: 'upload' xor 'comparison'",
             None,
         ),
         (
-            "/intersect?reference=datasetidAxx&comparison=datasetidBxx&upload=im_the_only_valid_temp_file_id&strand=true",
+            "/intersect?reference=datasetidAxx&comparison=datasetidBxx&upload=im_the_only_valid_temp_file_id&strandAware=true",
             400,
             "Too many parameters: use 'upload' xor 'comparison'",
             None,
@@ -520,37 +520,37 @@ def test_intersect_with_liftover(test_client, mock_services, mocker):
         (
             "/subtract?reference=datasetidAxx"
             "&comparison=datasetidBxx&comparison=datasetidCxx&comparison=datasetidDxx&comparison=datasetidExx"
-            "&strand=true",
+            "&strandAware=true",
             400,
             "'comparison' contains too many datasetId (max. 3)",
             None,
         ),
         (
-            "/intersect?reference=datasetidAxx&comparison=datasetidZxxxx&strand=true",
+            "/intersect?reference=datasetidAxx&comparison=datasetidZxxxx&strandAware=true",
             400,
             "Invalid datasetId 'datasetidZxxxx'",
             None,
         ),
         (
-            "/intersect?reference=datasetidAxx&comparison=datasetidZxx&strand=true",
+            "/intersect?reference=datasetidAxx&comparison=datasetidZxx&strandAware=true",
             404,
             "datasetId 'datasetidZxx' not found",
             None,
         ),
         (
-            "/closest?reference=datasetidAxx&comparison=datasetidBxx&strand=strand_aware",
+            "/closest?reference=datasetidAxx&comparison=datasetidBxx&strandAware=strand_aware",
             400,
-            "Invalid value for 'strand' (allowed: 'true', 'false', got: 'strand_aware')",
+            "Invalid value for 'strandAware' (allowed: 'true', 'false', got: 'strand_aware')",
             None,
         ),
         (
-            "/subtract?reference=datasetidAxx&upload=bl+ubber&strand=strand_aware",
+            "/subtract?reference=datasetidAxx&upload=bl+ubber&strandAware=strand_aware",
             400,
             "Invalid upload file name: 'bl ubber'",
             None,
         ),
         (
-            "/subtract?reference=datasetidAxx&upload=blubber&strand=strand_aware",
+            "/subtract?reference=datasetidAxx&upload=blubber&strandAware=strand_aware",
             404,
             "upload file not found",
             "Select the file again and try to re-upload",
@@ -610,9 +610,9 @@ def get_compare_url_parameters(
         for r in comparison:
             parameters.append(f"comparison={r}")
     if strand:
-        parameters.append("strand=true")
+        parameters.append("strandAware=true")
     else:
-        parameters.append("strand=false")
+        parameters.append("strandAware=false")
     if upload is not None:
         parameters.append(f"upload={upload}")
     if euf:

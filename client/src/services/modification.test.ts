@@ -229,8 +229,8 @@ test("getTargetSites calls '/modifications/sites/targets' and returns records", 
       params: {
         taxaId: modification.taxa_id,
         chrom: '1',
-        start: 1,
-        end: 2,
+        chromStart: 1,
+        chromEnd: 2,
         strand: '+',
         target: 'TARGET'
       }
@@ -264,8 +264,8 @@ test("getGenomicContext calls '/modifications/sites/context' and returns a strin
       params: {
         taxaId: modification.taxa_id,
         chrom: '1',
-        start: 1,
-        end: 2,
+        chromStart: 1,
+        chromEnd: 2,
         strand: '+',
         window: 5
       }
@@ -316,8 +316,8 @@ test("getSiteWiseInfo calls '/modification/sites' and returns records", async ()
       params: {
         taxaId: modification.taxa_id,
         chrom: '1',
-        start: 1,
-        end: 2,
+        chromStart: 1,
+        chromEnd: 2,
         strand: '+'
       }
     }

@@ -56,7 +56,7 @@ function getCompareParams(
     taxaId: resultStepA.taxaId,
     reference: resultStepA.datasets.map((x) => x.dataset_id),
     ...paramsStepB,
-    strand: resultStepC?.strandAware === true
+    strandAware: resultStepC?.strandAware === true
   }
 }
 

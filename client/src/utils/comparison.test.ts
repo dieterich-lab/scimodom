@@ -118,7 +118,7 @@ test('getCompareParams - upload', () => {
     reference: ['d1', 'd2'],
     upload: 'fileId1',
     uploadName: 'file1.bedrmod',
-    strand: false,
+    strandAware: false,
     euf: true,
     taxaId: 7
   })
@@ -142,7 +142,7 @@ test('getCompareParams - internal', () => {
   expect(result).toStrictEqual({
     reference: ['d1'],
     comparison: ['d2', 'd3'],
-    strand: true,
+    strandAware: true,
     taxaId: 7
   })
 })

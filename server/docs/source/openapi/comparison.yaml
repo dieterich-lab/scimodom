@@ -131,7 +131,7 @@ components:
         not used; mutually exclusive with `upload`
     strandQueryParam:
       in: query
-      name: strand
+      name: strandAware
       required: false
       schema:
         type: boolean

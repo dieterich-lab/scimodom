@@ -172,7 +172,7 @@ class _CompareContext:
         )
         self._upload_id = get_optional_valid_tmp_file_id("upload")
         self._upload_name = get_valid_file_name("uploadName")
-        is_strand = get_optional_bool("strand")
+        is_strand = get_optional_bool("strandAware")
         self._is_strand = True if is_strand is None else is_strand
         is_euf = get_optional_bool("euf")
         self._is_euf = False if is_euf is None else is_euf
