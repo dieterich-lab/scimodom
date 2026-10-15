@@ -33,7 +33,7 @@ interface DatasetWithProject extends Dataset {
   project_title: string
   project_summary: string
   doi?: string
-  pmid?: string
+  pmid?: string // concat
 }
 
 class AllDatasetCache extends Cache<Dataset[]> {

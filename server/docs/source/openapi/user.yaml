@@ -27,7 +27,7 @@ paths:
         "409":
           description: User already exists
         "500":
-          description: SMTP error
+          description: Notification failed (SMTPException)
   /users/confirmation:
     post:
       tags:
@@ -61,7 +61,7 @@ paths:
         "404":
           description: User not found
         "500":
-          description: SMTP error
+          description: Notification failed (SMTPException)
   /users/password/reset:
     post:
       tags:

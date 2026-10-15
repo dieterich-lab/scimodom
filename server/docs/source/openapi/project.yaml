@@ -37,7 +37,7 @@ paths:
         "422":
           $ref: "#/components/responses/UnprocessableContentError"
         "500":
-          description: SMTP error
+          description: Notification failed (SMTPException)
 
 components:
   securitySchemes:
@@ -71,14 +71,17 @@ components:
       properties:
         title:
           type: string
+          minLength: 1
           maxLength: 255
         summary:
           type: string
         contact_name:
           type: string
+          minLength: 1
           maxLength: 128
         contact_institution:
           type: string
+          minLength: 1
           maxLength: 255
         contact_email:
           type: string
@@ -96,9 +99,12 @@ components:
             properties:
               doi:
                 type: string
+                minLength: 1
+                maxLength: 255
                 nullable: true
               pmid:
                 type: integer
+                minimum: 1
                 nullable: true
         metadata:
           type: array
@@ -109,15 +115,19 @@ components:
             properties:
               rna:
                 type: string
+                minLength: 1
                 maxLength: 32
               modomics_id:
                 type: string
+                minLength: 1
                 maxLength: 128
               tech:
                 type: string
+                minLength: 1
                 maxLength: 255
               method_id:
                 type: string
+                minLength: 1
                 maxLength: 8
               note:
                 type: string
@@ -128,12 +138,16 @@ components:
                 properties:
                   taxa_id:
                     type: integer
+                    minimum: 1
                   cto:
                     type: string
+                    minLength: 1
                     maxLength: 255
                   assembly_name:
                     type: string
+                    minLength: 1
                     maxLength: 128
                   assembly_id:
                     type: integer
+                    minimum: 1
                     nullable: true

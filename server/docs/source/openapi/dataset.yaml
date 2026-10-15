@@ -171,18 +171,22 @@ components:
       properties:
         smid:
           type: string
-          description: Project SMID the dataset will be added to
+          minLength: 1
+          maxLength: 8
+          description: Project identifier (SMID)
         file_id:
           type: string
           description: >-
-            Identifier returned by `POST /uploads` for the
-            bedRMod file to import
+            Identifier returned by `POST /uploads`
         rna_type:
           type: string
+          minLength: 1
+          maxLength: 32
           description: >-
             One of the RNA type IDs returned by `GET /catalogs/rna-types`
         title:
           type: string
+          minLength: 1
           maxLength: 255
         assembly_id:
           type: integer
