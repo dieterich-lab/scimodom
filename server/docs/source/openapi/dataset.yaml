@@ -219,19 +219,20 @@ components:
       type: array
       items:
         type: object
+        description: >-
+          Dataset metadata; use GET /projects to look up
+          related project details
         required:
           - basecalling
           - bioinformatics_workflow
           - cto
           - dataset_id
           - dataset_title
-          - doi
           - experiment
-          - modomics_sname
-          - pmid
+          - external_source
+          - modification_type
+          - modifications
           - project_id
-          - project_summary
-          - project_title
           - rna
           - sequencing_platform
           - taxa_id
@@ -246,8 +247,7 @@ components:
             type: string
             nullable: true
             description: >-
-              Link to bioinformatics workflow; program name, version, and/or call; information
-              relevant to score calculation; etc. (euf-specs)
+              Link to bioinformatics workflow (euf-specs)
           cto:
             type: string
             description: Cell, tissue, or organism
@@ -257,44 +257,41 @@ components:
           dataset_title:
             type: string
             description: Dataset title
-          doi:
-            type: string
-            nullable: true
-            description: A comma-separated list of DOIs associated with this project
           experiment:
             type: string
             nullable: true
             description: >-
               Information about or link to experimental protocol
               and design (euf-specs)
-          modomics_sname:
+          external_source:
+            type: string
+            nullable: true
+            description: >-
+              Free-text reference to an external source (euf-specs)
+          modification_type:
+            type: string
+            # enum:
+            description: >-
+              RNA type (euf-specs) - currently not the same as `rna`
+          modifications:
             type: string
             description: >-
               Comma-separated MODOMICS short name(s) for modifications
-              reported in this dataset
-          pmid:
-            type: string
-            nullable: true
-            description: A comma-separated list of PMIDs associated with this project
+              reported in this dataset, akin to *modification_names* from
+              euf-specs header
           project_id:
             type: string
-            description: Project identifier (SMID)
-          project_summary:
-            type: string
-            description: Project summary to which this dataset belong
-          project_title:
-            type: string
-            description: Project title to which this dataset belong
+            description: Project identifier (SMID) this dataset is related to
           rna:
             type: string
-            description: RNA type (`modification_type` euf-specs)
+            description: RNA type (not an euf-specs header field)
           sequencing_platform:
             type: string
             nullable: true
             description: Sequencing platform (euf-specs)
           taxa_id:
             type: integer
-            description: NCBI taxon (`organism` euf-specs)
+            description: NCBI taxon (*organism* from euf-specs header)
           taxa_sname:
             type: string
             description: NCBI name for `taxa_id`

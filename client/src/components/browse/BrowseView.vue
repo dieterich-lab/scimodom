@@ -8,7 +8,8 @@ import Column from 'primevue/column'
 import DataTable from 'primevue/datatable'
 
 import { getApiUrl } from '@/services/API.js'
-import { allDatasetsCache, type Dataset } from '@/services/dataset'
+import { allDatasetsCache, type DatasetWithProject } from '@/services/dataset'
+import { allProjectsByIdCache } from '@/services/project'
 import StyledHeadline from '@/components/ui/StyledHeadline.vue'
 import SubTitle from '@/components/ui/SubTitle.vue'
 import DatasetInfo from '@/components/browse/DatasetInfo.vue'
@@ -20,9 +21,9 @@ const props = defineProps<{
   initialSearchString?: string
 }>()
 
-const records = ref<Dataset[]>([])
+const records = ref<DatasetWithProject[]>([])
 const showDetails = ref<boolean>(false)
-const selectedDataset = ref<Dataset>()
+const selectedDataset = ref<DatasetWithProject>()
 const dt = ref()
 
 // todo
@@ -37,7 +38,7 @@ function getFilters(searchString: string = ''): MyFilters {
       operator: FilterOperator.AND,
       constraints: [{ value: null, matchMode: FilterMatchMode.EQUALS }]
     },
-    modomics_sname: {
+    modifications: {
       operator: FilterOperator.AND,
       constraints: [{ value: null, matchMode: FilterMatchMode.EQUALS }]
     },
@@ -76,13 +77,26 @@ const onExport = () => {
   dt.value.exportCSV()
 }
 
-const onOverlay = (record: Dataset) => {
+const onOverlay = (record: DatasetWithProject) => {
   selectedDataset.value = { ...record }
   showDetails.value = true
 }
 
 onMounted(async () => {
-  records.value = [...(await allDatasetsCache.getData())]
+  const [datasets, projectsById] = await Promise.all([
+    allDatasetsCache.getData(),
+    allProjectsByIdCache.getData()
+  ])
+  records.value = datasets.map((dataset) => {
+    const project = projectsById.get(dataset.project_id)
+    return {
+      ...dataset,
+      project_title: project?.project_title ?? '',
+      project_summary: project?.project_summary ?? '',
+      doi: project?.doi,
+      pmid: project?.pmid
+    }
+  })
 })
 </script>
 
@@ -117,7 +131,7 @@ onMounted(async () => {
               'doi',
               'pmid',
               'rna',
-              'modomics_sname',
+              'modifications',
               'tech',
               'taxa_sname',
               'cto'
@@ -191,13 +205,13 @@ onMounted(async () => {
               </template>
             </Column>
             <Column
-              field="modomics_sname"
+              field="modifications"
               header="Modification"
-              filterField="modomics_sname"
+              filterField="modifications"
               style="width: 10%"
             >
               <template #body="{ data }">
-                {{ data.modomics_sname }}
+                {{ data.modifications }}
               </template>
               <template #filter="{ filterModel }">
                 <InputText

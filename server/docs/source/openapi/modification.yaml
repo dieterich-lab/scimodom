@@ -72,9 +72,9 @@ paths:
       summary: Get modification site
       parameters:
         - $ref: "#/components/parameters/taxaIdQueryParam"
-        - $ref: "#/components/parameters/chromSimpleQueryParam"
-        - $ref: "#/components/parameters/startQueryParam"
-        - $ref: "#/components/parameters/endQueryParam"
+        - $ref: "#/components/parameters/chromRequiredQueryParam"
+        - $ref: "#/components/parameters/chromStartRequiredQueryParam"
+        - $ref: "#/components/parameters/chromEndRequiredQueryParam"
         - $ref: "#/components/parameters/strandQueryParam"
       responses:
         "200":
@@ -108,9 +108,9 @@ paths:
       parameters:
         - $ref: "#/components/parameters/windowQueryParam"
         - $ref: "#/components/parameters/taxaIdQueryParam"
-        - $ref: "#/components/parameters/chromSimpleQueryParam"
-        - $ref: "#/components/parameters/startQueryParam"
-        - $ref: "#/components/parameters/endQueryParam"
+        - $ref: "#/components/parameters/chromRequiredQueryParam"
+        - $ref: "#/components/parameters/chromStartRequiredQueryParam"
+        - $ref: "#/components/parameters/chromEndRequiredQueryParam"
         - $ref: "#/components/parameters/strandQueryParam"
       responses:
         "200":
@@ -134,9 +134,9 @@ paths:
       parameters:
         - $ref: "#/components/parameters/targetQueryParam"
         - $ref: "#/components/parameters/taxaIdQueryParam"
-        - $ref: "#/components/parameters/chromSimpleQueryParam"
-        - $ref: "#/components/parameters/startQueryParam"
-        - $ref: "#/components/parameters/endQueryParam"
+        - $ref: "#/components/parameters/chromRequiredQueryParam"
+        - $ref: "#/components/parameters/chromStartRequiredQueryParam"
+        - $ref: "#/components/parameters/chromEndRequiredQueryParam"
         - $ref: "#/components/parameters/strandQueryParam"
       responses:
         "200":
@@ -285,21 +285,21 @@ components:
         type: integer
       description: >-
         If `by=gene`, `chrom` and `chromStart` are required
-    chromSimpleQueryParam:
+    chromRequiredQueryParam:
       in: query
       name: chrom
       required: true
       schema:
         type: string
-    startQueryParam:
+    chromStartRequiredQueryParam:
       in: query
-      name: start
+      name: chromStart
       required: true
       schema:
         type: integer
-    endQueryParam:
+    chromEndRequiredQueryParam:
       in: query
-      name: end
+      name: chromEnd
       required: true
       schema:
         type: integer

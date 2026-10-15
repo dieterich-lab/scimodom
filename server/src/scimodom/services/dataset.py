@@ -83,10 +83,9 @@ class DatasetService:
         query = select(func.count(Dataset.id))
         if user is not None:
             query = (
-                query.join_from(Dataset, Project, Dataset.inst_project)
-                .join(
+                query.join(
                     UserProjectAssociation,
-                    UserProjectAssociation.project_id == Project.id,
+                    UserProjectAssociation.project_id == Dataset.project_id,
                 )
                 .join(User, User.id == UserProjectAssociation.user_id)
                 .where(User.id == user.id)
@@ -97,7 +96,7 @@ class DatasetService:
         self,
         user: Optional[User] = None,
     ) -> List[Dict[str, str]]:
-        """Get all datasets.
+        """Get all datasets (metadata and selection).
 
         :param user: Restricts results based on projects associated with user.
         :return: JSON array with dataset-related information
@@ -107,29 +106,19 @@ class DatasetService:
                 Dataset.project_id,
                 Dataset.id.label("dataset_id"),
                 Dataset.title.label("dataset_title"),
+                Dataset.modification_type,
                 Dataset.sequencing_platform,
                 Dataset.basecalling,
                 Dataset.bioinformatics_workflow,
                 Dataset.experiment,
-                Project.title.label("project_title"),
-                Project.summary.label("project_summary"),
-                func.group_concat(ProjectSource.doi.distinct()).label("doi"),
-                func.group_concat(ProjectSource.pmid.distinct()).label("pmid"),
                 Modification.rna,
                 func.group_concat(Modomics.short_name.distinct()).label(
-                    "modomics_sname"
+                    "modifications"
                 ),
                 DetectionTechnology.tech,
                 Taxa.short_name.label("taxa_sname"),
                 Taxa.id.label("taxa_id"),
                 Organism.cto,
-            )
-            .join_from(Dataset, Project, Dataset.inst_project)
-            .join_from(
-                Project,
-                ProjectSource,
-                Project.sources,
-                isouter=True,
             )
             .join_from(Dataset, DatasetModificationAssociation, Dataset.associations)
             .join_from(
@@ -146,7 +135,7 @@ class DatasetService:
             query = (
                 query.join(
                     UserProjectAssociation,
-                    UserProjectAssociation.project_id == Project.id,
+                    UserProjectAssociation.project_id == Dataset.project_id,
                 )
                 .join(User, User.id == UserProjectAssociation.user_id)
                 .where(User.id == user.id)

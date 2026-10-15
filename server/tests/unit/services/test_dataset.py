@@ -147,15 +147,27 @@ def test_get_dataset_count(Session, dataset):
     assert service.get_dataset_count() == 4
 
 
+def test_get_dataset_count_for_user(Session, project, dataset):
+    with Session() as session:
+        user = session.get_one(User, 1)
+    service = _get_dataset_service(Session())
+    assert service.get_dataset_count(user) == 3
+
+
 def test_get_datasets(Session, project, dataset):  # noqa
     service = _get_dataset_service(Session())
     datasets = service.get_datasets()
     assert len(datasets) == 4
     assert datasets[3]["project_id"] == "ABCDEFGH"
     assert datasets[3]["dataset_id"] == "dataset_id04"
-    assert datasets[3]["modomics_sname"] == "m5C"
+    assert datasets[3]["modifications"] == "m5C"
+    assert datasets[3]["modification_type"] == "RNA"
     assert datasets[3]["taxa_sname"] == "H. sapiens"
     assert datasets[3]["cto"] == "Cell type 2"
+    assert "project_title" not in datasets[3]
+    assert "project_summary" not in datasets[3]
+    assert "doi" not in datasets[3]
+    assert "pmid" not in datasets[3]
 
 
 def test_get_datasets_for_user(Session, project, dataset):  # noqa

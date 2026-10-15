@@ -160,43 +160,6 @@ class MockUtilitiesService:
         ]
 
 
-# tests: domain and business constraints validation
-
-
-# @pytest.mark.parametrize(
-#     "chrom,start,end,http_status,message",
-#     [
-#         ("2", None, None, 404, "chrom '2' for taxaId '9606' not found"),
-#         (
-#             "1",
-#             248956422,
-#             None,
-#             400,
-#             "Parameter 'end'/'chromEnd' must be greater than 'start'/'chromStart' "
-#             "(start is: 248956422, got end: 248956422)",
-#         ),
-#         (
-#             "1",
-#             1,
-#             248956423,
-#             400,
-#             "Parameter 'end'/'chromEnd' is greater than chrom size "
-#             "(max. allowed: 248956422, got '248956423')",
-#         ),
-#     ],
-# )
-# def test_validate_chrom_fail(mocker, chrom, start, end, http_status, message):
-#     mocker.patch(
-#         "scimodom.api.helpers.validation.get_assembly_service",
-#         return_value=MockAssemblyService(),
-#     )
-#     with pytest.raises(ClientResponseException) as exc:
-#         validate_chrom(9606, chrom, start, end)
-#     returned_message, returned_status = exc.value.response_tuple
-#     assert returned_status == http_status
-#     assert returned_message["message"] == message
-
-
 # tests: validation helpers (only domain validation)
 
 
@@ -343,6 +306,41 @@ def test_get_valid_coords(app, mocker):
         )
 
 
+@pytest.mark.parametrize(
+    "url,http_status,message",
+    [
+        (
+            "/?chrom=2&chromStart=1&chromEnd=2",
+            404,
+            "chrom '2' for taxaId '9606' not found",
+        ),
+        (
+            "/?chrom=1&chromStart=248956422&chromEnd=248956422",
+            400,
+            "Parameter 'chromEnd' must be greater than 'chromStart' "
+            "(chromStart is: 248956422, got '248956422')",
+        ),
+        (
+            "/?chrom=1&chromStart=1&chromEnd=248956423",
+            400,
+            "Parameter 'chromEnd' is greater than chrom size "
+            "(max. allowed: 248956422, got '248956423')",
+        ),
+    ],
+)
+def test_get_valid_coords_validation_fail(app, mocker, url, http_status, message):
+    mocker.patch(
+        "scimodom.api.helpers.validation.get_assembly_service",
+        return_value=MockAssemblyService(),
+    )
+    with pytest.raises(ClientResponseException) as exc:
+        with app.test_request_context(url):
+            get_valid_coords(9606)
+    returned_message, returned_status = exc.value.response_tuple
+    assert returned_status == http_status
+    assert returned_message["message"] == message
+
+
 def test_get_optional_valid_coords_empty(app, mocker):
     assembly_service = mocker.patch(
         "scimodom.api.helpers.validation.get_assembly_service",
@@ -380,17 +378,17 @@ def test_get_optional_valid_coords(app, mocker):
         (
             None,
             False,
-            "chromStart=1",
+            "/?chromStart=1",
             "Unused parameters: 'chromStart' and 'chromEnd' require 'chrom'",
         ),
         (
             "1",
             False,
-            "chrom=1&chromEnd=2",
+            "/?chrom=1&chromEnd=2",
             "Unused parameter: 'chromEnd' requires 'chromStart'",
         ),
-        ("1", True, "chrom=1", "Missing required parameter: 'chromStart'"),
-        ("1", True, "chrom=1&chromStart=1", "Missing required parameter: 'chromEnd'"),
+        ("1", True, "/?chrom=1", "Missing required parameter: 'chromStart'"),
+        ("1", True, "/?chrom=1&chromStart=1", "Missing required parameter: 'chromEnd'"),
     ],
 )
 def test_get_optional_valid_coords_fail(
@@ -401,7 +399,7 @@ def test_get_optional_valid_coords_fail(
         return_value=MockAssemblyService(),
     )
     with pytest.raises(ClientResponseException) as exc:
-        with app.test_request_context(f"/?{url}"):
+        with app.test_request_context(url):
             get_optional_valid_coords(9606, chrom, is_bounded=bounded)
     returned_message, returned_status = exc.value.response_tuple
     assert returned_message["message"] == expected_message

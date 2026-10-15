@@ -14,20 +14,26 @@ interface Dataset {
   project_id: string
   dataset_id: string
   dataset_title: string
+  modification_type: string
   sequencing_platform: string | null
   basecalling: string | null
   bioinformatics_workflow: string | null
   experiment: string | null
-  project_title: string
-  project_summary: string
-  doi?: string
-  pmid?: number
   rna: string
-  modomics_sname: string
+  external_source: string | null
+  modifications: string
   tech: string
   taxa_sname: string
   taxa_id: number
   cto: string
+}
+
+// extend dataset metadata with parent project
+interface DatasetWithProject extends Dataset {
+  project_title: string
+  project_summary: string
+  doi?: string
+  pmid?: string
 }
 
 class AllDatasetCache extends Cache<Dataset[]> {
@@ -85,6 +91,7 @@ async function getDatasetSummary(dialogState: DialogStateStore): Promise<Dataset
 
 export {
   type Dataset,
+  type DatasetWithProject,
   type DatasetSummaryResponse,
   allDatasetsCache,
   allDatasetsByIdCache,
