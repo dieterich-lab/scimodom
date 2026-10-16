@@ -160,9 +160,10 @@ def test_get_datasets(Session, project, dataset):  # noqa
     assert len(datasets) == 4
     assert datasets[3]["project_id"] == "ABCDEFGH"
     assert datasets[3]["dataset_id"] == "dataset_id04"
+    assert datasets[3]["rna_type"] == "WTS"
     assert datasets[3]["modifications"] == "m5C"
     assert datasets[3]["modification_type"] == "RNA"
-    assert datasets[3]["taxa_sname"] == "H. sapiens"
+    assert datasets[3]["taxa_short_name"] == "H. sapiens"
     assert datasets[3]["cto"] == "Cell type 2"
     assert "project_title" not in datasets[3]
     assert "project_summary" not in datasets[3]

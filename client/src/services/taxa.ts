@@ -8,7 +8,7 @@ interface Taxa {
   phylum?: string | null
   taxa_id: number
   taxa_name: string
-  taxa_sname: string
+  taxa_short_name: string
 }
 
 class TaxaCache extends Cache<Taxa[]> {

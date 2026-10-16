@@ -36,7 +36,7 @@ def test_get_biotypes(Session, utilities_service, mocker):
 
 
 def test_get_rna_types(Session, utilities_service, setup):
-    expected_rna_types = [{"id": "WTS", "label": "whole transcriptome"}]
+    expected_rna_types = [{"id": "WTS", "name": "whole transcriptome"}]
     assert utilities_service.get_rna_types() == expected_rna_types
 
 
@@ -45,7 +45,7 @@ def test_get_taxa(Session, utilities_service, setup):
         {
             "taxa_id": 7227,
             "taxa_name": "Drosophila melanogaster",
-            "taxa_sname": "D. melanogaster",
+            "taxa_short_name": "D. melanogaster",
             "domain": "Eukarya",
             "kingdom": "Animalia",
             "phylum": "Arthropoda",
@@ -53,7 +53,7 @@ def test_get_taxa(Session, utilities_service, setup):
         {
             "taxa_id": 9606,
             "taxa_name": "Homo sapiens",
-            "taxa_sname": "H. sapiens",
+            "taxa_short_name": "H. sapiens",
             "domain": "Eukarya",
             "kingdom": "Animalia",
             "phylum": "Chordata",
@@ -61,7 +61,7 @@ def test_get_taxa(Session, utilities_service, setup):
         {
             "taxa_id": 10090,
             "taxa_name": "Mus musculus",
-            "taxa_sname": "M. musculus",
+            "taxa_short_name": "M. musculus",
             "domain": "Eukarya",
             "kingdom": "Animalia",
             "phylum": "Chordata",
@@ -72,9 +72,9 @@ def test_get_taxa(Session, utilities_service, setup):
 
 def test_get_modomics(Session, utilities_service, setup):
     expected_modomics = [
-        {"id": "2000000006A", "modomics_sname": "m6A"},
-        {"id": "2000000005C", "modomics_sname": "m5C"},
-        {"id": "2000000009U", "modomics_sname": "Y"},
+        {"id": "2000000006A", "modomics_short_name": "m6A"},
+        {"id": "2000000005C", "modomics_short_name": "m5C"},
+        {"id": "2000000009U", "modomics_short_name": "Y"},
     ]
     assert utilities_service.get_modomics() == expected_modomics
 
@@ -103,9 +103,9 @@ def test_get_methods(Session, utilities_service, setup):
 def test_get_selection(Session, utilities_service, selection):
     expected_selection = {
         "modification_id": 1,
-        "rna": "WTS",
-        "rna_name": "whole transcriptome",
-        "modomics_sname": "m6A",
+        "rna_type": "WTS",
+        "rna_type_name": "whole transcriptome",
+        "modomics_short_name": "m6A",
         "technology_id": 1,
         "cls": "NGS 2nd generation",
         "meth": "Antibody-based sequencing",
@@ -115,7 +115,7 @@ def test_get_selection(Session, utilities_service, selection):
         "kingdom": "Animalia",
         "taxa_id": 9606,
         "taxa_name": "Homo sapiens",
-        "taxa_sname": "H. sapiens",
+        "taxa_short_name": "H. sapiens",
         "cto": "Cell type 1",
         "selection_id": 1,
     }

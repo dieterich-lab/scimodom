@@ -87,10 +87,10 @@ function getDataset(index: number): Dataset {
     bioinformatics_workflow: null,
     experiment: null,
     external_source: null,
-    rna: 'rnaType',
-    modifications: 'modomics_sname',
+    rna_type: 'rnaType',
+    modifications: 'modomics_short_name',
     tech: 'tech',
-    taxa_sname: 'taxa',
+    taxa_short_name: 'taxa',
     taxa_id: 7,
     cto: 'cto'
   }

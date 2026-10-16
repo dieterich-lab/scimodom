@@ -493,10 +493,10 @@ components:
               - strand
               - coverage
               - frequency
-              - rna
+              - rna_type
               - reference_id
               - modification_id
-              - short_name
+              - taxa_short_name
               - tech
               - cto
               - dataset_id
@@ -525,18 +525,18 @@ components:
               frequency:
                 type: number
                 description: Feature frequency (percentage of modification)
-              rna:
+              rna_type:
                 type: string
-                description: RNA type identifier
+                description: RNA type identifier (see `GET /catalogs/rna-types`)
               reference_id:
                 type: integer
                 description: MODOMICS reference identifier
               modification_id:
                 type: integer
-                description: Modification identifier (MODOMICS code, `rna`)
-              short_name:
+                description: Modification identifier (MODOMICS code, `rna_type`)
+              taxa_short_name:
                 type: string
-                description: Modification short name (MODOMICS)
+                description: NCBI short name for taxon
               tech:
                 type: string
                 description: Detection technology

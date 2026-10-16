@@ -48,7 +48,7 @@ function change(event: MultiSelectChangeEvent) {
       'dataset_id',
       'dataset_title',
       'project_id',
-      'rna',
+      'rna_type',
       'modifications',
       'cto',
       'tech'

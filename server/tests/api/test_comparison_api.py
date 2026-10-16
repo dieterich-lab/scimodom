@@ -259,7 +259,7 @@ class MockUtilitiesService:
             {
                 "taxa_id": 9606,
                 "taxa_name": "Homo sapiens",
-                "taxa_sname": "H. sapiens",
+                "taxa_short_name": "H. sapiens",
                 "domain": "Eukarya",
                 "kingdom": "Animalia",
                 "phylum": "Chordata",

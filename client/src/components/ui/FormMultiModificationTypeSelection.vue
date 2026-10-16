@@ -29,7 +29,7 @@ const id = useId()
     <template v-slot:field>
       <MultiModificationTypeSelection
         v-model="model"
-        :rna-type-name="rnaTypeName"
+        :rna-type="rnaType"
         :id="id"
         :markAsError="!!error"
         :ui-style="uiStyle"

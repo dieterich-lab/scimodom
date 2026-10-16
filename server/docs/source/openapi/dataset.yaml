@@ -237,10 +237,10 @@ components:
           - modification_type
           - modifications
           - project_id
-          - rna
+          - rna_type
           - sequencing_platform
           - taxa_id
-          - taxa_sname
+          - taxa_short_name
           - tech
         properties:
           basecalling:
@@ -286,9 +286,11 @@ components:
           project_id:
             type: string
             description: Project identifier (SMID) this dataset is related to
-          rna:
+          rna_type:
             type: string
-            description: RNA type (not an euf-specs header field)
+            description: >-
+              RNA type identifier (see `GET /catalogs/rna-types`),
+              not an euf-specs header field
           sequencing_platform:
             type: string
             nullable: true
@@ -296,7 +298,7 @@ components:
           taxa_id:
             type: integer
             description: NCBI taxon (*organism* from euf-specs header)
-          taxa_sname:
+          taxa_short_name:
             type: string
             description: NCBI name for `taxa_id`
           tech:
@@ -304,7 +306,7 @@ components:
             description: Detection technology used in this dataset
     Permission:
       type: object
-      required: _ write_access
+      required: [write_access]
       properties:
         write_access:
           type: boolean

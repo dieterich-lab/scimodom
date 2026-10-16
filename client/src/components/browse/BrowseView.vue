@@ -34,7 +34,7 @@ type MyFilters = DataTableFilterMeta & { global: DataTableFilterMetaData }
 function getFilters(searchString: string = ''): MyFilters {
   return {
     global: { value: searchString, matchMode: FilterMatchMode.CONTAINS },
-    rna: {
+    rna_type: {
       operator: FilterOperator.AND,
       constraints: [{ value: null, matchMode: FilterMatchMode.EQUALS }]
     },
@@ -46,7 +46,7 @@ function getFilters(searchString: string = ''): MyFilters {
       operator: FilterOperator.AND,
       constraints: [{ value: null, matchMode: FilterMatchMode.EQUALS }]
     },
-    taxa_sname: {
+    taxa_short_name: {
       operator: FilterOperator.AND,
       constraints: [{ value: null, matchMode: FilterMatchMode.EQUALS }]
     },
@@ -130,10 +130,10 @@ onMounted(async () => {
               'date_added',
               'doi',
               'pmid',
-              'rna',
+              'rna_type',
               'modifications',
               'tech',
-              'taxa_sname',
+              'taxa_short_name',
               'cto'
             ]"
             paginatorTemplate="FirstPageLink PrevPageLink CurrentPageReport NextPageLink LastPageLink  RowsPerPageDropdown"
@@ -191,9 +191,9 @@ onMounted(async () => {
             <Column field="project_title" header="Project title" style="display: none"></Column>
             <Column field="dataset_id" header="EUFID" style="width: 5%"></Column>
             <Column field="dataset_title" header="Dataset title" style="width: 30%"></Column>
-            <Column field="rna" header="RNA" filterField="rna" style="width: 5%">
+            <Column field="rna_type" header="RNA" filterField="rna_type" style="width: 5%">
               <template #body="{ data }">
-                {{ data.rna }}
+                {{ data.rna_type }}
               </template>
               <template #filter="{ filterModel }">
                 <InputText
@@ -223,13 +223,13 @@ onMounted(async () => {
               </template>
             </Column>
             <Column
-              field="taxa_sname"
+              field="taxa_short_name"
               header="Organism"
-              filterField="taxa_sname"
+              filterField="taxa_short_name"
               style="width: 10%"
             >
               <template #body="{ data }">
-                {{ data.taxa_sname }}
+                {{ data.taxa_short_name }}
               </template>
               <template #filter="{ filterModel }">
                 <InputText

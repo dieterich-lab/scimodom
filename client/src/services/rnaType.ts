@@ -3,7 +3,7 @@ import { HTTP } from '@/services/API'
 
 interface RnaType {
   id: string
-  label: string
+  name: string
 }
 
 class RnaTypeCache extends Cache<RnaType[]> {

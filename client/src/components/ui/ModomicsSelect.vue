@@ -29,7 +29,7 @@ function change(event: DropdownChangeEvent) {
     v-model="model"
     :id="id"
     :options="options"
-    option-label="modomics_sname"
+    option-label="modomics_short_name"
     placeholder="Select modification"
     :class="markAsError ? props.uiStyle.errorClasses : undefined"
     @change="change"

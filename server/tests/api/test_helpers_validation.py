@@ -97,8 +97,8 @@ class MockUtilitiesService:
     @staticmethod
     def get_rna_types():
         return [
-            {"id": "Type1", "label": "Description"},
-            {"id": "Type2", "label": "Description2"},
+            {"id": "Type1", "name": "Description"},
+            {"id": "Type2", "name": "Description2"},
         ]
 
     @staticmethod
@@ -107,7 +107,7 @@ class MockUtilitiesService:
             {
                 "taxa_id": 9606,
                 "taxa_name": "Homo sapiens",
-                "taxa_sname": "H. sapiens",
+                "taxa_short_name": "H. sapiens",
                 "domain": "Eukarya",
                 "kingdom": "Animalia",
                 "phylum": "Chordata",
@@ -128,14 +128,14 @@ class MockUtilitiesService:
                 "kingdom": "Animalia",
                 "meth": "Chemical-assisted sequencing",
                 "modification_id": 2,
-                "modomics_sname": "m6A",
+                "modomics_short_name": "m6A",
                 "organism_id": 3,
-                "rna": "WTS",
-                "rna_name": "whole transcriptome",
+                "rna_type": "WTS",
+                "rna_type_name": "whole transcriptome",
                 "selection_id": 3,
                 "taxa_id": 9606,
                 "taxa_name": "Homo sapiens",
-                "taxa_sname": "H. sapiens",
+                "taxa_short_name": "H. sapiens",
                 "tech": "MePMe-seq",
                 "technology_id": 2,
             },
@@ -146,14 +146,14 @@ class MockUtilitiesService:
                 "kingdom": "Animalia",
                 "meth": "Enzyme/protein-assisted sequencing",
                 "modification_id": 2,
-                "modomics_sname": "m6A",
+                "modomics_short_name": "m6A",
                 "organism_id": 3,
-                "rna": "WTS",
-                "rna_name": "whole transcriptome",
+                "rna_type": "WTS",
+                "rna_type_name": "whole transcriptome",
                 "selection_id": 29,
                 "taxa_id": 9606,
                 "taxa_name": "Homo sapiens",
-                "taxa_sname": "H. sapiens",
+                "taxa_short_name": "H. sapiens",
                 "tech": "eTAM-seq",
                 "technology_id": 7,
             },

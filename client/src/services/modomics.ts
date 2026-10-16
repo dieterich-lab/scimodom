@@ -3,7 +3,7 @@ import { HTTP } from '@/services/API'
 
 interface Modomics {
   id: string
-  modomics_sname: string
+  modomics_short_name: string
 }
 
 class ModomicsCache extends Cache<Modomics[]> {

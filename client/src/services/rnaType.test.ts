@@ -13,7 +13,7 @@ beforeEach(() => {
   mockedGet.mockReset()
 })
 
-const rna: RnaType[] = [{ id: 'WTS', label: 'Wild type' }]
+const rna: RnaType[] = [{ id: 'WTS', name: 'Wild type' }]
 
 test('getPromise calls /catalogs/rna-types and returns the response', async () => {
   mockedGet.mockResolvedValueOnce({ data: rna } as AxiosResponse)

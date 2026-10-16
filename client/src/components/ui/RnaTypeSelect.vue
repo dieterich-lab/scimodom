@@ -30,7 +30,7 @@ function change(event: DropdownChangeEvent) {
     v-model="model"
     :id="id"
     :options="rnaTypes"
-    option-label="label"
+    option-label="name"
     placeholder="Select RNA type"
     :class="markAsError ? props.uiStyle.errorClasses : undefined"
     @change="change"

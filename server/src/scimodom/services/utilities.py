@@ -54,10 +54,10 @@ class UtilitiesService:
     def get_rna_types(self) -> list[dict[str, Any]]:
         """Get all RNA types.
 
-        :return: Identifier and label from RNAType
+        :return: Identifier and name (description) from RNAType
         """
         rna_types = self._session.scalars(select(RNAType)).all()
-        return [{"id": rna.id, "label": rna.name} for rna in rna_types]
+        return [{"id": rna.id, "name": rna.name} for rna in rna_types]
 
     def get_taxa(self) -> list[dict[str, Any]]:
         """Get all species with their taxonomy.
@@ -72,7 +72,7 @@ class UtilitiesService:
             {
                 "taxa_id": row.Taxa.id,
                 "taxa_name": row.Taxa.name,
-                "taxa_sname": row.Taxa.short_name,
+                "taxa_short_name": row.Taxa.short_name,
                 "domain": row.Taxonomy.domain,
                 "kingdom": row.Taxonomy.kingdom,
                 "phylum": row.Taxonomy.phylum,
@@ -86,7 +86,9 @@ class UtilitiesService:
         :return: Identifier (MODOMICS code) and short name from Modomics
         """
         modomics = self._session.scalars(select(Modomics)).all()
-        return [{"id": mod.id, "modomics_sname": mod.short_name} for mod in modomics]
+        return [
+            {"id": mod.id, "modomics_short_name": mod.short_name} for mod in modomics
+        ]
 
     def get_methods(self) -> list[dict[str, Any]]:
         """Get all detection methods.
@@ -111,9 +113,9 @@ class UtilitiesService:
         query = (
             select(
                 Modification.id.label("modification_id"),
-                Modification.rna,
-                RNAType.name.label("rna_name"),
-                Modomics.short_name.label("modomics_sname"),
+                Modification.rna.label("rna_type"),
+                RNAType.name.label("rna_type_name"),
+                Modomics.short_name.label("modomics_short_name"),
                 DetectionTechnology.id.label("technology_id"),
                 DetectionMethod.cls,
                 DetectionMethod.meth,
@@ -123,7 +125,7 @@ class UtilitiesService:
                 Taxonomy.kingdom,
                 Taxa.id.label("taxa_id"),
                 Taxa.name.label("taxa_name"),
-                Taxa.short_name.label("taxa_sname"),
+                Taxa.short_name.label("taxa_short_name"),
                 Organism.cto,
                 Selection.id.label("selection_id"),
             )

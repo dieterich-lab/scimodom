@@ -19,11 +19,11 @@ interface Dataset {
   basecalling: string | null
   bioinformatics_workflow: string | null
   experiment: string | null
-  rna: string
+  rna_type: string
   external_source: string | null
   modifications: string
   tech: string
-  taxa_sname: string
+  taxa_short_name: string
   taxa_id: number
   cto: string
 }

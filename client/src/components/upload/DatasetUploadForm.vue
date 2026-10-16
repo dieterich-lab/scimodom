@@ -191,7 +191,7 @@ function selectTechnology(data: Technology) {
 
         <FormMultiModificationTypeSelection
           v-model="modificationTypes"
-          :rna-type-name="rnaTypeRef?.label"
+          :rna-type="rnaTypeRef?.id"
           :error="errors.modification_id"
           @change="selectModificationTypes"
         />

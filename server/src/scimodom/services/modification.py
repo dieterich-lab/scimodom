@@ -197,9 +197,9 @@ class ModificationService:
             select(
                 Data.dataset_id,
                 Data.modification_id,
-                Modification.rna,
+                Modification.rna.label("rna_type"),
                 Data.name,
-                Taxa.short_name,
+                Taxa.short_name.label("taxa_short_name"),
                 Organism.cto,
                 DetectionTechnology.tech,
                 Data.chrom,

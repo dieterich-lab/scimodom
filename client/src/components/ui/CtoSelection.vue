@@ -38,7 +38,7 @@ watch(
       })
       options.value = getOptionsForPrimvueCascadeSelect(rawOptions, [
         'kingdom',
-        'taxa_sname',
+        'taxa_short_name',
         'cto'
       ])
     })

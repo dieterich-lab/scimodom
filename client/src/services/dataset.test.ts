@@ -40,10 +40,10 @@ const dataset: Dataset[] = [
     bioinformatics_workflow: null,
     experiment: null,
     external_source: null,
-    rna: 'WTS',
+    rna_type: 'WTS',
     modifications: 'm6A',
     tech: 'GLORI',
-    taxa_sname: 'H. sapiens',
+    taxa_short_name: 'H. sapiens',
     taxa_id: 9606,
     cto: 'HeLa'
   },
@@ -57,10 +57,10 @@ const dataset: Dataset[] = [
     bioinformatics_workflow: 'nf-core',
     experiment: 'exp',
     external_source: null,
-    rna: 'WTS',
+    rna_type: 'WTS',
     modifications: 'm6A',
     tech: 'xPore',
-    taxa_sname: 'H. sapiens',
+    taxa_short_name: 'H. sapiens',
     taxa_id: 9606,
     cto: 'HEK293T'
   },
@@ -74,10 +74,10 @@ const dataset: Dataset[] = [
     bioinformatics_workflow: null,
     experiment: null,
     external_source: null,
-    rna: 'RNA',
+    rna_type: 'RNA',
     modifications: 'm5C',
     tech: 'UBS-seq',
-    taxa_sname: 'M. musculus',
+    taxa_short_name: 'M. musculus',
     taxa_id: 10090,
     cto: 'mESC'
   }

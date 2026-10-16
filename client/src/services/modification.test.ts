@@ -40,7 +40,7 @@ function makeSearchParameters(overrides: Partial<SearchParameters> = {}): Search
     taxa: {
       taxa_id: 123,
       taxa_name: 'name',
-      taxa_sname: 'sname',
+      taxa_short_name: 'sname',
       domain: 'domain',
       kingdom: 'kingdom'
     },
@@ -100,13 +100,18 @@ test('getModifications maps SearchParameters into the request', async () => {
     chrom: { chrom: '1', size: 1000 },
     chromStart: 1,
     chromEnd: 2,
-    modificationType: { modification_id: 7, modomics_sname: 'm6A', rna_name: 'rRNA' },
+    modificationType: {
+      modification_id: 7,
+      modomics_short_name: 'm6A',
+      rna_type: 'rRNA',
+      rna_type_name: 'rRNA'
+    },
     cto: {
       organism_id: 1,
       cto: 'cell-type',
       taxa_id: 123,
       taxa_name: 'name',
-      taxa_sname: 'sname',
+      taxa_short_name: 'sname',
       domain: 'domain',
       kingdom: 'kingdom'
     },
@@ -297,7 +302,7 @@ test("getSiteWiseInfo calls '/modification/sites' and returns records", async ()
       strand: '+',
       dataset_id: 'd1',
       modification_id: 15,
-      rna: 'WTS',
+      rna_type: 'WTS',
       short_name: 'sname',
       cto: 'cell-type',
       tech: 'tech',

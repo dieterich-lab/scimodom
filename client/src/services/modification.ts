@@ -69,7 +69,7 @@ interface GenomicContextResponse {
 interface SiteWiseInfo extends Bed6Record {
   dataset_id: string
   modification_id: number
-  rna: string
+  rna_type: string
   short_name: string
   cto: string
   tech: string

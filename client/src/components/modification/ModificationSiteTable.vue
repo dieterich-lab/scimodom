@@ -100,7 +100,7 @@ const navigateTo = (eufid: string) => {
         />
       </template>
     </Column>
-    <Column field="rna" header="RNA"></Column>
+    <Column field="rna_type" header="RNA"></Column>
     <Column field="name" header="Name" exportHeader="name">
       <template #body="{ data }">
         <a
@@ -112,7 +112,7 @@ const navigateTo = (eufid: string) => {
         </a>
       </template>
     </Column>
-    <Column field="short_name" header="Organism"></Column>
+    <Column field="taxa_short_name" header="Organism"></Column>
     <Column field="cto" header="Cell/Tissue"></Column>
     <Column field="tech" header="Technology"></Column>
     <Column field="chrom" exportHeader="chrom" style="display: none"></Column>

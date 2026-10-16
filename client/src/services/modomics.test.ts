@@ -13,7 +13,7 @@ beforeEach(() => {
   mockedGet.mockReset()
 })
 
-const modomics: Modomics[] = [{ id: '123', modomics_sname: 'short_name' }]
+const modomics: Modomics[] = [{ id: '123', modomics_short_name: 'short_name' }]
 
 test('getPromise calls /catalogs/modomics and returns the response', async () => {
   mockedGet.mockResolvedValueOnce({ data: modomics } as AxiosResponse)

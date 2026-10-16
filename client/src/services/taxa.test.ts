@@ -14,7 +14,13 @@ beforeEach(() => {
 })
 
 const taxa: Taxa[] = [
-  { domain: 'domain', kingdom: 'kingdom', taxa_id: 123, taxa_name: 'name', taxa_sname: 'sname' }
+  {
+    domain: 'domain',
+    kingdom: 'kingdom',
+    taxa_id: 123,
+    taxa_name: 'name',
+    taxa_short_name: 'sname'
+  }
 ]
 
 test('getPromise calls /catalogs/taxa and returns the response', async () => {

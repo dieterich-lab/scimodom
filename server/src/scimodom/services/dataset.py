@@ -111,12 +111,12 @@ class DatasetService:
                 Dataset.basecalling,
                 Dataset.bioinformatics_workflow,
                 Dataset.experiment,
-                Modification.rna,
+                Modification.rna.label("rna_type"),
                 func.group_concat(Modomics.short_name.distinct()).label(
                     "modifications"
                 ),
                 DetectionTechnology.tech,
-                Taxa.short_name.label("taxa_sname"),
+                Taxa.short_name.label("taxa_short_name"),
                 Taxa.id.label("taxa_id"),
                 Organism.cto,
             )

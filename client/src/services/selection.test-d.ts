@@ -6,7 +6,7 @@ import {
   getSelectionsByIds,
   getSelectionsByTaxaId,
   getTechnologiesByIds,
-  getModificationTypesByRnaName,
+  getModificationTypesByRnaType,
   type Selection,
   type ModificationType,
   type Cto,
@@ -21,4 +21,4 @@ expectTypeOf(getTechnologiesByModificationIdsAndOrganismId).returns.resolves.toE
 expectTypeOf(getSelectionsByIds).returns.resolves.toEqualTypeOf<Selection[]>()
 expectTypeOf(getSelectionsByTaxaId).returns.resolves.toEqualTypeOf<Selection[]>()
 expectTypeOf(getTechnologiesByIds).returns.resolves.toEqualTypeOf<Technology[]>()
-expectTypeOf(getModificationTypesByRnaName).returns.resolves.toEqualTypeOf<ModificationType[]>()
+expectTypeOf(getModificationTypesByRnaType).returns.resolves.toEqualTypeOf<ModificationType[]>()

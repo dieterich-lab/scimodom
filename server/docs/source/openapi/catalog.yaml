@@ -211,14 +211,14 @@ components:
         type: object
         required:
           - id
-          - label
+          - name
         properties:
           id:
             type: string
             description: RNA type identifier
-          label:
+          name:
             type: string
-            description: RNA type description
+            description: RNA type name (description)
     Biotype:
       type: object
       required:
@@ -249,7 +249,7 @@ components:
           - phylum
           - taxa_id
           - taxa_name
-          - taxa_sname
+          - taxa_short_name
         properties:
           domain:
             type: string
@@ -263,7 +263,7 @@ components:
           taxa_name:
             type: string
             description: NCBI name for `taxa_id`
-          taxa_sname:
+          taxa_short_name:
             type: string
             description: Abbreviation for `taxa_name`
     Chromosome:
@@ -298,12 +298,12 @@ components:
         type: object
         required:
           - id
-          - modomics_sname
+          - modomics_short_name
         properties:
           id:
             type: string
             description: MODOMICS code
-          modomics_sname:
+          modomics_short_name:
             type: string
             description: MODOMICS short name
     Method:
@@ -335,14 +335,14 @@ components:
           - kingdom
           - meth
           - modification_id
-          - modomics_sname
+          - modomics_short_name
           - organism_id
-          - rna
-          - rna_name
+          - rna_type
+          - rna_type_name
           - selection_id
           - taxa_id
           - taxa_name
-          - taxa_sname
+          - taxa_short_name
           - tech
           - technology_id
         properties:
@@ -363,19 +363,19 @@ components:
             description: Detection method
           modification_id:
             type: integer
-            description: Modification identifier (MODOMICS code, `rna`)
-          modomics_sname:
+            description: Modification identifier (MODOMICS code, `rna_type`)
+          modomics_short_name:
             type: string
             description: MODOMICS short name
           organism_id:
             type: integer
             description: Organism identifier (`taxa_id`, `cto`)
-          rna:
+          rna_type:
             type: string
-            description: RNA type
-          rna_name:
+            description: RNA type identifier (see `GET /catalogs/rna-types`)
+          rna_type_name:
             type: string
-            description: RNA type description
+            description: RNA type name (description)
           selection_id:
             type: integer
             description: Selection identifier
@@ -385,7 +385,7 @@ components:
           taxa_name:
             type: string
             description: NCBI name for `taxa_id`
-          taxa_sname:
+          taxa_short_name:
             type: string
             description: Abbreviation for `taxa_name`
           tech:
