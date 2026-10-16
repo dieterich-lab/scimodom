@@ -84,8 +84,8 @@ interface SiteWiseResponse {
 // TODO: call records summary; should be sites summary
 // add both records and sites to HomeRelease
 async function getSitesSummary(dialogState: DialogStateStore): Promise<SiteSummaryResponse> {
-  return await handleRequestWithErrorReporting<SiteSummaryResponse>(
-    HTTP.get('/modifications/records/summary'),
+  return await handleRequestWithErrorReporting(
+    HTTP.get<SiteSummaryResponse>('/modifications/records/summary'),
     'Failed to load modification sites summary',
     dialogState
   )
@@ -104,8 +104,8 @@ async function getModifications(
     offset: offset,
     limit: limit
   }
-  return await handleRequestWithErrorReporting<ModificationResponse>(
-    HTTP.get('/modifications/records', { params: params }),
+  return await handleRequestWithErrorReporting(
+    HTTP.get<ModificationResponse>('/modifications/records', { params: params }),
     'Failed to load modification records',
     dialogState
   )
@@ -170,8 +170,10 @@ async function getTargetSites(
   dialogState: DialogStateStore
 ): Promise<Bed6Record[]> {
   const params = getSiteParams(modification)
-  const data = await handleRequestWithErrorReporting<TargetSitesResponse>(
-    HTTP.get('/modifications/sites/targets', { params: { ...params, target } }),
+  const data = await handleRequestWithErrorReporting(
+    HTTP.get<TargetSitesResponse>('/modifications/sites/targets', {
+      params: { ...params, target }
+    }),
     `Failed to load target sites: '${target}'`,
     dialogState
   )
@@ -184,8 +186,10 @@ async function getGenomicContext(
   dialogState: DialogStateStore
 ): Promise<string> {
   const params = getSiteParams(modification)
-  const data = await handleRequestWithErrorReporting<GenomicContextResponse>(
-    HTTP.get('/modifications/sites/context', { params: { ...params, window: context } }),
+  const data = await handleRequestWithErrorReporting(
+    HTTP.get<GenomicContextResponse>('/modifications/sites/context', {
+      params: { ...params, window: context }
+    }),
     `Failed to load site context: '${context}'`,
     dialogState
   )
@@ -197,8 +201,8 @@ async function getSiteWiseInfo(
   dialogState: DialogStateStore
 ): Promise<SiteWiseInfo[]> {
   const params = getSiteParams(modification)
-  const data = await handleRequestWithErrorReporting<SiteWiseResponse>(
-    HTTP.get('/modifications/sites', { params }),
+  const data = await handleRequestWithErrorReporting(
+    HTTP.get<SiteWiseResponse>('/modifications/sites', { params }),
     'Failed to load modification sites',
     dialogState
   )

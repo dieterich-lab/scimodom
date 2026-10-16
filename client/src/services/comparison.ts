@@ -34,11 +34,11 @@ async function doHttpGet<T>(
   params: ComparisonParams,
   dialogState: DialogStateStore
 ): Promise<T[]> {
-  const response = (await handleRequestWithErrorReporting(
-    HTTP.get(`/datasets/comparisons/${operation}`, { params: params }),
+  const response = await handleRequestWithErrorReporting(
+    HTTP.get<Records<T>>(`/datasets/comparisons/${operation}`, { params: params }),
     `Comparison failed: ${operation}`,
     dialogState
-  )) as Records<T>
+  )
   return response.records
 }
 

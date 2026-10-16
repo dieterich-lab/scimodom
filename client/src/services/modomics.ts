@@ -8,13 +8,8 @@ interface Modomics {
 
 class ModomicsCache extends Cache<Modomics[]> {
   async getPromise(): Promise<Modomics[]> {
-    try {
-      const response = await HTTP.get('/catalogs/modomics')
-      return response.data as Modomics[]
-    } catch (err) {
-      console.log(`Failed to fetch /catalogs/modomics: ${err}`)
-      throw err
-    }
+    const response = await HTTP.get<Modomics[]>('/catalogs/modomics')
+    return response.data
   }
 }
 

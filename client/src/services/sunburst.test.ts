@@ -136,14 +136,9 @@ test('getSunBurstData does not swallow failures', async () => {
   await expect(getSunBurstData('browse', dialogState)).rejects.toBe(error)
 })
 
-test('getSunBurstData logs and throws on failure', async () => {
+test('getSunBurstData propagates error on failure', async () => {
   const error = new Error()
-  const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
   mockedHandle.mockRejectedValueOnce(error)
 
   await expect(getSunBurstData('search', dialogState)).rejects.toBe(error)
-  expect(consoleSpy).toHaveBeenCalledWith(
-    expect.stringContaining('Failed to fetch /charts/sunbursts/search:')
-  )
-  consoleSpy.mockRestore()
 })

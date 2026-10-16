@@ -11,8 +11,8 @@ async function getBamFilesByDatasetId(
   datasetId: string,
   dialogState: DialogStateStore
 ): Promise<BamFile[]> {
-  return await handleRequestWithErrorReporting<BamFile[]>(
-    HTTP.get(`/datasets/${datasetId}/attachments/bams`),
+  return await handleRequestWithErrorReporting(
+    HTTP.get<BamFile[]>(`/datasets/${datasetId}/attachments/bams`),
     `Failed to load bam files for dataset '${datasetId}'`,
     dialogState
   )
@@ -25,7 +25,7 @@ async function deleteBamFile(
 ): Promise<void> {
   const cookedName = encodeURI(name)
   return await handleRequestWithErrorReporting(
-    HTTPAuth.delete(`/datasets/${datasetId}/attachments/bams/${cookedName}`),
+    HTTPAuth.delete<void>(`/datasets/${datasetId}/attachments/bams/${cookedName}`),
     `Failed to delete BAM file '${name}' (dataset ${datasetId})`,
     dialogState
   )

@@ -73,7 +73,7 @@ def _get_file_too_large_message(max_size: int):
     return f"File too large (max. {max_size} bytes)"
 
 
-def _invalid_choice(name: str, raw: str, allowed: str) -> None:
+def _invalid_choice(name: str, raw: str | None, allowed: str) -> None:
     raise ClientResponseException(
         400, f"Invalid value for '{name}' (allowed: {allowed}, got: '{raw}')"
     )

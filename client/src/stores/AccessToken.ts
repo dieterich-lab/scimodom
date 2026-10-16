@@ -81,7 +81,7 @@ const useAccessToken = defineStore('access_token', {
     refresh() {
       const now_epoch = Date.now() / 1000
       console.log('Requesting access token refresh.')
-      HTTPAuth.post('/sessions/refresh')
+      HTTPAuth.post<{ access_token: string }>('/sessions/refresh')
         .then((response) => {
           if (response.status == 200) {
             if (this.email === null) {

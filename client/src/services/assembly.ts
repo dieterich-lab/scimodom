@@ -10,8 +10,8 @@ async function getAssembliesByTaxaId(
   taxaId: number,
   dialogState: DialogStateStore
 ): Promise<Assembly[]> {
-  return await handleRequestWithErrorReporting<Assembly[]>(
-    HTTP.get(`/catalogs/taxa/${taxaId}/assemblies`),
+  return await handleRequestWithErrorReporting(
+    HTTP.get<Assembly[]>(`/catalogs/taxa/${taxaId}/assemblies`),
     `Failed to load Assembly: ${taxaId}`,
     dialogState
   )

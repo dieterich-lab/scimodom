@@ -157,7 +157,7 @@ def get_valid_file_name(name: str, default: str = "upload") -> str:
 # Route parameter parsing/conversion
 
 
-def validate_file_name(name: str, raw: str) -> str:
+def validate_file_name(name: str, raw: str) -> None:
     """Parse and validate a file name.
 
     NOTE: Contrary to `get_valid_file_name`,
@@ -322,7 +322,7 @@ def _parse_param(
     return _convert_param(name, raw, converter)
 
 
-def _parse_enum_member(name: str, raw: str, enum_cls: type[T]) -> T:
+def _parse_enum_member(name: str, raw: str | None, enum_cls: type[T]) -> T:
     try:
         return enum_cls[raw]
     except KeyError:

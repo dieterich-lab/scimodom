@@ -7,8 +7,8 @@ interface Chrom {
 }
 
 async function getChromsByTaxaId(taxaId: number, dialogState: DialogStateStore): Promise<Chrom[]> {
-  return await handleRequestWithErrorReporting<Chrom[]>(
-    HTTP.get(`/catalogs/taxa/${taxaId}/chromosomes`),
+  return await handleRequestWithErrorReporting(
+    HTTP.get<Chrom[]>(`/catalogs/taxa/${taxaId}/chromosomes`),
     `Failed to load Chrom: ${taxaId}`,
     dialogState
   )

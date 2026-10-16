@@ -47,20 +47,31 @@ interface ProjectPostRequest extends ProjectInfo {
   metadata: ProjectMetaData[]
 }
 
+interface DatasetPostResponse {
+  dataset_id: string
+}
+
+interface ProjectPostResponse {
+  request_id: string
+}
+
 async function postDataset(
   request: DatasetPostRequest,
   dialogState: DialogStateStore
-): Promise<void> {
-  return await handleRequestWithErrorReporting<void>(
-    HTTPAuth.post('/datasets', request),
+): Promise<DatasetPostResponse> {
+  return await handleRequestWithErrorReporting(
+    HTTPAuth.post<DatasetPostResponse>('/datasets', request),
     `Failed to post dataset`,
     dialogState
   )
 }
 
-async function postProject(request: ProjectPostRequest, dialogState: DialogStateStore) {
-  return await handleRequestWithErrorReporting<void>(
-    HTTPAuth.post('/projects/requests', request),
+async function postProject(
+  request: ProjectPostRequest,
+  dialogState: DialogStateStore
+): Promise<ProjectPostResponse> {
+  return await handleRequestWithErrorReporting(
+    HTTPAuth.post<ProjectPostResponse>('/projects/requests', request),
     `Failed to post project request`,
     dialogState
   )
@@ -68,7 +79,9 @@ async function postProject(request: ProjectPostRequest, dialogState: DialogState
 
 export {
   type DatasetPostRequest,
+  type DatasetPostResponse,
   type ProjectPostRequest,
+  type ProjectPostResponse,
   type ProjectInfo,
   type ProjectOrganism,
   type ProjectMetaData,

@@ -9,8 +9,8 @@ async function getFeaturesByRnaType(
   rnaType: string,
   dialogState: DialogStateStore
 ): Promise<string[]> {
-  const raw = await handleRequestWithErrorReporting<FeaturesResponse>(
-    HTTP.get(`/catalogs/rna-types/${rnaType}/features`),
+  const raw = await handleRequestWithErrorReporting(
+    HTTP.get<FeaturesResponse>(`/catalogs/rna-types/${rnaType}/features`),
     `Failed to load FeaturesResponse: ${rnaType}`,
     dialogState
   )

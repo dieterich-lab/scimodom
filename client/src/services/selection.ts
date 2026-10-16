@@ -27,13 +27,8 @@ interface Selection extends ModificationType, Cto, Technology {
 
 class SelectionCache extends Cache<Selection[]> {
   async getPromise(): Promise<Selection[]> {
-    try {
-      const response = await HTTP.get('/catalogs/selections')
-      return response.data as Selection[]
-    } catch (err) {
-      console.log(`Failed to fetch /catalogs/selections: ${err}`)
-      throw err
-    }
+    const response = await HTTP.get<Selection[]>('/catalogs/selections')
+    return response.data
   }
 }
 

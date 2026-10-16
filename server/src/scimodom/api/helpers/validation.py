@@ -71,7 +71,7 @@ def get_valid_rna_type() -> str:
     :raises ClientResponseException: 400, 404
     :return: The validated RNA type
     """
-    rna_type = _get_required_query_param("rnaType")
+    rna_type: str = _get_required_query_param("rnaType")
     _validate_rna_type(rna_type)
     return rna_type
 
@@ -83,7 +83,7 @@ def parse_valid_rna_type(raw: str) -> str:
     :raises ClientResponseException: 400, 404
     :return: The validated RNA type
     """
-    rna_type = _parse_param("rnaType", raw)
+    rna_type: str = _parse_param("rnaType", raw)
     _validate_rna_type(rna_type)
     return rna_type
 
@@ -106,7 +106,7 @@ def parse_valid_taxa_id(raw: str) -> int:
     :raises ClientResponseException: 400, 404
     :return: The validated taxon identifier
     """
-    taxa_id = _parse_param("taxa_id", raw, _positive_int)
+    taxa_id: int = _parse_param("taxa_id", raw, _positive_int)
     _validate_taxa_id(taxa_id)
     return taxa_id
 
@@ -161,7 +161,7 @@ def get_valid_coords(taxa_id: int) -> ValidCoords:
     :raises ClientResponseException: 400, 404
     :return: Coordinates as ValidCoords
     """
-    chrom = _get_required_query_param("chrom")
+    chrom: str = _get_required_query_param("chrom")
     start = get_non_negative_int("chromStart")
     end = get_positive_int("chromEnd")
     chrom_size = _get_valid_chrom_size(taxa_id, chrom, start, end)
@@ -251,7 +251,7 @@ def parse_valid_dataset(raw: str) -> Dataset:
     :raises ClientResponseException: 400, 404.
     :return: Dataset
     """
-    dataset_id = _parse_param("datasetId", raw)
+    dataset_id: str = _parse_param("datasetId", raw)
     dataset_service = get_dataset_service()
     return _get_valid_dataset_by_id(dataset_id, dataset_service)
 
