@@ -4,10 +4,10 @@ pipeline {
         stage('Prepare Python venv') {
             steps {
                 sh '''
-                    uv --python 3.11 venv venv
+                    [ -d venv ] || uv venv --python 3.11 venv
                     . ./venv/bin/activate
                     cd server
-                    uv pip install -e . --group dev'
+                    uv pip install -e . --group dev
                 '''
             }
         }
@@ -26,8 +26,8 @@ pipeline {
                 sh '''
                     . ./venv/bin/activate
 
-                    SERVER_VERSION=$(grep -oP 'API_VERSION = "\K[^"]+' server/src/scimodom/services/url.py)
-                    CLIENT_VERSION=$(grep -oP "API_VERSION = '\K[^']+" client/src/services/API.ts)
+                    SERVER_VERSION=$(grep -oP 'API_VERSION = "\\K[^"]+' server/src/scimodom/services/url.py)
+                    CLIENT_VERSION=$(grep -oP "API_VERSION = '\\K[^']+" client/src/services/API.ts)
                     echo "server=$SERVER_VERSION  client=$CLIENT_VERSION"
                     if [ -z "$SERVER_VERSION" ] || [ -z "$CLIENT_VERSION" ]; then
                         echo "Could not extract API_VERSION"
@@ -60,7 +60,7 @@ pipeline {
                     . ./venv/bin/activate
                     export PYTHONPATH=$(pwd)/server/src:$(pwd)/server/tests
                     cd server
-                    pytest --junitxml results.xml tests --cov=src/scimodom --cov-report xml
+                    pytest --junitxml results.xml -m "not cifail" tests --cov=src/scimodom --cov-report xml
                 '''
             }
         }

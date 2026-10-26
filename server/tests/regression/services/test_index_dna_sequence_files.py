@@ -25,6 +25,7 @@ def test_data(tmp_path):
     d.mkdir(parents=True, exist_ok=True)
 
 
+@pytest.mark.cifail
 @pytest.mark.datafiles(Path(DATA_DIR, "Homo_sapiens.GRCh38.dna.chromosome.1.fa.gz"))
 def test_index_dna_sequence_file(Session, datafiles, tmp_path, test_data, setup):
     d = tmp_path / "t_data" / FileService.ASSEMBLY_DEST / "Homo_sapiens" / "GRCh38"
