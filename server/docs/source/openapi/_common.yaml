@@ -13,6 +13,7 @@ info:
 
 servers:
   - url: "http://127.0.0.1:5000/api/{version}" #"https://scimodom.dieterichlab.org/api/{version}"
+  - url: "https://scimodom-beta.dieterichlab.org/api/{version}"
 
 components:
   securitySchemes:

@@ -62,9 +62,10 @@ def write() -> list[Path]:
     common_info = dict(common["info"])
     common_info["version"] = _get_api_version(common_info["version"])
     common_servers = copy.deepcopy(common["servers"])
-    common_servers[0].setdefault("variables", {})["version"] = {
-        "default": common_info["version"]
-    }
+    for server in common_servers:
+        server.setdefault("variables", {})["version"] = {
+            "default": common_info["version"]
+        }
     common_components = common.get("components", {})
 
     INCLUDE_DIR.mkdir(exist_ok=True)
