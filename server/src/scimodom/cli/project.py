@@ -7,9 +7,6 @@ from sqlalchemy.exc import NoResultFound
 
 from scimodom.cli.utilities import (
     add_assembly_to_template_if_none,
-    get_detection_id,
-    get_modomics_id,
-    trigger_sunburst_update,
 )
 from scimodom.database.models import Project
 from scimodom.services.assembly import AssemblyNotFoundError, get_assembly_service
@@ -18,7 +15,9 @@ from scimodom.services.dataset import get_dataset_service
 from scimodom.services.file import get_file_service
 from scimodom.services.permission import get_permission_service
 from scimodom.services.project import get_project_service
+from scimodom.services.sunburst import get_sunburst_service
 from scimodom.services.user import get_user_service, NoSuchUser
+from scimodom.services.utilities import get_utilities_service
 from scimodom.utils.dtos.project import (
     ProjectMetaDataDto,
     ProjectOrganismDto,
@@ -141,6 +140,12 @@ def create_project_template(
             f"   ... created request with ID: '{uuid}'.",
             fg="green",
         )
+    except NoResultFound as exc:
+        click.secho(
+            f"Failed to create template (DATASET_CSV has unexpected values). {exc}.",
+            fg="red",
+        )
+        raise click.Abort()
     except KeyError as exc:
         click.secho(
             f"Failed to create template (malformed DATASET_CSV). Missing header {exc}.",
@@ -346,7 +351,8 @@ def delete_project(smid: str):
 
     try:
         click.secho("Triggering charts update in the background ...", fg="green")
-        trigger_sunburst_update()
+        sunburst_service = get_sunburst_service()
+        sunburst_service.trigger_background_update()
         click.secho("   ... done.", fg="green")
     except Exception as exc:
         click.secho(
@@ -371,6 +377,7 @@ def _create_project_template(
     use_method_ids: bool,
 ) -> str:
     project_service = get_project_service()
+    utilities_service = get_utilities_service()
 
     metadata_list = []
     with open(dataset_csv, "r", newline="") as fh:
@@ -394,11 +401,15 @@ def _create_project_template(
                 modomics_id=(
                     row["modification"]
                     if use_mod_ids
-                    else get_modomics_id(row["modification"])
+                    else utilities_service.get_modomics_id_by_short_name(
+                        row["modification"]
+                    )
                 ),
                 tech=row["technology"],
                 method_id=(
-                    row["method"] if use_method_ids else get_detection_id(row["method"])
+                    row["method"]
+                    if use_method_ids
+                    else utilities_service.get_method_id_by_name(row["method"])
                 ),
                 organism=organism,
                 note=(

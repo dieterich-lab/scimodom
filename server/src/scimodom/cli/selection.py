@@ -1,9 +1,8 @@
 import click
 from flask import Blueprint
+from sqlalchemy.exc import NoResultFound
 
-from scimodom.cli.utilities import (
-    get_modomics_id,
-)
+from scimodom.services.utilities import get_utilities_service
 from scimodom.services.selection import get_selection_service
 from scimodom.utils.dtos.project import (
     ProjectMetaDataDto,
@@ -63,17 +62,21 @@ def add_selection(
 ) -> None:
     """Add a new selection to the database."""
     selection_service = get_selection_service()
+    utilities_service = get_utilities_service()
 
     try:
         organism = ProjectOrganismDto(taxa_id=taxid, cto=cto, assembly_name="assembly")
         metadata = ProjectMetaDataDto(
             rna=rna,
-            modomics_id=get_modomics_id(modification),
+            modomics_id=utilities_service.get_modomics_id_by_short_name(modification),
             tech=technology,
             method_id=method_id,
             organism=organism,
             note=None,
         )
+    except NoResultFound as exc:
+        click.secho(f"Failed to add selection (invalid input value). {exc}")
+        raise click.Abort()
     except Exception as exc:
         click.secho(
             f"Failed to add selection (invalid input value). {exc}.",

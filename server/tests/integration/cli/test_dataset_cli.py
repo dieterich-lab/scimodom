@@ -332,7 +332,7 @@ def mock_services(mocker, Session, tmp_path, test_runner):
         return_value=_get_sunburst_service(Session, tmp_path, test_runner),
     )
     mocker.patch(
-        "scimodom.cli.utilities.get_sunburst_service",
+        "scimodom.cli.dataset.get_sunburst_service",
         return_value=_get_sunburst_service(Session, tmp_path, test_runner),
     )
     mocker.patch(
@@ -372,6 +372,7 @@ def test_add_dataset(
     args = [
         "dataset",
         "add",
+        "--yes",
         "--assembly-id",
         1,
         "--annotation",
@@ -390,7 +391,7 @@ def test_add_dataset(
     ]
 
     freezer.move_to("2024-06-20 12:00:00")
-    result = test_runner.invoke(args=args, input="y")
+    result = test_runner.invoke(args=args)
     # exceptions are handled gracefully so exit code will likely always be 0...
     assert result.exit_code == 0
     # result.stdout or output does not capture secho consistently...
@@ -452,6 +453,7 @@ def test_add_dataset_dry_run(
     args = [
         "dataset",
         "add",
+        "--yes",
         "--assembly-id",
         1,
         "--annotation",
@@ -471,7 +473,7 @@ def test_add_dataset_dry_run(
     ]
 
     freezer.move_to("2024-06-20 12:00:00")
-    result = test_runner.invoke(args=args, input="y")
+    result = test_runner.invoke(args=args)
     # exceptions are handled gracefully so exit code will likely always be 0...
     assert result.exit_code == 0
 

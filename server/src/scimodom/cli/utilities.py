@@ -1,26 +1,16 @@
 import click
 
-from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
 
-from scimodom.database.database import get_session
-from scimodom.database.models import (
-    Dataset,
-    DetectionMethod,
-    Modomics,
-)
 from scimodom.services.assembly import AssemblyService, AssemblyNotFoundError
-from scimodom.services.sunburst import get_sunburst_service
-from scimodom.utils.dtos.project import (
-    ProjectOrganismDto,
-)
+from scimodom.utils.dtos.project import ProjectOrganismDto
 
 
-def validate_dataset_title(ctx, param, value):
-    """Validate parameter (str) length."""
-    if len(value) > Dataset.title.type.length:
-        raise click.BadParameter("Title cannot be longer than 255 characters!")
-    return value
+# This module should go; this function needs to go e.g.
+# to AdminService (or ProjectImportService, or existing ProjectService).
+# A new service layer would handle batch, project delete, etc. i.e.
+# complex operations with several steps (commit, etc.) which must be
+# handled carefully, and are not domain service-specific.
 
 
 def add_assembly_to_template_if_none(
@@ -53,47 +43,3 @@ def add_assembly_to_template_if_none(
             assembly_service.get_by_id(organism.assembly_id)
     except NoResultFound:
         raise AssemblyNotFoundError
-
-
-def get_modomics_id(name) -> str:
-    """Retrieve MODOMICS ID from short name.
-
-    :param name: MODOMICS short name
-    :type name: str
-    :raises ValueError: If NoResultFound
-    :return: MODOMICS ID
-    :rtype: str
-    """
-    try:
-        return (
-            get_session()
-            .execute(select(Modomics.id).filter_by(short_name=name))
-            .scalar_one()
-        )
-    except NoResultFound:
-        raise ValueError(f"No such modification '{name}'.")
-
-
-def get_detection_id(name) -> str:
-    """Retrieve detection method ID from name (meth).
-
-    :param name: Method name (meth)
-    :type name: str
-    :raises ValueError: If NoResultFound
-    :return: DetectionMethod ID
-    :rtype: str
-    """
-    try:
-        return (
-            get_session()
-            .execute(select(DetectionMethod.id).filter_by(meth=name))
-            .scalar_one()
-        )
-    except NoResultFound:
-        raise ValueError(f"No such detection method '{name}'.")
-
-
-def trigger_sunburst_update() -> None:
-    """Trigger Sunburst charts background update."""
-    sunburst_service = get_sunburst_service()
-    sunburst_service.trigger_background_update()

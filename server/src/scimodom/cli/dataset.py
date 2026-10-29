@@ -8,33 +8,48 @@ from sqlalchemy import select
 
 from scimodom.database.database import get_session
 from scimodom.database.models import (
+    Dataset,
     DetectionTechnology,
     Organism,
     Modification,
 )
-from scimodom.cli.utilities import (
-    add_assembly_to_template_if_none,
-    validate_dataset_title,
-    trigger_sunburst_update,
-)
-
 from scimodom.services.assembly import AssemblyNotFoundError, get_assembly_service
 from scimodom.services.dataset import get_dataset_service
 from scimodom.services.file import get_file_service
 from scimodom.services.project import get_project_service
+from scimodom.services.sunburst import get_sunburst_service
 from scimodom.utils.dtos.project import (
     ProjectMetaDataDto,
     ProjectTemplate,
 )
 from scimodom.utils.specs.enums import AnnotationSource
 
+from scimodom.cli.utilities import (
+    add_assembly_to_template_if_none,
+)
+from scimodom.cli.helpers import (
+    CliResponseException,
+    register_cli_errors,
+    confirm,
+)
+
 dataset_cli = Blueprint("dataset", __name__)
+
+
+def validate_dataset_title(ctx, param, value):
+    """Validate parameter (str) length."""
+    if len(value) > Dataset.title.type.length:
+        raise click.BadParameter("Title cannot be longer than 255 characters!")
+    return value
 
 
 @dataset_cli.cli.command(
     "add",
     epilog="Check docs at https://dieterich-lab.github.io/scimodom/flask.html.",
 )
+@register_cli_errors
+@click.option("--yes", is_flag=True, help="Confirm the action without prompting")
+@click.option("--traceback", is_flag=True, help="Show traceback")
 @click.argument("filename", type=click.Path(exists=True))
 @click.argument("smid", type=click.STRING)
 @click.argument("title", type=click.UNPROCESSED, callback=validate_dataset_title)
@@ -90,6 +105,8 @@ dataset_cli = Blueprint("dataset", __name__)
     ),
 )
 def add_dataset(
+    yes: bool,
+    traceback: bool,
     filename: str,
     smid: str,
     title: str,
@@ -120,11 +137,7 @@ def add_dataset(
         msg = f"Updating data records for dataset '{eufid}'..."
         succes_msg = "updated"
     click.secho(msg, fg=colour)
-    click.secho("Continue [y/n]?", fg=colour)
-    c = click.getchar()
-    if c not in ["y", "Y"]:
-        click.secho("Aborted!", fg="yellow")
-        return
+    confirm("Continue?", skip=yes)
 
     try:
         annotation_source = AnnotationSource(annotation)
@@ -146,6 +159,8 @@ def add_dataset(
             f"   ... {succes_msg} dataset with EUFID: '{eufid}'.",
             fg=colour,
         )
+    # need to add all reasonable exceptions as in API...
+    # not a one catch all...
     except Exception as exc:
         click.secho(
             f"Failed to create or update dataset. {exc}.",
@@ -156,8 +171,10 @@ def add_dataset(
     if not dry_run:
         try:
             click.secho("Triggering charts update in the background ...", fg="green")
-            trigger_sunburst_update()
+            sunburst_service = get_sunburst_service()
+            sunburst_service.trigger_background_update()
             click.secho("   ... done!", fg="green")
+        # no need to catch all... does trigger_background_update raises anything?
         except Exception as exc:
             click.secho(
                 f"Failed to update charts. {exc}.",
@@ -281,7 +298,8 @@ def add_dataset_in_batch(input_directory: str, request_uuid: str, annotation: st
 
     try:
         click.secho("Triggering charts update in the background ...", fg="green")
-        trigger_sunburst_update()
+        sunburst_service = get_sunburst_service()
+        sunburst_service.trigger_background_update()
         click.secho("   ... done.", fg="green")
     except Exception as exc:
         click.secho(

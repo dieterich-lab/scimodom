@@ -4,15 +4,43 @@ from sqlalchemy.exc import NoResultFound
 
 from scimodom.services.assembly import get_assembly_service
 
+from scimodom.cli.helpers import (
+    CliResponseException,
+    register_cli_errors,
+    confirm,
+)
 
 assembly_cli = Blueprint("assembly", __name__)
 
 
 @assembly_cli.cli.command(
+    "test", epilog="Check docs at https://dieterich-lab.github.io/scimodom/flask.html."
+)
+@register_cli_errors
+@click.option("--yes", is_flag=True, help="Confirm the action without prompting")
+@click.option("--traceback", is_flag=True, help="Show traceback")
+@click.argument("assembly_id", type=click.INT)
+def test_assembly(yes: bool, traceback: bool, assembly_id: int):
+    """Provide a first check."""
+    assembly_service = get_assembly_service()
+    try:
+        assembly = assembly_service.get_by_id(assembly_id)
+    except NoResultFound as exc:
+        raise CliResponseException(
+            "Failed to set up assemblies. Current assembly does not exist.",
+        ) from exc
+    confirm("proceed with test?", skip=yes)
+    click.secho(f"Assembly is {assembly.name}")
+
+
+@assembly_cli.cli.command(
     "add", epilog="Check docs at https://dieterich-lab.github.io/scimodom/flask.html."
 )
+@register_cli_errors
+@click.option("--yes", is_flag=True, help="Confirm the action without prompting")
+@click.option("--traceback", is_flag=True, help="Show traceback")
 @click.argument("assembly_id", type=click.INT)
-def add_assembly(assembly_id: int):
+def add_assembly(yes: bool, traceback: bool, assembly_id: int):
     """Set up assemblies.
 
     Set up current assembly for ASSEMBLY_ID, and
@@ -25,23 +53,17 @@ def add_assembly(assembly_id: int):
 
     try:
         assembly = assembly_service.get_by_id(assembly_id)
-    except NoResultFound:
-        click.secho(
+    except NoResultFound as exc:
+        raise CliResponseException(
             "Failed to set up assemblies. Current assembly does not exist.",
-            fg="red",
-        )
-        raise click.Abort()
+        ) from exc
 
     click.secho(
         f"Setting up assemblies for organism '{assembly.taxa_id}'. "
         "This will take a few minutes to download data...",
         fg="green",
     )
-    click.secho("Continue [y/n]?", fg="green")
-    c = click.getchar()
-    if c not in ["y", "Y"]:
-        click.secho("Aborted!", fg="yellow")
-        return
+    confirm("Continue?", skip=yes)
 
     try:
         assembly_service.create_current(assembly)
@@ -49,11 +71,7 @@ def add_assembly(assembly_id: int):
             f"   ... done with current assembly '{assembly.name}'...", fg="green"
         )
     except Exception as exc:
-        click.secho(
-            f"Failed to set up current assembly. {exc}",
-            fg="red",
-        )
-        raise click.Abort()
+        raise CliResponseException(f"Failed to set up current assembly. {exc}") from exc
 
     valid_assembly_names = assembly_service.get_coord_system_versions(assembly.taxa_id)
     for assembly_name in valid_assembly_names:
@@ -63,9 +81,13 @@ def add_assembly(assembly_id: int):
             assembly_service.add_assembly(assembly.taxa_id, assembly_name)
             click.secho(f"   ... done with {assembly_name}...", fg="green")
         except Exception as exc:
+            # raise CliResponseException(
+            #     f"Failed to set up {assembly_name}. {exc}"
+            # ) from exc
             click.secho(
                 f"Failed to set up {assembly_name}. {exc}",
                 fg="red",
             )
+            # should we continue...?
             continue
     click.secho("   ... done.", fg="green")

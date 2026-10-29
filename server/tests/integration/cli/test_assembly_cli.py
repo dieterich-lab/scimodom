@@ -56,7 +56,8 @@ def mock_services(mocker, Session, tmp_path):
 
 
 def test_add_assembly(Session, tmp_path, test_runner, setup, mock_services):
-    result = test_runner.invoke(args=["assembly", "add", "1"], input="y")
+    # result = test_runner.invoke(args=["assembly", "add", "1"], input="y")
+    result = test_runner.invoke(args=["assembly", "add", "--yes", "1"])
     # exceptions are handled gracefully so exit code will likely always be 0...
     assert result.exit_code == 0
 

@@ -1,4 +1,5 @@
 import pytest
+from sqlalchemy.exc import NoResultFound
 
 from scimodom.services.utilities import UtilitiesService
 
@@ -79,6 +80,15 @@ def test_get_modomics(Session, utilities_service, setup):
     assert utilities_service.get_modomics() == expected_modomics
 
 
+def test_get_modomics_id_by_short_name(Session, utilities_service, setup):
+    assert utilities_service.get_modomics_id_by_short_name("m6A") == "2000000006A"
+
+
+def test_get_modomics_id_by_short_name_fail(Session, utilities_service, setup):
+    with pytest.raises(NoResultFound):
+        utilities_service.get_modomics_id_by_short_name("XXX")
+
+
 def test_get_methods(Session, utilities_service, setup):
     expected_methods = [
         {
@@ -98,6 +108,18 @@ def test_get_methods(Session, utilities_service, setup):
         },
     ]
     assert utilities_service.get_methods() == expected_methods
+
+
+def test_get_method_id_by_name(Session, utilities_service, setup):
+    assert (
+        utilities_service.get_method_id_by_name("Antibody-based sequencing")
+        == "91b145ea"
+    )
+
+
+def test_get_method_id_by_name_fail(Session, utilities_service, setup):
+    with pytest.raises(NoResultFound):
+        utilities_service.get_method_id_by_name("XXX")
 
 
 def test_get_selection(Session, utilities_service, selection):

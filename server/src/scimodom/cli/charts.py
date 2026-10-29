@@ -26,6 +26,7 @@ def sunburst_update():
     except SunburstUpdateAlreadyRunning:
         click.secho("Nothing to do - already running.", fg="yellow")
         return
+    # do we need to catch anything? Check what do_background_update does...
     except Exception as exc:
         click.secho(f"Failed to update sunburst charts. {exc}", fg="red")
         raise click.Abort()

@@ -90,6 +90,19 @@ class UtilitiesService:
             {"id": mod.id, "modomics_short_name": mod.short_name} for mod in modomics
         ]
 
+    def get_modomics_id_by_short_name(self, name: str) -> str:
+        """Get MODOMICS ID by short name.
+
+        :param name: MODOMICS short name
+        :raises NoResultFound:
+        :return: MODOMICS ID
+        """
+        return (
+            get_session()
+            .execute(select(Modomics.id).filter_by(short_name=name))
+            .scalar_one()
+        )
+
     def get_methods(self) -> list[dict[str, Any]]:
         """Get all detection methods.
 
@@ -100,6 +113,19 @@ class UtilitiesService:
             {"id": method.id, "cls": method.cls, "meth": method.meth}
             for method in methods
         ]
+
+    def get_method_id_by_name(self, name: str) -> str:
+        """Get detection method ID by method name.
+
+        :param name: Method name (meth)
+        :raises NoResultFound:
+        :return: DetectionMethod ID
+        """
+        return (
+            get_session()
+            .execute(select(DetectionMethod.id).filter_by(meth=name))
+            .scalar_one()
+        )
 
     def get_selections(self) -> list[dict[str, Any]]:
         """Get all selections.

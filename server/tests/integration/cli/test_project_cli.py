@@ -37,6 +37,7 @@ from scimodom.services.selection import SelectionService
 from scimodom.services.sunburst import SunburstService
 from scimodom.services.url import UrlService
 from scimodom.services.user import UserService
+from scimodom.services.utilities import UtilitiesService
 from scimodom.services.validator import ValidatorService
 from scimodom.services.web import WebService
 from scimodom.utils.specs.enums import AnnotationSource, UserState, SunburstChartType
@@ -200,6 +201,10 @@ def _get_selection_service(Session, tmp_path):
     )
 
 
+def _get_utilities_service(Session):
+    return UtilitiesService(session=Session())
+
+
 def _get_project_service(Session, tmp_path):
     return ProjectService(
         session=Session(),
@@ -227,7 +232,7 @@ def mock_services(mocker, Session, tmp_path, test_runner):
         return_value=_get_sunburst_service(Session, tmp_path, test_runner),
     )
     mocker.patch(
-        "scimodom.cli.utilities.get_sunburst_service",
+        "scimodom.cli.project.get_sunburst_service",
         return_value=_get_sunburst_service(Session, tmp_path, test_runner),
     )
     mocker.patch(
@@ -257,6 +262,10 @@ def mock_services(mocker, Session, tmp_path, test_runner):
     mocker.patch(
         "scimodom.cli.project.get_user_service",
         return_value=_get_user_service(Session),
+    )
+    mocker.patch(
+        "scimodom.cli.project.get_utilities_service",
+        return_value=_get_utilities_service(Session),
     )
 
 
