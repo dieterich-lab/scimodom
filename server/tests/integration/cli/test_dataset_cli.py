@@ -22,6 +22,7 @@ from scimodom.services.assembly import AssemblyService
 from scimodom.services.bedtools import BedToolsService
 from scimodom.services.data import DataService
 from scimodom.services.dataset import DatasetService
+from scimodom.services.ensembl import EnsemblAssemblyClient
 from scimodom.services.external import ExternalService
 from scimodom.services.gene import GeneService
 from scimodom.services.file import FileService
@@ -190,6 +191,7 @@ def _get_assembly_service(Session, tmp_path):
         ),
         web_service=WebService(),
         file_service=_get_file_service(Session, tmp_path),
+        ensembl_client=EnsemblAssemblyClient(WebService()),
     )
 
 

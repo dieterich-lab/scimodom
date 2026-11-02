@@ -14,9 +14,41 @@ from scimodom.services.assembly import (
     LiftOverError,
 )
 from scimodom.utils.specs.enums import AssemblyFileType
-from tests.mocks.enums import MockEnsembl
+from tests.mocks.ensembl import (
+    GENE_BUILD,
+    NEWEST_GENE_BUILD,
+    MockEnsemblClient,
+)
 from tests.mocks.io import MockStringIO, MockBytesIO
 from tests.mocks.web import MockWebService
+
+
+INFO = """{
+\t"assembly_accession": "GCA_000001405.29",
+\t"assembly_date": "2013-12",
+\t"assembly_name": "GRCh38.p14",
+\t"coord_system_versions": [
+\t\t"GRCh38",
+\t\t"GRCh37",
+\t\t"NCBI36",
+\t\t"NCBI35",
+\t\t"NCBI34"
+\t]
+}"""
+
+
+EXPECTED_CHROM_SIZES = """1\t248956422
+2\t242193529
+X\t156040895
+"""
+
+EXPECTED_INFO_JSON = INFO
+
+EXPECTED_RELEASE_JSON = """{
+\t"releases": [
+\t\t110
+\t]
+}"""
 
 
 class MockExternalService:
@@ -136,30 +168,64 @@ class MockFileService:
         return self.lines_by_name[path]
 
 
+def _http_error(status):
+    from requests import HTTPError, Response
+
+    response = Response()
+    response.status_code = status
+    return HTTPError(response=response)
+
+
+class FlakyWebService:
+    def __init__(self, status):
+        self.status = status
+        self.urls = []
+
+    def stream_request_to_file(self, url, stream):
+        self.urls.append(url)
+        if "primary_assembly" not in url:
+            raise _http_error(self.status)
+        stream.write(b"ACGT")
+
+
 @pytest.fixture
 def file_service():
     yield MockFileService()
 
 
-def _get_assembly_service(Session, file_service, url_to_result=None, url_to_data=None):
+def _get_assembly_service(
+    Session,
+    file_service,
+    gene_build=None,
+    release=None,
+    url_to_data=None,
+):
     return AssemblyService(
         session=Session(),
         external_service=MockExternalService(),
-        web_service=MockWebService(
-            url_to_result=url_to_result, url_to_data=url_to_data
-        ),
+        web_service=MockWebService(url_to_data=url_to_data),
         file_service=file_service,
+        ensembl_client=MockEnsemblClient(
+            gene_build=gene_build,
+            release=release,
+        ),
     )
 
 
 # tests
 
 
-def test_init(Session, file_service):
-    with Session() as session, session.begin():
-        session.add(AssemblyVersion(version_num="GcatSmFcytpU"))
-    service = _get_assembly_service(Session, file_service)
+def test_version_is_lazy(Session, file_service):
+    service = _get_assembly_service(Session, file_service)  # no version row yet
+    session = service._session
+    session.add(AssemblyVersion(version_num="GcatSmFcytpU"))
+    session.commit()
     assert service._version == "GcatSmFcytpU"
+    session.execute(
+        AssemblyVersion.__table__.update().values(version_num="AAAAAAAAAAAA")
+    )
+    session.commit()
+    assert service._version == "AAAAAAAAAAAA"
 
 
 def test_get_by_id(Session, file_service, setup):  # noqa
@@ -243,6 +309,18 @@ def test_get_chroms(Session, file_service, setup):  # noqa
         assert chrom == expected_chrom
 
 
+def test_get_chroms_ignores_blank_lines(Session, file_service, setup):  # noqa
+    file_service.opened_files_by_name["/data/assembly/9606/chrom.sizes"] = StringIO(
+        "1\t12345\n\n2\t123456\n\n"
+    )
+    service = _get_assembly_service(Session, file_service)
+    assert service.get_seqids(9606) == ["1", "2"]
+    file_service.opened_files_by_name["/data/assembly/9606/chrom.sizes"] = StringIO(
+        "1\t12345\n\n2\t123456\n\n"
+    )
+    assert len(service.get_chroms(9606)) == 2
+
+
 def test_create_lifted_file(Session, file_service, setup):  # noqa
     file_service.opened_files_by_name[
         "/data/assembly/9606/GRCh37/GRCh37_to_GRCh38.chain.gz"
@@ -273,9 +351,7 @@ def test_create_lifted_file_fail_count(Session, file_service, setup):  # noqa
         service.create_lifted_file(
             assembly, "to_be_lifted.bed", unmapped_file="unmapped.bed"
         )
-    assert (
-        str(exc.value)
-    ) == "Liftover failed: 1 records out of 3 could not be mapped."
+    assert (str(exc.value)) == "Liftover failed: 1 unmapped records out of 3"
     assert exc.type == LiftOverError
 
 
@@ -291,9 +367,7 @@ def test_create_lifted_file_warning(Session, file_service, setup, caplog):  # no
     service.create_lifted_file(
         assembly, "to_be_lifted.bed", unmapped_file="unmapped.bed"
     )
-    assert caplog.messages == [
-        "1 records could not be mapped... Contact our support team if you have questions."
-    ]
+    assert caplog.messages == ["Liftover: 1 unmapped records."]
 
 
 def test_create_lifted_file_fail_version(Session, file_service, setup):  # noqa
@@ -305,69 +379,12 @@ def test_create_lifted_file_fail_version(Session, file_service, setup):  # noqa
     assert exc.type == AssemblyVersionError
 
 
-# test_add_assembly and test_create_current all implicitly
-# test protected methods e.g. _handle_gene_build, _handle_release, ...
-
-
-INFO = """{
-\t"assembly_accession": "GCA_000001405.29",
-\t"assembly_date": "2013-12",
-\t"assembly_name": "GRCh38.p14",
-\t"coord_system_versions": [
-\t\t"GRCh38",
-\t\t"GRCh37",
-\t\t"NCBI36",
-\t\t"NCBI35",
-\t\t"NCBI34"
-\t]
-}"""
-
-EXAMPLE_GENE_BUILD_DATA = {
-    "assembly_accession": "GCA_000001405.29",
-    "assembly_date": "2013-12",
-    "assembly_name": "GRCh38.p14",
-    "coord_system_versions": ["GRCh38", "GRCh37", "NCBI36", "NCBI35", "NCBI34"],
-    "default_coord_system_version": "GRCh38",
-    "karyotype": ["1", "2", "X"],
-    "top_level_region": [
-        {"coord_system": "chromosome", "length": 248956422, "name": "1"},
-        {"coord_system": "chromosome", "length": 242193529, "name": "2"},
-        {
-            "coord_system": "chromosome",
-            "length": 156040895,
-            "name": "X",
-        },
-    ],
-}
-
-
-NEWEST_EXAMPLE_GENE_BUILD_DATA = EXAMPLE_GENE_BUILD_DATA.copy()
-NEWEST_EXAMPLE_GENE_BUILD_DATA["default_coord_system_version"] = "GRCh39"
-
-
-EXPECTED_CHROM_SIZES = """1\t248956422
-2\t242193529
-X\t156040895
-"""
-
-EXPECTED_INFO_JSON = INFO
-
-EXPECTED_RELEASE_JSON = """{
-\t"releases": [
-\t\t110
-\t]
-}"""
-
-
 def test_add_assembly(Session, file_service, setup, mocker):
-    mocker.patch("scimodom.services.assembly.Ensembl", MockEnsembl)
     file_service.opened_files_by_name["/data/assembly/9606/info.json"] = StringIO(INFO)
     service = _get_assembly_service(
         Session,
         file_service,
-        url_to_data={
-            "https://ftp.ensembl.org/pub/release-110/assembly_chain/homo_sapiens/NCBI36_to_GRCh38.chain.gz": b"foo"
-        },
+        url_to_data={"mock://chain/NCBI36_to_GRCh38": b"foo"},
     )
     service.add_assembly(9606, "NCBI36")
     with Session() as session:
@@ -380,21 +397,18 @@ def test_add_assembly(Session, file_service, setup, mocker):
 
 
 def test_add_current_assembly(Session, file_service, setup, mocker):
-    mocker.patch("scimodom.services.assembly.Ensembl", MockEnsembl)
     file_service.opened_files_by_name["/data/assembly/9606/chrom.sizes"] = StringIO(
         "1\t248956422\n2\t242193529\nX\t156040895"
     )
     service = _get_assembly_service(
         Session,
         file_service,
-        url_to_result={
-            "http://jul2023.rest.ensembl.org/info/assembly/homo_sapiens": EXAMPLE_GENE_BUILD_DATA,
-            "http://jul2023.rest.ensembl.org/info/data": {"releases": [110]},
-        },
+        gene_build=GENE_BUILD,
+        release={"releases": [110]},
         url_to_data={
-            "https://ftp.ensembl.org/pub/release-110/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.chromosome.1.fa.gz": b"foo1",
-            "https://ftp.ensembl.org/pub/release-110/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.chromosome.2.fa.gz": b"foo2",
-            "https://ftp.ensembl.org/pub/release-110/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.chromosome.X.fa.gz": b"foox",
+            "mock://dna/chromosome.1": b"foo1",
+            "mock://dna/chromosome.2": b"foo2",
+            "mock://dna/chromosome.X": b"foox",
         },
     )
     service.add_assembly(9606, "GRCh38")
@@ -463,14 +477,11 @@ def test_add_current_assembly(Session, file_service, setup, mocker):
 
 
 def test_add_assembly_exist_in_database(Session, file_service, setup, mocker):
-    mocker.patch("scimodom.services.assembly.Ensembl", MockEnsembl)
     file_service.opened_files_by_name["/data/assembly/9606/info.json"] = StringIO(INFO)
     service = _get_assembly_service(
         Session,
         file_service,
-        url_to_data={
-            "https://ftp.ensembl.org/pub/release-110/assembly_chain/homo_sapiens/GRCh37_to_GRCh38.chain.gz": b"foo"
-        },
+        url_to_data={"mock://chain/GRCh37_to_GRCh38": b"foo"},
     )
     service.add_assembly(9606, "GRCh37")
     with Session() as session:
@@ -497,7 +508,7 @@ def test_add_assembly_exist_in_file_system(Session, file_service):
         service.add_assembly(9606, "GRCh37")
     assert exc.exconly() == (
         "sqlalchemy.exc.NoResultFound: No row was found when one was required\n"
-        "Files exists for 'GRCh37', but assembly is missing."
+        "Orphaned files detected: 'GRCh37' has files on the system but no database record"
     )
 
 
@@ -510,7 +521,7 @@ def test_add_assembly_no_current(Session, file_service):
         service.add_assembly(9606, "GRCh37")
     assert exc.exconly() == (
         "sqlalchemy.exc.NoResultFound: No row was found when one was required\n"
-        "Cannot add 'GRCh37' if current assembly is missing."
+        "No database record for current assembly: Cannot add 'GRCh37'"
     )
 
 
@@ -520,7 +531,7 @@ def test_add_assembly_invalid_name(Session, file_service, setup, mocker):
     with pytest.raises(AssemblyNotFoundError) as exc:
         service.add_assembly(9606, "NCBI33")
     assert str(exc.value) == (
-        "No such assembly 'NCBI33' for organism '9606'. "
+        "'NCBI33' for organism '9606' not found. "
         "Valid assemblies are: 'GRCh38 GRCh37 NCBI36 NCBI35 NCBI34'"
     )
     with Session() as session:
@@ -528,33 +539,29 @@ def test_add_assembly_invalid_name(Session, file_service, setup, mocker):
 
 
 def test_add_assembly_wrong_url(Session, file_service, setup, mocker):  # noqa
-    mocker.patch("scimodom.services.assembly.Ensembl", MockEnsembl)
     file_service.opened_files_by_name["/data/assembly/9606/info.json"] = StringIO(INFO)
     service = _get_assembly_service(Session, file_service)
     with pytest.raises(AssemblyAbortedError) as exc:  # traceback MockHTTPError
         service.add_assembly(9606, "NCBI36")
-    assert (str(exc.value)) == "Adding assembly for 'NCBI36' aborted."
+    assert (str(exc.value)) == "Aborted: Could not add 'NCBI36'"
     assert file_service.deleted_assemblies == [(9606, "NCBI36")]
     with Session() as session:
         assert session.query(Assembly).count() == 3
 
 
 def test_create_current(Session, file_service, setup, mocker):
-    mocker.patch("scimodom.services.assembly.Ensembl", MockEnsembl)
     file_service.opened_files_by_name["/data/assembly/9606/chrom.sizes"] = StringIO(
         "1\t248956422\n2\t242193529\nX\t156040895"
     )
     service = _get_assembly_service(
         Session,
         file_service,
-        url_to_result={
-            "http://jul2023.rest.ensembl.org/info/assembly/homo_sapiens": EXAMPLE_GENE_BUILD_DATA,
-            "http://jul2023.rest.ensembl.org/info/data": {"releases": [110]},
-        },
+        gene_build=GENE_BUILD,
+        release={"releases": [110]},
         url_to_data={
-            "https://ftp.ensembl.org/pub/release-110/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.chromosome.1.fa.gz": b"foo1",
-            "https://ftp.ensembl.org/pub/release-110/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.chromosome.2.fa.gz": b"foo2",
-            "https://ftp.ensembl.org/pub/release-110/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.chromosome.X.fa.gz": b"foox",
+            "mock://dna/chromosome.1": b"foo1",
+            "mock://dna/chromosome.2": b"foo2",
+            "mock://dna/chromosome.X": b"foox",
         },
     )
     assembly = service.get_by_id(1)
@@ -633,7 +640,7 @@ def test_create_current_wrong_version(Session, file_service, setup):  # noqa
         service.create_current(assembly)
     assert (
         (str(exc.value))
-        == "Mismatch between assembly version 'J9dit7Tfc6Sb' and database version 'GcatSmFcytpU'."
+        == "Version mismatch for 'GRCh37': Version is 'J9dit7Tfc6Sb', but database provides 'GcatSmFcytpU'"
     )
     assert exc.type == AssemblyVersionError
 
@@ -646,34 +653,58 @@ def test_create_current_exist_in_file_system(Session, file_service, setup):  # n
 
 
 def test_create_current_build_error(Session, file_service, setup, mocker):
-    mocker.patch("scimodom.services.assembly.Ensembl", MockEnsembl)
     service = _get_assembly_service(
         Session,
         file_service,
-        url_to_result={
-            "http://jul2023.rest.ensembl.org/info/assembly/homo_sapiens": NEWEST_EXAMPLE_GENE_BUILD_DATA,
-            "http://jul2023.rest.ensembl.org/info/data": {"releases": [112]},
-        },
+        gene_build=NEWEST_GENE_BUILD,
+        release={"releases": [112]},
     )
     assembly = service.get_by_id(1)
     with pytest.raises(AssemblyVersionError) as exc:
         service.create_current(assembly)
     assert (
         str(exc.value)
-    ) == "Mismatch between assembly GRCh38 and coord system version GRCh39."
+    ) == "Version mismatch for 'GRCh38': coord system version provides 'GRCh39'"
     assert exc.type == AssemblyVersionError
     assert file_service.deleted_assemblies == [(9606, "GRCh38")]
 
 
 def test_create_current_wrong_url(Session, file_service, setup, mocker):  # noqa
-    mocker.patch("scimodom.services.assembly.Ensembl", MockEnsembl)
     service = _get_assembly_service(Session, file_service)
     assembly = service.get_by_id(1)
     with pytest.raises(AssemblyAbortedError) as exc:  # traceback MockHTTPError
         service.create_current(assembly)
-    assert str(exc.value) == "Adding assembly for ID '1' aborted."
+    assert str(exc.value) == "Aborted: Could not create system files for 'GRCh38'"
     assert exc.type == AssemblyAbortedError
     assert file_service.deleted_assemblies == [(9606, "GRCh38")]
+
+
+def test_cleanup_failure_does_not_mask_error(
+    Session, file_service, setup, mocker
+):  # noqa
+    def fail(taxa_id, assembly_name):
+        raise FileNotFoundError("gone")
+
+    file_service.delete_assembly = fail
+    service = _get_assembly_service(Session, file_service)
+    assembly = service.get_by_id(1)
+    with pytest.raises(AssemblyAbortedError) as exc:
+        service.create_current(assembly)
+    assert str(exc.value) == "Aborted: Could not create system files for 'GRCh38'"
+
+
+def test_cleanup_unexpected_failure_is_logged(
+    Session, file_service, setup, mocker, caplog  # noqa
+):
+    def fail(taxa_id, assembly_name):
+        raise PermissionError("denied")
+
+    file_service.delete_assembly = fail
+    service = _get_assembly_service(Session, file_service)
+    assembly = service.get_by_id(1)
+    with pytest.raises(AssemblyAbortedError):
+        service.create_current(assembly)
+    assert "Failed to remove files for assembly 'GRCh38'." in caplog.text
 
 
 def test_get_organism(Session, file_service, setup):
@@ -681,6 +712,23 @@ def test_get_organism(Session, file_service, setup):
     assert service._get_organism(10090) == "Mus musculus"
 
 
-def test_get_organism_for_ensembl_url(Session, file_service, setup):
+def test_dna_fallback_on_404(Session, file_service, setup, mocker):  # noqa
     service = _get_assembly_service(Session, file_service)
-    assert service._get_organism_for_ensembl_url(10090) == "mus_musculus"
+    web = FlakyWebService(404)
+    service._web_service = web
+    assembly = service.get_by_id(1)
+    service._download_dna_sequence(assembly, "Homo sapiens", "1")
+    assert len(web.urls) == 2 and "primary_assembly" in web.urls[1]
+    print(file_service.created_files_by_name)
+
+
+def test_dna_no_fallback_on_server_error(Session, file_service, setup, mocker):  # noqa
+    from requests import HTTPError
+
+    service = _get_assembly_service(Session, file_service)
+    web = FlakyWebService(503)
+    service._web_service = web
+    assembly = service.get_by_id(1)
+    with pytest.raises(HTTPError):
+        service._download_dna_sequence(assembly, "Homo sapiens", "1")
+    assert len(web.urls) == 1

@@ -6,6 +6,7 @@ from flask import Flask
 from scimodom.database.models import Assembly
 from scimodom.cli.assembly import assembly_cli
 from scimodom.services.assembly import AssemblyService
+from scimodom.services.ensembl import EnsemblAssemblyClient
 from scimodom.services.external import ExternalService
 from scimodom.services.file import FileService
 from scimodom.services.web import WebService
@@ -30,6 +31,7 @@ def _get_assembly_service(Session, tmp_path):
         ),
         web_service=WebService(),
         file_service=_get_file_service(Session, tmp_path),
+        ensembl_client=EnsemblAssemblyClient(WebService()),
     )
 
 
@@ -42,7 +44,7 @@ def test_runner():
 
 @pytest.fixture
 def mock_services(mocker, Session, tmp_path):
-    mocker.patch("scimodom.services.assembly.Ensembl", MockEnsembl)
+    mocker.patch("scimodom.services.ensembl.Ensembl", MockEnsembl)
     mocker.patch(
         "scimodom.cli.assembly.get_assembly_service",
         return_value=_get_assembly_service(Session, tmp_path),

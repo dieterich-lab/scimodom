@@ -311,6 +311,34 @@ def test_check_if_assembly_exists_fail_with_chrom(
     assert str(exc.value) == "Files exist for assembly 'GRCh38'."
 
 
+def test_check_if_assembly_exists_current_by_name(
+    Session, tmp_path, setup, assembly_files
+):
+    service = _get_file_service(Session, tmp_path)
+    assert service.check_if_assembly_exists(9606, "GRCh38") is True
+
+
+def test_check_if_assembly_exists_blank_chrom_line(
+    Session, tmp_path, setup, assembly_files
+):
+    d = tmp_path / "t_data" / FileService.ASSEMBLY_DEST / "Homo_sapiens" / "GRCh38"
+    with open(d / AssemblyFileType.CHROM.value, "a") as fh:
+        fh.write("\n\n")
+    service = _get_file_service(Session, tmp_path)
+    assert service.check_if_assembly_exists(9606) is True
+
+
+def test_check_if_assembly_exists_reports_missing_files(
+    Session, tmp_path, setup, assembly_files
+):
+    d = tmp_path / "t_data" / FileService.ASSEMBLY_DEST / "Homo_sapiens" / "GRCh38"
+    Path(d / AssemblyFileType.INFO.value).unlink()
+    service = _get_file_service(Session, tmp_path)
+    with pytest.raises(FileExistsError) as exc:
+        service.check_if_assembly_exists(9606)
+    assert any(AssemblyFileType.INFO.value in n for n in exc.value.__notes__)
+
+
 #  Files
 
 

@@ -7,9 +7,9 @@ from typing import Iterable, Sequence, Any, TextIO
 import pybedtools  # type: ignore
 from pybedtools import BedTool, create_interval_from_list
 
-import scimodom.utils.utils as utils
 from scimodom.config import get_config
 from scimodom.database.models import Data
+from scimodom.services.ensembl import EnsemblAssemblyClient
 from scimodom.utils.dtos.bedtools import (
     Bed6Record,
     EufRecord,
@@ -88,7 +88,7 @@ class BedToolsService:
             )
             if prefix is None:
                 # get a "dummy" record for intergenic annotation
-                prefix = utils.get_ensembl_prefix(s[6])
+                prefix = EnsemblAssemblyClient.get_ensembl_prefix(s[6])
         yield GenomicAnnotationRecord(
             id=f"{prefix}{intergenic_feature}", annotation_id=annotation_id
         )
@@ -248,7 +248,7 @@ class BedToolsService:
             feature_bedtool = pybedtools.BedTool(file_name)
             if prefix is None:
                 # any feature_bedtool, exc. intergenic has a gene_id at fields 6...
-                prefix = utils.get_ensembl_prefix(
+                prefix = EnsemblAssemblyClient.get_ensembl_prefix(
                     feature_bedtool[0].fields[6].split(",")[0]
                 )
             for item in self._intersect_for_annotation(

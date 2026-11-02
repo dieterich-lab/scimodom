@@ -48,7 +48,7 @@ class ProjectService:
         :return: UUID of request
         :rtype: str
         """
-        uuid = gen_short_uuid(24, [])
+        uuid = gen_short_uuid(22, [])
         with self._file_service.create_project_request_file(uuid) as fp:
             fp.write(project_template.model_dump_json(indent=4))
         return uuid

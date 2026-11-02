@@ -587,67 +587,60 @@ class FileService:
     ) -> bool:
         """Check if directory structure and files exist for a given assembly.
 
-        This is done heuristically depending on the assembly.
-        The file content is not validated.
+        The current assembly (the default) is expected to be complete
+        (info, release, chrom.sizes, and all DNA sequence files), any
+        other assembly only needs its chain file. The file content
+        is not validated.
 
         :param taxa_id: Taxa ID
-        :type taxa_id: int
-        :param assembly_name: Assembly name. If None, it is inferred
-        from the current assembly version, and this determines which
-        files are checked.
-        :type assembly_name: str | None
-        :raises FileExistsError: If the assembly directory is in a
-        corrupted state, i.e. files exist where none are expected,
-        or there are missing files.
-        :return: True if all required files exist, else False. An
-        empty assembly directory returns False.
-        :rtype: bool
+        :param assembly_name: Assembly name. If None, or if it is the
+        name of the current assembly, the current assembly is checked.
+        :raises FileExistsError: If the directory of the current
+        assembly is not empty, but files are missing. The missing
+        files are given as notes.
+        :return: True if all required files exist, else False. A
+        missing or empty assembly directory returns False.
         """
         current_assembly_name = self._get_current_assembly_name_from_taxa_id(taxa_id)
-        # fail-safe
-        if assembly_name == current_assembly_name:
-            assembly_name = None
+        if assembly_name is None or assembly_name == current_assembly_name:
+            return self._check_if_current_assembly_exists(
+                taxa_id, current_assembly_name
+            )
+        return self.get_assembly_file_path(
+            taxa_id, AssemblyFileType.CHAIN, assembly_name=assembly_name
+        ).is_file()
 
-        if assembly_name is not None:
-            if not self._get_assembly_dir(taxa_id, assembly_name).is_dir():
-                return False
-            else:
-                return self.get_assembly_file_path(
-                    taxa_id, AssemblyFileType.CHAIN, assembly_name=assembly_name
-                ).is_file()
-        else:
-            assembly_dir = self._get_assembly_dir(taxa_id, current_assembly_name)
-            if not assembly_dir.is_dir():
-                return False
-            else:
-                try:
-                    assembly_files = [
-                        self.get_assembly_file_path(taxa_id, file_type)
-                        for file_type in AssemblyFileType.common()
-                    ]
+    def _check_if_current_assembly_exists(
+        self, taxa_id: int, assembly_name: str
+    ) -> bool:
+        assembly_dir = self._get_assembly_dir(taxa_id, assembly_name)
+        if not assembly_dir.is_dir() or not any(assembly_dir.iterdir()):
+            return False
+        missing = [
+            p for p in self._get_expected_current_files(taxa_id) if not p.is_file()
+        ]
+        if missing:
+            exc = FileExistsError(f"Files exist for assembly '{assembly_name}'.")
+            for path in missing:
+                exc.add_note(f"Missing: {path}")
+            raise exc
+        return True
 
-                    with self.open_assembly_file(taxa_id, AssemblyFileType.CHROM) as fh:
-                        chroms = [line.split()[0] for line in fh.readlines()]
-                    for chrom in chroms:
-                        for file_type in AssemblyFileType.fasta():
-                            assembly_files.append(
-                                self.get_assembly_file_path(
-                                    taxa_id, file_type, chrom=chrom
-                                )
-                            )
-                    if all(p.is_file() for p in assembly_files):
-                        return True
-                    else:
-                        raise FileExistsError(
-                            f"Files exist for assembly '{current_assembly_name}'."
-                        )
-                except FileNotFoundError:
-                    if any(assembly_dir.iterdir()):
-                        raise FileExistsError(
-                            f"Files exist for assembly '{current_assembly_name}'."
-                        )
-                    else:
-                        return False
+    def _get_expected_current_files(self, taxa_id: int) -> list[Path]:
+        paths = [
+            self.get_assembly_file_path(taxa_id, file_type)
+            for file_type in AssemblyFileType.common()
+        ]
+        chrom_path = self.get_assembly_file_path(taxa_id, AssemblyFileType.CHROM)
+        if chrom_path.is_file():
+            with self.open_assembly_file(taxa_id, AssemblyFileType.CHROM) as fh:
+                chroms = [line.split()[0] for line in fh if line.strip()]
+            paths.extend(
+                self.get_assembly_file_path(taxa_id, file_type, chrom=chrom)
+                for chrom in chroms
+                for file_type in AssemblyFileType.fasta()
+            )
+        return paths
 
     @staticmethod
     def _get_dir_name_from_organism(organism) -> str:

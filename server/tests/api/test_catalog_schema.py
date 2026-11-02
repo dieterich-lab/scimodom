@@ -66,6 +66,7 @@ def services(Session, selection, mocker):
         external_service=mocker.Mock(),
         web_service=mocker.Mock(),
         file_service=MockFileService(),
+        ensembl_client=mocker.Mock(),
     )
     mocker.patch(
         "scimodom.api.catalog.get_assembly_service",

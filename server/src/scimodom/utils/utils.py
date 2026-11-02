@@ -1,17 +1,16 @@
 import uuid
-from typing import Any, Sequence
+from typing import Any
 
 import shortuuid
 
 
 def to_list(i: int | float | str | list | set | None) -> list[Any]:
-    """Converts numerical, string, list, set, and None to list,
-    but does not unpack tuple or dict.
+    """Convert numerical, string, list, set, and None to list.
 
-    :param i: String, list, set, or None
-    :type i: str | list | set | None
-    :returns: Input as a list
-    :rtype: list
+    NOTE: Does not unpack tuple or dict.
+
+    :param i: Int, float, str, list, set, or None
+    :return: Input as a list
     """
     return (
         i
@@ -24,34 +23,22 @@ def to_list(i: int | float | str | list | set | None) -> list[Any]:
     )
 
 
-def gen_short_uuid(length: int, suuids: Sequence[Any]) -> str:
-    """Generate a short UUID.
+def gen_short_uuid(
+    length: int,
+    suuids: list[str],
+    max_attempts: int = 1000,
+) -> str:
+    """Generate a short UUID that is not in a list of existing IDs.
 
     :param length: Length of ID
-    :type length: int
     :param suuids: List of existing IDs
-    :type suuids: list
-    :returns: Newly created ID
-    :rtype: str
+    :param max_attempts: Maximum number of attempts
+    :raises RuntimeError: If no unused ID was found after `max_attempts`
+    :return: Newly created ID
     """
-
-    u = uuid.uuid4()
-    suuid = shortuuid.encode(u)[:length]
-    while suuid in suuids:
-        suuid = shortuuid.encode(u)[:length]
-    return suuid
-
-
-def get_ensembl_prefix(gene_id: str) -> str:
-    """Extract Ensembl prefix for gene identifier.
-
-    :param gene_id: Gene identifier
-    :type gene_id: str
-    :returns: Prefix
-    :rtype: str
-    """
-    tmp = gene_id[:7]
-    if tmp[-1].isdigit():
-        return tmp[:3]
-    else:
-        return tmp[:6]
+    existing = set(suuids)
+    for _ in range(max_attempts):
+        suuid = shortuuid.encode(uuid.uuid4())[:length]
+        if suuid not in existing:
+            return suuid
+    raise RuntimeError(f"Failed to generate a unique ID after {max_attempts} attempts.")
