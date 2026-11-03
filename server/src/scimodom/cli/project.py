@@ -1,38 +1,41 @@
-import csv
+"""Provide a CLI for project administration."""
+
 import datetime
 
 import click
 from flask import Blueprint
 from sqlalchemy.exc import NoResultFound
 
-from scimodom.cli.utilities import (
-    add_assembly_to_template_if_none,
+from scimodom.cli.helpers import (
+    CliResponseException,
+    register_cli_errors,
+    confirm,
+    trigger_charts_update,
 )
-from scimodom.database.models import Project
-from scimodom.services.assembly import AssemblyNotFoundError, get_assembly_service
-from scimodom.services.selection import get_selection_service
-from scimodom.services.dataset import get_dataset_service
-from scimodom.services.file import get_file_service
-from scimodom.services.permission import get_permission_service
-from scimodom.services.project import get_project_service
+from scimodom.services.administration.deletion import (
+    ProjectDeletionError,
+    get_project_deletion_service,
+)
+from scimodom.services.administration.ingestion import (
+    ProjectRequestInfo,
+    ProjectTemplateError,
+    UserAssociationError,
+    get_project_ingestion_service,
+)
+from scimodom.services.assembly import AssemblyNotFoundError
 from scimodom.services.sunburst import get_sunburst_service
-from scimodom.services.user import get_user_service, NoSuchUser
-from scimodom.services.utilities import get_utilities_service
-from scimodom.utils.dtos.project import (
-    ProjectMetaDataDto,
-    ProjectOrganismDto,
-    ProjectSourceDto,
-    ProjectTemplate,
-)
-
+from scimodom.services.user import NoSuchUser
 
 project_cli = Blueprint("project", __name__)
 
 
 @project_cli.cli.command(
     "create-template",
-    epilog="Check docs at https://dieterich-lab.github.io/scimodom/flask.html.",
+    epilog="Check docs at https://dieterich-lab.github.io/scimodom/flask.html",
 )
+@register_cli_errors
+@click.option("--yes", is_flag=True, help="Confirm the action without prompting")
+@click.option("--traceback", is_flag=True, help="Show traceback")
 @click.argument("dataset_csv", type=click.Path(exists=True))
 @click.option("--title", type=click.STRING, required=True, help="Project title")
 @click.option("--summary", type=click.STRING, required=True, help="Project summary")
@@ -76,6 +79,8 @@ project_cli = Blueprint("project", __name__)
     help="Do not infer method IDs, use IDs given in DATASET_CSV.",
 )
 def create_project_template(
+    yes: bool,
+    traceback: bool,
     dataset_csv: str,
     title: str,
     summary: str,
@@ -88,7 +93,7 @@ def create_project_template(
     pmid: list[int],
     use_mod_ids: bool,
     use_method_ids: bool,
-):
+):  # noqa: D301
     """Create a new project template from a list of datasets.
 
     \b
@@ -111,64 +116,48 @@ def create_project_template(
       - [assembly_id]: If not present, this will be inferred (optional).
     Any other column will be ignored.
     """
-    click.secho(
-        f"Creating a new project request template from '{dataset_csv}'...",
-        fg="green",
-    )
-    click.secho("Continue [y/n]?", fg="green")
-    c = click.getchar()
-    if c not in ["y", "Y"]:
-        click.secho("Aborted!", fg="yellow")
-        return
+    ingestion_service = get_project_ingestion_service()
 
     try:
-        uuid = _create_project_template(
+        template = ingestion_service.build_template(
             dataset_csv,
-            title,
-            summary,
-            surname,
-            forename,
-            institution,
-            email,
-            published,
-            doi,
-            pmid,
-            use_mod_ids,
-            use_method_ids,
+            ProjectRequestInfo(
+                title=title,
+                summary=summary,
+                surname=surname,
+                forename=forename,
+                institution=institution,
+                email=email,
+                published=published,
+                doi=tuple(doi),
+                pmid=tuple(pmid),
+            ),
+            use_mod_ids=use_mod_ids,
+            use_method_ids=use_method_ids,
         )
-        click.secho(
-            f"   ... created request with ID: '{uuid}'.",
-            fg="green",
-        )
-    except NoResultFound as exc:
-        click.secho(
-            f"Failed to create template (DATASET_CSV has unexpected values). {exc}.",
-            fg="red",
-        )
-        raise click.Abort()
-    except KeyError as exc:
-        click.secho(
-            f"Failed to create template (malformed DATASET_CSV). Missing header {exc}.",
-            fg="red",
-        )
-        raise click.Abort()
-    except ValueError as exc:
-        click.secho(
-            f"Failed to create template (DATASET_CSV has unexpected values). {exc}.",
-            fg="red",
-        )
-        raise click.Abort()
-    except Exception as exc:  # OSError, ValidationError
-        click.secho(
-            f"Failed to create template. {exc}.",
-            fg="red",
-        )
-        raise click.Abort()
+    except ProjectTemplateError as exc:
+        raise CliResponseException(f"Failed to create template. {exc}") from exc
+
+    click.secho(
+        f"Creating a new project request template from '{dataset_csv}' "
+        f"({len(template.metadata)} metadata entries)...",
+        fg="yellow",
+    )
+    confirm("Continue?", skip=yes)
+
+    try:
+        uuid = ingestion_service.save_request(template)
+    except Exception as exc:  # OSError
+        raise CliResponseException(f"Failed to create template. {exc}") from exc
+    click.secho(f"   ... created request with ID: '{uuid}'.", fg="green")
 
 
 @project_cli.cli.command(
-    "add", epilog="Check docs at https://dieterich-lab.github.io/scimodom/flask.html."
+    "add", epilog="Check docs at https://dieterich-lab.github.io/scimodom/flask.html"
 )
+@register_cli_errors
+@click.option("--yes", is_flag=True, help="Confirm the action without prompting")
+@click.option("--traceback", is_flag=True, help="Show traceback")
 @click.argument("request_uuid", type=click.STRING)
 @click.option(
     "--add-user",
@@ -177,83 +166,58 @@ def create_project_template(
     default=False,
     help="Add user to project. User must exists.",
 )
-def add_project(request_uuid: str, add_user: bool):
+def add_project(
+    yes: bool, traceback: bool, request_uuid: str, add_user: bool
+):  # noqa: D301
     """Add a new project to the database.
 
+    \b
     REQUEST_UUID is the UUID of a project request.
     """
-    file_service = get_file_service()
-    project_service = get_project_service()
-    assembly_service = get_assembly_service()
+    ingestion_service = get_project_ingestion_service()
 
     try:
-        with file_service.open_project_request_file(request_uuid) as fh:
-            project_template_raw = fh.read()
-        project_template = ProjectTemplate.model_validate_json(project_template_raw)
-    except Exception as exc:  # OSError, ValidationError
-        click.secho(f"Failed to read template. {exc}.", fg="red")
-        raise click.Abort()
+        template = ingestion_service.load_template(request_uuid)
+    except ProjectTemplateError as exc:
+        raise CliResponseException(str(exc)) from exc
+    except AssemblyNotFoundError as exc:
+        raise CliResponseException(f"Failed to update template. {exc}") from exc
 
-    for metadata in project_template.metadata:
-        try:
-            add_assembly_to_template_if_none(metadata.organism, assembly_service)
-        except AssemblyNotFoundError:
-            click.secho(
-                (
-                    f"Failed to update template. No such assembly '{metadata.organism.assembly_name}'"
-                    f" for organism '{metadata.organism.taxa_id}'"
-                ),
-                fg="red",
-            )
-            raise click.Abort()
-
-    click.secho(f"Adding project {project_template.title}...", fg="green")
-    click.secho("Continue [y/n]?", fg="green")
-    c = click.getchar()
-    if c not in ["y", "Y"]:
-        click.secho("Aborted!", fg="yellow")
-        return
+    click.secho(f"Adding project {template.title}...", fg="yellow")
+    confirm("Continue?", skip=yes)
 
     try:
-        smid = project_service.create_project(project_template, request_uuid)
-        click.secho(
-            f"   ... created project with SMID: '{smid}'.",
-            fg="green",
+        result = ingestion_service.create_project(
+            template, request_uuid, add_user=add_user
         )
+    except UserAssociationError as exc:
+        click.secho(f"   ... created project with SMID '{exc.project_id}'.", fg="green")
+        raise CliResponseException(str(exc)) from exc
     except Exception as exc:
-        click.secho(
-            f"Failed to create project. {exc}.",
-            fg="red",
-        )
-        raise click.Abort()
+        raise CliResponseException(f"Failed to create project. {exc}") from exc
 
-    if add_user:
-        username = project_template.contact_email
+    click.secho(f"   ... created project with SMID: '{result.project_id}'.", fg="green")
+    if result.user_added is True:
         click.secho(
-            f"Adding user '{username}' to project '{smid}' if new...",
-            fg="green",
+            f"   ... added user '{template.contact_email}' to the project.", fg="green"
         )
-        try:
-            _add_user_to_project(username, smid)
-            click.secho("   ... done.", fg="green")
-        except NoSuchUser:
-            click.secho("No such user. Nothing will be done.", fg="red")
-            return
-        except Exception as exc:
-            click.secho(
-                f"Failed to add user. {exc}.",
-                fg="red",
-            )
-            raise click.Abort()
+    elif result.user_added is False:
+        click.secho(
+            f"No such user '{template.contact_email}'. No user was added.",
+            fg="yellow",
+        )
 
 
 @project_cli.cli.command(
     "add-user",
-    epilog="Check docs at https://dieterich-lab.github.io/scimodom/flask.html.",
+    epilog="Check docs at https://dieterich-lab.github.io/scimodom/flask.html",
 )
+@register_cli_errors
+@click.option("--yes", is_flag=True, help="Confirm the action without prompting")
+@click.option("--traceback", is_flag=True, help="Show traceback")
 @click.argument("username", type=click.STRING)
 @click.argument("smid", type=click.STRING)
-def add_user(username: str, smid: str):
+def add_user(yes: bool, traceback: bool, username: str, smid: str):  # noqa: D301
     """Force add a user to a project. User must exists.
 
     \b
@@ -262,40 +226,32 @@ def add_user(username: str, smid: str):
     """
     click.secho(
         f"Adding user '{username}' to project '{smid}'. If exists, nothing is done...",
-        fg="green",
+        fg="yellow",
     )
-    click.secho("Continue [y/n]?", fg="green")
-    c = click.getchar()
-    if c not in ["y", "Y"]:
-        click.secho("Aborted!", fg="yellow")
-        return
+    confirm("Continue?", skip=yes)
 
     try:
-        _add_user_to_project(username, smid)
-        click.secho("   ... done.", fg="green")
-    except NoResultFound:
-        click.secho(
-            f"Failed to add user. No such SMID '{smid}'.",
-            fg="red",
-        )
-        raise click.Abort()
+        get_project_ingestion_service().add_user_to_project(username, smid)
+    except NoResultFound as exc:
+        raise CliResponseException(
+            f"Failed to add user. No such SMID '{smid}'."
+        ) from exc
     except NoSuchUser as exc:
-        click.secho(f"Cannot add user. {exc}.", fg="red")
-        raise click.Abort()
+        raise CliResponseException(f"Cannot add user. {exc}") from exc
     except Exception as exc:
-        click.secho(
-            f"Failed to add user. {exc}.",
-            fg="red",
-        )
-        raise click.Abort()
+        raise CliResponseException(f"Failed to add user. {exc}") from exc
+    click.secho("   ... done.", fg="green")
 
 
 @project_cli.cli.command(
     "delete",
-    epilog="Check docs at https://dieterich-lab.github.io/scimodom/flask.html.",
+    epilog="Check docs at https://dieterich-lab.github.io/scimodom/flask.html",
 )
+@register_cli_errors
+@click.option("--yes", is_flag=True, help="Confirm the action without prompting")
+@click.option("--traceback", is_flag=True, help="Show traceback")
 @click.argument("smid", type=click.STRING)
-def delete_project(smid: str):
+def delete_project(yes: bool, traceback: bool, smid: str):  # noqa: D301
     """Delete a project and all associated data.
 
     \b
@@ -316,160 +272,42 @@ def delete_project(smid: str):
     to this project are deleted from the file system.
     The project template metadata is deleted from the file system.
     """
-    project_service = get_project_service()
+    deletion_service = get_project_deletion_service()
     try:
-        project = project_service.get_by_id(smid)
-    except NoResultFound:
-        click.secho(f"No such project '{smid}'.", fg="red")
-        raise click.Abort()
+        plan = deletion_service.plan(smid)
+    except NoResultFound as exc:
+        raise CliResponseException(f"Project '{smid}' not found.") from exc
 
     click.secho(
         (
-            f"Deleting '{project.id}' with title '{project.title}' "
+            f"Deleting '{plan.project_id}' with title '{plan.title}' "
             "including data associated with the following datasets: "
         ),
+        fg="yellow",
+    )
+    for dataset in plan.datasets:
+        click.secho(
+            f"Dataset '{dataset.id}' with title '{dataset.title}'...", fg="yellow"
+        )
+    confirm("Continue?", skip=yes)
+
+    try:
+        result = deletion_service.execute(plan)
+    except ProjectDeletionError as exc:
+        # what was deleted stays deleted, update the charts accordingly
+        if exc.deleted_dataset_ids:
+            trigger_charts_update(get_sunburst_service())
+        raise CliResponseException(
+            f"Failed to delete project '{plan.project_id}'. {exc} "
+            "Run the command again to resume."
+        ) from exc
+    except Exception as exc:
+        raise CliResponseException(
+            f"Failed to delete project '{plan.project_id}'. {exc}"
+        ) from exc
+
+    click.secho(
+        f"   ... deleted project and {len(result.deleted_dataset_ids)} dataset(s).",
         fg="green",
     )
-    for dataset in project.datasets:
-        click.secho(
-            f"Dataset '{dataset.id}' with title '{dataset.title}'...", fg="green"
-        )
-
-    click.secho("Continue [y/n]?", fg="green")
-    c = click.getchar()
-    if c not in ["y", "Y"]:
-        click.secho("Aborted!", fg="yellow")
-        return
-
-    try:
-        _remove_datasets_and_selections(project)
-        project_service.delete_project(project)
-        click.secho("   ... deleted project", fg="green")
-    except Exception as exc:
-        click.secho(f"Failed to delete project '{project.id}'. {exc}", fg="red")
-        raise click.Abort()
-
-    try:
-        click.secho("Triggering charts update in the background ...", fg="green")
-        sunburst_service = get_sunburst_service()
-        sunburst_service.trigger_background_update()
-        click.secho("   ... done.", fg="green")
-    except Exception as exc:
-        click.secho(
-            f"Failed to update charts. {exc}.",
-            fg="red",
-        )
-        raise click.Abort()
-
-
-def _create_project_template(
-    dataset_csv: str,
-    title: str,
-    summary: str,
-    surname: str,
-    forename: str,
-    institution: str,
-    email: str,
-    published: datetime.date,
-    doi: list[str],
-    pmid: list[int],
-    use_mod_ids: bool,
-    use_method_ids: bool,
-) -> str:
-    project_service = get_project_service()
-    utilities_service = get_utilities_service()
-
-    metadata_list = []
-    with open(dataset_csv, "r", newline="") as fh:
-        reader = csv.DictReader(fh)
-        rows = [
-            {
-                k.strip(): (v.strip() if isinstance(v, str) else v)
-                for k, v in row.items()
-            }
-            for row in reader
-        ]
-        for row in rows:
-            organism = ProjectOrganismDto(
-                taxa_id=row["taxa_id"],
-                cto=row["cto"],
-                assembly_name=row["assembly"],
-                assembly_id=row["assembly_id"] if "assembly_id" in row else None,
-            )
-            metadata = ProjectMetaDataDto(
-                rna=row["rna_type"],
-                modomics_id=(
-                    row["modification"]
-                    if use_mod_ids
-                    else utilities_service.get_modomics_id_by_short_name(
-                        row["modification"]
-                    )
-                ),
-                tech=row["technology"],
-                method_id=(
-                    row["method"]
-                    if use_method_ids
-                    else utilities_service.get_method_id_by_name(row["method"])
-                ),
-                organism=organism,
-                note=(
-                    row["note"]
-                    if "note" in row
-                    else f'file={row["file"]}, title={row["title"]}'
-                ),
-            )
-            metadata_list.append(metadata)
-
-    sources = []
-    for dv, pv in zip(doi, pmid):
-        if dv == "null":
-            dv_dto = None
-        else:
-            dv_dto = dv
-        if pv == 0:
-            pv_dto = None
-        else:
-            pv_dto = pv
-        source = ProjectSourceDto(doi=dv_dto, pmid=pv_dto)
-        sources.append(source)
-
-    project_template = ProjectTemplate(
-        title=title,
-        summary=summary,
-        contact_name=f"{surname}, {forename}",
-        contact_institution=institution,
-        contact_email=email,
-        date_published=published,
-        external_sources=sources,
-        metadata=metadata_list,
-    )
-    return project_service.create_project_request(project_template)
-
-
-def _add_user_to_project(username: str, smid: str):
-    project_service = get_project_service()
-    user_service = get_user_service()
-    permission_service = get_permission_service()
-
-    project_service.get_by_id(smid)
-    user = user_service.get_user_by_email(username)
-    permission_service.insert_into_user_project_association(user, smid)
-
-
-def _remove_datasets_and_selections(project: Project):
-    selection_service = get_selection_service()
-    dataset_service = get_dataset_service()
-    datasets = project.datasets
-    dataset_list = [dataset.id for dataset in datasets]
-    for dataset in datasets:
-        try:
-            selection_service.delete_selections_by_dataset(dataset)
-            dataset_service.delete_dataset(dataset)
-            dataset_list.remove(dataset.id)
-        except Exception as exc:
-            msg = (
-                f"Failure in handling Dataset '{dataset.id}'. "
-                f"Datasets '{','.join(dataset_list)}' were not deleted."
-            )
-            exc.add_note(msg)
-            raise
+    trigger_charts_update(get_sunburst_service())

@@ -1,3 +1,5 @@
+"""Provide a CLI for dataset ingestion."""
+
 from collections import defaultdict
 from pathlib import Path
 import re
@@ -13,7 +15,8 @@ from scimodom.database.models import (
     Organism,
     Modification,
 )
-from scimodom.services.assembly import AssemblyNotFoundError, get_assembly_service
+from scimodom.services.administration.ingestion import get_project_ingestion_service
+from scimodom.services.assembly import AssemblyNotFoundError
 from scimodom.services.dataset import get_dataset_service
 from scimodom.services.file import get_file_service
 from scimodom.services.project import get_project_service
@@ -24,13 +27,11 @@ from scimodom.utils.dtos.project import (
 )
 from scimodom.utils.specs.enums import AnnotationSource
 
-from scimodom.cli.utilities import (
-    add_assembly_to_template_if_none,
-)
 from scimodom.cli.helpers import (
     CliResponseException,
     register_cli_errors,
     confirm,
+    trigger_charts_update,
 )
 
 dataset_cli = Blueprint("dataset", __name__)
@@ -45,7 +46,7 @@ def validate_dataset_title(ctx, param, value):
 
 @dataset_cli.cli.command(
     "add",
-    epilog="Check docs at https://dieterich-lab.github.io/scimodom/flask.html.",
+    epilog="Check docs at https://dieterich-lab.github.io/scimodom/flask.html",
 )
 @register_cli_errors
 @click.option("--yes", is_flag=True, help="Confirm the action without prompting")
@@ -117,7 +118,7 @@ def add_dataset(
     technology_id: int,
     dry_run: bool,
     eufid: str | None,
-) -> None:
+):  # noqa: D301
     """Add a new dataset or update records for an existing dataset.
 
     \b
@@ -169,18 +170,7 @@ def add_dataset(
         raise click.Abort()
 
     if not dry_run:
-        try:
-            click.secho("Triggering charts update in the background ...", fg="green")
-            sunburst_service = get_sunburst_service()
-            sunburst_service.trigger_background_update()
-            click.secho("   ... done!", fg="green")
-        # no need to catch all... does trigger_background_update raises anything?
-        except Exception as exc:
-            click.secho(
-                f"Failed to update charts. {exc}.",
-                fg="red",
-            )
-            raise click.Abort()
+        trigger_charts_update(get_sunburst_service())
 
 
 @dataset_cli.cli.command(
@@ -215,7 +205,7 @@ def add_dataset_in_batch(input_directory: str, request_uuid: str, annotation: st
     template, presumably obtained by running "flask project create-template".
     """
     annotation_source = AnnotationSource(annotation)
-    assembly_service = get_assembly_service()
+    ingestion_service = get_project_ingestion_service()
     project_service = get_project_service()
     dataset_service = get_dataset_service()
 
@@ -224,20 +214,14 @@ def add_dataset_in_batch(input_directory: str, request_uuid: str, annotation: st
     try:
         filename_modification_association = defaultdict(list)
         project_template = _validate_input(request_uuid)
+        ingestion_service.assign_assembly_ids(project_template)
         for metadata in project_template.metadata:
-            add_assembly_to_template_if_none(metadata.organism, assembly_service)
             filename, title = _get_filename_and_title(metadata)
             filename_modification_association[filename].append(
                 (metadata.rna, metadata.modomics_id)
             )
-    except AssemblyNotFoundError:
-        click.secho(
-            (
-                f"Failed to update template. No such assembly '{metadata.organism.assembly_name}'"
-                f" for organism '{metadata.organism.taxa_id}'"
-            ),
-            fg="red",
-        )
+    except AssemblyNotFoundError as exc:
+        click.secho(f"Failed to update template. {exc}", fg="red")
         raise click.Abort()
     except Exception as exc:
         click.secho(

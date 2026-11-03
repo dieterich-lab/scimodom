@@ -16,6 +16,7 @@ from scimodom.database.models import (
 )
 from scimodom.cli.dataset import dataset_cli
 from scimodom.cli.charts import charts_cli
+from scimodom.services.administration.ingestion import ProjectIngestionService
 from scimodom.services.annotation import AnnotationService
 from scimodom.services.annotation.ensembl import EnsemblAnnotationService
 from scimodom.services.assembly import AssemblyService
@@ -33,7 +34,6 @@ from scimodom.services.validator import ValidatorService
 from scimodom.services.web import WebService
 from scimodom.utils.specs.enums import AnnotationSource, SunburstChartType
 from tests.mocks.enums import MockEnsembl
-
 
 DATA_DIR = Path(Path(__file__).parent.parent, "data")
 
@@ -342,8 +342,15 @@ def mock_services(mocker, Session, tmp_path, test_runner):
         return_value=_get_dataset_service(Session, tmp_path),
     )
     mocker.patch(
-        "scimodom.cli.dataset.get_assembly_service",
-        return_value=_get_assembly_service(Session, tmp_path),
+        "scimodom.cli.dataset.get_project_ingestion_service",
+        return_value=ProjectIngestionService(
+            project_service=_get_project_service(Session, tmp_path),
+            assembly_service=_get_assembly_service(Session, tmp_path),
+            utilities_service=mocker.Mock(),
+            file_service=_get_file_service(Session, tmp_path),
+            permission_service=mocker.Mock(),
+            user_service=mocker.Mock(),
+        ),
     )
     mocker.patch(
         "scimodom.cli.dataset.get_project_service",

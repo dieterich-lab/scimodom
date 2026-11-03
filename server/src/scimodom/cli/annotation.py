@@ -1,3 +1,5 @@
+"""Provide a CLI for annotation provisioning."""
+
 import click
 
 from flask import Blueprint
@@ -15,7 +17,7 @@ annotation_cli = Blueprint("annotation", __name__)
 
 
 @annotation_cli.cli.command(
-    "add", epilog="Check docs at https://dieterich-lab.github.io/scimodom/flask.html."
+    "add", epilog="Check docs at https://dieterich-lab.github.io/scimodom/flask.html"
 )
 @register_cli_errors
 @click.option("--yes", is_flag=True, help="Confirm the action without prompting")
@@ -29,7 +31,7 @@ annotation_cli = Blueprint("annotation", __name__)
 )
 def add_annotation(
     yes: bool, traceback: bool, taxa_id: int, source: str, **kwargs
-) -> None:
+):  # noqa: D301
     """Add annotations.
 
     Annotation must exists in the database (only latest version allowed).
@@ -40,16 +42,15 @@ def add_annotation(
     annotation_service = get_annotation_service()
 
     if source == "gtrnadb":
-        click.secho("Not Implemented...", fg="red")
-        raise click.Abort()
+        raise CliResponseException("Not implemented for source 'gtrnadb'.")
 
-    click.secho(f"Preparing {source} annotation for {taxa_id}...", fg="green")
+    click.secho(f"Preparing {source} annotation for {taxa_id}...", fg="yellow")
     confirm("Continue?", skip=yes)
 
     try:
         annotation_source = AnnotationSource(source)
         annotation_service.create_annotation(annotation_source, taxa_id)
-        click.secho("   ... done!", fg="green")
+        click.secho("   ... done.", fg="green")
     except FileExistsError as exc:
         raise CliResponseException(
             "Directory exists, but no annotation... check for data corruption!",
@@ -57,4 +58,4 @@ def add_annotation(
     # no need to handle generic exception... but first check what
     # create annotation raises..
     except Exception as exc:
-        raise CliResponseException(f"Failed to prepare annotation: {exc}") from exc
+        raise CliResponseException(f"Failed to prepare annotation. {exc}") from exc

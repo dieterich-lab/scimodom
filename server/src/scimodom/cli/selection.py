@@ -1,7 +1,9 @@
+"""Provide a CLI for adding selections."""
+
 import click
 from flask import Blueprint
-from sqlalchemy.exc import NoResultFound
 
+from scimodom.cli.helpers import CliResponseException, register_cli_errors, confirm
 from scimodom.services.utilities import get_utilities_service
 from scimodom.services.selection import get_selection_service
 from scimodom.utils.dtos.project import (
@@ -9,13 +11,15 @@ from scimodom.utils.dtos.project import (
     ProjectOrganismDto,
 )
 
-
 selection_cli = Blueprint("selection", __name__)
 
 
 @selection_cli.cli.command(
-    "add", epilog="Check docs at https://dieterich-lab.github.io/scimodom/flask.html."
+    "add", epilog="Check docs at https://dieterich-lab.github.io/scimodom/flask.html"
 )
+@register_cli_errors
+@click.option("--yes", is_flag=True, help="Confirm the action without prompting")
+@click.option("--traceback", is_flag=True, help="Show traceback")
 @click.option(
     "--rna",
     required=True,
@@ -53,13 +57,15 @@ selection_cli = Blueprint("selection", __name__)
     help="Technology name.",
 )
 def add_selection(
+    yes: bool,
+    traceback: bool,
     rna: str,
     modification: str,
     taxid: int,
     cto: str,
     method_id: str,
     technology: str,
-) -> None:
+):
     """Add a new selection to the database."""
     selection_service = get_selection_service()
     utilities_service = get_utilities_service()
@@ -74,29 +80,16 @@ def add_selection(
             organism=organism,
             note=None,
         )
-    except NoResultFound as exc:
-        click.secho(f"Failed to add selection (invalid input value). {exc}")
-        raise click.Abort()
-    except Exception as exc:
-        click.secho(
-            f"Failed to add selection (invalid input value). {exc}.",
-            fg="red",
-        )
-        raise click.Abort()
+    except Exception as exc:  # NoResultFound, ValidationError
+        raise CliResponseException(
+            f"Failed to add selection (invalid input value). {exc}"
+        ) from exc
 
-    click.secho("Adding new selection...", fg="green")
-    click.secho("Continue [y/n]?", fg="green")
-    c = click.getchar()
-    if c not in ["y", "Y"]:
-        click.secho("Aborted!", fg="yellow")
-        return
+    click.secho("Adding new selection...", fg="yellow")
+    confirm("Continue?", skip=yes)
 
     try:
         selection_service.create_selection([metadata])
-        click.secho("   ... added selection.", fg="green")
     except Exception as exc:
-        click.secho(
-            f"Failed to add selection. {exc}.",
-            fg="red",
-        )
-        raise click.Abort()
+        raise CliResponseException(f"Failed to add selection. {exc}") from exc
+    click.secho("   ... added selection.", fg="green")

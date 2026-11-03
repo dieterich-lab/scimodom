@@ -21,6 +21,8 @@ from scimodom.database.models import (
 )
 from scimodom.cli.charts import charts_cli
 from scimodom.cli.project import project_cli
+from scimodom.services.administration.deletion import ProjectDeletionService
+from scimodom.services.administration.ingestion import ProjectIngestionService
 from scimodom.services.annotation import AnnotationService
 from scimodom.services.annotation.ensembl import EnsemblAnnotationService
 from scimodom.services.assembly import AssemblyService
@@ -215,6 +217,25 @@ def _get_project_service(Session, tmp_path):
     )
 
 
+def _get_project_ingestion_service(Session, tmp_path):
+    return ProjectIngestionService(
+        project_service=_get_project_service(Session, tmp_path),
+        assembly_service=_get_assembly_service(Session, tmp_path),
+        utilities_service=_get_utilities_service(Session),
+        file_service=_get_file_service(Session, tmp_path),
+        permission_service=_get_permission_service(Session),
+        user_service=_get_user_service(Session),
+    )
+
+
+def _get_project_deletion_service(Session, tmp_path):
+    return ProjectDeletionService(
+        project_service=_get_project_service(Session, tmp_path),
+        dataset_service=_get_dataset_service(Session, tmp_path),
+        selection_service=_get_selection_service(Session, tmp_path),
+    )
+
+
 @pytest.fixture
 def test_runner():
     app = Flask(__name__)
@@ -238,36 +259,12 @@ def mock_services(mocker, Session, tmp_path, test_runner):
         return_value=_get_sunburst_service(Session, tmp_path, test_runner),
     )
     mocker.patch(
-        "scimodom.cli.project.get_assembly_service",
-        return_value=_get_assembly_service(Session, tmp_path),
+        "scimodom.cli.project.get_project_ingestion_service",
+        return_value=_get_project_ingestion_service(Session, tmp_path),
     )
     mocker.patch(
-        "scimodom.cli.project.get_dataset_service",
-        return_value=_get_dataset_service(Session, tmp_path),
-    )
-    mocker.patch(
-        "scimodom.cli.project.get_file_service",
-        return_value=_get_file_service(Session, tmp_path),
-    )
-    mocker.patch(
-        "scimodom.cli.project.get_permission_service",
-        return_value=_get_permission_service(Session),
-    )
-    mocker.patch(
-        "scimodom.cli.project.get_project_service",
-        return_value=_get_project_service(Session, tmp_path),
-    )
-    mocker.patch(
-        "scimodom.cli.project.get_selection_service",
-        return_value=_get_selection_service(Session, tmp_path),
-    )
-    mocker.patch(
-        "scimodom.cli.project.get_user_service",
-        return_value=_get_user_service(Session),
-    )
-    mocker.patch(
-        "scimodom.cli.project.get_utilities_service",
-        return_value=_get_utilities_service(Session),
+        "scimodom.cli.project.get_project_deletion_service",
+        return_value=_get_project_deletion_service(Session, tmp_path),
     )
 
 
@@ -279,6 +276,7 @@ def test_create_template(test_runner, datafiles, capsys, setup, mock_services):
     args = [
         "project",
         "create-template",
+        "--yes",
         "--title",
         "Test title",
         "--summary",
@@ -294,7 +292,7 @@ def test_create_template(test_runner, datafiles, capsys, setup, mock_services):
         Path(datafiles, "metadata.csv").as_posix(),
     ]
 
-    result = test_runner.invoke(args=args, input="y")
+    result = test_runner.invoke(args=args)
     # exceptions are handled gracefully so exit code will likely always be 0...
     assert result.exit_code == 0
     # result.stdout or output does not capture secho consistently...
@@ -317,6 +315,7 @@ def test_create_template_use_ids(test_runner, datafiles, capsys, setup, mock_ser
     args = [
         "project",
         "create-template",
+        "--yes",
         "--title",
         "Test title",
         "--summary",
@@ -334,7 +333,7 @@ def test_create_template_use_ids(test_runner, datafiles, capsys, setup, mock_ser
         "--use-method-ids",
     ]
 
-    result = test_runner.invoke(args=args, input="y")
+    result = test_runner.invoke(args=args)
     # exceptions are handled gracefully so exit code will likely always be 0...
     assert result.exit_code == 0
     # result.stdout or output does not capture secho consistently...
@@ -372,6 +371,7 @@ def test_create_template_extra_columns(
     args = [
         "project",
         "create-template",
+        "--yes",
         "--title",
         "Test title",
         "--summary",
@@ -387,7 +387,7 @@ def test_create_template_extra_columns(
         dataset_csv.as_posix(),
     ]
 
-    result = test_runner.invoke(args=args, input="y")
+    result = test_runner.invoke(args=args)
     # exceptions are handled gracefully so exit code will likely always be 0...
     assert result.exit_code == 0
     # result.stdout or output does not capture secho consistently...
@@ -410,7 +410,7 @@ def test_add_project(Session, test_runner, tmp_path, capsys, setup, mock_service
         session.commit()
 
     result = test_runner.invoke(
-        args=["project", "add", "XXXXXXXXXXXX", "--add-user"], input="y"
+        args=["project", "add", "--yes", "XXXXXXXXXXXX", "--add-user"]
     )
     # exceptions are handled gracefully so exit code will likely always be 0...
     assert result.exit_code == 0
@@ -453,7 +453,7 @@ def test_delete_project(
             p.touch()
             bam_files.append(p)
 
-    result = test_runner.invoke(args=["project", "delete", "12345678"], input="y")
+    result = test_runner.invoke(args=["project", "delete", "--yes", "12345678"])
     # exceptions are handled gracefully so exit code will likely always be 0...
     assert result.exit_code == 0
 

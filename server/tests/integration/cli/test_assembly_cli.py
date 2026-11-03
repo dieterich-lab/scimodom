@@ -5,6 +5,9 @@ from flask import Flask
 
 from scimodom.database.models import Assembly
 from scimodom.cli.assembly import assembly_cli
+from scimodom.services.administration.assembly.provision import (
+    AssemblyProvisioningService,
+)
 from scimodom.services.assembly import AssemblyService
 from scimodom.services.ensembl import EnsemblAssemblyClient
 from scimodom.services.external import ExternalService
@@ -46,8 +49,10 @@ def test_runner():
 def mock_services(mocker, Session, tmp_path):
     mocker.patch("scimodom.services.ensembl.Ensembl", MockEnsembl)
     mocker.patch(
-        "scimodom.cli.assembly.get_assembly_service",
-        return_value=_get_assembly_service(Session, tmp_path),
+        "scimodom.cli.assembly.get_assembly_provisioning_service",
+        return_value=AssemblyProvisioningService(
+            assembly_service=_get_assembly_service(Session, tmp_path)
+        ),
     )
 
 

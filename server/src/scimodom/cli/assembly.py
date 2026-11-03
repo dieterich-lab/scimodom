@@ -1,8 +1,13 @@
+"""Provide a CLI for assembly provisioning."""
+
 import click
 from flask import Blueprint
-from sqlalchemy.exc import NoResultFound
 
-from scimodom.services.assembly import get_assembly_service
+from scimodom.services.administration.assembly.provision import (
+    AssemblyProvisioningError,
+    get_assembly_provisioning_service,
+)
+from scimodom.services.assembly import AssemblyNotFoundError
 
 from scimodom.cli.helpers import (
     CliResponseException,
@@ -14,80 +19,56 @@ assembly_cli = Blueprint("assembly", __name__)
 
 
 @assembly_cli.cli.command(
-    "test", epilog="Check docs at https://dieterich-lab.github.io/scimodom/flask.html."
+    "add",
+    epilog="Check docs at https://dieterich-lab.github.io/scimodom/flask.html",
 )
 @register_cli_errors
-@click.option("--yes", is_flag=True, help="Confirm the action without prompting")
-@click.option("--traceback", is_flag=True, help="Show traceback")
-@click.argument("assembly_id", type=click.INT)
-def test_assembly(yes: bool, traceback: bool, assembly_id: int):
-    """Provide a first check."""
-    assembly_service = get_assembly_service()
-    try:
-        assembly = assembly_service.get_by_id(assembly_id)
-    except NoResultFound as exc:
-        raise CliResponseException(
-            "Failed to set up assemblies. Current assembly does not exist.",
-        ) from exc
-    confirm("proceed with test?", skip=yes)
-    click.secho(f"Assembly is {assembly.name}")
-
-
-@assembly_cli.cli.command(
-    "add", epilog="Check docs at https://dieterich-lab.github.io/scimodom/flask.html."
+@click.option(
+    "--yes",
+    is_flag=True,
+    help="Confirm the action without prompting",
 )
-@register_cli_errors
-@click.option("--yes", is_flag=True, help="Confirm the action without prompting")
 @click.option("--traceback", is_flag=True, help="Show traceback")
 @click.argument("assembly_id", type=click.INT)
-def add_assembly(yes: bool, traceback: bool, assembly_id: int):
-    """Set up assemblies.
+def add_assembly(yes: bool, traceback: bool, assembly_id: int):  # noqa: D301
+    """Provision assemblies.
 
-    Set up current assembly for ASSEMBLY_ID, and
+    Set up the current assembly for ASSEMBLY_ID, and
     all other available assemblies for the same organism.
 
     \b
-    ASSEMBLY_ID is the current assembly (from database).
+    ASSEMBLY_ID is the database record for the current assembly.
     """
-    assembly_service = get_assembly_service()
+    provisioning_service = get_assembly_provisioning_service()
 
     try:
-        assembly = assembly_service.get_by_id(assembly_id)
-    except NoResultFound as exc:
-        raise CliResponseException(
-            "Failed to set up assemblies. Current assembly does not exist.",
-        ) from exc
+        plan = provisioning_service.plan(assembly_id)
+    except AssemblyNotFoundError as exc:
+        raise CliResponseException(f"Assembly '{assembly_id}' not found.") from exc
 
     click.secho(
-        f"Setting up assemblies for organism '{assembly.taxa_id}'. "
+        f"Provisioning assemblies for organism '{plan.taxa_id}'. "
         "This will take a few minutes to download data...",
-        fg="green",
+        fg="yellow",
     )
     confirm("Continue?", skip=yes)
 
     try:
-        assembly_service.create_current(assembly)
-        click.secho(
-            f"   ... done with current assembly '{assembly.name}'...", fg="green"
-        )
-    except Exception as exc:
-        raise CliResponseException(f"Failed to set up current assembly. {exc}") from exc
+        result = provisioning_service.execute(plan)
+    except AssemblyProvisioningError as exc:
+        raise CliResponseException(str(exc)) from exc
 
-    valid_assembly_names = assembly_service.get_coord_system_versions(assembly.taxa_id)
-    for assembly_name in valid_assembly_names:
-        if assembly_name == assembly.name:
-            continue
-        try:
-            assembly_service.add_assembly(assembly.taxa_id, assembly_name)
-            click.secho(f"   ... done with {assembly_name}...", fg="green")
-        except Exception as exc:
-            # raise CliResponseException(
-            #     f"Failed to set up {assembly_name}. {exc}"
-            # ) from exc
-            click.secho(
-                f"Failed to set up {assembly_name}. {exc}",
-                fg="red",
-            )
-            # should we continue...?
-            continue
+    click.secho(
+        f"   ... done with current assembly '{result.current_assembly_name}'.",
+        fg="green",
+    )
+    for name in result.added:
+        click.secho(f"   ... done with {name}.", fg="green")
+    if result.failed:
+        for name, exc in result.failed.items():
+            click.secho(f"Failed to provision {name}. {exc}", fg="red")
+        raise CliResponseException(
+            f"Provisioning failed for {len(result.failed)} assembly(ies). "
+            "Run the command again to retry."
+        )
     click.secho("   ... done.", fg="green")
