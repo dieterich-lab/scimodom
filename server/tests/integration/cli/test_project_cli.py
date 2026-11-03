@@ -1,6 +1,5 @@
 import json
 from pathlib import Path
-import re
 
 import pytest
 from flask import Flask
@@ -225,6 +224,7 @@ def _get_project_ingestion_service(Session, tmp_path):
         file_service=_get_file_service(Session, tmp_path),
         permission_service=_get_permission_service(Session),
         user_service=_get_user_service(Session),
+        dataset_service=_get_dataset_service(Session, tmp_path),
     )
 
 
@@ -268,11 +268,19 @@ def mock_services(mocker, Session, tmp_path, test_runner):
     )
 
 
+def _get_single_request(datafiles) -> Path:
+    # the command creates exactly one request (template), named by its UUID
+    d = Path(datafiles, "t_data", "metadata", "project_requests")
+    files = list(d.glob("*.json"))
+    assert len(files) == 1
+    return files[0]
+
+
 # tests
 
 
 @pytest.mark.datafiles(Path(DATA_DIR, "metadata.csv"))
-def test_create_template(test_runner, datafiles, capsys, setup, mock_services):
+def test_create_template(test_runner, datafiles, setup, mock_services):
     args = [
         "project",
         "create-template",
@@ -293,19 +301,15 @@ def test_create_template(test_runner, datafiles, capsys, setup, mock_services):
     ]
 
     result = test_runner.invoke(args=args)
-    # exceptions are handled gracefully so exit code will likely always be 0...
     assert result.exit_code == 0
-    # result.stdout or output does not capture secho consistently...
-    uuid = re.search("ID: '(.*)'.", capsys.readouterr().out).group(1)
+    request_file = _get_single_request(datafiles)
     expected_template = json.loads(JSON_TEMPLATE)
-    project_template = json.load(
-        open(Path(datafiles, "t_data", "metadata", "project_requests", f"{uuid}.json"))
-    )
+    project_template = json.load(open(request_file))
     assert project_template == expected_template
 
 
 @pytest.mark.datafiles(Path(DATA_DIR, "metadata.csv"))
-def test_create_template_use_ids(test_runner, datafiles, capsys, setup, mock_services):
+def test_create_template_use_ids(test_runner, datafiles, setup, mock_services):
     dataset_csv = Path(datafiles, "metadata.csv")
     text = dataset_csv.read_text()
     text = text.replace("m6A", "2000000006A")
@@ -334,21 +338,15 @@ def test_create_template_use_ids(test_runner, datafiles, capsys, setup, mock_ser
     ]
 
     result = test_runner.invoke(args=args)
-    # exceptions are handled gracefully so exit code will likely always be 0...
     assert result.exit_code == 0
-    # result.stdout or output does not capture secho consistently...
-    uuid = re.search("ID: '(.*)'.", capsys.readouterr().out).group(1)
+    request_file = _get_single_request(datafiles)
     expected_template = json.loads(JSON_TEMPLATE)
-    project_template = json.load(
-        open(Path(datafiles, "t_data", "metadata", "project_requests", f"{uuid}.json"))
-    )
+    project_template = json.load(open(request_file))
     assert project_template == expected_template
 
 
 @pytest.mark.datafiles(Path(DATA_DIR, "metadata.csv"))
-def test_create_template_extra_columns(
-    test_runner, datafiles, capsys, setup, mock_services
-):
+def test_create_template_extra_columns(test_runner, datafiles, setup, mock_services):
     dataset_csv = Path(datafiles, "metadata.csv")
     text = dataset_csv.read_text()
     text = text.replace("extra1", "assembly_id")
@@ -388,18 +386,14 @@ def test_create_template_extra_columns(
     ]
 
     result = test_runner.invoke(args=args)
-    # exceptions are handled gracefully so exit code will likely always be 0...
     assert result.exit_code == 0
-    # result.stdout or output does not capture secho consistently...
-    uuid = re.search("ID: '(.*)'.", capsys.readouterr().out).group(1)
+    request_file = _get_single_request(datafiles)
     expected_template = json.loads(modified_template)
-    project_template = json.load(
-        open(Path(datafiles, "t_data", "metadata", "project_requests", f"{uuid}.json"))
-    )
+    project_template = json.load(open(request_file))
     assert project_template == expected_template
 
 
-def test_add_project(Session, test_runner, tmp_path, capsys, setup, mock_services):
+def test_add_project(Session, test_runner, tmp_path, setup, mock_services):
     d = tmp_path / "t_data" / "metadata" / "project_requests"
     request_template = d / "XXXXXXXXXXXX.json"
     with open(request_template, "w") as fh:
@@ -412,10 +406,9 @@ def test_add_project(Session, test_runner, tmp_path, capsys, setup, mock_service
     result = test_runner.invoke(
         args=["project", "add", "--yes", "XXXXXXXXXXXX", "--add-user"]
     )
-    # exceptions are handled gracefully so exit code will likely always be 0...
     assert result.exit_code == 0
-    # result.stdout or output does not capture secho consistently...
-    smid = re.search("SMID: '(.*)'.", capsys.readouterr().out).group(1)
+    with Session() as session:
+        smid = session.scalar(select(Project.id))
     d = tmp_path / "t_data" / "metadata"
     project_template = d / f"{smid}.json"
 
@@ -454,7 +447,6 @@ def test_delete_project(
             bam_files.append(p)
 
     result = test_runner.invoke(args=["project", "delete", "--yes", "12345678"])
-    # exceptions are handled gracefully so exit code will likely always be 0...
     assert result.exit_code == 0
 
     with Session() as session:

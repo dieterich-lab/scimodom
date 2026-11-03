@@ -1,6 +1,9 @@
 import pytest
 from sqlalchemy.exc import NoResultFound
 
+from scimodom.services.dataset import DatasetService
+from scimodom.services.project import ProjectService
+from scimodom.services.selection import SelectionService
 from scimodom.services.administration.deletion import (
     ProjectDeletionError,
     ProjectDeletionPlan,
@@ -17,9 +20,9 @@ def _dataset(mocker, dataset_id, title="title"):
 @pytest.fixture
 def services(mocker):
     calls = mocker.Mock()  # records the order of calls across services
-    project_service = mocker.Mock()
-    dataset_service = mocker.Mock()
-    selection_service = mocker.Mock()
+    project_service = mocker.create_autospec(ProjectService, instance=True)
+    dataset_service = mocker.create_autospec(DatasetService, instance=True)
+    selection_service = mocker.create_autospec(SelectionService, instance=True)
     calls.attach_mock(selection_service.delete_selections_by_dataset, "selection")
     calls.attach_mock(dataset_service.delete_dataset, "dataset")
     calls.attach_mock(project_service.delete_project, "project")

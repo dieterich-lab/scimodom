@@ -30,6 +30,7 @@ class UtilitiesService:
     """Provide a collection of general queries.
 
     - catalogs
+    - DB lookups
     - release
     """
 
@@ -126,6 +127,42 @@ class UtilitiesService:
             .execute(select(DetectionMethod.id).filter_by(meth=name))
             .scalar_one()
         )
+
+    def get_modification_id(self, rna: str, modomics_id: str) -> int:
+        """Get Modification ID by RNA type and MODOMICS ID.
+
+        :param rna: RNA type
+        :param modomics_id: MODOMICS ID
+        :raises NoResultFound:
+        :return: Modification ID
+        """
+        return self._session.execute(
+            select(Modification.id).filter_by(rna=rna, modomics_id=modomics_id)
+        ).scalar_one()
+
+    def get_organism_id(self, taxa_id: int, cto: str) -> int:
+        """Get Organism ID by taxonomy ID and cell/tissue/organ.
+
+        :param taxa_id: Taxonomy ID
+        :param cto: Cell/tissue/organ
+        :raises NoResultFound:
+        :return: Organism ID
+        """
+        return self._session.execute(
+            select(Organism.id).filter_by(taxa_id=taxa_id, cto=cto)
+        ).scalar_one()
+
+    def get_technology_id(self, method_id: str, tech: str) -> int:
+        """Get DetectionTechnology ID by method ID and technology name.
+
+        :param method_id: DetectionMethod ID
+        :param tech: Technology name
+        :raises NoResultFound:
+        :return: DetectionTechnology ID
+        """
+        return self._session.execute(
+            select(DetectionTechnology.id).filter_by(method_id=method_id, tech=tech)
+        ).scalar_one()
 
     def get_selections(self) -> list[dict[str, Any]]:
         """Get all selections.

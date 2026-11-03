@@ -120,5 +120,8 @@ show_error_codes = "True"
 testpaths = ["tests"]
 log_cli = true
 log_cli_level = "INFO"
-markers = ["cifail: tests failing on Jenkins"]
-addopts = "--basetemp /tmp/pytest-of-scimodom --ignore=tests/integration/cli/test_assembly_cli.py"
+markers = [
+    "cifail: tests failing on Jenkins",
+    "network: tests that need network access (e.g. Ensembl), run with -m network",
+]
+addopts = "--basetemp /tmp/pytest-of-scimodom -m \"not network\""

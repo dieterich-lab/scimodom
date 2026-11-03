@@ -6,14 +6,14 @@ from scimodom.services.administration.assembly.provision import (
     AssemblyProvisioningPlan,
     AssemblyProvisioningService,
 )
-from scimodom.services.assembly import AssemblyNotFoundError
+from scimodom.services.assembly import AssemblyNotFoundError, AssemblyService
 
 PLAN = AssemblyProvisioningPlan(assembly_id=1, taxa_id=9606, assembly_name="GRCh38")
 
 
 @pytest.fixture
 def assembly_service(mocker):
-    service = mocker.Mock()
+    service = mocker.create_autospec(AssemblyService, instance=True)
     assembly = mocker.Mock(taxa_id=9606)
     assembly.id = 1
     assembly.name = "GRCh38"

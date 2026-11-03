@@ -160,3 +160,30 @@ def test_get_release_info(Session, utilities_service, mocker):
         },
     }
     assert utilities_service.get_release_info() == expected_build
+
+
+def test_get_modification_id(Session, utilities_service, selection):
+    assert utilities_service.get_modification_id("WTS", "2000000006A") == 1
+
+
+def test_get_modification_id_fail(Session, utilities_service, selection):
+    with pytest.raises(NoResultFound):
+        utilities_service.get_modification_id("WTS", "XXX")
+
+
+def test_get_organism_id(Session, utilities_service, selection):
+    assert utilities_service.get_organism_id(9606, "Cell type 2") == 2
+
+
+def test_get_organism_id_fail(Session, utilities_service, selection):
+    with pytest.raises(NoResultFound):
+        utilities_service.get_organism_id(9606, "XXX")
+
+
+def test_get_technology_id(Session, utilities_service, selection):
+    assert utilities_service.get_technology_id("0ee048bc", "Technology 2") == 2
+
+
+def test_get_technology_id_fail(Session, utilities_service, selection):
+    with pytest.raises(NoResultFound):
+        utilities_service.get_technology_id("0ee048bc", "XXX")

@@ -1,6 +1,5 @@
 from datetime import datetime
 from pathlib import Path
-import re
 
 import pytest
 from flask import Flask
@@ -30,6 +29,7 @@ from scimodom.services.file import FileService
 from scimodom.services.project import ProjectService
 from scimodom.services.selection import SelectionService
 from scimodom.services.sunburst import SunburstService
+from scimodom.services.utilities import UtilitiesService
 from scimodom.services.validator import ValidatorService
 from scimodom.services.web import WebService
 from scimodom.utils.specs.enums import AnnotationSource, SunburstChartType
@@ -346,19 +346,12 @@ def mock_services(mocker, Session, tmp_path, test_runner):
         return_value=ProjectIngestionService(
             project_service=_get_project_service(Session, tmp_path),
             assembly_service=_get_assembly_service(Session, tmp_path),
-            utilities_service=mocker.Mock(),
+            utilities_service=UtilitiesService(session=Session()),
             file_service=_get_file_service(Session, tmp_path),
             permission_service=mocker.Mock(),
             user_service=mocker.Mock(),
+            dataset_service=_get_dataset_service(Session, tmp_path),
         ),
-    )
-    mocker.patch(
-        "scimodom.cli.dataset.get_project_service",
-        return_value=_get_project_service(Session, tmp_path),
-    )
-    mocker.patch(
-        "scimodom.cli.dataset.get_file_service",
-        return_value=_get_file_service(Session, tmp_path),
     )
 
 
@@ -375,7 +368,6 @@ def test_add_dataset(
     test_data,
     tmp_path,
     freezer,
-    capsys,
     mock_services,
 ):
     args = [
@@ -401,14 +393,12 @@ def test_add_dataset(
 
     freezer.move_to("2024-06-20 12:00:00")
     result = test_runner.invoke(args=args)
-    # exceptions are handled gracefully so exit code will likely always be 0...
     assert result.exit_code == 0
-    # result.stdout or output does not capture secho consistently...
-    eufid = re.search("EUFID: '(.*)'.", capsys.readouterr().out).group(1)
 
     with Session() as session:
-        dataset = session.get_one(Dataset, eufid)
-        assert dataset.title == "Dataset title CLI test"
+        dataset = session.execute(
+            select(Dataset).filter_by(title="Dataset title CLI test")
+        ).scalar_one()
         assert dataset.project_id == project[0].id
         assert dataset.technology_id == 1
         assert dataset.organism_id == 1
@@ -421,7 +411,7 @@ def test_add_dataset(
 
         modifications = session.scalars(
             select(DatasetModificationAssociation.modification_id).filter_by(
-                dataset_id=eufid
+                dataset_id=dataset.id
             )
         ).all()
         assert set(modifications) == set([1, 2])
@@ -456,7 +446,6 @@ def test_add_dataset_dry_run(
     test_data,
     tmp_path,
     freezer,
-    capsys,
     mock_services,
 ):
     args = [
@@ -483,7 +472,6 @@ def test_add_dataset_dry_run(
 
     freezer.move_to("2024-06-20 12:00:00")
     result = test_runner.invoke(args=args)
-    # exceptions are handled gracefully so exit code will likely always be 0...
     assert result.exit_code == 0
 
     with Session() as session:
@@ -518,6 +506,7 @@ def test_add_dataset_in_batch(
     args = [
         "dataset",
         "batch",
+        "--yes",
         "--annotation",
         "ensembl",
         datafiles.as_posix(),
@@ -525,7 +514,6 @@ def test_add_dataset_in_batch(
     ]
 
     result = test_runner.invoke(args=args)
-    # exceptions are handled gracefully so exit code will likely always be 0...
     assert result.exit_code == 0
 
     with Session() as session:

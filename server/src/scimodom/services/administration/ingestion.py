@@ -1,8 +1,11 @@
 import csv
+import os
+import re
 import datetime
 from dataclasses import dataclass
 from functools import cache
 from pathlib import Path
+from typing import Iterator
 
 from sqlalchemy.exc import NoResultFound
 
@@ -11,17 +14,22 @@ from scimodom.services.assembly import (
     AssemblyService,
     get_assembly_service,
 )
+from scimodom.services.dataset import DatasetService, get_dataset_service
 from scimodom.services.file import FileService, get_file_service
 from scimodom.services.permission import PermissionService, get_permission_service
 from scimodom.services.project import ProjectService, get_project_service
 from scimodom.services.user import NoSuchUser, UserService, get_user_service
 from scimodom.services.utilities import UtilitiesService, get_utilities_service
+from scimodom.utils.specs.enums import AnnotationSource
 from scimodom.utils.dtos.project import (
     ProjectMetaDataDto,
     ProjectOrganismDto,
     ProjectSourceDto,
     ProjectTemplate,
 )
+
+
+_NOTE_PATTERN = re.compile(r"(?:file=)(?P<file>.*),\s*(?:title=)(?P<title>.*)")
 
 
 class ProjectTemplateError(Exception):
@@ -69,6 +77,66 @@ class ProjectIngestionResult:
     user_added: bool | None = None
 
 
+def parse_dataset_note(note: str | None) -> tuple[str, str]:
+    """Get the dataset file name and title from a metadata note.
+
+    :param note: Note with format 'file=filename.bedrmod, title=title'
+    :raises ProjectTemplateError: If the note does not have this format
+    :return: File name and title
+    """
+    if note is None:
+        raise ProjectTemplateError(
+            "'note' must be str with format 'file=filename.bedrmod, title=title'"
+        )
+    match = _NOTE_PATTERN.match(note)
+    if match is None:
+        raise ProjectTemplateError("Unable to match 'file' or 'title' from 'note'.")
+    return match["file"].strip(), match["title"].strip()
+
+
+@dataclass(frozen=True)
+class BatchDataset:
+    """A dataset to import: one file, one or more modifications.
+
+    :param modifications: (RNA type, MODOMICS ID) for each modification
+    """
+
+    file_path: Path
+    title: str
+    assembly_id: int
+    taxa_id: int
+    cto: str
+    method_id: str
+    tech: str
+    modifications: tuple[tuple[str, str], ...]
+
+    @property
+    def filename(self) -> str:
+        return self.file_path.name
+
+
+@dataclass(frozen=True)
+class BatchImportPlan:
+    """A validated batch import (no side effects)."""
+
+    request_uuid: str
+    template: ProjectTemplate
+    datasets: list[BatchDataset]
+
+
+@dataclass(frozen=True)
+class BatchDatasetOutcome:
+    """Outcome of importing one dataset."""
+
+    dataset: BatchDataset
+    dataset_id: str | None = None
+    error: Exception | None = None
+
+    @property
+    def is_imported(self) -> bool:
+        return self.error is None
+
+
 class ProjectIngestionService:
     """Project administration and ingestion.
 
@@ -78,6 +146,7 @@ class ProjectIngestionService:
     :param file_service: File service
     :param permission_service: Permission service
     :param user_service: User service
+    :param dataset_service: Dataset service
     """
 
     def __init__(
@@ -88,6 +157,7 @@ class ProjectIngestionService:
         file_service: FileService,
         permission_service: PermissionService,
         user_service: UserService,
+        dataset_service: DatasetService,
     ) -> None:
         self._project_service = project_service
         self._assembly_service = assembly_service
@@ -95,6 +165,7 @@ class ProjectIngestionService:
         self._file_service = file_service
         self._permission_service = permission_service
         self._user_service = user_service
+        self._dataset_service = dataset_service
 
     # project request (template)
 
@@ -238,6 +309,137 @@ class ProjectIngestionService:
         user = self._user_service.get_user_by_email(username)
         self._permission_service.insert_into_user_project_association(user, project_id)
 
+    # batch import (project and datasets)
+
+    def plan_batch_import(
+        self, input_directory: str | Path, request_uuid: str
+    ) -> BatchImportPlan:
+        """Validate a batch import of a project and all its datasets.
+
+        The 'note' of each metadata entry must contain the dataset file
+        name and title, 'file=filename.bedrmod, title=title'. Entries
+        with the same file name are modifications of the same dataset
+        and must agree on title, assembly, organism, and technology.
+        All files must exist under the input directory.
+
+        :param input_directory: Directory with the bedRMod (EU-formatted) files
+        :param request_uuid: Request UUID (project template)
+        :raises ProjectTemplateError: If the template, or any of the
+        datasets, is invalid.
+        :raises AssemblyNotFoundError: If an assembly does not exist.
+        :return: Plan
+        """
+        template = self.load_template(request_uuid)
+        problems: list[str] = []
+        entries: dict[str, dict] = {}
+        for index, metadata in enumerate(template.metadata, start=1):
+            try:
+                filename, title = parse_dataset_note(metadata.note)
+            except ProjectTemplateError as exc:
+                problems.append(f"Metadata entry {index}: {exc}")
+                continue
+            organism = metadata.organism
+            key = (
+                title,
+                organism.assembly_id,
+                organism.taxa_id,
+                organism.cto,
+                metadata.method_id,
+                metadata.tech,
+            )
+            entry = entries.setdefault(filename, {"key": key, "modifications": []})
+            if entry["key"] != key:
+                problems.append(
+                    f"Metadata entry {index}: file '{filename}' is repeated "
+                    "with a different title, assembly, organism or technology."
+                )
+            entry["modifications"].append((metadata.rna, metadata.modomics_id))
+
+        parent = Path(input_directory).resolve()
+        datasets = []
+        for filename, entry in entries.items():
+            file_path = (parent / filename).resolve()
+            if not file_path.is_relative_to(parent):
+                problems.append(f"File '{filename}' is not under the input directory.")
+            elif not file_path.is_file():
+                problems.append(f"File '{filename}' not found in '{input_directory}'.")
+            else:
+                title, assembly_id, taxa_id, cto, method_id, tech = entry["key"]
+                datasets.append(
+                    BatchDataset(
+                        file_path=file_path,
+                        title=title,
+                        assembly_id=assembly_id,
+                        taxa_id=taxa_id,
+                        cto=cto,
+                        method_id=method_id,
+                        tech=tech,
+                        modifications=tuple(entry["modifications"]),
+                    )
+                )
+        if problems:
+            raise ProjectTemplateError(
+                "Invalid batch import:\n" + "\n".join(f"  - {p}" for p in problems)
+            )
+        return BatchImportPlan(request_uuid, template, datasets)
+
+    def import_batch_datasets(
+        self,
+        plan: BatchImportPlan,
+        project_id: str,
+        annotation_source: AnnotationSource,
+    ) -> Iterator[BatchDatasetOutcome]:
+        """Import the datasets of a plan into an existing project.
+
+        This is a generator: A dataset that fails is reported in its
+        outcome, and does not prevent the others from being imported.
+
+        :param plan: Plan
+        :param project_id: Project SMID
+        :param annotation_source: Annotation source (the same for all datasets)
+        :return: Outcomes, in the order of the plan
+        """
+        for dataset in plan.datasets:
+            try:
+                dataset_id = self._import_batch_dataset(
+                    dataset, project_id, annotation_source
+                )
+            except Exception as exc:
+                yield BatchDatasetOutcome(dataset, error=exc)
+            else:
+                yield BatchDatasetOutcome(dataset, dataset_id=dataset_id)
+
+    def _import_batch_dataset(
+        self,
+        dataset: BatchDataset,
+        project_id: str,
+        annotation_source: AnnotationSource,
+    ) -> str:
+        # selections (modification, organism, technology) exist once
+        # the project is created, so their IDs are only known now
+        modification_ids = [
+            self._utilities_service.get_modification_id(rna, modomics_id)
+            for rna, modomics_id in dataset.modifications
+        ]
+        organism_id = self._utilities_service.get_organism_id(
+            dataset.taxa_id, dataset.cto
+        )
+        technology_id = self._utilities_service.get_technology_id(
+            dataset.method_id, dataset.tech
+        )
+        with open(dataset.file_path) as fp:
+            return self._dataset_service.import_dataset(
+                fp,
+                source=dataset.file_path.as_posix(),
+                project_id=project_id,
+                title=dataset.title,
+                assembly_id=dataset.assembly_id,
+                modification_ids=modification_ids,
+                organism_id=organism_id,
+                technology_id=technology_id,
+                annotation_source=annotation_source,
+            )
+
     # helpers
 
     def _read_metadata(
@@ -312,4 +514,5 @@ def get_project_ingestion_service() -> ProjectIngestionService:
         file_service=get_file_service(),
         permission_service=get_permission_service(),
         user_service=get_user_service(),
+        dataset_service=get_dataset_service(),
     )

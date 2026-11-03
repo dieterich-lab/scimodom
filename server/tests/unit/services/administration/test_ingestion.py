@@ -7,13 +7,21 @@ from sqlalchemy.exc import NoResultFound
 
 from scimodom.services.administration.ingestion import (
     ProjectIngestionService,
+    parse_dataset_note,
     ProjectRequestInfo,
     ProjectTemplateError,
     UserAssociationError,
 )
-from scimodom.services.assembly import AssemblyNotFoundError
+from scimodom.services.assembly import AssemblyNotFoundError, AssemblyService
+from scimodom.services.dataset import DatasetService
+from scimodom.services.file import FileService
+from scimodom.services.permission import PermissionService
+from scimodom.services.project import ProjectService
+from scimodom.services.user import UserService
+from scimodom.services.utilities import UtilitiesService
 from scimodom.services.user import NoSuchUser
 from scimodom.utils.dtos.project import ProjectTemplate
+from scimodom.utils.specs.enums import AnnotationSource
 
 CSV = """file,title,rna_type,modification,taxa_id,cto,assembly,technology,method
 f1.bedrmod,Title 1,WTS,m6A,9606,HeLa,GRCh38,Tech-seq,Method 1
@@ -58,12 +66,13 @@ TEMPLATE = {
 @pytest.fixture
 def mocks(mocker):
     class Mocks:
-        project = mocker.Mock()
-        assembly = mocker.Mock()
-        utilities = mocker.Mock()
-        file = mocker.Mock()
-        permission = mocker.Mock()
-        user = mocker.Mock()
+        project = mocker.create_autospec(ProjectService, instance=True)
+        assembly = mocker.create_autospec(AssemblyService, instance=True)
+        utilities = mocker.create_autospec(UtilitiesService, instance=True)
+        file = mocker.create_autospec(FileService, instance=True)
+        permission = mocker.create_autospec(PermissionService, instance=True)
+        user = mocker.create_autospec(UserService, instance=True)
+        dataset = mocker.create_autospec(DatasetService, instance=True)
 
     Mocks.utilities.get_modomics_id_by_short_name.return_value = "2000000006A"
     Mocks.utilities.get_method_id_by_name.return_value = "01d26feb"
@@ -79,6 +88,7 @@ def service(mocks):
         file_service=mocks.file,
         permission_service=mocks.permission,
         user_service=mocks.user,
+        dataset_service=mocks.dataset,
     )
 
 
@@ -274,3 +284,215 @@ def test_add_user_to_project_no_such_project(service, mocks):
     with pytest.raises(NoResultFound):
         service.add_user_to_project("test@email.de", "SMID1")
     mocks.permission.insert_into_user_project_association.assert_not_called()
+
+
+# batch import
+
+
+BATCH_TEMPLATE = {
+    "title": "Batch",
+    "summary": "Summary",
+    "contact_name": "Surname, Forename",
+    "contact_institution": "Institution",
+    "contact_email": "test@email.de",
+    "date_published": None,
+    "external_sources": [],
+    "metadata": [],
+}
+
+
+def _entry(filename, title="T", rna="WTS", modomics="2000000006A", **organism):
+    organism = {
+        "taxa_id": 9606,
+        "cto": "HeLa",
+        "assembly_name": "GRCh38",
+        "assembly_id": 1,
+        **organism,
+    }
+    return {
+        "rna": rna,
+        "modomics_id": modomics,
+        "tech": "Tech-seq",
+        "method_id": "01d26feb",
+        "organism": organism,
+        "note": f"file={filename}, title={title}",
+    }
+
+
+def _batch_request(mocks, *entries):
+    _request_file(mocks, {**BATCH_TEMPLATE, "metadata": list(entries)})
+
+
+def _files(tmp_path, *names):
+    for name in names:
+        (tmp_path / name).write_text("data")
+
+
+@pytest.mark.parametrize(
+    "note, expected",
+    [
+        ("file=a.bedrmod, title=My title", ("a.bedrmod", "My title")),
+        ("file=a.bedrmod,title=  x, y ", ("a.bedrmod", "x, y")),
+    ],
+)
+def test_parse_dataset_note(note, expected):
+    assert parse_dataset_note(note) == expected
+
+
+@pytest.mark.parametrize("note", [None, "nothing", "file=a.bedrmod"])
+def test_parse_dataset_note_fail(note):
+    with pytest.raises(ProjectTemplateError):
+        parse_dataset_note(note)
+
+
+def test_plan_batch_import(service, mocks, tmp_path):
+    _files(tmp_path, "a.bedrmod", "b.bedrmod")
+    # a.bedrmod has 2 modifications
+    _batch_request(
+        mocks,
+        _entry("a.bedrmod", "Title A", modomics="2000000006A"),
+        _entry("b.bedrmod", "Title B"),
+        _entry("a.bedrmod", "Title A", rna="tRNA", modomics="2000000007A"),
+    )
+    plan = service.plan_batch_import(tmp_path, "UUID")
+    assert plan.request_uuid == "UUID"
+    assert [d.filename for d in plan.datasets] == ["a.bedrmod", "b.bedrmod"]
+    a, b = plan.datasets
+    assert a.title == "Title A"
+    assert a.modifications == (("WTS", "2000000006A"), ("tRNA", "2000000007A"))
+    assert b.modifications == (("WTS", "2000000006A"),)
+    assert (a.assembly_id, a.taxa_id, a.cto) == (1, 9606, "HeLa")
+    assert (a.method_id, a.tech) == ("01d26feb", "Tech-seq")
+    assert a.file_path == tmp_path / "a.bedrmod"
+    # nothing is written
+    mocks.project.create_project.assert_not_called()
+    mocks.dataset.import_dataset.assert_not_called()
+
+
+def test_plan_batch_import_reports_all_problems(service, mocks, tmp_path):
+    _files(tmp_path, "a.bedrmod")
+    bad_note = _entry("x")
+    bad_note["note"] = "nothing"
+    _batch_request(
+        mocks,
+        _entry("a.bedrmod", "Title A"),
+        _entry("a.bedrmod", "Other title"),  # same file, different title
+        _entry("a.bedrmod", cto="Other"),  # same file, different organism
+        _entry("missing.bedrmod"),
+        _entry("../outside.bedrmod"),
+        bad_note,
+    )
+    with pytest.raises(ProjectTemplateError) as exc:
+        service.plan_batch_import(tmp_path, "UUID")
+    message = str(exc.value)
+    assert message.startswith("Invalid batch import:")
+    assert "Metadata entry 2: file 'a.bedrmod' is repeated" in message
+    assert "Metadata entry 3: file 'a.bedrmod' is repeated" in message
+    assert "File 'missing.bedrmod' not found" in message
+    assert "File '../outside.bedrmod' is not under the input directory" in message
+    assert "Metadata entry 6: Unable to match" in message
+
+
+def test_plan_batch_import_absolute_file_name(service, mocks, tmp_path):
+    outside = tmp_path / "outside.bedrmod"
+    outside.write_text("data")
+    inner = tmp_path / "inner"
+    inner.mkdir()
+    _batch_request(mocks, _entry(outside.as_posix()))
+    with pytest.raises(ProjectTemplateError, match="not under the input directory"):
+        service.plan_batch_import(inner, "UUID")
+
+
+def test_plan_batch_import_invalid_request(service, mocks, tmp_path):
+    mocks.file.open_project_request_file.side_effect = FileNotFoundError("x")
+    with pytest.raises(ProjectTemplateError, match="Failed to read template"):
+        service.plan_batch_import(tmp_path, "UUID")
+
+
+def test_plan_batch_import_assembly_not_found(service, mocks, tmp_path):
+    _batch_request(mocks, _entry("a.bedrmod", assembly_id=None))
+    mocks.assembly.get_by_taxa_and_name.side_effect = NoResultFound
+    with pytest.raises(AssemblyNotFoundError):
+        service.plan_batch_import(tmp_path, "UUID")
+
+
+def _plan(service, mocks, tmp_path, *entries):
+    _files(tmp_path, "a.bedrmod", "b.bedrmod")
+    _batch_request(mocks, *entries)
+    return service.plan_batch_import(tmp_path, "UUID")
+
+
+def test_import_batch_datasets(service, mocks, tmp_path):
+    plan = _plan(
+        service,
+        mocks,
+        tmp_path,
+        _entry("a.bedrmod", "Title A"),
+        _entry("a.bedrmod", "Title A", modomics="2000000007A"),
+    )
+    mocks.utilities.get_modification_id.side_effect = [10, 11]
+    mocks.utilities.get_organism_id.return_value = 20
+    mocks.utilities.get_technology_id.return_value = 30
+    mocks.dataset.import_dataset.return_value = "EUFID1"
+
+    outcomes = list(
+        service.import_batch_datasets(plan, "SMID1", AnnotationSource.ENSEMBL)
+    )
+
+    assert [(o.dataset.filename, o.dataset_id, o.is_imported) for o in outcomes] == [
+        ("a.bedrmod", "EUFID1", True)
+    ]
+    mocks.utilities.get_modification_id.assert_any_call("WTS", "2000000006A")
+    mocks.utilities.get_modification_id.assert_any_call("WTS", "2000000007A")
+    mocks.utilities.get_organism_id.assert_called_once_with(9606, "HeLa")
+    mocks.utilities.get_technology_id.assert_called_once_with("01d26feb", "Tech-seq")
+    call = mocks.dataset.import_dataset.call_args
+    assert call.kwargs == {
+        "source": (tmp_path / "a.bedrmod").as_posix(),
+        "project_id": "SMID1",
+        "title": "Title A",
+        "assembly_id": 1,
+        "modification_ids": [10, 11],
+        "organism_id": 20,
+        "technology_id": 30,
+        "annotation_source": AnnotationSource.ENSEMBL,
+    }
+
+
+def test_import_batch_datasets_failure_does_not_stop_others(service, mocks, tmp_path):
+    plan = _plan(
+        service, mocks, tmp_path, _entry("a.bedrmod", "A"), _entry("b.bedrmod", "B")
+    )
+    failure = RuntimeError("invalid file")
+    mocks.dataset.import_dataset.side_effect = [failure, "EUFID2"]
+    outcomes = list(
+        service.import_batch_datasets(plan, "SMID1", AnnotationSource.ENSEMBL)
+    )
+    assert [o.is_imported for o in outcomes] == [False, True]
+    assert outcomes[0].error is failure
+    assert outcomes[0].dataset_id is None
+    assert outcomes[1].dataset_id == "EUFID2"
+
+
+def test_import_batch_datasets_unresolved_id_is_a_dataset_failure(
+    service, mocks, tmp_path
+):
+    plan = _plan(
+        service, mocks, tmp_path, _entry("a.bedrmod", "A"), _entry("b.bedrmod", "B")
+    )
+    mocks.utilities.get_organism_id.side_effect = [NoResultFound("x"), 20]
+    mocks.dataset.import_dataset.return_value = "EUFID2"
+    outcomes = list(
+        service.import_batch_datasets(plan, "SMID1", AnnotationSource.ENSEMBL)
+    )
+    assert isinstance(outcomes[0].error, NoResultFound)
+    assert outcomes[1].is_imported
+    assert mocks.dataset.import_dataset.call_count == 1
+
+
+def test_import_batch_datasets_is_lazy(service, mocks, tmp_path):
+    plan = _plan(service, mocks, tmp_path, _entry("a.bedrmod", "A"))
+    outcomes = service.import_batch_datasets(plan, "SMID1", AnnotationSource.ENSEMBL)
+    mocks.dataset.import_dataset.assert_not_called()
+    next(outcomes)
+    mocks.dataset.import_dataset.assert_called_once()
