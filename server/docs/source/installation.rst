@@ -6,19 +6,18 @@ Installation
 General setup
 -------------
 
-Consult the `Flask CLI - Setup <https://dieterich-lab.github.io/scimodom/flask.html#setup>`_ section of the documentation for additional details.
+Consult the `Flask CLI - Initialization <https://dieterich-lab.github.io/scimodom/flask.html#initialization>`_ section of the documentation for additional details.
 
 Data import
 ^^^^^^^^^^^
 
-At launch time, the app uses files defined in ``SetupService`` to populate the database. These files **must** exist and be located under ``IMPORT_PATH`` (development) or ``HOST_IMPORT_DIR`` (production). By default, this path is located under *server/import*, and can be specified in the environment file.
+The command ``flask setup upsert`` uses files defined in ``SetupService`` to populate the database. These files **must** exist and be located under ``IMPORT_PATH`` (development) or ``HOST_IMPORT_DIR`` (production). By default, this path is located under *server/import*, and can be specified in the environment file.
 
 Project and data management
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 When the application is up and running, assembly and annotation files must be added before any modification data can be uploaded to the database.
-Modification data is organised into projects and datasets, and must be formatted according to the `bedRMod specifications <https://dieterich-lab.github.io/scimodom/bedrmod.html>`_. Consult the `Data management <https://dieterich-lab.github.io/scimodom/database.html#data-management>`_ section of the documentation
-for more details.
+Modification data is organised into projects and datasets, and must be formatted according to the `bedRMod specifications <https://dieterich-lab.github.io/scimodom/bedrmod.html>`_. Consult the `Data management <https://dieterich-lab.github.io/scimodom/database.html#data-management>`_ section of the documentation for more details.
 
 Dependencies
 ^^^^^^^^^^^^
@@ -72,6 +71,7 @@ Get the source code and install:
   pip --verbose install -e . --group dev 2>&1 | tee install.log
   # or uv pip install -e . --group dev
 
+``--group dev`` installs tests by default, ``docs`` must be installed separately.
 
 .. note::
 
@@ -93,10 +93,10 @@ Set up your environment configuration in *server/.env*:
   UPLOAD_PATH=/path/to/upload
   DATA_PATH=/path/to/data
   BEDTOOLS_TMP_PATH=/path/to/tmp
+  # optional, audit trail of the CLI commands
+  AUDIT_LOG_FILE=/path/to/audit.log
 
-where ``PASSWORD`` is the password for the scimodom user for the MariaDB database in *docker/secrets/mariadb-scimodom*, ``3307`` is the ``MARIADB_DEV_PORT``
-(we recommend to use a non-standard port *e.g.* 3307 to avoid clashes with a local MariaDB/MySQL installation), and ``SECRET_KEY`` is the key found in
-*docker/secrets/flask-secret*, see `Container setup <https://dieterich-lab.github.io/scimodom/containers.html>`_ for details. You need to adjust the paths, and make sure they are valid and exist.
+where ``PASSWORD`` is the password for the scimodom user for the MariaDB database in *docker/secrets/mariadb-scimodom*, ``3307`` is the ``MARIADB_DEV_PORT`` (we recommend to use a non-standard port *e.g.* 3307 to avoid clashes with a local MariaDB/MySQL installation), and ``SECRET_KEY`` is the key found in *docker/secrets/flask-secret*, see `Container setup <https://dieterich-lab.github.io/scimodom/containers.html>`_ for details. You need to adjust the paths, and make sure they are valid and exist.
 
 .. hint::
 
@@ -119,6 +119,7 @@ Under the *server* directory, initialize the database schema:
 .. code-block:: bash
 
   alembic upgrade head
+  flask setup upsert
 
 and start the API backend:
 
@@ -209,18 +210,70 @@ Under the *server* directory:
 Tests
 """""
 
+**OpenAPI specs**
+
+The OpenAPI specs are hand-written fragments in *server/docs/source/openapi*. ``docs/source/include_swagger_api_spec.py`` merges them into the git-ignored *_include/*, and ``openapi-spec-validator`` checks them. Sphinx renders the same files for the docs, and every later step reads them.
+
+.. code-block:: bash
+
+  cd server/docs && make html
+  openapi-spec-validator source/openapi/_include/*.yaml
+
+**Server (Python) tests**
+
+The tests are grouped by structural hierarchy and functional type, with the exception of API and CLI tests. The API tests include *contract tests* (*_schema.py*): ``openapi-core`` validates each 2** response against the merged specs.
+
 To execute the tests, run under the *server* directory:
 
 .. code-block:: bash
 
   pytest tests
 
-This uses ``--ignore=tests/integration/cli/test_assembly_cli.py``. This integration test validates assembly creation by downloading data from Ensembl and takes several minutes to complete.
+The backend contract tests fail if the merged specs look older than the fragments (an mtime check that can false-alarm; re-generate the docs if this ever happens). To run the deselected test that validates assembly creation, use the ``-m network`` flag. This test takes several minutes to complete relies on successful download from Ensembl.
+
+**Client tests**
+
+``npm run test:unit`` cover the services and utils; ``npm run test:openapi`` generates TypeScript types from the merged specs with ``openapi-typescript`` into git-ignored *tests/api/.schemas*. The *contract.test-d.ts* file is then type-checked against the hand-written interfaces (vitest does not run *.test-d.ts files, so CI must run type-check). The frontend generation fails if *_include* is missing (re-generate the docs if this ever happens).
+
+**Know limitations**
+
+* **Specs and routes** The specs are written by hand. Any change in the API source code needs to be reflected straightaway in the specs. Only endpoints with a test are checked. An undocumented new route isn't flagged, and neither is a documented operation without a test.
+* **Contract test depth** Mostly success responses; request bodies are not checked against the specs. Empty arrays pass any array schema, so each test needs a non-empty assertion. These are complemented by extended API tests.
+* **Frontend checks** They compare types only. Axios does not validate responses at runtime. Where the client is narrower than the spec, a looser ``toExtend`` is used.
+* **Error format** Flask-JWT's 401 and 422 bodies ``{"msg": ...}`` are outside the Error schema.
+* **Test isolation** `@cached` service providers are patched at their call sites. A new unpatched provider call would silently reuse a stale service.
 
 Test automation
 """""""""""""""
 
 The Bedtools version is specified in the `Jenkinsfile <https://github.com/dieterich-lab/scimodom/blob/master/Jenkinsfile>`_.
+
+Documentation
+"""""""""""""
+
+.. code-block:: bash
+
+  # install docs dependencies
+  pip --verbose install -e . --group docs
+  # or uv pip install -e . --group docs
+  cd server/docs && make html
+  # serve the docs
+  python3 -m http.server 8000
+
+Open ``http://localhost:8000/build/html/`` (or whichever page) in your local browser.
+
+The Swagger docs OpenAPI follow the blueprint structure, except for project, which is further divided into browse and project request per se, to align with the GUI and make the structure visually easier for the user.
+
+Build info
+""""""""""
+
+To generate a mock build info locally for ``/api/v1/info``
+
+.. code-block:: bash
+
+   python server/scripts/include_build_info.py --tag "tag" --commit "commit" --commit-date "today"
+
+See `build.sh <https://github.com/dieterich-lab/scimodom/blob/master/docker/app_container/build.sh>`_ and `Dockerfile <https://github.com/dieterich-lab/scimodom/blob/master/docker/app_container/Dockerfile>`_ in production.
 
 Database schema updates
 """""""""""""""""""""""
@@ -253,9 +306,9 @@ Flask must be **disabled**, *e.g.* by updating *server/.flaskenv* with:
 API URL and version
 """""""""""""""""""
 
-The client uses the API URL defined in *client/.env* in development mode. The value
+The client uses the API VERSION defined in *client/.env* in development mode. The value
 of ``VITE_API_BASE_URL`` must match that of the Flask development server URL. This does
 not matter in production.
 
 The API version is defined in *client/src/services/API.ts* and */server/src/scimodom/services/url.py*.
-The value of ``API_PREFIX`` must **always** match.
+The value of ``API_VERSION`` must **always** match, *cf.* ``Check API version`` in `Jenkinsfile <https://github.com/dieterich-lab/scimodom/blob/master/Jenkinsfile>`_.

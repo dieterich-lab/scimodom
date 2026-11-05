@@ -35,7 +35,7 @@ def list_bam_metadata(dataset_id: str):
         return e.response_tuple
 
     file_service = get_file_service()
-    return file_service.get_bam_file_list(dataset)
+    return file_service.get_bam_info_list(dataset)
 
 
 @dataset_attachment_api.get("/<dataset_id>/attachments/bams/<name>")

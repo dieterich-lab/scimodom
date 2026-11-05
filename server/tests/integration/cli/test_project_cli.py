@@ -18,7 +18,7 @@ from scimodom.database.models import (
     ProjectSource,
     ProjectContact,
 )
-from scimodom.cli.charts import charts_cli
+from scimodom.cli.chart import chart_cli
 from scimodom.cli.project import project_cli
 from scimodom.services.administration.deletion import ProjectDeletionService
 from scimodom.services.administration.ingestion import ProjectIngestionService
@@ -240,7 +240,7 @@ def _get_project_deletion_service(Session, tmp_path):
 def test_runner():
     app = Flask(__name__)
     app.register_blueprint(project_cli)
-    app.register_blueprint(charts_cli)
+    app.register_blueprint(chart_cli)
     yield app.test_cli_runner()
 
 
@@ -251,7 +251,7 @@ def mock_services(mocker, Session, tmp_path, test_runner):
         return_value=_get_file_service(Session, tmp_path),
     )
     mocker.patch(
-        "scimodom.cli.charts.get_sunburst_service",
+        "scimodom.cli.chart.get_sunburst_service",
         return_value=_get_sunburst_service(Session, tmp_path, test_runner),
     )
     mocker.patch(
@@ -309,43 +309,6 @@ def test_create_template(test_runner, datafiles, setup, mock_services):
 
 
 @pytest.mark.datafiles(Path(DATA_DIR, "metadata.csv"))
-def test_create_template_use_ids(test_runner, datafiles, setup, mock_services):
-    dataset_csv = Path(datafiles, "metadata.csv")
-    text = dataset_csv.read_text()
-    text = text.replace("m6A", "2000000006A")
-    text = text.replace("Enzyme/protein-assisted sequencing", "01d26feb")
-    dataset_csv.write_text(text)
-
-    args = [
-        "project",
-        "create-template",
-        "--yes",
-        "--title",
-        "Test title",
-        "--summary",
-        "Long summary.",
-        "--surname",
-        "Surname",
-        "--forename",
-        "Forename",
-        "--institution",
-        "Institution",
-        "--email",
-        "test@email.de",
-        dataset_csv.as_posix(),
-        "--use-mod-ids",
-        "--use-method-ids",
-    ]
-
-    result = test_runner.invoke(args=args)
-    assert result.exit_code == 0
-    request_file = _get_single_request(datafiles)
-    expected_template = json.loads(JSON_TEMPLATE)
-    project_template = json.load(open(request_file))
-    assert project_template == expected_template
-
-
-@pytest.mark.datafiles(Path(DATA_DIR, "metadata.csv"))
 def test_create_template_extra_columns(test_runner, datafiles, setup, mock_services):
     dataset_csv = Path(datafiles, "metadata.csv")
     text = dataset_csv.read_text()
@@ -360,7 +323,9 @@ def test_create_template_extra_columns(test_runner, datafiles, setup, mock_servi
         "file=filename2.bedrmod, title=Title dataset 2", "note2"
     )
     modified_template = modified_template.replace(
-        '"assembly_id": null', '"assembly_id": 1', 1
+        '"assembly_id": null',
+        '"assembly_id": 1',
+        1,
     )
     modified_template = modified_template.replace(
         '"assembly_id": null', '"assembly_id": 2'

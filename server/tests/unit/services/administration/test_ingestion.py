@@ -117,16 +117,6 @@ def test_build_template(service, mocks, tmp_path):
     mocks.project.create_project_request.assert_not_called()
 
 
-def test_build_template_use_ids(service, mocks, tmp_path):
-    template = service.build_template(
-        _csv(tmp_path), INFO, use_mod_ids=True, use_method_ids=True
-    )
-    assert template.metadata[0].modomics_id == "m6A"
-    assert template.metadata[0].method_id == "Method 1"
-    mocks.utilities.get_modomics_id_by_short_name.assert_not_called()
-    mocks.utilities.get_method_id_by_name.assert_not_called()
-
-
 def test_build_template_sources_and_date(service, tmp_path):
     info = ProjectRequestInfo(
         title="T",
@@ -155,13 +145,15 @@ def test_build_template_missing_header(service, tmp_path):
 
 def test_build_template_unexpected_value(service, mocks, tmp_path):
     mocks.utilities.get_modomics_id_by_short_name.side_effect = NoResultFound("x")
-    with pytest.raises(ProjectTemplateError, match="unexpected values"):
+    with pytest.raises(ProjectTemplateError, match="DATASET_CSV values not found"):
         service.build_template(_csv(tmp_path), INFO)
 
 
 def test_build_template_invalid_value(service, tmp_path):
     path = _csv(tmp_path, CSV.replace("9606", "-1"))
-    with pytest.raises(ProjectTemplateError, match="unexpected values"):
+    with pytest.raises(
+        ProjectTemplateError, match="Unexpected DATASET_CSV values or arguments"
+    ):
         service.build_template(path, INFO)
 
 

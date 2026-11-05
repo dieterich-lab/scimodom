@@ -9,12 +9,16 @@ HOST_BACKUP_DIR = environ.get("HOST_BACKUP_DIR")
 HOST_SECRETS_DIR = environ.get("HOST_SECRETS_DIR")
 HOST_DB_DATA_DIR = environ.get("HOST_DB_DATA_DIR")
 HOST_IMPORT_DIR = environ.get("HOST_IMPORT_DIR")
+HOST_LOG_DIR = environ.get("HOST_LOG_DIR")
+
+# HOST_DATA_DIR cf. fff9a16, #116
 
 HOST_FOLDERS = [
     HOST_BACKUP_DIR,
     HOST_SECRETS_DIR,
     HOST_DB_DATA_DIR,
     HOST_IMPORT_DIR,
+    HOST_LOG_DIR,
 ]
 SECRET_FILES = ["mariadb-root", "mariadb-scimodom", "flask-secret"]
 

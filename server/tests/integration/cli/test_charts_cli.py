@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 from flask import Flask
 
-from scimodom.cli.charts import charts_cli
+from scimodom.cli.chart import chart_cli
 from scimodom.services.file import FileService
 from scimodom.services.sunburst import SunburstService
 
@@ -28,14 +28,14 @@ def _get_sunburst_service(Session, tmp_path):
 @pytest.fixture
 def test_runner():
     app = Flask(__name__)
-    app.register_blueprint(charts_cli)
+    app.register_blueprint(chart_cli)
     yield app.test_cli_runner()
 
 
 @pytest.fixture
 def mock_services(mocker, Session, tmp_path):
     mocker.patch(
-        "scimodom.cli.charts.get_sunburst_service",
+        "scimodom.cli.chart.get_sunburst_service",
         return_value=_get_sunburst_service(Session, tmp_path),
     )
 

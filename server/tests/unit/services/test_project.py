@@ -27,8 +27,16 @@ class MockFileService:
         self.files_by_name: dict[str, MockStringIO | MockBytesIO] = {}
         self.deleted_requests: list[str] = []
         self.deleted_projects: list[str] = []
+        # failure injection, and database state when files are deleted
+        self.fail_on_metadata_create: Exception | None = None
+        self.fail_on_request_delete: Exception | None = None
+        self.fail_on_metadata_delete: Exception | None = None
+        self.session = None
+        self.in_transaction_at_delete: list[bool] = []
 
     def create_project_metadata_file(self, project_id: str) -> TextIO:
+        if self.fail_on_metadata_create is not None:
+            raise self.fail_on_metadata_create
         metadata_file = Path(
             self._get_project_metadata_dir(), f"{project_id}.json"
         ).as_posix()
@@ -44,11 +52,22 @@ class MockFileService:
         self.files_by_name[request_file] = new_file
         return new_file
 
+    def _record_transaction(self) -> None:
+        # False if everything was committed: there is nothing left to roll back
+        if self.session is not None:
+            self.in_transaction_at_delete.append(self.session.in_transaction())
+
     def delete_project_request_file(self, request_uuid) -> None:
+        self._record_transaction()
+        if self.fail_on_request_delete is not None:
+            raise self.fail_on_request_delete
         name = self._get_project_request_file_path(request_uuid).as_posix()
         self.deleted_requests.append(name)
 
     def delete_project_metadata_file(self, project_id) -> None:
+        self._record_transaction()
+        if self.fail_on_metadata_delete is not None:
+            raise self.fail_on_metadata_delete
         name = Path(self._get_project_metadata_dir(), f"{project_id}.json").as_posix()
         self.deleted_projects.append(name)
 
@@ -303,3 +322,112 @@ def test_delete_project(Session, project, file_service):
         "/data/metadata/12345678.json",
         "/data/metadata/ABCDEFGH.json",
     ]
+
+
+# create/delete: order of commit and file clean-up
+
+
+def test_create_project_request_is_deleted_after_commit(Session, file_service, setup):
+    file_service.session = Session()
+    service = _get_project_service(Session, file_service)
+    service.create_project(PROJECT, "abcdef123456")
+    # everything was already committed when the request was deleted
+    assert file_service.in_transaction_at_delete == [False]
+    with Session() as session:
+        assert session.scalar(select(func.count()).select_from(Project)) == 1
+
+
+def test_create_project_commit_failure_keeps_request(
+    Session, file_service, setup, mocker
+):
+    service = _get_project_service(Session, file_service)
+    mocker.patch.object(service._session, "commit", side_effect=RuntimeError("boom"))
+    with pytest.raises(RuntimeError, match="boom"):
+        service.create_project(PROJECT, "abcdef123456")
+    # the request is kept, the metadata file written before the commit is discarded
+    assert file_service.deleted_requests == []
+    assert len(file_service.deleted_projects) == 1
+    assert file_service.deleted_projects[0].startswith("/data/metadata/")
+    with Session() as session:
+        assert session.scalar(select(func.count()).select_from(Project)) == 0
+        assert session.scalar(select(func.count()).select_from(ProjectSource)) == 0
+
+
+def test_create_project_metadata_file_exists(Session, file_service, setup):
+    file_service.fail_on_metadata_create = FileExistsError("exists")
+    service = _get_project_service(Session, file_service)
+    with pytest.raises(FileExistsError):
+        service.create_project(PROJECT, "abcdef123456")
+    # a file that already existed is not ours to delete
+    assert file_service.deleted_projects == []
+    assert file_service.deleted_requests == []
+    with Session() as session:
+        assert session.scalar(select(func.count()).select_from(Project)) == 0
+
+
+def test_create_project_fails_while_writing_metadata(
+    Session, file_service, setup, mocker
+):
+    service = _get_project_service(Session, file_service)
+    mocker.patch.object(
+        PROJECT.__class__, "model_dump_json", side_effect=RuntimeError("boom")
+    )
+    with pytest.raises(RuntimeError, match="boom"):
+        service.create_project(PROJECT, "abcdef123456")
+    # the partial file is discarded, the request is kept, nothing in the database
+    assert len(file_service.deleted_projects) == 1
+    assert file_service.deleted_requests == []
+    with Session() as session:
+        assert session.scalar(select(func.count()).select_from(Project)) == 0
+
+
+def test_create_project_request_delete_failure_is_not_an_error(
+    Session, file_service, setup, caplog
+):
+    file_service.fail_on_request_delete = FileNotFoundError("gone")
+    service = _get_project_service(Session, file_service)
+    project_id = service.create_project(PROJECT, "abcdef123456")
+    with Session() as session:
+        assert session.get(Project, project_id) is not None
+    assert "Failed to delete project request 'abcdef123456'" in caplog.text
+
+
+def test_delete_project_metadata_is_deleted_after_commit(
+    Session, project, file_service
+):
+    file_service.session = Session()
+    service = _get_project_service(Session, file_service)
+    service.delete_project(project[0])
+    # the deletion was already committed when the metadata file was deleted
+    assert file_service.in_transaction_at_delete == [False]
+    assert file_service.deleted_projects == ["/data/metadata/12345678.json"]
+
+
+def test_delete_project_commit_failure_keeps_metadata(
+    Session, project, file_service, mocker
+):
+    service = _get_project_service(Session, file_service)
+    mocker.patch.object(service._session, "commit", side_effect=RuntimeError("boom"))
+    with pytest.raises(RuntimeError, match="boom"):
+        service.delete_project(project[0])
+    assert file_service.deleted_projects == []
+    with Session() as session:
+        assert session.scalar(select(func.count()).select_from(Project)) == 2
+        assert session.scalar(select(func.count()).select_from(ProjectContact)) == 2
+
+
+@pytest.mark.parametrize(
+    "error", [FileNotFoundError("gone"), PermissionError("denied")]
+)
+def test_delete_project_metadata_failure_is_not_an_error(
+    Session, project, file_service, error, caplog
+):
+    file_service.fail_on_metadata_delete = error
+    service = _get_project_service(Session, file_service)
+    service.delete_project(project[0])
+    with Session() as session:
+        assert session.get(Project, "12345678") is None
+    # a missing file is fine, anything else is logged
+    assert ("Failed to delete metadata file" in caplog.text) == isinstance(
+        error, PermissionError
+    )

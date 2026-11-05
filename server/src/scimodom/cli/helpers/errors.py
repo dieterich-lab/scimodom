@@ -8,8 +8,13 @@ class CliResponseException(Exception):
 
 
 class _CliException(click.ClickException):
-    def format_message(self) -> str:
-        return click.style(self.message, fg="red")
+    def show(self, file=None) -> None:
+        click.echo(
+            click.style(f"Error: {self.format_message()}", fg="red"),
+            file=file,
+            err=True,
+            color=getattr(self, "show_color", None),
+        )
 
 
 def register_cli_errors(func):

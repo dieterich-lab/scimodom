@@ -1,7 +1,9 @@
+import sys
 from collections import defaultdict
 from functools import cache
 from json import dumps
-from subprocess import Popen
+from subprocess import DEVNULL, Popen
+from threading import Thread
 from typing import TextIO
 
 from sqlalchemy import select, func
@@ -26,9 +28,7 @@ class SunburstService:
     """Utility class to update and retrieve Sunburst charts data.
 
     :param session: SQLAlchemy ORM session
-    :type session: Session
     :param file_service: File service instance
-    :type file_service: FileService
     """
 
     def __init__(
@@ -41,8 +41,29 @@ class SunburstService:
 
     @staticmethod
     def trigger_background_update() -> None:
-        """Trigger update in the background using the CLI."""
-        Popen(["flask", "--app", "scimodom.app", "charts", "sunburst-update"])
+        """Trigger update in the background using the CLI.
+
+        Runs with the interpreter of the current process,
+        fully detached and independent from the parent,
+        cannot hang waiting for input, and is properly
+        reaped to avoid zombie processes. Output and errors
+        go to the stdout and stderr of the caller. Concurrent
+        updates are coalesced by the lock in the file service.
+        """
+        process = Popen(
+            [
+                sys.executable,
+                "-m",
+                "flask",
+                "--app",
+                "scimodom.app",
+                "charts",
+                "sunburst-update",
+            ],
+            stdin=DEVNULL,
+            start_new_session=True,
+        )
+        Thread(target=process.wait, daemon=True).start()
 
     def open_json(self, chart_type: SunburstChartType) -> TextIO:
         """Open a chart json data file.

@@ -2,6 +2,8 @@ from datetime import datetime
 from io import StringIO
 from typing import Any, Generator
 
+from pathlib import Path
+
 import pytest
 from sqlalchemy import select, func
 from sqlalchemy.sql.operators import and_
@@ -26,14 +28,28 @@ class MockFileService:
         self._session = session
         self.deleted_bam_files: list[str] = []
         self.deleted_gene_cache: list[int] = []
+        self.removed_files: list[Path] = []
+        self.bam_records_at_remove: int | None = None
 
     def delete_gene_cache(self, selection_id: int) -> None:
         self.deleted_gene_cache.append(selection_id)
 
-    def remove_bam_file(self, bam_file):
-        self.deleted_bam_files.append(bam_file.original_file_name)
-        self._session.delete(bam_file)
-        self._session.commit()
+    def delete_bam_file_records(self, dataset: Dataset) -> list[Path]:
+        paths = []
+        for bam_file in self._session.scalars(
+            select(BamFile).where(BamFile.dataset_id == dataset.id)
+        ).all():
+            self.deleted_bam_files.append(bam_file.original_file_name)
+            paths.append(Path("/data/bam", bam_file.storage_file_name))
+            self._session.delete(bam_file)
+        return paths
+
+    def remove_files(self, paths) -> None:
+        # state of the bam_file table when the files are removed
+        self.bam_records_at_remove = self._session.scalar(
+            select(func.count()).select_from(BamFile)
+        )
+        self.removed_files = list(paths)
 
     def get_bam_file(self, dataset: Dataset, name: str) -> BamFile:
         return self._session.scalars(
@@ -44,7 +60,7 @@ class MockFileService:
             )
         ).one()
 
-    def get_bam_file_list(self, dataset: Dataset) -> list[dict[str, Any]]:
+    def get_bam_info_list(self, dataset: Dataset) -> list[dict[str, Any]]:
         items = self._session.scalars(
             select(BamFile).where(BamFile.dataset_id == dataset.id)
         ).all()
@@ -445,3 +461,67 @@ def test_delete_dataset(Session, dataset, bam_file):
             "dataset00001_1.bam",
             "dataset00001_2.bam",
         ]
+
+
+def test_delete_dataset_removes_bam_files_after_commit(Session, dataset, bam_file):
+    service = _get_dataset_service(Session())
+    names = [
+        b.storage_file_name
+        for b in Session().scalars(select(BamFile).filter_by(dataset_id="dataset00001"))
+    ]
+    service.delete_dataset(dataset[0])
+    assert [p.name for p in service._file_service.removed_files] == names
+    # records of dataset[0] are gone from the database, but not the one of dataset[1]
+    assert service._file_service.bam_records_at_remove == 1
+
+
+def _counts(session):
+    return {
+        model: session.scalar(select(func.count()).select_from(model))
+        for model in (Dataset, Data, DatasetModificationAssociation, BamFile)
+    }
+
+
+@pytest.mark.parametrize("failing_step", ["delete_bam_file_records", "commit"])
+def test_delete_dataset_is_atomic(Session, dataset, bam_file, mocker, failing_step):
+    service = _get_dataset_service(Session())
+    session = Session()
+    before = _counts(session)
+    # fail late: data records and associations are already deleted (not committed)
+    target = service._file_service if failing_step != "commit" else service._session
+    mocker.patch.object(target, failing_step, side_effect=RuntimeError("boom"))
+    with pytest.raises(RuntimeError, match="boom"):
+        service.delete_dataset(dataset[0])
+    after = _counts(session)
+    # nothing was deleted: not the data, not the associations, not the BAM records
+    assert after == before
+    # and the files on disk are kept
+    assert service._file_service.removed_files == []
+
+
+def test_delete_dataset_data_records_use_a_subquery(Session, dataset, bam_file):
+    from sqlalchemy import event
+
+    statements = []
+
+    def capture(conn, cursor, statement, parameters, context, executemany):
+        statements.append((statement, parameters))
+
+    service = _get_dataset_service(Session())
+    engine = service._session.get_bind()
+    event.listen(engine, "before_cursor_execute", capture)
+    try:
+        service.delete_dataset(dataset[0])
+    finally:
+        event.remove(engine, "before_cursor_execute", capture)
+    deletes = [
+        (sql, params)
+        for sql, params in statements
+        if sql.startswith("DELETE FROM data_annotation")
+    ]
+    assert len(deletes) == 1
+    sql, params = deletes[0]
+    # the data IDs are not loaded to build an IN (...) list
+    assert "SELECT data.id" in sql
+    assert len(params) == 1
+    assert not any(sql.startswith("SELECT data.id FROM data") for sql, _ in statements)

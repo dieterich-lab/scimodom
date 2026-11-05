@@ -17,27 +17,23 @@ annotation_cli = Blueprint("annotation", __name__)
 
 
 @annotation_cli.cli.command(
-    "add", epilog="Check docs at https://dieterich-lab.github.io/scimodom/flask.html"
+    "add",
+    epilog="Consult https://dieterich-lab.github.io/scimodom/flask.html#assembly-and-annotation",
 )
 @register_cli_errors
 @click.option("--yes", is_flag=True, help="Confirm the action without prompting")
 @click.option("--traceback", is_flag=True, help="Show traceback")
-@click.argument("taxa_id", type=click.INT)
+@click.argument("taxa_id", type=click.INT, help="Must reference a valid NCBI taxon")
 @click.option(
     "--source",
     required=True,
     type=click.Choice(["ensembl", "gtrnadb"], case_sensitive=False),
-    help="Annotation source.",
+    help="Annotation source",
 )
-def add_annotation(
-    yes: bool, traceback: bool, taxa_id: int, source: str, **kwargs
-):  # noqa: D301
+def add_annotation(yes: bool, traceback: bool, taxa_id: int, source: str, **kwargs):
     """Add annotations.
 
     Annotation must exists in the database (only latest version allowed).
-
-    \b
-    TAXA_ID is the organism taxonomic ID.
     """
     annotation_service = get_annotation_service()
 

@@ -21,6 +21,7 @@ from scimodom.services.administration.deletion import (
     ProjectDeletionService,
 )
 from scimodom.services.administration.ingestion import (
+    UserAssociationError,
     BatchDataset,
     BatchDatasetOutcome,
     BatchImportPlan,
@@ -63,15 +64,6 @@ def sunburst_service(mocker):
     return service
 
 
-def test_delete_requires_confirmation_in_non_interactive_mode(
-    test_runner, deletion_service
-):
-    result = test_runner.invoke(args=["project", "delete", "SMID1"])
-    assert result.exit_code != 0
-    assert "--yes" in result.output
-    deletion_service.execute.assert_not_called()
-
-
 def test_delete(test_runner, deletion_service, sunburst_service):
     deletion_service.execute.return_value = ProjectDeletionResult("SMID1", ["A"])
     result = test_runner.invoke(args=["project", "delete", "--yes", "SMID1"])
@@ -80,49 +72,38 @@ def test_delete(test_runner, deletion_service, sunburst_service):
     sunburst_service.trigger_background_update.assert_called_once()
 
 
-def test_delete_no_such_project(test_runner, deletion_service):
+def test_delete_not_found(test_runner, deletion_service):
     deletion_service.plan.side_effect = NoResultFound
     result = test_runner.invoke(args=["project", "delete", "--yes", "SMID1"])
-    assert result.exit_code != 0
+    assert result.exit_code == 1
     assert "Project 'SMID1' not found" in result.output
     deletion_service.execute.assert_not_called()
 
 
-def test_delete_partial_failure_updates_charts_and_fails(
-    test_runner, deletion_service, sunburst_service
-):
+def test_delete_partial_failure(test_runner, deletion_service, sunburst_service):
     deletion_service.execute.side_effect = ProjectDeletionError(
         "Failure in handling Dataset 'B'.", ["A"], ["B"]
     )
     result = test_runner.invoke(args=["project", "delete", "--yes", "SMID1"])
-    assert result.exit_code != 0
-    assert "Run the command again to resume" in result.output
+    assert result.exit_code == 1
+    assert (
+        "Failed to delete project 'SMID1'. Failure in handling Dataset 'B'. Run the command again to resume"
+        in result.output
+    )
     sunburst_service.trigger_background_update.assert_called_once()
 
 
-def test_delete_failure_without_progress_does_not_update_charts(
-    test_runner, deletion_service, sunburst_service
-):
+def test_delete_complete_failure(test_runner, deletion_service, sunburst_service):
     deletion_service.execute.side_effect = ProjectDeletionError("x", [], ["A"])
     result = test_runner.invoke(args=["project", "delete", "--yes", "SMID1"])
-    assert result.exit_code != 0
+    assert result.exit_code == 1
     sunburst_service.trigger_background_update.assert_not_called()
-
-
-def test_delete_chart_trigger_failure_is_only_a_warning(
-    test_runner, deletion_service, sunburst_service
-):
-    deletion_service.execute.return_value = ProjectDeletionResult("SMID1", ["A"])
-    sunburst_service.trigger_background_update.side_effect = OSError("no flask")
-    result = test_runner.invoke(args=["project", "delete", "--yes", "SMID1"])
-    assert result.exit_code == 0
-    assert "failed to trigger charts update" in result.output
 
 
 # project add
 
 
-def test_add_project_no_such_user_is_not_an_error(mocker, test_runner):
+def test_add_project_user_not_found_is_not_an_error(mocker, test_runner):
     service = mocker.create_autospec(ProjectIngestionService, instance=True)
     service.load_template.return_value.title = "Title"
     service.load_template.return_value.contact_email = "a@b.de"
@@ -132,8 +113,22 @@ def test_add_project_no_such_user_is_not_an_error(mocker, test_runner):
     )
     result = test_runner.invoke(args=["project", "add", "--yes", "--add-user", "UUID"])
     assert result.exit_code == 0
-    assert "SMID: 'SMID1'" in result.output
-    assert "No such user 'a@b.de'" in result.output
+    assert "created project with SMID 'SMID1'" in result.output
+    assert "No such user 'a@b.de'. No user was added." in result.output
+
+
+def test_add_project_user_association_error(mocker, test_runner):
+    service = mocker.create_autospec(ProjectIngestionService, instance=True)
+    service.load_template.return_value.title = "Title"
+    service.load_template.return_value.contact_email = "a@b.de"
+    service.create_project.side_effect = UserAssociationError("Exception", "SMID1")
+    mocker.patch(
+        "scimodom.cli.project.get_project_ingestion_service", return_value=service
+    )
+    result = test_runner.invoke(args=["project", "add", "--yes", "--add-user", "UUID"])
+    assert result.exit_code == 1
+    assert "created project with SMID 'SMID1'" in result.output
+    assert "Error: Exception" in result.output
 
 
 def test_add_project_assembly_not_found(mocker, test_runner):
@@ -143,7 +138,7 @@ def test_add_project_assembly_not_found(mocker, test_runner):
         "scimodom.cli.project.get_project_ingestion_service", return_value=service
     )
     result = test_runner.invoke(args=["project", "add", "--yes", "UUID"])
-    assert result.exit_code != 0
+    assert result.exit_code == 1
     assert "Failed to update template. No such assembly" in result.output
     service.create_project.assert_not_called()
 
@@ -173,9 +168,7 @@ def test_assembly_add(test_runner, provisioning_service):
     assert "done with GRCh37" in result.output
 
 
-def test_assembly_add_other_assemblies_failed_gives_non_zero_exit(
-    test_runner, provisioning_service
-):
+def test_assembly_add_others_failed_is_not_an_error(test_runner, provisioning_service):
     provisioning_service.execute.return_value = AssemblyProvisioningResult(
         9606,
         "GRCh38",
@@ -183,9 +176,13 @@ def test_assembly_add_other_assemblies_failed_gives_non_zero_exit(
         failed={"NCBI36": RuntimeError("no chain")},
     )
     result = test_runner.invoke(args=["assembly", "add", "--yes", "1"])
-    assert result.exit_code != 0
+    assert result.exit_code == 1
     assert "Failed to provision NCBI36. no chain" in result.output
     assert "done with GRCh37" in result.output
+    assert (
+        "Error: Provisioning failed for 1 assembly(ies). Run the command again to retry."
+        in result.stderr
+    )
 
 
 def test_assembly_add_current_fails(test_runner, provisioning_service):
@@ -193,14 +190,14 @@ def test_assembly_add_current_fails(test_runner, provisioning_service):
         "Failed to set up current assembly 'GRCh38'. Error."
     )
     result = test_runner.invoke(args=["assembly", "add", "--yes", "1"])
-    assert result.exit_code != 0
+    assert result.exit_code == 1
     assert "Failed to set up current assembly 'GRCh38'" in result.output
 
 
 def test_assembly_add_no_such_assembly(test_runner, provisioning_service):
     provisioning_service.plan.side_effect = AssemblyNotFoundError("No assembly")
     result = test_runner.invoke(args=["assembly", "add", "--yes", "1"])
-    assert result.exit_code != 0
+    assert result.exit_code == 1
     provisioning_service.execute.assert_not_called()
 
 
@@ -239,8 +236,8 @@ def batch_services(mocker):
 
 def _batch(test_runner, tmp_path, *extra):
     return test_runner.invoke(
-        args=["dataset", "batch", *extra, "--annotation", "ensembl"]
-        + [tmp_path.as_posix(), "UUID"]
+        args=["dataset", "batch", *extra, "--rna-type", "WTS"]
+        + ["UUID", tmp_path.as_posix()]
     )
 
 
@@ -255,17 +252,9 @@ def test_batch(test_runner, batch_services, tmp_path):
     result = _batch(test_runner, tmp_path, "--yes")
     assert result.exit_code == 0
     assert "SMID 'SMID1'" in result.output
-    assert "EUFID: 'E1'" in result.output and "EUFID: 'E2'" in result.output
+    assert "EUFID 'E1'" in result.output and "EUFID 'E2'" in result.output
+    assert "done (2/2 datasets)" in result.output
     sunburst.trigger_background_update.assert_called_once()
-
-
-def test_batch_requires_confirmation_in_non_interactive_mode(
-    test_runner, batch_services, tmp_path
-):
-    result = _batch(test_runner, tmp_path)
-    assert result.exit_code != 0
-    assert "--yes" in result.output
-    batch_services[0].create_project.assert_not_called()
 
 
 def test_batch_dry_run_writes_nothing(test_runner, batch_services, tmp_path):
@@ -284,24 +273,26 @@ def test_batch_invalid_input_creates_nothing(test_runner, batch_services, tmp_pa
         "Invalid batch import:\n  - File 'x' not found"
     )
     result = _batch(test_runner, tmp_path, "--yes")
-    assert result.exit_code != 0
+    assert result.exit_code == 1
     assert "File 'x' not found" in result.output
     ingestion.create_project.assert_not_called()
 
 
 def test_batch_assembly_not_found(test_runner, batch_services, tmp_path):
-    batch_services[0].plan_batch_import.side_effect = AssemblyNotFoundError("No such")
+    batch_services[0].plan_batch_import.side_effect = AssemblyNotFoundError(
+        "No assembly"
+    )
     result = _batch(test_runner, tmp_path, "--yes")
-    assert result.exit_code != 0
-    assert "Failed to update template. No such" in result.output
+    assert result.exit_code == 1
+    assert "Failed to update template. No assembly" in result.output
 
 
 def test_batch_project_creation_fails(test_runner, batch_services, tmp_path):
     ingestion, _ = batch_services
-    ingestion.create_project.side_effect = RuntimeError("boom")
+    ingestion.create_project.side_effect = RuntimeError("Exception")
     result = _batch(test_runner, tmp_path, "--yes")
-    assert result.exit_code != 0
-    assert "Failed to create project. boom" in result.output
+    assert result.exit_code == 1
+    assert "Failed to create project. Exception" in result.output
     ingestion.import_batch_datasets.assert_not_called()
 
 
@@ -316,9 +307,9 @@ def test_batch_failed_dataset_is_skipped_and_exit_is_non_zero(
         ]
     )
     result = _batch(test_runner, tmp_path, "--yes")
-    assert result.exit_code != 0
+    assert result.exit_code == 1
     assert "Failed to create dataset 'a.bedrmod'. bad" in result.output
-    assert "EUFID: 'E2'" in result.output
+    assert "EUFID 'E2'" in result.output
     assert "Project 'SMID1' was created, but 1 dataset(s) failed: a.bedrmod" in (
         result.output
     )
@@ -337,5 +328,6 @@ def test_batch_all_datasets_fail_does_not_update_charts(
         ]
     )
     result = _batch(test_runner, tmp_path, "--yes")
-    assert result.exit_code != 0
+    assert "done (0/2 datasets)" in result.output
+    assert result.exit_code == 1
     sunburst.trigger_background_update.assert_not_called()

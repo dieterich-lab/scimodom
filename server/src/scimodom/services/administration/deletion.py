@@ -112,19 +112,20 @@ class ProjectDeletionService:
         pending = [dataset.id for dataset in project.datasets]
         deleted: list[str] = []
         for dataset in list(project.datasets):
+            dataset_id = dataset.id
             try:
                 self._selection_service.delete_selections_by_dataset(dataset)
                 self._dataset_service.delete_dataset(dataset)
             except Exception as exc:
                 raise ProjectDeletionError(
-                    f"Failure in handling Dataset '{dataset.id}'. "
+                    f"Failure in handling Dataset '{dataset_id}'. "
                     f"Datasets '{','.join(pending)}' were not deleted.",
                     deleted_dataset_ids=deleted,
                     remaining_dataset_ids=pending,
                 ) from exc
-            deleted.append(dataset.id)
-            pending.remove(dataset.id)
-            logger.info(f"Deleted dataset '{dataset.id}'.")
+            deleted.append(dataset_id)
+            pending.remove(dataset_id)
+            logger.info(f"Deleted dataset '{dataset_id}'.")
 
         try:
             self._project_service.delete_project(project)

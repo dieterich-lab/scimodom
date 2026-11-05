@@ -105,32 +105,35 @@ class ProjectService:
         """Provide a project constructor.
 
         :param project_template: Validated project template
-        :type project_template: ProjectTemplate
         :param request_uuid: UUID of request (original template)
-        :type request_uuid: str
         :raises Exception: If fail to create project
         :return: Newly created project SMID
-        :rtype: str
         """
+        project_id = None
+        metadata_written = False
         try:
             self._validate_entry(project_template)
             self._selection_service.create_selection(
                 project_template.metadata, is_flush_only=True
             )
             project_id = self._add_project(project_template)
-            self._write_project_template(project_template, project_id, request_uuid)
+            self._write_project_metadata(project_template, project_id)
+            metadata_written = True
             self._session.commit()
-            return project_id
         except Exception:
             self._session.rollback()
+            if metadata_written:
+                self._discard_project_metadata(project_id)
             raise
+        self._discard_request(request_uuid)
+        return project_id
 
     def delete_project(self, project: Project) -> None:
         """Delete a project and all associated data.
 
         NOTE: There must be no conflicting FK constraints
         (not using ON DELETE CASCADE), i.e. dataset and
-        associated data must first be deleted.
+        associated data must first be deleted by the caller.
 
         Delete from the following tables:
         - project_source
@@ -139,27 +142,27 @@ class ProjectService:
         - project_contact
 
         :param project_id: Project instance
-        :type project_id: Project
         :raises Exception: If fail to delete project, project source,
-        project contact, user project association, or metadata files.
+        project contact, or user project association.
         """
+        project_id = project.id
         try:
             self._session.execute(
-                delete(ProjectSource).filter_by(project_id=project.id)
+                delete(ProjectSource).filter_by(project_id=project_id)
             )
             self._session.execute(
-                delete(UserProjectAssociation).filter_by(project_id=project.id)
+                delete(UserProjectAssociation).filter_by(project_id=project_id)
             )
             contact = self._session.get_one(ProjectContact, project.contact_id)
             projects = contact.projects
-            if len(projects) == 1 and projects[0].id == project.id:
+            if len(projects) == 1 and projects[0].id == project_id:
                 self._session.delete(contact)
             self._session.delete(project)
-            self._file_service.delete_project_metadata_file(project.id)
             self._session.commit()
         except Exception:
             self._session.rollback()
             raise
+        self._discard_project_metadata(project_id)
 
     @staticmethod
     def _get_prj_src(project_template: ProjectTemplate):
@@ -249,12 +252,33 @@ class ProjectService:
         self._session.flush()
         return project_id
 
-    def _write_project_template(
-        self, project_template: ProjectTemplate, project_id: str, request_uuid: str
+    def _write_project_metadata(
+        self, project_template: ProjectTemplate, project_id: str
     ) -> None:
-        with self._file_service.create_project_metadata_file(project_id) as fh:
-            fh.write(project_template.model_dump_json(indent=4))
-        self._file_service.delete_project_request_file(request_uuid)
+        # raises FileExistsError if the file exists
+        fh = self._file_service.create_project_metadata_file(project_id)
+        try:
+            with fh:
+                fh.write(project_template.model_dump_json(indent=4))
+        except Exception:
+            self._discard_project_metadata(project_id)
+            raise
+
+    def _discard_project_metadata(self, project_id: str) -> None:
+        # clean-up, must not raise: either after a failure (do not mask
+        # the original error), or after a commit (the data is committed)
+        try:
+            self._file_service.delete_project_metadata_file(project_id)
+        except FileNotFoundError:
+            pass
+        except Exception as exc:
+            logger.warning(f"Failed to delete metadata file for '{project_id}': {exc}")
+
+    def _discard_request(self, request_uuid: str) -> None:
+        try:
+            self._file_service.delete_project_request_file(request_uuid)
+        except Exception as exc:
+            logger.warning(f"Failed to delete project request '{request_uuid}': {exc}")
 
 
 @cache

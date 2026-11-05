@@ -3,7 +3,12 @@
 import click
 from flask import Blueprint
 
-from scimodom.cli.helpers import CliResponseException, register_cli_errors, confirm
+from scimodom.cli.helpers import (
+    audited,
+    CliResponseException,
+    register_cli_errors,
+    confirm,
+)
 from scimodom.services.utilities import get_utilities_service
 from scimodom.services.selection import get_selection_service
 from scimodom.utils.dtos.project import (
@@ -15,55 +20,57 @@ selection_cli = Blueprint("selection", __name__)
 
 
 @selection_cli.cli.command(
-    "add", epilog="Check docs at https://dieterich-lab.github.io/scimodom/flask.html"
+    "add",
+    epilog="Consult https://dieterich-lab.github.io/scimodom/flask.html#project-and-data-management",
 )
 @register_cli_errors
+@audited("selection.add")
 @click.option("--yes", is_flag=True, help="Confirm the action without prompting")
 @click.option("--traceback", is_flag=True, help="Show traceback")
 @click.option(
-    "--rna",
+    "--rna-type",
     required=True,
     type=click.STRING,
-    help="Valid RNA type",
+    help="Must reference an existing RNA type record",
 )
 @click.option(
     "--modification",
     required=True,
     type=click.STRING,
-    help="Modification (MODOMICS) short name.",
+    help="Must reference a MODOMICS short name",
 )
 @click.option(
     "--taxid",
     required=True,
     type=click.INT,
-    help="Valid Taxa ID.",
+    help="Must reference a valid NCBI taxon",
 )
 @click.option(
     "--cto",
     required=True,
     type=click.STRING,
-    help="Cell/Tissue.",
+    help="Cell, tissue or organ. Use quote",
 )
 @click.option(
-    "--method-id",
+    "--method",
     required=True,
     type=click.STRING,
-    help="Method ID (from database).",
+    help="Must reference a valid detection method. Use quote",
 )
 @click.option(
     "--technology",
     required=True,
     type=click.STRING,
-    help="Technology name.",
+    help="Detection technology. Use quote",
 )
 def add_selection(
     yes: bool,
     traceback: bool,
-    rna: str,
+    rna_type: str,
     modification: str,
     taxid: int,
     cto: str,
-    method_id: str,
+    method: str,
     technology: str,
 ):
     """Add a new selection to the database."""
@@ -71,12 +78,16 @@ def add_selection(
     utilities_service = get_utilities_service()
 
     try:
-        organism = ProjectOrganismDto(taxa_id=taxid, cto=cto, assembly_name="assembly")
+        organism = ProjectOrganismDto(
+            taxa_id=taxid,
+            cto=cto,
+            assembly_name="assembly",
+        )
         metadata = ProjectMetaDataDto(
-            rna=rna,
+            rna=rna_type,
             modomics_id=utilities_service.get_modomics_id_by_short_name(modification),
             tech=technology,
-            method_id=method_id,
+            method_id=utilities_service.get_method_id_by_name(method),
             organism=organism,
             note=None,
         )

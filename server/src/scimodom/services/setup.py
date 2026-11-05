@@ -119,7 +119,7 @@ class SetupService:
 
     def upsert_all(self) -> None:
         """Upsert all tables in the configuration file."""
-        for name in self.FILE_NAME_TO_DB_TABLE_MAP.keys():
+        for name in self.get_valid_import_file_names():
             self.upsert_one(name)
 
     def is_valid_import_file(self, file_name: str) -> bool:

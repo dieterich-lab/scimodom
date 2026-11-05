@@ -5,6 +5,8 @@ echo '### Activating venv ###'
 cd /app
 echo '### Upgrading Database ###'
 alembic upgrade head
+echo '### Synchronizing reference tables ###'
+flask --app scimodom.app setup upsert --yes || exit 1
 echo '### Starting gunicorn ###'
 extra_opts=''
 if [ "X$3" != X ]

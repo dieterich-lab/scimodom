@@ -8,12 +8,13 @@ from scimodom.services.administration.ingestion import (
     ProjectTemplateError,
     get_project_ingestion_service,
 )
+from scimodom.services.annotation import AnnotationService
 from scimodom.services.assembly import AssemblyNotFoundError
 from scimodom.services.dataset import get_dataset_service
 from scimodom.services.sunburst import get_sunburst_service
-from scimodom.utils.specs.enums import AnnotationSource
 
 from scimodom.cli.helpers import (
+    audited,
     CliResponseException,
     register_cli_errors,
     confirm,
@@ -32,22 +33,37 @@ def validate_dataset_title(ctx, param, value):
 
 @dataset_cli.cli.command(
     "add",
-    epilog="Check docs at https://dieterich-lab.github.io/scimodom/flask.html",
+    epilog="Consult https://dieterich-lab.github.io/scimodom/flask.html#project-and-data-management",
 )
 @register_cli_errors
+@audited("dataset.add")
 @click.option("--yes", is_flag=True, help="Confirm the action without prompting")
 @click.option("--traceback", is_flag=True, help="Show traceback")
-@click.argument("filename", type=click.Path(exists=True))
-@click.argument("smid", type=click.STRING)
-@click.argument("title", type=click.UNPROCESSED, callback=validate_dataset_title)
-@click.option(
-    "--assembly-id", required=True, type=click.INT, help="Assembly ID (from database)."
+@click.argument(
+    "smid",
+    type=click.STRING,
+    help="Must reference an existing Sci-ModoM project ID. The dataset will be added to this project",
+)
+@click.argument(
+    "title",
+    type=click.UNPROCESSED,
+    callback=validate_dataset_title,
+    help="Dataset title. Use quote",
+)
+@click.argument(
+    "filename", type=click.Path(exists=True), help="bedRMod (EU-formatted) file"
 )
 @click.option(
-    "--annotation",
+    "--assembly-id",
     required=True,
-    type=click.Choice(["ensembl", "gtrnadb"], case_sensitive=False),
-    help="Annotation source.",
+    type=click.INT,
+    help="Must reference an existing assembly ID",
+)
+@click.option(
+    "--rna-type",
+    required=True,
+    type=click.STRING,
+    help="Must reference an existing RNA type record",
 )
 @click.option(
     "-m",
@@ -56,7 +72,9 @@ def validate_dataset_title(ctx, param, value):
     multiple=True,
     required=True,
     type=click.INT,
-    help=("Modification ID(s) (from database). Repeat to pass multiple selection IDs."),
+    help=(
+        "Must reference existing modification ID(s). Repeat to pass multiple selection IDs"
+    ),
 )
 @click.option(
     "-o",
@@ -64,7 +82,7 @@ def validate_dataset_title(ctx, param, value):
     default=None,
     required=True,
     type=click.INT,
-    help="Organism ID (from database).",
+    help="Must reference an existing organism ID",
 )
 @click.option(
     "-t",
@@ -72,14 +90,14 @@ def validate_dataset_title(ctx, param, value):
     default=None,
     required=True,
     type=click.INT,
-    help="Technology ID (from database).",
+    help="Must reference an existing technology ID",
 )
 @click.option(
     "--dry-run",
     is_flag=True,
     show_default=True,
     default=False,
-    help="Validate import. No database change.",
+    help="Validate import (no change)",
 )
 @click.option(
     "--eufid",
@@ -87,31 +105,25 @@ def validate_dataset_title(ctx, param, value):
     required=False,
     type=click.STRING,
     help=(
-        "Update data and data annotation records for existing dataset "
-        "with the supplied EUFID instead of creating a new one."
+        "Update data and annotation records for a dataset "
+        "with the supplied EUFID instead of creating a new one"
     ),
 )
 def add_dataset(
     yes: bool,
     traceback: bool,
-    filename: str,
     smid: str,
     title: str,
+    filename: str,
     assembly_id: int,
-    annotation: str,
+    rna_type: str,
     modification_ids: tuple[int],
     organism_id: int,
     technology_id: int,
     dry_run: bool,
     eufid: str | None,
-):  # noqa: D301
-    """Add a new dataset or update records for an existing dataset.
-
-    \b
-    FILENAME is the path to the bedRMod (EU-formatted) file.
-    SMID is the project ID to which this dataset is to be added.
-    TITLE is the title of this dataset. String must be quoted.
-    """
+):
+    """Add a new dataset or update records for an existing dataset."""
     dataset_service = get_dataset_service()
 
     colour = "cyan" if dry_run else "green"
@@ -126,7 +138,7 @@ def add_dataset(
     confirm("Continue?", skip=yes)
 
     try:
-        annotation_source = AnnotationSource(annotation)
+        annotation_source = AnnotationService.get_annotation_source(rna_type)
         with open(filename) as fp:
             eufid = dataset_service.import_dataset(
                 fp,
@@ -155,39 +167,49 @@ def add_dataset(
 
 
 @dataset_cli.cli.command(
-    "batch", epilog="Check docs at https://dieterich-lab.github.io/scimodom/flask.html"
+    "batch",
+    epilog="Consult https://dieterich-lab.github.io/scimodom/flask.html#project-and-data-management",
 )
 @register_cli_errors
+@audited("dataset.batch")
 @click.option("--yes", is_flag=True, help="Confirm the action without prompting")
 @click.option("--traceback", is_flag=True, help="Show traceback")
-@click.argument("input_directory", type=click.Path(exists=True))
-@click.argument("request_uuid", type=click.STRING)
+@click.argument(
+    "request_uuid",
+    type=click.STRING,
+    help="The name (w/o extension) of a project template, presumably obtained by running `flask project create-template`",
+)
+@click.argument(
+    "input_directory",
+    type=click.Path(exists=True, file_okay=False, resolve_path=True),
+    help="Directory with bedRMod (EU-formatted) files",
+)
 @click.option(
-    "--annotation",
+    "--rna-type",
     required=True,
-    type=click.Choice(["ensembl", "gtrnadb"], case_sensitive=False),
-    help="Annotation source.",
+    type=click.STRING,
+    help="Must reference an existing RNA type record",
 )
 @click.option(
     "--dry-run",
     is_flag=True,
     show_default=True,
     default=False,
-    help="Validate import. No database change.",
+    help="Validate import (no change)",
 )
 def add_dataset_in_batch(
     yes: bool,
     traceback: bool,
-    input_directory: str,
     request_uuid: str,
-    annotation: str,
+    input_directory: str,
+    rna_type: str,
     dry_run: bool,
-):  # noqa: D301
+):
     """Add one project and all its datasets in batch.
 
     All dataset files must be under INPUT_DIRECTORY, and
-    must have the same annotation source. Providing files
-    with different sources may not result in failure, but
+    must have the same RNA type. Providing files
+    with different RNA types may not result in failure, but
     will lead to spurious database records.
 
     The "note" from the metadata template must contain the
@@ -196,16 +218,9 @@ def add_dataset_in_batch(
     with the same file name are modifications of the same
     dataset, and must otherwise be identical.
 
-    \b
-    NOTE: This method cannot be used to update records
-    for existing datasets.
-
-    \b
-    INPUT_DIRECTORY is the path to bedRMod (EU-formatted) files.
-    REQUEST_UUID is the name (w/o extension) of a project
-    template, presumably obtained by running "flask project create-template".
+    NOTE: This method cannot be used to update records for existing datasets.
     """
-    annotation_source = AnnotationSource(annotation)
+    annotation_source = AnnotationService.get_annotation_source(rna_type)
     ingestion_service = get_project_ingestion_service()
 
     try:
@@ -251,7 +266,7 @@ def add_dataset_in_batch(
     ):
         if outcome.is_imported:
             click.secho(
-                f"   ... created dataset with EUFID: '{outcome.dataset_id}' "
+                f"   ... created dataset with EUFID '{outcome.dataset_id}' "
                 f"({outcome.dataset.filename}).",
                 fg="green",
             )

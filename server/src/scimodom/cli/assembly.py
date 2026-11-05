@@ -20,7 +20,7 @@ assembly_cli = Blueprint("assembly", __name__)
 
 @assembly_cli.cli.command(
     "add",
-    epilog="Check docs at https://dieterich-lab.github.io/scimodom/flask.html",
+    epilog="Consult https://dieterich-lab.github.io/scimodom/flask.html#assembly-and-annotation",
 )
 @register_cli_errors
 @click.option(
@@ -29,15 +29,14 @@ assembly_cli = Blueprint("assembly", __name__)
     help="Confirm the action without prompting",
 )
 @click.option("--traceback", is_flag=True, help="Show traceback")
-@click.argument("assembly_id", type=click.INT)
-def add_assembly(yes: bool, traceback: bool, assembly_id: int):  # noqa: D301
+@click.argument(
+    "assembly_id", type=click.INT, help="Database record for the current assembly"
+)
+def add_assembly(yes: bool, traceback: bool, assembly_id: int):
     """Provision assemblies.
 
-    Set up the current assembly for ASSEMBLY_ID, and
+    Set up the current assembly for ASSEMBLY_ID and
     all other available assemblies for the same organism.
-
-    \b
-    ASSEMBLY_ID is the database record for the current assembly.
     """
     provisioning_service = get_assembly_provisioning_service()
 

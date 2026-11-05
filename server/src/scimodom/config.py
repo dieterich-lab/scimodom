@@ -44,13 +44,30 @@ class Config:
             "default": {
                 "format": "%(asctime)s [%(levelname)s] %(name)s | %(message)s",
                 "datefmt": "%Y-%m-%d %H:%M:%S",
-            }
+            },
+            "audit": {
+                "class": "scimodom.cli.helpers.audit.UtcFormatter",
+                "format": "%(asctime)s [AUDIT] %(message)s",
+                "datefmt": "%Y-%m-%dT%H:%M:%SZ",
+            },
         },
         handlers={
             "default": {
                 "class": "logging.StreamHandler",
                 "formatter": "default",
                 "level": logging.WARNING,
+            },
+            "audit": {
+                "class": "logging.StreamHandler",
+                "formatter": "audit",
+                "level": logging.INFO,
+            },
+        },
+        loggers={
+            "scimodom.audit": {
+                "handlers": ["audit"],
+                "level": logging.INFO,
+                "propagate": False,
             }
         },
         root={
@@ -96,6 +113,17 @@ def set_config_from_environment():
             ] = "%(asctime)s:%(msecs)03d [%(levelname)s] %(name)s.%(funcName)s.%(lineno)d | %(message)s"
             result["handlers"]["default"]["level"] = logging.DEBUG
             result["root"]["level"] = logging.DEBUG
+        audit_log_file = os.getenv("AUDIT_LOG_FILE")
+        if audit_log_file:
+            result["handlers"]["audit_file"] = {
+                "class": "scimodom.cli.helpers.audit.AuditFileHandler",
+                "filename": audit_log_file,
+                "encoding": "utf-8",
+                "delay": True,
+                "formatter": "audit",
+                "level": logging.INFO,
+            }
+            result["loggers"]["scimodom.audit"]["handlers"].append("audit_file")
         return result
 
     class _Config(Config):

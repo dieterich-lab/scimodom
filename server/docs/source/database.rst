@@ -16,7 +16,7 @@ Data management
 ---------------
 
 This section presents a general explanation how projects are created and how datasets are associated with projects. It is assumed
-that the application is already up and running, see `Flask CLI Setup <https://dieterich-lab.github.io/scimodom/flask.html#setup>`_.
+that the application is already up and running, see `Flask CLI Initialization <https://dieterich-lab.github.io/scimodom/flask.html#initialization>`_.
 
 Consult the `Data Management <https://scimodom.dieterichlab.org/documentation/management>`_ section of the Documentation for examples.
 
@@ -132,7 +132,7 @@ This section presents a general explanation how assemblies and annotations are h
 This is currently only valid for Ensembl releases. The current release and destinations for Ensembl services are defined in an Ensembl
 enumeration in `scimodom.utils.specs.enums.Ensembl <https://github.com/dieterich-lab/scimodom/blob/23e7d2bc872343517e981613d5f847a4cfa2292e/server/src/scimodom/utils/specs/enums.py>`_.
 
-Assemblies and annotations for the current version must be available, see `Flask CLI Setup <https://dieterich-lab.github.io/scimodom/flask.html#setup>`_.
+Assemblies and annotations for the current version must be available, see `Flask CLI Setup <https://dieterich-lab.github.io/scimodom/flask.html#assembly-and-annotation>`_.
 
 Assembly
 ^^^^^^^^

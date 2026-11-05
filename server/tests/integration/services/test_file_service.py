@@ -361,7 +361,7 @@ def test_create_bam_file(Session, tmp_path, dataset):
     service = _get_file_service(Session, tmp_path)
     service.create_or_update_bam_file(dataset2, "test.bam", stream, 1024)
 
-    bam_list = service.get_bam_file_list(dataset2)
+    bam_list = service.get_bam_info_list(dataset2)
     assert len(bam_list) == 1
     assert bam_list[0]["original_file_name"] == "test.bam"
     assert bam_list[0]["size_in_bytes"] == 13
@@ -375,6 +375,71 @@ def test_create_bam_file(Session, tmp_path, dataset):
     service.remove_bam_file(bam)
     with Session() as session:
         assert session.scalar(select(func.count()).select_from(BamFile)) == 0
+
+
+def _create_bam(Session, tmp_path, dataset):
+    service = _get_file_service(Session, tmp_path)
+    service.create_or_update_bam_file(
+        dataset, "test.bam", BytesIO(b"Some bam data"), 1024
+    )
+    bam = service.get_bam_file(dataset, "test.bam")
+    return service, bam, Path(service._get_bam_file_path(bam))
+
+
+def test_remove_bam_file_deletes_file(Session, tmp_path, dataset, bam_file):
+    service, bam, path = _create_bam(Session, tmp_path, dataset[1])
+    assert path.is_file()
+    service.remove_bam_file(bam)
+    assert not path.exists()
+
+
+def test_remove_bam_file_keeps_file_if_commit_fails(
+    Session, tmp_path, dataset, bam_file, mocker
+):
+    service, bam, path = _create_bam(Session, tmp_path, dataset[1])
+    mocker.patch.object(service._session, "commit", side_effect=RuntimeError("boom"))
+    with pytest.raises(RuntimeError):
+        service.remove_bam_file(bam)
+    # the record still exists, and must still have its file
+    assert path.is_file()
+    with Session() as session:
+        assert session.scalar(
+            select(func.count()).select_from(BamFile).filter_by(id=bam.id)
+        )
+
+
+def test_delete_bam_file_records_does_not_commit(Session, tmp_path, dataset, bam_file):
+    service, bam, path = _create_bam(Session, tmp_path, dataset[1])
+
+    def count(dataset_id=None):
+        query = select(func.count()).select_from(BamFile)
+        if dataset_id is not None:
+            query = query.filter_by(dataset_id=dataset_id)
+        return service._session.scalar(query)
+
+    total = count()
+    paths = service.delete_bam_file_records(dataset[1])
+    # all BAM files of this dataset, nothing else, and the files are untouched
+    assert path in paths
+    assert len(paths) == 2
+    assert all(isinstance(p, Path) for p in paths)
+    assert path.is_file()
+    # not committed: rolling back restores the records
+    service._session.rollback()
+    assert count() == total
+
+
+def test_remove_files(tmp_path, caplog):
+    existing = tmp_path / "exists.bam"
+    existing.write_text("data")
+    directory = tmp_path / "directory"  # cannot be unlinked
+    directory.mkdir()
+    FileService.remove_files([tmp_path / "missing.bam", directory, existing])
+    # never raises, a missing file is fine, others are logged, and the rest is done
+    assert not existing.exists()
+    assert directory.is_dir()
+    assert f"Failed to delete '{directory}'" in caplog.text
+    assert "missing.bam" not in caplog.text
 
 
 def test_update_bam_file(Session, tmp_path, dataset, bam_file):

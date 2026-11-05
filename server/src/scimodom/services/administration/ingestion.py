@@ -1,5 +1,4 @@
 import csv
-import os
 import re
 import datetime
 from dataclasses import dataclass
@@ -7,6 +6,7 @@ from functools import cache
 from pathlib import Path
 from typing import Iterator
 
+from pydantic import ValidationError
 from sqlalchemy.exc import NoResultFound
 
 from scimodom.services.assembly import (
@@ -173,8 +173,6 @@ class ProjectIngestionService:
         self,
         dataset_csv: str | Path,
         info: ProjectRequestInfo,
-        use_mod_ids: bool = False,
-        use_method_ids: bool = False,
     ) -> ProjectTemplate:
         """Build a project template from a CSV file of datasets.
 
@@ -182,14 +180,12 @@ class ProjectIngestionService:
 
         :param dataset_csv: Path to CSV with row-wise dataset metadata
         :param info: Project information
-        :param use_mod_ids: Use modification IDs as given, do not infer them
-        :param use_method_ids: Use method IDs as given, do not infer them
         :raises ProjectTemplateError: If the CSV cannot be read, is
         malformed, or has unexpected values.
         :return: Valid project template
         """
         try:
-            metadata = self._read_metadata(dataset_csv, use_mod_ids, use_method_ids)
+            metadata = self._read_metadata(dataset_csv)
             return ProjectTemplate(
                 title=info.title,
                 summary=info.summary,
@@ -204,10 +200,12 @@ class ProjectIngestionService:
             raise ProjectTemplateError(
                 f"Malformed DATASET_CSV. Missing header {exc}"
             ) from exc
-        except (NoResultFound, ValueError) as exc:  # includes ValidationError
+        except (ValidationError, ValueError) as exc:
             raise ProjectTemplateError(
-                f"DATASET_CSV has unexpected values. {exc}"
+                f"Unexpected DATASET_CSV values or arguments. {exc}"
             ) from exc
+        except NoResultFound as exc:
+            raise ProjectTemplateError(f"DATASET_CSV values not found. {exc}") from exc
         except OSError as exc:
             raise ProjectTemplateError(f"Cannot read DATASET_CSV. {exc}") from exc
 
@@ -290,7 +288,7 @@ class ProjectIngestionService:
             self.add_user_to_project(template.contact_email, project_id)
         except NoSuchUser:
             return ProjectIngestionResult(project_id, user_added=False)
-        except Exception as exc:
+        except Exception as exc:  # user-related operation
             raise UserAssociationError(
                 f"Project '{project_id}' was created, but failed to add user. {exc}",
                 project_id,
@@ -442,9 +440,7 @@ class ProjectIngestionService:
 
     # helpers
 
-    def _read_metadata(
-        self, dataset_csv: str | Path, use_mod_ids: bool, use_method_ids: bool
-    ) -> list[ProjectMetaDataDto]:
+    def _read_metadata(self, dataset_csv: str | Path) -> list[ProjectMetaDataDto]:
         with open(dataset_csv, "r", newline="") as fh:
             rows = [
                 {
@@ -453,11 +449,9 @@ class ProjectIngestionService:
                 }
                 for row in csv.DictReader(fh)
             ]
-        return [self._get_metadata(row, use_mod_ids, use_method_ids) for row in rows]
+        return [self._get_metadata(row) for row in rows]
 
-    def _get_metadata(
-        self, row: dict, use_mod_ids: bool, use_method_ids: bool
-    ) -> ProjectMetaDataDto:
+    def _get_metadata(self, row: dict) -> ProjectMetaDataDto:
         organism = ProjectOrganismDto(
             taxa_id=row["taxa_id"],
             cto=row["cto"],
@@ -467,18 +461,12 @@ class ProjectIngestionService:
         return ProjectMetaDataDto(
             rna=row["rna_type"],
             modomics_id=(
-                row["modification"]
-                if use_mod_ids
-                else self._utilities_service.get_modomics_id_by_short_name(
+                self._utilities_service.get_modomics_id_by_short_name(
                     row["modification"]
                 )
             ),
             tech=row["technology"],
-            method_id=(
-                row["method"]
-                if use_method_ids
-                else self._utilities_service.get_method_id_by_name(row["method"])
-            ),
+            method_id=self._utilities_service.get_method_id_by_name(row["method"]),
             organism=organism,
             note=(
                 row["note"]

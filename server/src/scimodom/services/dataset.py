@@ -235,28 +235,24 @@ class DatasetService:
         - bam_file
         - dataset
 
-        Associated BAM files are deleted from
-        the file system.
+        This is a single transaction: everything is deleted, or, if
+        anything fails, nothing. Associated BAM files are deleted from
+        the file system after the commit.
 
         :param dataset: Dataset instance to delete
-        :type dataset: Dataset
         """
         try:
             self._delete_data_records(dataset.id)
             self._session.execute(
                 delete(DatasetModificationAssociation).filter_by(dataset_id=dataset.id)
             )
-            bam_list = self._file_service.get_bam_file_list(dataset)
-            for bam in bam_list:
-                bam_file = self._file_service.get_bam_file(
-                    dataset, bam["original_file_name"]
-                )
-                self._file_service.remove_bam_file(bam_file)
+            bam_paths = self._file_service.delete_bam_file_records(dataset)
             self._session.delete(dataset)
             self._session.commit()
         except Exception:
             self._session.rollback()
             raise
+        self._file_service.remove_files(bam_paths)
 
     @staticmethod
     def _get_data_record(record: EufRecord, context: _DatasetImportContext):
@@ -344,13 +340,12 @@ class DatasetService:
                     buffer.queue(data)
 
     def _delete_data_records(self, dataset_id: str):
-        data_ids_to_delete = (
-            self._session.execute(select(Data.id).filter_by(dataset_id=dataset_id))
-            .scalars()
-            .all()
-        )
         self._session.execute(
-            delete(DataAnnotation).where(DataAnnotation.data_id.in_(data_ids_to_delete))
+            delete(DataAnnotation).where(
+                DataAnnotation.data_id.in_(
+                    select(Data.id).filter_by(dataset_id=dataset_id)
+                )
+            )
         )
         self._session.execute(delete(Data).filter_by(dataset_id=dataset_id))
 
@@ -374,12 +369,10 @@ def _none_if_empty(x):
 
 @cache
 def get_dataset_service() -> DatasetService:
-    """Helper function to set up a DatasetService object by injecting its dependencies.
+    """Instantiate a DatasetService object by injecting its dependencies.
 
-    :returns: Dataset service instance
-    :rtype: DatasetService
+    :return: Dataset service instance
     """
-
     return DatasetService(
         session=get_session(),
         annotation_service=get_annotation_service(),

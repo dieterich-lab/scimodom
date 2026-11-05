@@ -10,18 +10,15 @@ def confirm(message: str, *, skip: bool = False) -> None:
     if skip:
         return
 
-    if sys.stdin is None or not sys.stdin.isatty():
+    if not _is_interactive():
         raise click.UsageError(
             "Cannot prompt for confirmation in non-interactive mode. "
             "Pass --yes to proceed",
             ctx=click.get_current_context(),
         )
 
-    click.confirm(
-        click.style(message, fg="yellow"),
-        default=False,
-        abort=True,
-    )
+    prompt = click.style(f"{message} [y/N]", fg="yellow")
+    click.confirm(prompt, default=False, show_default=False, abort=True)
 
 
 def trigger_charts_update(sunburst_service) -> None:
@@ -40,3 +37,7 @@ def trigger_charts_update(sunburst_service) -> None:
         )
     else:
         click.secho("   ... done.", fg="green")
+
+
+def _is_interactive() -> bool:
+    return sys.stdin is not None and sys.stdin.isatty()

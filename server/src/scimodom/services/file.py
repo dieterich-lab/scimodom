@@ -363,9 +363,7 @@ class FileService:
         """Open a metadata file for writing.
 
         :param project_id: Sci-ModoM ID (SMID)
-        :type project_id: str
-        :returns: File handle
-        :rtype: TextIO
+        :return: File handle
         """
         metadata_file = Path(self._get_project_metadata_dir(), f"{project_id}.json")
         return open(metadata_file, "w", opener=write_opener)
@@ -374,7 +372,6 @@ class FileService:
         """Remove a metadata file.
 
         :param project_id: Sci-ModoM ID (SMID)
-        :type project_id: str
         """
         path = Path(self._get_project_metadata_dir(), f"{project_id}.json")
         path.unlink()
@@ -671,6 +668,17 @@ class FileService:
 
     # uploaded files
 
+    @staticmethod
+    def _handle_upload_error(exception, path) -> None:
+        logger.warning(
+            f"Failed to create file '{path}': {str(exception)} - discarding file."
+        )
+        try:
+            unlink(path)
+        except Exception as unlink_e:
+            logger.warning(f"Failed to delete '{path}': {str(unlink_e)}.")
+        raise exception
+
     def upload_tmp_file(self, stream, max_file_size) -> str:
         fp, path = mkstemp(dir=self._upload_path)
         close(fp)
@@ -734,6 +742,23 @@ class FileService:
 
     # BAM file
 
+    @staticmethod
+    def remove_files(paths: Iterable[Path]) -> None:
+        """Remove files from the file system, as clean-up after a commit.
+
+        This never raises: the data was already committed, and a file
+        that cannot be removed is only logged. A missing file is fine.
+
+        :param paths: Paths of files to remove
+        """
+        for path in paths:
+            try:
+                unlink(path)
+            except FileNotFoundError:
+                pass
+            except OSError as exc:
+                logger.warning(f"Failed to delete '{path}': {exc}")
+
     def create_or_update_bam_file(
         self,
         dataset: Dataset,
@@ -741,6 +766,13 @@ class FileService:
         data_stream: IO[bytes],
         max_size: Optional[int],
     ) -> _Status:
+        """Create (or update) a BAM file.
+
+        For update, only the content is changed;
+        not the database record, unless there is an
+        unexpected failure, in which case the record
+        is deleted.
+        """
         try:
             bam_file = self.get_bam_file(dataset, name)
             self._update_bam_file(bam_file, data_stream, max_size)
@@ -750,6 +782,12 @@ class FileService:
             return _Status.CREATED
 
     def get_bam_file(self, dataset: Dataset, name: str) -> BamFile:
+        """Get BAM record by dataset and file name.
+
+        :param dataset: Dataset
+        :param name: Original file name
+        :return: BamFile
+        """
         return self._session.scalars(
             select(BamFile).where(
                 and_(
@@ -759,44 +797,66 @@ class FileService:
         ).one()
 
     def open_bam_file(self, bam_file: BamFile) -> IO[bytes]:
+        """Open a BAM file for writing.
+
+        :param bam_file: BamFile object
+        :return: Opened handle
+        """
         path = self._get_bam_file_path(bam_file)
         return open(path, "rb")
 
-    def get_bam_file_list(self, dataset: Dataset) -> List[Dict[str, Any]]:
-        """Get all BAM files attachment for the given dataset.
+    def get_bam_info_list(self, dataset: Dataset) -> List[Dict[str, Any]]:
+        """Get all BAM files attachment info for the given dataset.
 
         :param dataset: Dataset instance
-        :returns: BAM file stat and name for each attachment
+        :return: BAM file stat and name for each attachment
         """
-        items = self._session.scalars(
-            select(BamFile).where(BamFile.dataset_id == dataset.id)
-        ).all()
-        return [self._get_bam_file_info(i) for i in items]
+        return [
+            self._get_bam_file_info(bam) for bam in self._get_dataset_bam_list(dataset)
+        ]
+
+    def delete_bam_file_records(self, dataset: Dataset) -> list[Path]:
+        """Delete the BAM file records (attachments) of a dataset.
+
+        The caller commits, and only then removes the files
+        from the file system with 'remove_files', so that a failure
+        cannot leave records without their files.
+
+        :param dataset: Dataset instance
+        :return: Paths of the stored BAM files to remove after commit
+        """
+        paths = []
+        for bam in self._get_dataset_bam_list(dataset):
+            paths.append(Path(self._get_bam_file_path(bam)))
+            self._session.delete(bam)
+        return paths
 
     def remove_bam_file(self, bam_file: BamFile) -> None:
-        path = self._get_bam_file_path(bam_file)
-        try:
-            unlink(path)
-        except FileNotFoundError:
-            pass
-        self._session.delete(bam_file)
-        self._session.commit()
+        """Remove a BAM file (attachment): record, then file.
 
-    @staticmethod
-    def _handle_upload_error(exception, path) -> None:
-        logger.warning(
-            f"Failed to create file '{path}': {str(exception)} - discarding file."
-        )
+        The record is deleted and committed first. If this fails the
+        file is kept, and is still referenced.
+
+        :param bam_file: BAM file instance
+        """
+        path = Path(self._get_bam_file_path(bam_file))
         try:
-            unlink(path)
-        except Exception as unlink_e:
-            logger.warning(f"Failed to delete '{path}': {str(unlink_e)}.")
-        raise exception
+            self._session.delete(bam_file)
+            self._session.commit()
+        except Exception:
+            self._session.rollback()
+            raise
+        self.remove_files([path])
 
     def _get_bam_files_parent_dir(self) -> Path:
         return Path(self._data_path, self.BAM_DEST)
 
-    def _update_bam_file(self, bam_file, data_stream, max_size) -> None:
+    def _update_bam_file(
+        self,
+        bam_file: BamFile,
+        data_stream: IO[bytes],
+        max_size: Optional[int],
+    ) -> None:
         tmp_path = self._get_bam_file_tmp_path(bam_file)
         path = self._get_bam_file_path(bam_file)
         self._stream_to_file(data_stream, tmp_path, max_size)
@@ -813,18 +873,24 @@ class FileService:
             self._session.delete(bam_file)
             raise exc
 
-    def _get_bam_file_tmp_path(self, bam_file) -> str:
+    def _get_bam_file_tmp_path(self, bam_file: BamFile) -> str:
         return join(
             self._get_bam_files_parent_dir().as_posix(),
             f"tmp.{bam_file.storage_file_name}",
         )
 
-    def _get_bam_file_path(self, bam_file) -> str:
+    def _get_bam_file_path(self, bam_file: BamFile) -> str:
         return join(
             self._get_bam_files_parent_dir().as_posix(), bam_file.storage_file_name
         )
 
-    def _create_bam_file(self, dataset, name, data_stream, max_size) -> None:
+    def _create_bam_file(
+        self,
+        dataset: Dataset,
+        name: str,
+        data_stream: IO[bytes],
+        max_size: Optional[int],
+    ) -> None:
         bam_file = BamFile(
             dataset_id=dataset.id,
             original_file_name=name,
@@ -835,7 +901,12 @@ class FileService:
         self._session.add(bam_file)
         self._session.commit()
 
-    def _get_bam_file_info(self, bam_file) -> dict[str, Any]:
+    def _get_dataset_bam_list(self, dataset: Dataset) -> list[BamFile]:
+        return self._session.scalars(
+            select(BamFile).where(BamFile.dataset_id == dataset.id)
+        ).all()
+
+    def _get_bam_file_info(self, bam_file: BamFile) -> dict[str, Any]:
         path = self._get_bam_file_path(bam_file)
         stat_info = stat(path)
         return {

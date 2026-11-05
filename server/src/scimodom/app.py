@@ -8,7 +8,6 @@ from scimodom.app_singleton import create_app_singleton
 from scimodom.config import set_config_from_environment, get_config
 from scimodom.database.database import make_session, init
 
-from scimodom.services.setup import get_setup_service
 from scimodom.services.url import (
     ANALYTICS_API_ROUTE,
     CATALOG_API_ROUTE,
@@ -34,8 +33,6 @@ def create_app():
     engine, session = make_session(app.config["DATABASE_URI"])
     app.session = scoped_session(session)
     init(engine, lambda: app.session)
-    setup_service = get_setup_service()
-    setup_service.upsert_all()
 
     # API
     from scimodom.frontend import frontend
@@ -77,14 +74,16 @@ def create_app():
     from scimodom.cli.selection import selection_cli
     from scimodom.cli.project import project_cli
     from scimodom.cli.dataset import dataset_cli
-    from scimodom.cli.charts import charts_cli
+    from scimodom.cli.chart import chart_cli
+    from scimodom.cli.setup import setup_cli
 
     app.register_blueprint(assembly_cli)
     app.register_blueprint(annotation_cli)
     app.register_blueprint(selection_cli)
     app.register_blueprint(project_cli)
     app.register_blueprint(dataset_cli)
-    app.register_blueprint(charts_cli)
+    app.register_blueprint(chart_cli)
+    app.register_blueprint(setup_cli)
 
     JWTManager(app)
 

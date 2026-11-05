@@ -7,12 +7,12 @@ from scimodom.cli.helpers import CliResponseException, register_cli_errors
 from scimodom.services.file import SunburstUpdateAlreadyRunning
 from scimodom.services.sunburst import get_sunburst_service
 
-charts_cli = Blueprint("charts", __name__)
+chart_cli = Blueprint("charts", __name__)
 
 
-@charts_cli.cli.command(
+@chart_cli.cli.command(
     "sunburst-update",
-    epilog="Check docs at https://dieterich-lab.github.io/scimodom/flask.html",
+    epilog="Consult https://dieterich-lab.github.io/scimodom/flask.html#project-and-data-management",
 )
 @register_cli_errors
 @click.option("--traceback", is_flag=True, help="Show traceback")

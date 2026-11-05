@@ -5,7 +5,6 @@ import pytest
 from scimodom.services.sunburst import SunburstService
 from scimodom.utils.specs.enums import SunburstChartType
 
-
 EXTECTED_SEARCH_CACHE_CONTENT = """[{"name": "Search", "children": [{"name": "m5C", "children": [{"name": "H. sapiens", "children": [{"name": "Cell type 1", "children": [{"name": "Technology 1", "size": 1}]}]}]}, {"name": "m6A", "children": [{"name": "H. sapiens", "children": [{"name": "Cell type 1", "children": [{"name": "Technology 1", "size": 1}, {"name": "Technology 2", "size": 4}]}, {"name": "Cell type 2", "children": [{"name": "Technology 2", "size": 1}]}]}]}]}]"""
 
 # returns 5 datasets while there are actually 4, dataset 1 having both m5C and m6A
@@ -42,3 +41,36 @@ def test_update_browse_cache(sunburst_service: SunburstService, dataset):
         sunburst_service._file_service._sunburst_cache_content
         == EXTECTED_BROWSE_CACHE_CONTENT
     )
+
+
+def test_trigger_background_update_is_detached(mocker):
+    import sys
+    from subprocess import DEVNULL
+
+    popen = mocker.patch("scimodom.services.sunburst.Popen")
+    thread = mocker.patch("scimodom.services.sunburst.Thread")
+    SunburstService.trigger_background_update()
+    popen.assert_called_once_with(
+        [
+            sys.executable,  # not 'flask' from PATH
+            "-m",
+            "flask",
+            "--app",
+            "scimodom.app",
+            "charts",
+            "sunburst-update",
+        ],
+        stdin=DEVNULL,
+        start_new_session=True,
+    )
+    # the finished process is reaped (no zombie in a long-running server)
+    thread.assert_called_once_with(target=popen.return_value.wait, daemon=True)
+    thread.return_value.start.assert_called_once()
+
+
+def test_trigger_background_update_propagates_start_failure(mocker):
+    mocker.patch("scimodom.services.sunburst.Popen", side_effect=OSError("nope"))
+    thread = mocker.patch("scimodom.services.sunburst.Thread")
+    with pytest.raises(OSError):
+        SunburstService.trigger_background_update()
+    thread.assert_not_called()

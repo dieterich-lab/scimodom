@@ -14,7 +14,7 @@ from scimodom.database.models import (
     Project,
 )
 from scimodom.cli.dataset import dataset_cli
-from scimodom.cli.charts import charts_cli
+from scimodom.cli.chart import chart_cli
 from scimodom.services.administration.ingestion import ProjectIngestionService
 from scimodom.services.annotation import AnnotationService
 from scimodom.services.annotation.ensembl import EnsemblAnnotationService
@@ -318,7 +318,7 @@ def test_request(tmp_path):
 def test_runner():
     app = Flask(__name__)
     app.register_blueprint(dataset_cli)
-    app.register_blueprint(charts_cli)
+    app.register_blueprint(chart_cli)
     yield app.test_cli_runner()
 
 
@@ -330,7 +330,7 @@ def mock_services(mocker, Session, tmp_path, test_runner):
         return_value=_get_file_service(Session, tmp_path),
     )
     mocker.patch(
-        "scimodom.cli.charts.get_sunburst_service",
+        "scimodom.cli.chart.get_sunburst_service",
         return_value=_get_sunburst_service(Session, tmp_path, test_runner),
     )
     mocker.patch(
@@ -376,8 +376,8 @@ def test_add_dataset(
         "--yes",
         "--assembly-id",
         1,
-        "--annotation",
-        "ensembl",
+        "--rna-type",
+        "WTS",
         "-m",
         1,
         "-m",
@@ -386,9 +386,9 @@ def test_add_dataset(
         1,
         "-t",
         1,
-        Path(datafiles, "file1.bedrmod").as_posix(),
         project[0].id,
         "Dataset title CLI test",
+        Path(datafiles, "file1.bedrmod").as_posix(),
     ]
 
     freezer.move_to("2024-06-20 12:00:00")
@@ -454,8 +454,8 @@ def test_add_dataset_dry_run(
         "--yes",
         "--assembly-id",
         1,
-        "--annotation",
-        "ensembl",
+        "--rna-type",
+        "WTS",
         "-m",
         1,
         "-m",
@@ -465,9 +465,9 @@ def test_add_dataset_dry_run(
         "-t",
         1,
         "--dry-run",
-        Path(datafiles, "file1.bedrmod").as_posix(),
         project[0].id,
         "Dataset title CLI test",
+        Path(datafiles, "file1.bedrmod").as_posix(),
     ]
 
     freezer.move_to("2024-06-20 12:00:00")
@@ -507,10 +507,10 @@ def test_add_dataset_in_batch(
         "dataset",
         "batch",
         "--yes",
-        "--annotation",
-        "ensembl",
-        datafiles.as_posix(),
+        "--rna-type",
+        "WTS",
         "test_request",
+        datafiles.as_posix(),
     ]
 
     result = test_runner.invoke(args=args)
