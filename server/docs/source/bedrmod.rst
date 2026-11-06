@@ -70,7 +70,9 @@ The header contains metainformation about the source of the data. All header fie
   The values of ``short_name`` and ``primary_base`` given in ``modification_names`` are also validated and must match the standard
   `MODOMICS nomenclature <https://www.genesilico.pl/modomics/modifications>`_. If ``short_name`` contains a comma, entries must be
   double quoted, *e.g.* ``"28284:m6,6A:A","a:m6A:A"``. Sci-ModoM allows T for U and lowercase values, in addition
-  to the existing nomenclature. Note that N is not a valid base.
+  to the existing nomenclature. Note that N is not a valid base. The ``primary_base`` must be the reference base of the modification
+  (given by ``short_name``). The modifications listed in ``modification_names`` must be exactly those chosen during upload. For records in the
+  latest assembly, ``chromEnd`` must not exceed the chromosome size.
 
   Additional user-defined key,value pairs or extra header lines starting with ``#`` are ignored during upload.
 
@@ -81,7 +83,7 @@ The header contains metainformation about the source of the data. All header fie
    its always possible to *map* these using the original ``modification_names``, *i.e.* ``name`` to ``short_name``, and eventually T to U,
    or lowercase to uppercase variants.
 
-   If there are additional entries in ``modification_names`` that do no match data lines, these are not written on export.
+   If there are entries in ``modification_names`` that do no match data lines, these are not written on export.
    If the file was created with `modkit <https://nanoporetech.github.io/modkit>`_, the content of ``bioinformatics_workflow`` remain however unchanged.
 
 The data section

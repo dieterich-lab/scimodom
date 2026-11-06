@@ -5,7 +5,7 @@ import re
 import csv
 from typing import Generator
 
-from sqlalchemy import select, func, exists, distinct
+from sqlalchemy import select, func, exists
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session
 
@@ -45,7 +45,7 @@ class _ReadOnlyImportContext:
     assembly_id: int
 
     is_liftover: bool = False
-    seqids: list[str] = field(default_factory=list)
+    chromosomes: dict[str, str | int] = field(default_factory=dict)
     modification_names: dict[str, dict[str, str | int]] = field(default_factory=dict)
 
 
@@ -71,37 +71,49 @@ class SpecsError(Exception):
 
 
 class DatasetHeaderError(Exception):
-    """Exception for handling mismatch between
-    dataset header and input values."""
+    """Exception for bedRMod header.
+
+    Handles mismatch between dataset header and input values.
+    """
 
     pass
 
 
 class DatasetImportError(Exception):
-    """Exception for handling general import
-    errors associated with the import context."""
+    """Exception for bedRMod import.
+
+    Handles general import errors associated with
+    the import context.
+    """
 
     pass
 
 
 class SelectionNotFoundError(Exception):
-    """Exception for handling Dataset instantiation
-    with a choice of modification, organism,
-    and technology that does not exists."""
+    """Exception for inconsistent import.
+
+    Handles Dataset instantiation with a choice of
+    modification, organism, and technology (selection)
+    that does not exists.
+    """
 
     pass
 
 
 class DatasetExistsError(Exception):
-    """Exception for handling Dataset instantiation,
-    e.g. suspected duplicate entries."""
+    """Exception for handling Dataset instantiation.
+
+    e.g. suspected duplicate entries.
+    """
 
     pass
 
 
 class DatasetUpdateError(Exception):
-    """Exception for handling data records
-    update for existing dataset."""
+    """Exception for handling data records update.
+
+    For existing dataset.
+    """
 
     pass
 
@@ -114,18 +126,16 @@ class ValidatorService:
     during data import (EU-formatted or bedRMod files).
 
     :param session: SQLAlchemy ORM session
-    :type session: Session
     :param annotation_service: Annotation service instance
-    :type annotation_service: AnnotationService
     :param assembly_service: Assembly service instance
-    :type assembly_service: AssemblyService
     :param bedtools_service: BedTools service instance
-    :type bedtools_service: BedToolsService
     :param data_service: Data service instance
-    :type data service: DataService
     """
 
     FILE_FORMAT_VERSION_REGEXP = re.compile(r".*?([0-9.]+)\Z")
+    # optional header fields that are also Dataset fields;
+    # they must be validated on update
+    UPDATE_HEADER_FIELDS = EUF_HEADERS.keys() - EUF_REQUIRED_HEADERS
     MODIFICATION_NAMES_REGEXP = re.compile(
         r"^([A-Za-z0-9]+):([A-Za-z0-9_\-\(\)\+,']+):([A-Za-z]+)$"
     )
@@ -257,8 +267,8 @@ class ValidatorService:
                 yield record
 
     @staticmethod
-    def _check_euf_record(record, importer, context) -> bool:
-        if record.chrom not in context.seqids:
+    def _check_euf_record(record, importer, context, check_range: bool = False) -> bool:
+        if record.chrom not in context.chromosomes:
             importer.report_error(
                 f"Unrecognized chrom: {record.chrom}. Ignore this warning "
                 "for scaffolds and contigs, otherwise this could be due to misformatting!"
@@ -267,6 +277,14 @@ class ValidatorService:
         if record.name not in context.modification_names:
             importer.report_error(f"Unrecognized name: {record.name}.")
             return False
+        if check_range:
+            # only for coordinates of the current assembly
+            if record.end > context.chromosomes.get(record.chrom):
+                importer.report_error(
+                    f"Invalid coordinates: chromEnd {record.end} is greater "
+                    f"than the size of chromosome {record.chrom}."
+                )
+                return False
         if record.thick_start != record.start or record.thick_end != record.end:
             importer.report_error(
                 "Invalid coordinates: thickStart and thickEnd must be identical "
@@ -274,6 +292,20 @@ class ValidatorService:
             )
             return False
         return True
+
+    @staticmethod
+    def _is_valid_primary_base(
+        primary_base: str, reference_base: str, all_reference_bases: set[str]
+    ) -> bool:
+        # a known reference base, incl. T - N not allowed
+        base = primary_base.upper()
+        if reference_base.upper() in ("A", "C", "G", "U"):
+            expected = {reference_base.upper()}
+            if "U" in expected:
+                expected.add("T")
+            return base in expected
+        # X and QtRNA are success...
+        return primary_base in {b for b in all_reference_bases}
 
     def _sanitize_header(
         self,
@@ -290,21 +322,19 @@ class ValidatorService:
             raise SpecsError(f"Unknown or outdated version {version}.")
 
         read_header = {}
-        for header_tag, internal_name in EUF_HEADERS.items():
+        for header_tag, column in EUF_HEADERS.items():
             value = importer.get_header(header_tag)
             if value is None:
                 raise SpecsError(f"Required header '{header_tag}' is missing.")
             if header_tag in EUF_REQUIRED_HEADERS and value == "":
                 raise SpecsError(f"Required header '{header_tag}' is empty.")
-            read_header[internal_name] = value
+            read_header[column] = value
 
         self._read_header = read_header
         self._sanitize_modification_names()
 
     def _sanitize_modification_names(self) -> None:
-        short_names = self._get_modification_names()
-        reference_bases = self._get_reference_bases()
-        reference_bases.append("T")
+        reference_bases = self._get_reference_bases_by_short_name()
         modification_names = next(
             csv.reader(
                 [self._read_header["modification_names"]], delimiter=",", quotechar='"'
@@ -316,11 +346,15 @@ class ValidatorService:
             if match is None:
                 raise SpecsError("Failed to parse 'modification_names' from header.")
             name, short_name, primary_base = match.groups()
-            if short_name not in short_names:
+            if short_name not in reference_bases:
                 raise SpecsError(f"Unrecognized short name: {short_name}.")
-            if primary_base not in reference_bases:
-                if primary_base.upper() not in reference_bases:
-                    raise SpecsError(f"Unrecognized primary base: {primary_base}.")
+            if not self._is_valid_primary_base(
+                primary_base, reference_bases[short_name], set(reference_bases.values())
+            ):
+                raise SpecsError(
+                    f"Unrecognized primary base for {short_name}: {primary_base}. "
+                    f"Expected {reference_bases[short_name]}."
+                )
             name_map[short_name] = {
                 "name": name,
                 "primary_base": primary_base,
@@ -336,7 +370,7 @@ class ValidatorService:
 
     def _sanitize_assembly(
         self, context: _ReadOnlyImportContext | _DatasetImportContext
-    ) -> tuple[bool, list[str]]:
+    ) -> tuple[bool, list[str], dict[str, int]]:
         assembly = self._assembly_service.get_by_id(context.assembly_id)
         assembly_name = self._read_header["assembly_name"]
         if assembly.name != assembly_name:
@@ -344,15 +378,17 @@ class ValidatorService:
                 f"Expected {assembly.name} for 'assembly'; got {assembly_name} from file header."
             )
         is_liftover = not self._assembly_service.is_latest_assembly(assembly)
-        seqids = context.seqids
-        if not seqids:
-            seqids = self._assembly_service.get_seqids(assembly.taxa_id)
-        return is_liftover, seqids
+        chromosomes = {
+            chrom["chrom"]: chrom["size"]
+            for chrom in self._assembly_service.get_chroms(assembly.taxa_id)
+        }
+        return is_liftover, chromosomes
 
     def _sanitize_read_only_import_context(self) -> None:
-        self._ro_context.is_liftover, self._ro_context.seqids = self._sanitize_assembly(
-            self._ro_context
-        )
+        (
+            self._ro_context.is_liftover,
+            self._ro_context.chromosomes,
+        ) = self._sanitize_assembly(self._ro_context)
         # dict value (int) unused for read-only import context
         self._ro_context.modification_names = {
             name_map["name"]: {
@@ -363,9 +399,10 @@ class ValidatorService:
         }
 
     def _sanitize_import_context(self) -> None:
-        self._context.is_liftover, self._context.seqids = self._sanitize_assembly(
-            self._context
-        )
+        (
+            self._context.is_liftover,
+            self._context.chromosomes,
+        ) = self._sanitize_assembly(self._context)
         is_found = self._session.query(
             exists().where(Project.id == self._context.project_id)
         ).scalar()
@@ -379,7 +416,10 @@ class ValidatorService:
                 f"No such technology ID: {self._context.technology_id}."
             )
         self._sanitize_selection_ids()
-        self._check_for_duplicate_dataset()
+        if self._context.update_flag:
+            self._check_dataset_update()
+        else:
+            self._check_for_duplicate_dataset()
 
     def _sanitize_modification_ids(self) -> None:
         if len(set(self._context.modification_ids)) != len(
@@ -398,8 +438,19 @@ class ValidatorService:
                 raise DatasetImportError(f"No such modification ID: {mid}.")
             except KeyError:
                 raise DatasetImportError(
-                    f"Expected '{short_name}' for short name; missing from 'modification_names'."
+                    f"Expected '{short_name}' for short name; "
+                    "missing from 'modification_names'."
                 )
+        selected = sorted(
+            name_map["short_name"]
+            for name_map in self._context.modification_names.values()
+        )
+        declared = sorted(self._name_map)
+        if selected != declared:
+            raise DatasetHeaderError(
+                f"Modifications from header 'modification_names' {declared} "
+                f"do not match the selection {selected}."
+            )
         if not self._annotation_service.check_annotation_source(
             self._context.annotation_source, self._context.modification_ids
         ):
@@ -434,7 +485,11 @@ class ValidatorService:
     def _check_for_duplicate_dataset(self) -> None:
         dataset_id = self._session.execute(
             select(func.distinct(Dataset.id))
-            .join(DatasetModificationAssociation, Dataset.associations, isouter=True)
+            .join(
+                DatasetModificationAssociation,
+                Dataset.associations,
+                isouter=True,
+            )
             .where(
                 Dataset.project_id == self._context.project_id,
                 Dataset.title == self._context.title,
@@ -445,18 +500,60 @@ class ValidatorService:
                 Dataset.technology_id == self._context.technology_id,
             )
         ).scalar_one_or_none()
-        if self._context.update_flag:
-            if dataset_id != self._context.dataset_id:
-                raise DatasetUpdateError(
-                    f"Provided dataset '{self._context.dataset_id}', but found '{dataset_id}' with "
-                    f"title '{self._context.title}' (SMID '{self._context.project_id}')."
+        if dataset_id:
+            raise DatasetExistsError(
+                f"Suspected duplicate dataset '{dataset_id}' "
+                f"(SMID '{self._context.project_id}'), "
+                f"and title '{self._context.title}'."
+            )
+
+    def _check_dataset_update(self) -> None:
+        try:
+            dataset = self._session.get_one(Dataset, self._context.dataset_id)
+        except NoResultFound:
+            raise DatasetUpdateError(
+                f"No such dataset: '{self._context.dataset_id}'."
+            ) from None
+
+        mismatches = []
+
+        def _compare(column, stored, given) -> None:
+            if stored != given:
+                mismatches.append(
+                    f"{column}: Dataset has '{stored}', got '{given}'",
                 )
-        else:
-            if dataset_id:
-                raise DatasetExistsError(
-                    f"Suspected duplicate dataset '{dataset_id}' (SMID '{self._context.project_id}'), "
-                    f"and title '{self._context.title}'."
-                )
+
+        context_fields = {
+            "project_id": self._context.project_id,
+            "title": self._context.title,
+            "organism_id": self._context.organism_id,
+            "technology_id": self._context.technology_id,
+        }
+        for column, value in context_fields.items():
+            _compare(column, getattr(dataset, column), value)
+
+        # proxy for modification_names cf. _sanitize_modification_ids
+        stored_ids = sorted(self._get_modification_associations(dataset.id))
+        _compare(
+            "modifications",
+            stored_ids,
+            sorted(self._context.modification_ids),
+        )
+
+        # empty strings stored as NULL on dataset creation
+        for header_tag in self.UPDATE_HEADER_FIELDS:
+            column = EUF_HEADERS[header_tag]
+            _compare(
+                column,
+                getattr(dataset, column) or "",
+                self._read_header[column],
+            )
+
+        if mismatches:
+            raise DatasetUpdateError(
+                f"Cannot update records for dataset '{dataset.id}'. "
+                f"The metadata has changed. {'; '.join(mismatches)}."
+            )
 
     def _modification_id_to_name(self, idx: int) -> str:
         return self._session.execute(
@@ -465,12 +562,20 @@ class ValidatorService:
             .where(Modification.id == idx)
         ).scalar_one()
 
-    def _get_modification_names(self) -> list[str]:
-        return self._session.execute(select(Modomics.short_name)).scalars().all()
+    def _get_reference_bases_by_short_name(self) -> dict[str, str]:
+        return dict(
+            self._session.execute(
+                select(Modomics.short_name, Modomics.reference_nucleobase)
+            ).all()
+        )
 
-    def _get_reference_bases(self) -> list[str]:
+    def _get_modification_associations(self, dataset_id: str) -> list[int]:
         return (
-            self._session.execute(select(distinct(Modomics.reference_nucleobase)))
+            self._session.execute(
+                select(DatasetModificationAssociation.modification_id).filter_by(
+                    dataset_id=dataset_id
+                )
+            )
             .scalars()
             .all()
         )
@@ -504,7 +609,7 @@ class ValidatorService:
         context: _ReadOnlyImportContext | _DatasetImportContext,
     ) -> Generator[EufRecord, None, None]:
         for record in importer.parse():
-            if self._check_euf_record(record, importer, context):
+            if self._check_euf_record(record, importer, context, check_range=True):
                 yield record
 
     def _do_lift_over(
@@ -529,10 +634,12 @@ class ValidatorService:
         with self._assembly_service.create_lifted_file(assembly, raw_file) as fh:
             lifted_importer = EufImporter(stream=fh, source=fh.name)
             for lifted_record in lifted_importer.parse():
-                # CrossMap updates “chrom”, “start”, “end”, and “strand” only
+                # CrossMap updates "chrom", "start", "end", and "strand" only
                 lifted_record.thick_start = lifted_record.start
                 lifted_record.thick_end = lifted_record.end
-                if self._check_euf_record(lifted_record, lifted_importer, context):
+                if self._check_euf_record(
+                    lifted_record, lifted_importer, context, check_range=True
+                ):
                     yield lifted_record
 
 

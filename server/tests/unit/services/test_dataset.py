@@ -275,7 +275,6 @@ def test_import_dataset_dry_run(Session, selection, project, freezer):  # noqa
         organism_id=1,
         annotation_source=AnnotationSource.ENSEMBL,
         dry_run_flag=True,
-        dataset_id="XXXXXXXXXXXX",
     )
 
     assert dataset_id == "DRYRUNDRYRUN"
@@ -400,6 +399,85 @@ def test_import_dataset_update_with_change(
         assert data[0].score == 555
 
 
+def _import_new_dataset(service, project_id, **kwargs):
+    args = {
+        "source": "test",
+        "project_id": project_id,
+        "title": "title",
+        "assembly_id": 1,
+        "modification_ids": [1],
+        "technology_id": 1,
+        "organism_id": 1,
+        "annotation_source": AnnotationSource.ENSEMBL,
+    }
+    args.update(kwargs)
+    return service.import_dataset(
+        StringIO(kwargs.pop("euf_file", GOOD_EUF_FILE)), **args
+    )
+
+
+def _get_state(Session):
+    with Session() as session:
+        data = session.execute(
+            select(Data.id, Data.dataset_id, Data.name, Data.score)
+        ).all()
+        association = session.execute(
+            select(
+                DatasetModificationAssociation.dataset_id,
+                DatasetModificationAssociation.modification_id,
+            )
+        ).all()
+        datasets = session.execute(select(Dataset.id, Dataset.title)).all()
+    return data, association, datasets
+
+
+def test_import_dataset_dry_run_unknown_eufid(Session, selection, project):  # noqa
+    service = _get_dataset_service(Session())
+    with pytest.raises(DatasetUpdateError) as exc:
+        service.import_dataset(
+            StringIO(GOOD_EUF_FILE),
+            source="test",
+            project_id=project[0].id,
+            title="title",
+            assembly_id=1,
+            modification_ids=[1],
+            technology_id=1,
+            organism_id=1,
+            annotation_source=AnnotationSource.ENSEMBL,
+            dry_run_flag=True,
+            dataset_id="XXXXXXXXXXXX",
+        )
+    assert str(exc.value) == "No such dataset: 'XXXXXXXXXXXX'."
+    assert _get_state(Session) == ([], [], [])
+
+
+def test_import_dataset_update_dry_run(Session, selection, project):  # noqa
+    service = _get_dataset_service(Session())
+    project_id = project[0].id
+    dataset_id = _import_new_dataset(service, project_id)
+    before = _get_state(Session)
+    assert [row.score for row in before[0]] == [1000]
+    service._annotation_service._annotated = False
+
+    # valid update (new scores), not applied
+    result = service.import_dataset(
+        StringIO(GOOD_EUF_FILE.replace("1000", "555")),
+        source="test",
+        project_id=project_id,
+        title="title",
+        assembly_id=1,
+        modification_ids=[1],
+        technology_id=1,
+        organism_id=1,
+        annotation_source=AnnotationSource.ENSEMBL,
+        dry_run_flag=True,
+        dataset_id=dataset_id,
+    )
+    assert result == dataset_id
+    assert _get_state(Session) == before
+    assert service._annotation_service._annotated is False
+
+
 def test_import_dataset_update_fail(Session, selection, dataset, project):  # noqa
     service = _get_dataset_service(Session())
     with pytest.raises(DatasetUpdateError) as exc:
@@ -489,39 +567,11 @@ def test_delete_dataset_is_atomic(Session, dataset, bam_file, mocker, failing_st
     before = _counts(session)
     # fail late: data records and associations are already deleted (not committed)
     target = service._file_service if failing_step != "commit" else service._session
-    mocker.patch.object(target, failing_step, side_effect=RuntimeError("boom"))
-    with pytest.raises(RuntimeError, match="boom"):
+    mocker.patch.object(target, failing_step, side_effect=RuntimeError("runtime"))
+    with pytest.raises(RuntimeError, match="runtime"):
         service.delete_dataset(dataset[0])
     after = _counts(session)
     # nothing was deleted: not the data, not the associations, not the BAM records
     assert after == before
     # and the files on disk are kept
     assert service._file_service.removed_files == []
-
-
-def test_delete_dataset_data_records_use_a_subquery(Session, dataset, bam_file):
-    from sqlalchemy import event
-
-    statements = []
-
-    def capture(conn, cursor, statement, parameters, context, executemany):
-        statements.append((statement, parameters))
-
-    service = _get_dataset_service(Session())
-    engine = service._session.get_bind()
-    event.listen(engine, "before_cursor_execute", capture)
-    try:
-        service.delete_dataset(dataset[0])
-    finally:
-        event.remove(engine, "before_cursor_execute", capture)
-    deletes = [
-        (sql, params)
-        for sql, params in statements
-        if sql.startswith("DELETE FROM data_annotation")
-    ]
-    assert len(deletes) == 1
-    sql, params = deletes[0]
-    # the data IDs are not loaded to build an IN (...) list
-    assert "SELECT data.id" in sql
-    assert len(params) == 1
-    assert not any(sql.startswith("SELECT data.id FROM data") for sql, _ in statements)

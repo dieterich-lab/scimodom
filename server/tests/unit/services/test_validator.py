@@ -5,7 +5,9 @@ from decimal import Decimal
 import pytest
 from sqlalchemy.exc import NoResultFound
 
-from scimodom.database.models import Assembly
+from datetime import datetime
+
+from scimodom.database.models import Assembly, Dataset, DatasetModificationAssociation
 from scimodom.services.assembly import AssemblyNotFoundError
 from scimodom.services.validator import (
     _DatasetImportContext,
@@ -103,8 +105,8 @@ class MockAssemblyService:
     def is_latest_assembly(self, assembly: Assembly) -> bool:  # noqa
         return self._is_latest
 
-    def get_seqids(self, taxa_id: int) -> list[str]:  # noqa
-        return ["1"]
+    def get_chroms(self, taxa_id: int) -> list[dict[str, str | int]]:  # noqa
+        return [{"chrom": "1", "size": 1000}]
 
     def get_name_for_version(self, taxa_id: int) -> str:  # noqa
         return "GRCh38"
@@ -213,7 +215,7 @@ def test_read_only_import_context(Session, setup):  # noqa
         taxa_id=9606,
         assembly_id=1,
         is_liftover=False,
-        seqids=["1"],
+        chromosomes={"1": 1000},
         modification_names={"a": {"short_name": "m6A", "id": hash("m6A")}},
     )
 
@@ -229,7 +231,7 @@ def test_read_only_import_context_add_assembly(Session, setup):
         taxa_id=9606,
         assembly_id=4,
         is_liftover=False,
-        seqids=["1"],
+        chromosomes={"1": 1000},
         modification_names={"a": {"short_name": "m6A", "id": hash("m6A")}},
     )
 
@@ -263,7 +265,7 @@ def test_create_import_context(Session, input_ctx):
         taxa_id=9606,
         assembly_id=1,
         is_liftover=False,
-        seqids=["1"],
+        chromosomes={"1": 1000},
         modification_names={"a": {"short_name": "m6A", "id": 1}},
     )
     assert service.get_validated_header() == {
@@ -428,7 +430,26 @@ def test_import_fail(
             r"#modification_names=a:m6A:A",
             "#modification_names=a:m6A:Z",
             SpecsError,
-            "Unrecognized primary base: Z.",
+            "Unrecognized primary base for m6A: Z. Expected A.",
+        ),
+        (
+            r"#modification_names=a:m6A:A",
+            "#modification_names=a:m6A:C",
+            SpecsError,
+            "Unrecognized primary base for m6A: C. Expected A.",
+        ),
+        (
+            r"#modification_names=a:m6A:A",
+            "#modification_names=a:m6A:A,b:m5C:C",
+            DatasetHeaderError,
+            "Modifications from header 'modification_names' ['m5C', 'm6A'] "
+            "do not match the selection ['m6A'].",
+        ),
+        (
+            r"#modification_names=a:m6A:A",
+            "#modification_names=a:m6A:A,b:m5C:A",
+            SpecsError,
+            "Unrecognized primary base for m5C: A. Expected C.",
         ),
         (
             r"#assembly=GRCh38",
@@ -475,10 +496,6 @@ def test_validate_header_fail(
 @pytest.mark.parametrize(
     "regexp,replacement",
     [
-        (
-            r"#modification_names=a:m6A:A",
-            "#modification_names=a:m6A:C",
-        ),
         (
             r"#modification_names=a:m6A:A",
             "#modification_names=a:m6A:a",
@@ -620,6 +637,24 @@ def test_validate_lifted_records(Session, input_ctx, caplog):
         ),
         (
             "1\t0\t10\ta\t1000\t+\t0\t10\t0,0,0\t10\t1",
+            "1\t990\t1001\ta\t1000\t+\t990\t1001\t0,0,0\t10\t1",
+            BedImportTooManyErrors,
+            "Found too many errors in test (valid: 0, errors: 1)",
+            [
+                (
+                    "scimodom.utils.importer.bed_importer",
+                    30,
+                    "test, line 14: Invalid coordinates: chromEnd 1001 is greater than the size of chromosome 1.",
+                ),
+                (
+                    "scimodom.utils.importer.bed_importer",
+                    40,
+                    "Found too many errors in test (valid: 0, errors: 1)",
+                ),
+            ],
+        ),
+        (
+            "1\t0\t10\ta\t1000\t+\t0\t10\t0,0,0\t10\t1",
             "2\t0\t10\ta\t1000\t+\t0\t10\t0,0,0\t10\t1",
             BedImportTooManyErrors,
             "Found too many errors in test (valid: 0, errors: 1)",
@@ -659,34 +694,195 @@ def test_validate_records_fail(
     assert caplog.record_tuples == record_tuples
 
 
+def test_check_duplicate_dataset_fail(Session, input_ctx, dataset):  # noqa
+    importer = EufImporter(stream=StringIO(GOOD_EUF_FILE), source="test")
+    input_ctx["dataset_id"] = "XXXXXXXXXXXX"
+    service = _get_validator_service(Session())
+    with pytest.raises(DatasetExistsError) as exc:
+        service.create_import_context(importer=importer, **input_ctx)
+    assert (
+        str(exc.value)
+        == "Suspected duplicate dataset 'dataset00001' (SMID '12345678'), "
+        "and title 'dataset title'."
+    )
+
+
+# dataset update: only the records can change
+
+UPDATE_EUFID = "UPDATEUPDATE"
+TWO_MODIFICATIONS_FILE = GOOD_EUF_FILE.replace(
+    "#modification_names=a:m6A:A", "#modification_names=a:m6A:A,b:m5C:C"
+)
+
+
+def _add_dataset(Session, project_id, modifications, eufid=UPDATE_EUFID, **kwargs):
+    # stored values identical to the header of GOOD_EUF_FILE and input_ctx,
+    # unless overridden. Empty header values are stored as NULL.
+    values = {
+        "id": eufid,
+        "project_id": project_id,
+        "title": "dataset title",
+        "organism_id": 1,
+        "technology_id": 1,
+        "date_added": datetime(2024, 10, 21, 8, 10, 27),
+        "modification_type": "RNA",
+        "sequencing_platform": "Sequencing platform",
+        "basecalling": None,
+        "bioinformatics_workflow": "Workflow",
+        "experiment": "Description of experiment.",
+        "external_source": None,
+    }
+    values.update(kwargs)
+    with Session() as session:
+        session.add(Dataset(**values))
+        for mid in modifications:
+            session.add(
+                DatasetModificationAssociation(dataset_id=eufid, modification_id=mid)
+            )
+        session.commit()
+
+
+def _update(Session, input_ctx, euf_file=GOOD_EUF_FILE, **kwargs):
+    importer = EufImporter(stream=StringIO(euf_file), source="test")
+    input_ctx.update({"dataset_id": UPDATE_EUFID, "update_flag": True, **kwargs})
+    service = _get_validator_service(Session())
+    service.create_import_context(importer=importer, **input_ctx)
+    return service
+
+
+def test_update_identical_metadata(Session, input_ctx):
+    _add_dataset(Session, input_ctx["project_id"], [1])
+    service = _update(Session, input_ctx)
+    context = service.get_import_context()
+    assert context.update_flag is True
+    assert context.dataset_id == UPDATE_EUFID
+
+
+def test_update_identical_metadata_two_modifications(Session, input_ctx):
+    _add_dataset(Session, input_ctx["project_id"], [1, 2])
+    _update(
+        Session, input_ctx, euf_file=TWO_MODIFICATIONS_FILE, modification_ids=[1, 2]
+    )
+
+
+def test_update_with_similar_dataset(Session, input_ctx):
+    # same metadata, other modification: no ambiguity
+    _add_dataset(Session, input_ctx["project_id"], [1])
+    _add_dataset(Session, input_ctx["project_id"], [2], eufid="OTHEROTHEROT")
+    _update(Session, input_ctx)
+
+
 @pytest.mark.parametrize(
-    "dataset_id,update,exception,message",
+    "stored_modifications,header,modification_ids,message",
     [
+        # more modifications
         (
-            "XXXXXXXXXXXX",
-            False,
-            DatasetExistsError,
-            "Suspected duplicate dataset 'dataset00001' (SMID '12345678'), and title 'dataset title'.",
+            [1],
+            TWO_MODIFICATIONS_FILE,
+            [1, 2],
+            "modifications: Dataset has '[1]', got '[1, 2]'",
         ),
+        # fewer modifications
         (
-            "dataset00002",
-            True,
-            DatasetUpdateError,
-            "Provided dataset 'dataset00002', but found 'dataset00001' with title 'dataset title' (SMID '12345678').",
+            [1, 2],
+            GOOD_EUF_FILE,
+            [1],
+            "modifications: Dataset has '[1, 2]', got '[1]'",
+        ),
+        # different modification
+        (
+            [2],
+            GOOD_EUF_FILE,
+            [1],
+            "modifications: Dataset has '[2]', got '[1]'",
         ),
     ],
 )
-def test_check_duplicate_dataset_fail(
-    dataset_id, update, exception, message, Session, input_ctx, dataset
-):  # noqa
+def test_update_fail_modifications(
+    stored_modifications, header, modification_ids, message, Session, input_ctx
+):
+    _add_dataset(Session, input_ctx["project_id"], stored_modifications)
+    with pytest.raises(DatasetUpdateError) as exc:
+        _update(Session, input_ctx, euf_file=header, modification_ids=modification_ids)
+    assert f"Cannot update records for dataset '{UPDATE_EUFID}'." in str(exc.value)
+    assert message in str(exc.value)
+
+
+@pytest.mark.parametrize(
+    "stored,message",
+    [
+        (
+            {"title": "other title"},
+            "title: Dataset has 'other title', got 'dataset title'",
+        ),
+        ({"technology_id": 2}, "technology_id: Dataset has '2', got '1'"),
+        ({"organism_id": 2}, "organism_id: Dataset has '2', got '1'"),
+        # (
+        #     {"modification_type": "DNA"},
+        #     "header 'modification_type': Dataset has 'DNA', got 'RNA'",
+        # ),
+        (
+            {"sequencing_platform": "Other platform"},
+            "sequencing_platform: Dataset has 'Other platform', got 'Sequencing platform'",
+        ),
+        ({"basecalling": "bc"}, "basecalling: Dataset has 'bc', got ''"),
+        (
+            {"bioinformatics_workflow": None},
+            "bioinformatics_workflow: Dataset has '', got 'Workflow'",
+        ),
+        (
+            {"experiment": "Other"},
+            "experiment: Dataset has 'Other', got 'Description of experiment.'",
+        ),
+        (
+            {"external_source": "GEO"},
+            "external_source: Dataset has 'GEO', got ''",
+        ),
+    ],
+)
+def test_update_fail_metadata(stored, message, Session, input_ctx):
+    _add_dataset(Session, input_ctx["project_id"], [1], **stored)
+    with pytest.raises(DatasetUpdateError) as exc:
+        _update(Session, input_ctx)
+    assert message in str(exc.value)
+
+
+def test_update_fail_project(Session, input_ctx, project):  # noqa
+    # second project of the fixture
+    _add_dataset(Session, "ABCDEFGH", [1])
+    with pytest.raises(DatasetUpdateError) as exc:
+        _update(Session, input_ctx)
+    assert "project_id: Dataset has 'ABCDEFGH', got '12345678'" in str(exc.value)
+
+
+def test_update_fail_reports_all_mismatches(Session, input_ctx):
+    _add_dataset(
+        Session,
+        input_ctx["project_id"],
+        [1, 2],
+        title="other title",
+        experiment="Other",
+    )
+    with pytest.raises(DatasetUpdateError) as exc:
+        _update(Session, input_ctx)
+    message = str(exc.value)
+    assert "title: Dataset has 'other title'" in message
+    assert "modifications: Dataset has '[1, 2]', got '[1]'" in message
+    assert "experiment: Dataset has 'Other'" in message
+
+
+def test_update_fail_no_such_dataset(Session, input_ctx):
+    with pytest.raises(DatasetUpdateError) as exc:
+        _update(Session, input_ctx)
+    assert str(exc.value) == f"No such dataset: '{UPDATE_EUFID}'."
+
+
+def test_update_checks_do_not_apply_to_new_dataset(Session, input_ctx):
+    # a different header is fine for a new dataset
+    _add_dataset(Session, input_ctx["project_id"], [1], title="other title")
     importer = EufImporter(stream=StringIO(GOOD_EUF_FILE), source="test")
-    input_ctx["dataset_id"] = dataset_id
-    input_ctx["update_flag"] = update
     service = _get_validator_service(Session())
-    with pytest.raises(exception) as exc:
-        service.create_import_context(importer=importer, **input_ctx)
-    assert str(exc.value) == message
-    assert exc.type == exception
+    service.create_import_context(importer=importer, **input_ctx)
 
 
 def test_selection_not_found(Session, input_ctx):
@@ -699,3 +895,79 @@ def test_selection_not_found(Session, input_ctx):
         str(exc.value)
         == "Selection with m6A, Cell type 2, and Technology 1 (9606) not found."
     )
+
+
+@pytest.mark.parametrize(
+    "primary_base,reference_base,valid",
+    [
+        ("A", "A", True),
+        ("a", "A", True),
+        ("C", "A", False),
+        ("U", "U", True),
+        ("T", "U", True),
+        ("t", "U", True),
+        ("A", "U", False),
+        ("T", "A", False),
+        ("Z", "A", False),
+        # reference base other than A, C, G, U: MODOMICS is the reference
+        ("A", "X", True),
+        ("Z", "N", False),
+    ],
+)
+def test_is_valid_primary_base(primary_base, reference_base, valid):
+    all_bases = {"A", "C", "G", "U", "X", "QtRNA"}
+    assert (
+        ValidatorService._is_valid_primary_base(primary_base, reference_base, all_bases)
+        is valid
+    )
+
+
+def test_validate_records_end_equal_to_chrom_size(Session, input_ctx):
+    euf_file = GOOD_EUF_FILE.replace(
+        "1\t0\t10\ta\t1000\t+\t0\t10\t0,0,0\t10\t1",
+        "1\t990\t1000\ta\t1000\t+\t990\t1000\t0,0,0\t10\t1",
+    )
+    importer = EufImporter(stream=StringIO(euf_file), source="test")
+    service = _get_validator_service(Session())
+    service.create_import_context(importer=importer, **input_ctx)
+    records = list(
+        service.get_validated_records(importer, service.get_import_context())
+    )
+    assert [(r.start, r.end) for r in records] == [(990, 1000)]
+
+
+def test_validate_records_range_is_not_checked_before_liftover(Session, input_ctx):
+    # coordinates are those of the original assembly: sizes are unknown
+    euf_file = GOOD_EUF_FILE.replace(
+        "1\t0\t10\ta\t1000\t+\t0\t10\t0,0,0\t10\t1",
+        "1\t5000\t5010\ta\t1000\t+\t5000\t5010\t0,0,0\t10\t1",
+    )
+    importer = EufImporter(stream=StringIO(euf_file), source="test")
+    service = _get_validator_service(Session(), is_latest_asembly=False)
+    raw_records = []
+
+    def create_temp_euf_file(records):
+        # the mock does not read the records
+        raw_records.extend(records)
+        return "xxx"
+
+    service._bedtools_service.create_temp_euf_file = create_temp_euf_file
+    service.create_import_context(importer=importer, **input_ctx)
+    records = list(
+        service.get_validated_records(importer, service.get_import_context())
+    )
+    assert [(r.start, r.end) for r in raw_records] == [(5000, 5010)]  # not rejected
+    assert [(r.start, r.end) for r in records] == [(10, 20)]  # mock: lifted record
+
+
+def test_read_only_context_checks_range(Session, setup):  # noqa
+    # comparison view: same checks, header modifications as declared
+    euf_file = GOOD_EUF_FILE.replace(
+        "1\t0\t10\ta\t1000\t+\t0\t10\t0,0,0\t10\t1",
+        "1\t990\t1001\ta\t1000\t+\t990\t1001\t0,0,0\t10\t1",
+    )
+    importer = EufImporter(stream=StringIO(euf_file), source="test")
+    service = _get_validator_service(Session())
+    service.create_read_only_import_context(importer=importer, taxa_id=9606)
+    with pytest.raises(BedImportTooManyErrors):
+        list(service.get_validated_records(importer, service.get_read_only_context()))

@@ -42,7 +42,10 @@ def validate_dataset_title(ctx, param, value):
 @click.argument(
     "smid",
     type=click.STRING,
-    help="Must reference an existing Sci-ModoM project ID. The dataset will be added to this project",
+    help=(
+        "Must reference an existing Sci-ModoM project ID. "
+        "The dataset will be added to this project"
+    ),
 )
 @click.argument(
     "title",
@@ -105,8 +108,10 @@ def validate_dataset_title(ctx, param, value):
     required=False,
     type=click.STRING,
     help=(
-        "Update data and annotation records for a dataset "
-        "with the supplied EUFID instead of creating a new one"
+        "Replace data and annotation records for the supplied EUFID. "
+        "Only the records change; organism, technology, modifications "
+        "and stored dataset metadata must be identical to the existing "
+        "dataset. Use with --dry-run to validate the update."
     ),
 )
 def add_dataset(
@@ -123,7 +128,11 @@ def add_dataset(
     dry_run: bool,
     eufid: str | None,
 ):
-    """Add a new dataset or update records for an existing dataset."""
+    """Add a new dataset or update records for an existing dataset.
+
+    An update (--eufid) replaces all records of the dataset; its metadata
+    and modifications cannot be changed.
+    """
     dataset_service = get_dataset_service()
 
     colour = "cyan" if dry_run else "green"
@@ -133,7 +142,24 @@ def add_dataset(
         if eufid
         else f"Adding dataset '{title}' to project '{smid}'... "
     )
-    success_msg = "update" if eufid else "create"
+    completed_action = (
+        "validated update for dataset"
+        if dry_run and eufid
+        else (
+            "validated dataset"
+            if dry_run
+            else ("updated dataset" if eufid else "created dataset")
+        )
+    )
+    failed_action = (
+        "validate dataset update"
+        if dry_run and eufid
+        else (
+            "validate dataset"
+            if dry_run
+            else ("update dataset" if eufid else "create dataset")
+        )
+    )
     click.secho(f"{prefix}{msg}", fg=colour)
     confirm("Continue?", skip=yes)
 
@@ -154,12 +180,12 @@ def add_dataset(
                 dataset_id=eufid,
             )
         click.secho(
-            f"   ... {success_msg}d dataset with EUFID '{eufid}'.",
+            f"   ... {completed_action} with EUFID '{eufid}'.",
             fg=colour,
         )
     except Exception as exc:
         raise CliResponseException(
-            f"Failed to {success_msg} dataset. {exc}",
+            f"Failed to {failed_action}. {exc}",
         ) from exc
 
     if not dry_run:
@@ -177,7 +203,10 @@ def add_dataset(
 @click.argument(
     "request_uuid",
     type=click.STRING,
-    help="The name (w/o extension) of a project template, presumably obtained by running `flask project create-template`",
+    help=(
+        "The name (w/o extension) of a project template, "
+        "presumably obtained by running `flask project create-template`"
+    ),
 )
 @click.argument(
     "input_directory",
@@ -218,7 +247,8 @@ def add_dataset_in_batch(
     with the same file name are modifications of the same
     dataset, and must otherwise be identical.
 
-    NOTE: This method cannot be used to update records for existing datasets.
+    NOTE: This method cannot be used to update records for
+    existing datasets, see `dataset add`.
     """
     annotation_source = AnnotationService.get_annotation_source(rna_type)
     ingestion_service = get_project_ingestion_service()

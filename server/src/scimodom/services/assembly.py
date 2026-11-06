@@ -147,14 +147,6 @@ class AssemblyService:
             select(Assembly.name).filter_by(taxa_id=taxa_id, version=self._version)
         ).scalar_one()
 
-    def get_seqids(self, taxa_id: int) -> list[str]:
-        """Return chromosomes of the current assembly as a list.
-
-        :param taxa_id: Taxonomy ID
-        :return: Chromosomes
-        """
-        return [d["chrom"] for d in self.get_chroms(taxa_id)]
-
     def get_chroms(self, taxa_id: int) -> list[dict[str, str | int]]:
         """Return chrom.sizes for the latest database version.
 
@@ -354,6 +346,9 @@ class AssemblyService:
                 exc_info=True,
             )
 
+    def _get_seqids(self, taxa_id: int) -> list[str]:
+        return [d["chrom"] for d in self.get_chroms(taxa_id)]
+
     def _get_organism(self, taxa_id: int) -> str:
         return self._session.execute(
             select(Taxa.name).filter_by(id=taxa_id)
@@ -392,7 +387,7 @@ class AssemblyService:
 
     def _handle_dna_sequences(self, assembly: Assembly):
         organism = self._get_organism(assembly.taxa_id)
-        for chrom in self.get_seqids(assembly.taxa_id):
+        for chrom in self._get_seqids(assembly.taxa_id):
             self._download_dna_sequence(assembly, organism, chrom)
             self._file_service.index_dna_sequence_file(assembly.taxa_id, chrom)
 

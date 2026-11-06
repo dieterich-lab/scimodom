@@ -158,44 +158,34 @@ class DatasetService:
         dry_run_flag: bool = False,
         dataset_id: str | None = None,
     ) -> str:
-        """Import dataset and records from bedRMod formatted file
-        and write into the database.
+        """Import dataset and records from bedRMod.
 
         :param stream: Input stream
-        :type stream: TextIO
         :param source: Import file name
-        :type source: str
-        :param project_id: Project SMID
-        :type project_id: str
-        :param title: Datatset title
-        :type title: str
-        :param assembly_id: Assembly ID
-        :type assembly_id: int
-        :param modification_ids: Modification ID(s)
-        :type modification_ids: list[int]
-        :param organism_id: Organism ID
-        :type organism_id: int
-        :param technology_id: Technology ID
-        :type technology_id: int
+        :param project_id: Project identifier (SMID)
+        :param title: Dataset title
+        :param assembly_id: Assembly identifier
+        :param modification_ids: Modification identifier(s)
+        :param organism_id: Organism identifier
+        :param technology_id: Technology identifier
         :param annotation_source: Source of annotation
-        :type annotation_source: AnnotationSource
-        :param dry_run_flag: If true, validate data w/o writing into the database. Default is False.
-        :type dry_run_flag: bool
-        :param dataset_id: Update data and data annotation records for this EUFID (dataset). This is silently
-        ignored if 'dry_run_flag' is set. Default is None.
-        :type dataset_id: str | None
-        :returns: EUFID - in case of a dry run the value 'DRYRUNDRYRUN' is returned.
-        :rtype: str
+        :param dry_run_flag: If true, validate data import/update.
+        Default is False.
+        :param dataset_id: Dataset identifier (EUFID) to update. Only data and
+        annotation records are updated; the metadata and modifications cannot
+        be changed. When provided with dry_run_flag, validate the update without
+        writing to the database. Default is None.
+        :return: EUFID; 'DRYRUNDRYRUN' is returned for a dry run that does not
+        target an existing dataset.
         """
-        update_flag = False
-        if dry_run_flag:
-            dataset_id = "DRYRUNDRYRUN"
-        elif dataset_id is not None:
+        update_flag = dataset_id is not None
+        if update_flag:
             try:
                 self._session.get_one(Dataset, dataset_id)
             except NoResultFound:
                 raise DatasetUpdateError(f"No such dataset: '{dataset_id}'.")
-            update_flag = True
+        elif dry_run_flag:
+            dataset_id = "DRYRUNDRYRUN"
         else:
             dataset_id = self._generate_eufid()
 

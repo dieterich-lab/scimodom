@@ -491,6 +491,74 @@ def test_add_dataset_dry_run(
     assert any(Path(d).iterdir()) is False
 
 
+def _dataset_args(project_id, filename, modification_ids=(1, 2), extra=()):
+    args = ["dataset", "add", "--yes", "--assembly-id", 1, "--rna-type", "WTS"]
+    for mid in modification_ids:
+        args.extend(["-m", mid])
+    args.extend(["-o", 1, "-t", 1, *extra])
+    args.extend([project_id, "Dataset title CLI test", filename])
+    return args
+
+
+def _record_state(Session):
+    with Session() as session:
+        records = session.execute(select(Data)).scalars().all()
+        associations = session.execute(
+            select(DatasetModificationAssociation.modification_id)
+        ).scalars()
+        return (
+            sorted((r.chrom, r.start, r.score) for r in records),
+            sorted(associations),
+            session.scalar(select(func.count()).select_from(DataAnnotation)),
+        )
+
+
+@pytest.fixture
+def existing_dataset(
+    Session, test_runner, datafiles, selection, project, test_data, mock_services
+):
+    # create a dataset, and return the EUFID, the project, and the update file
+    project_id = project[0].id
+    file = Path(datafiles, "file1.bedrmod")
+    result = test_runner.invoke(args=_dataset_args(project_id, file.as_posix()))
+    assert result.exit_code == 0, result.output
+    with Session() as session:
+        eufid = session.execute(select(Dataset.id)).scalar_one()
+    text = file.read_text()
+    # update: new score for the first record
+    updated = Path(datafiles, "updated.bedrmod")
+    updated.write_text(text.replace("m6A\t1\t+", "m6A\t100\t+"))
+    assert updated.read_text() != text
+    return eufid, project_id, file, updated
+
+
+@pytest.mark.datafiles(Path(DATA_DIR, "file1.bedrmod"))
+def test_update_dataset(Session, test_runner, datafiles, existing_dataset):
+    eufid, project_id, _, updated = existing_dataset
+    args = _dataset_args(project_id, updated.as_posix(), extra=["--eufid", eufid])
+    result = test_runner.invoke(args=args)
+    assert result.exit_code == 0, result.output
+    records, associations, _ = _record_state(Session)
+    assert records == sorted(
+        [("1", 65420, 100)] + [r for r in EXPECTED_RECORDS if r[1] != 65420]
+    )
+    assert associations == [1, 2]
+    with Session() as session:
+        assert session.scalar(select(func.count()).select_from(Dataset)) == 1
+
+
+@pytest.mark.datafiles(Path(DATA_DIR, "file1.bedrmod"))
+def test_update_dataset_dry_run(Session, test_runner, datafiles, existing_dataset):
+    eufid, project_id, _, updated = existing_dataset
+    before = _record_state(Session)
+    args = _dataset_args(
+        project_id, updated.as_posix(), extra=["--eufid", eufid, "--dry-run"]
+    )
+    result = test_runner.invoke(args=args)
+    assert result.exit_code == 0
+    assert _record_state(Session) == before
+
+
 @pytest.mark.datafiles(Path(DATA_DIR, "file1.bedrmod"))
 @pytest.mark.datafiles(Path(DATA_DIR, "file2.bedrmod"))
 def test_add_dataset_in_batch(

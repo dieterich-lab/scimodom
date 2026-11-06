@@ -289,15 +289,6 @@ def test_get_name_for_version(Session, file_service, setup):  # noqa
     assert assembly_name == "GRCh38"
 
 
-def test_get_seqids(Session, file_service, setup):  # noqa
-    file_service.opened_files_by_name["/data/assembly/9606/chrom.sizes"] = StringIO(
-        "1\t12345\n2\t123456"
-    )
-    service = _get_assembly_service(Session, file_service)
-    seqids = service.get_seqids(9606)
-    assert set(seqids) == {"1", "2"}
-
-
 def test_get_chroms(Session, file_service, setup):  # noqa
     file_service.opened_files_by_name["/data/assembly/9606/chrom.sizes"] = StringIO(
         "1\t12345\n2\t123456"
@@ -314,7 +305,7 @@ def test_get_chroms_ignores_blank_lines(Session, file_service, setup):  # noqa
         "1\t12345\n\n2\t123456\n\n"
     )
     service = _get_assembly_service(Session, file_service)
-    assert service.get_seqids(9606) == ["1", "2"]
+    assert service._get_seqids(9606) == ["1", "2"]
     file_service.opened_files_by_name["/data/assembly/9606/chrom.sizes"] = StringIO(
         "1\t12345\n\n2\t123456\n\n"
     )
