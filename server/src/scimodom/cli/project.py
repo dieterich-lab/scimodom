@@ -24,8 +24,12 @@ from scimodom.services.administration.ingestion import (
     get_project_ingestion_service,
 )
 from scimodom.services.assembly import AssemblyNotFoundError
+from scimodom.services.project import get_project_service
+from scimodom.services.selection import get_selection_service
 from scimodom.services.sunburst import get_sunburst_service
 from scimodom.services.user import NoSuchUser
+from scimodom.services.utilities import get_utilities_service
+from scimodom.utils.dtos.project import ProjectMetaDataDto, ProjectOrganismDto
 
 project_cli = Blueprint("project", __name__)
 
@@ -224,6 +228,113 @@ def add_user(yes: bool, traceback: bool, username: str, smid: str):
 
 
 @project_cli.cli.command(
+    "add-selection",
+    epilog="Consult https://dieterich-lab.github.io/scimodom/flask.html#project-and-data-management",
+)
+@register_cli_errors
+@audited("project.add-selection")
+@click.option("--yes", is_flag=True, help="Confirm the action without prompting")
+@click.option("--traceback", is_flag=True, help="Show traceback")
+@click.option(
+    "--rna-type",
+    required=True,
+    type=click.STRING,
+    help="Must reference an existing RNA type record",
+)
+@click.option(
+    "--modification",
+    required=True,
+    type=click.STRING,
+    help="Must reference a MODOMICS short name",
+)
+@click.option(
+    "--taxid",
+    required=True,
+    type=click.INT,
+    help="Must reference a valid NCBI taxon",
+)
+@click.option(
+    "--cto",
+    required=True,
+    type=click.STRING,
+    help="Cell, tissue or organ. Use quote",
+)
+@click.option(
+    "--method",
+    required=True,
+    type=click.STRING,
+    help="Must reference a valid detection method. Use quote",
+)
+@click.option(
+    "--technology",
+    required=True,
+    type=click.STRING,
+    help="Detection technology. Use quote",
+)
+@click.argument("smid", type=click.STRING)
+def add_selection(
+    yes: bool,
+    traceback: bool,
+    rna_type: str,
+    modification: str,
+    taxid: int,
+    cto: str,
+    method: str,
+    technology: str,
+    smid: str,
+):
+    """Add a selection to the project SMID.
+
+    A selection is a combination of modification, organism, and
+    technology. Datasets can only be added to a project for the
+    selections of this project, i.e. those from its template and
+    those added with this command. If the selection exists,
+    nothing is done.
+    """
+    selection_service = get_selection_service()
+    utilities_service = get_utilities_service()
+
+    try:
+        get_project_service().get_by_id(smid)
+    except NoResultFound as exc:
+        raise CliResponseException(
+            f"Failed to add selection. No such SMID '{smid}'."
+        ) from exc
+
+    try:
+        organism = ProjectOrganismDto(
+            taxa_id=taxid,
+            cto=cto,
+            assembly_name="assembly",
+        )
+        metadata = ProjectMetaDataDto(
+            rna=rna_type,
+            modomics_id=utilities_service.get_modomics_id_by_short_name(modification),
+            tech=technology,
+            method_id=utilities_service.get_method_id_by_name(method),
+            organism=organism,
+            note=None,
+        )
+    except Exception as exc:  # NoResultFound, ValidationError
+        raise CliResponseException(
+            f"Failed to add selection (invalid input value). {exc}"
+        ) from exc
+
+    click.secho(
+        f"Adding selection ({modification}, {cto}, {technology}) "
+        f"to project '{smid}'. If exists, nothing is done...",
+        fg="yellow",
+    )
+    confirm("Continue?", skip=yes)
+
+    try:
+        selection_service.add_project_selections(smid, [metadata])
+    except Exception as exc:
+        raise CliResponseException(f"Failed to add selection. {exc}") from exc
+    click.secho("   ... done.", fg="green")
+
+
+@project_cli.cli.command(
     "delete",
     epilog="Consult https://dieterich-lab.github.io/scimodom/flask.html#project-and-data-management",
 )
@@ -244,6 +355,7 @@ def delete_project(yes: bool, traceback: bool, smid: str):  # noqa: D301
     - bam_file
     - dataset
     - project_source
+    - project_selection
     - user_project_association
     - project
     - project_contact

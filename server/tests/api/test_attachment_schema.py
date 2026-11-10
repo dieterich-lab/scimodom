@@ -48,6 +48,7 @@ def services(Session, bam_file, mocker, tmp_path):
         annotation_service=mocker.Mock(),
         file_service=file_service,
         validator_service=mocker.Mock(),
+        selection_service=mocker.Mock(),
     )
     mocker.patch(
         "scimodom.api.helpers.validation.get_dataset_service",

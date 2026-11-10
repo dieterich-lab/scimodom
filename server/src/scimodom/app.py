@@ -71,7 +71,6 @@ def create_app():
     # CLI
     from scimodom.cli.assembly import assembly_cli
     from scimodom.cli.annotation import annotation_cli
-    from scimodom.cli.selection import selection_cli
     from scimodom.cli.project import project_cli
     from scimodom.cli.dataset import dataset_cli
     from scimodom.cli.chart import chart_cli
@@ -79,7 +78,6 @@ def create_app():
 
     app.register_blueprint(assembly_cli)
     app.register_blueprint(annotation_cli)
-    app.register_blueprint(selection_cli)
     app.register_blueprint(project_cli)
     app.register_blueprint(dataset_cli)
     app.register_blueprint(chart_cli)

@@ -211,8 +211,8 @@ def _import_dataset(dataset_form: DatasetPostRequest) -> str:
             404,
             str(exc),
             "Invalid combination of modification(s), organism, and/or technology.\n"
-            "Modify the request form to match a valid selection for this dataset.\n"
-            "Use GET /catalogs/selections for valid combinations.",
+            "Modify the request form to match a valid selection for this project.\n"
+            "Use GET /projects/<project_id>/selections for valid combinations.",
         )
     except DatasetExistsError as exc:
         raise ClientResponseException(409, str(exc), "Dataset already exists.")

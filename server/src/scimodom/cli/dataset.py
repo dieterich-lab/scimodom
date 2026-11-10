@@ -214,12 +214,6 @@ def add_dataset(
     help="Directory with bedRMod (EU-formatted) files",
 )
 @click.option(
-    "--rna-type",
-    required=True,
-    type=click.STRING,
-    help="Must reference an existing RNA type record",
-)
-@click.option(
     "--dry-run",
     is_flag=True,
     show_default=True,
@@ -231,15 +225,16 @@ def add_dataset_in_batch(
     traceback: bool,
     request_uuid: str,
     input_directory: str,
-    rna_type: str,
     dry_run: bool,
 ):
     """Add one project and all its datasets in batch.
 
-    All dataset files must be under INPUT_DIRECTORY, and
-    must have the same RNA type. Providing files
-    with different RNA types may not result in failure, but
-    will lead to spurious database records.
+    All dataset files must be under INPUT_DIRECTORY.
+    The RNA type (and thus the annotation source) of a dataset is
+    taken from the metadata template, and must be the same for all
+    modifications of a dataset. The files are assumed to be
+    consistent with the template: a dataset whose records do not
+    match is rejected at import.
 
     The "note" from the metadata template must contain the
     dataset file name and title as follows:
@@ -250,7 +245,6 @@ def add_dataset_in_batch(
     NOTE: This method cannot be used to update records for
     existing datasets, see `dataset add`.
     """
-    annotation_source = AnnotationService.get_annotation_source(rna_type)
     ingestion_service = get_project_ingestion_service()
 
     try:
@@ -291,9 +285,7 @@ def add_dataset_in_batch(
     )
 
     failed = []
-    for outcome in ingestion_service.import_batch_datasets(
-        plan, result.project_id, annotation_source
-    ):
+    for outcome in ingestion_service.import_batch_datasets(plan, result.project_id):
         if outcome.is_imported:
             click.secho(
                 f"   ... created dataset with EUFID '{outcome.dataset_id}' "

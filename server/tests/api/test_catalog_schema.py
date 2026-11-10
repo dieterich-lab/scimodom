@@ -11,6 +11,7 @@ from scimodom.services.annotation import (
 from scimodom.services.assembly import AssemblyService
 from scimodom.services.gene import GeneService
 from scimodom.services.url import CATALOG_API_ROUTE
+from scimodom.services.selection import SelectionService
 from scimodom.services.utilities import UtilitiesService
 from scimodom.utils.specs.enums import AnnotationSource, AssemblyFileType
 from tests.api.schematise import validate, client_fixture
@@ -42,6 +43,15 @@ def services(Session, selection, mocker):
     mocker.patch(
         "scimodom.api.helpers.validation.get_utilities_service",
         return_value=utilities_service,
+    )
+    selection_service = SelectionService(Session(), gene_service=mocker.Mock())
+    mocker.patch(
+        "scimodom.api.catalog.get_selection_service",
+        return_value=selection_service,
+    )
+    mocker.patch(
+        "scimodom.api.helpers.validation.get_selection_service",
+        return_value=selection_service,
     )
     annotation_service = AnnotationService(
         session=Session(),

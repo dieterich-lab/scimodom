@@ -7,7 +7,7 @@ from sqlalchemy.exc import NoResultFound
 
 from scimodom.services.administration.ingestion import (
     ProjectIngestionService,
-    parse_dataset_note,
+    _parse_dataset_note,
     ProjectRequestInfo,
     ProjectTemplateError,
     UserAssociationError,
@@ -328,13 +328,13 @@ def _files(tmp_path, *names):
     ],
 )
 def test_parse_dataset_note(note, expected):
-    assert parse_dataset_note(note) == expected
+    assert _parse_dataset_note(note) == expected
 
 
 @pytest.mark.parametrize("note", [None, "nothing", "file=a.bedrmod"])
 def test_parse_dataset_note_fail(note):
     with pytest.raises(ProjectTemplateError):
-        parse_dataset_note(note)
+        _parse_dataset_note(note)
 
 
 def test_plan_batch_import(service, mocks, tmp_path):
@@ -343,22 +343,49 @@ def test_plan_batch_import(service, mocks, tmp_path):
     _batch_request(
         mocks,
         _entry("a.bedrmod", "Title A", modomics="2000000006A"),
-        _entry("b.bedrmod", "Title B"),
-        _entry("a.bedrmod", "Title A", rna="tRNA", modomics="2000000007A"),
+        _entry("b.bedrmod", "Title B", rna="tRNA"),
+        _entry("a.bedrmod", "Title A", modomics="2000000007A"),
     )
     plan = service.plan_batch_import(tmp_path, "UUID")
     assert plan.request_uuid == "UUID"
     assert [d.filename for d in plan.datasets] == ["a.bedrmod", "b.bedrmod"]
     a, b = plan.datasets
     assert a.title == "Title A"
-    assert a.modifications == (("WTS", "2000000006A"), ("tRNA", "2000000007A"))
-    assert b.modifications == (("WTS", "2000000006A"),)
+    assert a.modifications == (("WTS", "2000000006A"), ("WTS", "2000000007A"))
+    assert b.modifications == (("tRNA", "2000000006A"),)
+    # annotation source from the RNA type of each dataset
+    assert a.annotation_source is AnnotationSource.ENSEMBL
+    assert b.annotation_source is AnnotationSource.GTRNADB
     assert (a.assembly_id, a.taxa_id, a.cto) == (1, 9606, "HeLa")
     assert (a.method_id, a.tech) == ("01d26feb", "Tech-seq")
     assert a.file_path == tmp_path / "a.bedrmod"
     # nothing is written
     mocks.project.create_project.assert_not_called()
     mocks.dataset.import_dataset.assert_not_called()
+
+
+def test_plan_batch_import_mixed_rna_types_in_a_file(service, mocks, tmp_path):
+    _files(tmp_path, "a.bedrmod")
+    _batch_request(
+        mocks,
+        _entry("a.bedrmod", "Title A"),
+        _entry("a.bedrmod", "Title A", rna="tRNA", modomics="2000000007A"),
+    )
+    with pytest.raises(ProjectTemplateError, match="different RNA types: WTS, tRNA"):
+        service.plan_batch_import(tmp_path, "UUID")
+
+
+def test_plan_batch_import_rna_type_not_implemented(service, mocks, tmp_path):
+    _files(tmp_path, "a.bedrmod", "b.bedrmod")
+    _batch_request(
+        mocks,
+        _entry("a.bedrmod", rna="rRNA"),
+        _entry("b.bedrmod", rna="WTS"),
+    )
+    with pytest.raises(ProjectTemplateError) as exc_info:
+        service.plan_batch_import(tmp_path, "UUID")
+    assert "'a.bedrmod': RNA type 'rRNA' is not implemented" in str(exc_info.value)
+    assert "b.bedrmod" not in str(exc_info.value)
 
 
 def test_plan_batch_import_reports_all_problems(service, mocks, tmp_path):
@@ -427,9 +454,7 @@ def test_import_batch_datasets(service, mocks, tmp_path):
     mocks.utilities.get_technology_id.return_value = 30
     mocks.dataset.import_dataset.return_value = "EUFID1"
 
-    outcomes = list(
-        service.import_batch_datasets(plan, "SMID1", AnnotationSource.ENSEMBL)
-    )
+    outcomes = list(service.import_batch_datasets(plan, "SMID1"))
 
     assert [(o.dataset.filename, o.dataset_id, o.is_imported) for o in outcomes] == [
         ("a.bedrmod", "EUFID1", True)
@@ -457,9 +482,7 @@ def test_import_batch_datasets_failure_does_not_stop_others(service, mocks, tmp_
     )
     failure = RuntimeError("invalid file")
     mocks.dataset.import_dataset.side_effect = [failure, "EUFID2"]
-    outcomes = list(
-        service.import_batch_datasets(plan, "SMID1", AnnotationSource.ENSEMBL)
-    )
+    outcomes = list(service.import_batch_datasets(plan, "SMID1"))
     assert [o.is_imported for o in outcomes] == [False, True]
     assert outcomes[0].error is failure
     assert outcomes[0].dataset_id is None
@@ -474,9 +497,7 @@ def test_import_batch_datasets_unresolved_id_is_a_dataset_failure(
     )
     mocks.utilities.get_organism_id.side_effect = [NoResultFound("x"), 20]
     mocks.dataset.import_dataset.return_value = "EUFID2"
-    outcomes = list(
-        service.import_batch_datasets(plan, "SMID1", AnnotationSource.ENSEMBL)
-    )
+    outcomes = list(service.import_batch_datasets(plan, "SMID1"))
     assert isinstance(outcomes[0].error, NoResultFound)
     assert outcomes[1].is_imported
     assert mocks.dataset.import_dataset.call_count == 1
@@ -484,7 +505,7 @@ def test_import_batch_datasets_unresolved_id_is_a_dataset_failure(
 
 def test_import_batch_datasets_is_lazy(service, mocks, tmp_path):
     plan = _plan(service, mocks, tmp_path, _entry("a.bedrmod", "A"))
-    outcomes = service.import_batch_datasets(plan, "SMID1", AnnotationSource.ENSEMBL)
+    outcomes = service.import_batch_datasets(plan, "SMID1")
     mocks.dataset.import_dataset.assert_not_called()
     next(outcomes)
     mocks.dataset.import_dataset.assert_called_once()

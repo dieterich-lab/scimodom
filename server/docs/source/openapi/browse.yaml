@@ -22,6 +22,34 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Project"
+  /projects/{project_id}/selections:
+    get:
+      tags:
+        - Browse
+      summary: Get selections per project
+      description: >-
+        Combinations of modification, organism, and technology for which
+        datasets can be added to the project. The response is the same as
+        `GET /catalogs/selections`, except that `selection_id` is null if
+        no dataset with this selection has been uploaded yet.
+      parameters:
+        - in: path
+          name: project_id
+          required: true
+          schema:
+            type: string
+          description: Project identifier (SMID)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectSelection"
+        "401":
+          description: Invalid project identifier
+        "404":
+          description: Project identifier not found
   /users/me/projects:
     get:
       tags:
@@ -52,6 +80,8 @@ components:
   responses:
     UnauthorizedError:
       $ref: "_common.yaml#/components/responses/UnauthorizedError"
+    ForbiddenError:
+      $ref: "_common.yaml#/components/responses/ForbiddenError"
     UnprocessableContentError:
       $ref: "_common.yaml#/components/responses/UnprocessableContentError"
   schemas:
@@ -104,3 +134,77 @@ components:
             type: string
           project_title:
             type: string
+    ProjectSelection:
+      type: array
+      items:
+        type: object
+        required:
+          - cls
+          - cto
+          - domain
+          - kingdom
+          - meth
+          - modification_id
+          - modomics_short_name
+          - organism_id
+          - rna_type
+          - rna_type_name
+          - selection_id
+          - taxa_id
+          - taxa_name
+          - taxa_short_name
+          - tech
+          - technology_id
+        properties:
+          cls:
+            type: string
+            description: Detection method classification
+          cto:
+            type: string
+            description: Cell, tissue, or organism
+          domain:
+            type: string
+            description: Taxonomic domain
+          kingdom:
+            type: string
+            nullable: true
+            description: Taxonomic kingdom
+          meth:
+            type: string
+            description: Detection method
+          modification_id:
+            type: integer
+            description: Modification identifier (MODOMICS code, `rna_type`)
+          modomics_short_name:
+            type: string
+            description: MODOMICS short name
+          organism_id:
+            type: integer
+            description: Organism identifier (`taxa_id`, `cto`)
+          rna_type:
+            type: string
+            description: RNA type identifier (see `GET /catalogs/rna-types`)
+          rna_type_name:
+            type: string
+            description: RNA type name (description)
+          selection_id:
+            type: integer
+            nullable: true
+            description: >-
+              Selection identifier; null if there is no dataset yet
+              with this combination (the selection does not exist)
+          taxa_id:
+            type: integer
+            description: NCBI taxon
+          taxa_name:
+            type: string
+            description: NCBI name for `taxa_id`
+          taxa_short_name:
+            type: string
+            description: Abbreviation for `taxa_name`
+          tech:
+            type: string
+            description: Detection technology
+          technology_id:
+            type: integer
+            description: Detection technology identifier (`meth`, `tech`)

@@ -11,6 +11,7 @@ from scimodom.database.models import (
     Project,
     ProjectSource,
     ProjectContact,
+    ProjectSelection,
     User,
     UserProjectAssociation,
 )
@@ -113,10 +114,10 @@ class ProjectService:
         metadata_written = False
         try:
             self._validate_entry(project_template)
-            self._selection_service.create_selection(
-                project_template.metadata, is_flush_only=True
-            )
             project_id = self._add_project(project_template)
+            self._selection_service.add_project_selections(
+                project_id, project_template.metadata, is_flush_only=True
+            )
             self._write_project_metadata(project_template, project_id)
             metadata_written = True
             self._session.commit()
@@ -137,6 +138,7 @@ class ProjectService:
 
         Delete from the following tables:
         - project_source
+        - project_selection
         - user_project_association
         - project
         - project_contact
@@ -149,6 +151,9 @@ class ProjectService:
         try:
             self._session.execute(
                 delete(ProjectSource).filter_by(project_id=project_id)
+            )
+            self._session.execute(
+                delete(ProjectSelection).filter_by(project_id=project_id)
             )
             self._session.execute(
                 delete(UserProjectAssociation).filter_by(project_id=project_id)

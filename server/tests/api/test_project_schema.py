@@ -1,9 +1,12 @@
 import pytest
+from sqlalchemy import delete
 
 from scimodom.api.project import project_api
+from scimodom.database.models import Selection
 from scimodom.services.project import ProjectService
 from scimodom.services.url import PROJECT_API_ROUTE
 from scimodom.services.user import UserService
+from scimodom.services.selection import SelectionService
 from scimodom.utils.dtos.project import (
     ProjectTemplate,
     ProjectSourceDto,
@@ -47,18 +50,27 @@ def services(Session, project, mocker):
     mock_file_service.create_project_request_file.return_value.__enter__.return_value = (
         mocker.MagicMock()
     )
+    selection_service = SelectionService(Session(), gene_service=mocker.Mock())
     project_service = ProjectService(
         session=Session(),
         file_service=mock_file_service,
-        selection_service=mocker.Mock(),
-    )
-    mocker.patch(
-        "scimodom.api.project.get_project_service",
-        return_value=project_service,
+        selection_service=selection_service,
     )
     user_service = UserService(
         session=Session(),
         mail_service=mocker.Mock(),
+    )
+    mocker.patch(
+        "scimodom.api.helpers.validation.get_project_service",
+        return_value=project_service,
+    )
+    mocker.patch(
+        "scimodom.api.project.get_selection_service",
+        return_value=selection_service,
+    )
+    mocker.patch(
+        "scimodom.api.project.get_project_service",
+        return_value=project_service,
     )
     mocker.patch(
         "scimodom.api.project.get_user_service",
@@ -83,6 +95,30 @@ def test_projects_schema(client, services):
 def test_my_projects_schema(auth_client, services):
     response = auth_client.get(prefix_url("/users/me/projects"))
     assert response.json
+    validate(BROWSE_SCHEMA, response, 200)
+
+
+def test_project_selections_schema(
+    client,
+    services,
+    selection,
+    project_selection,  # noqa
+):
+    response = client.get(prefix_url("/projects/12345678/selections"))
+    assert len(response.json) == 5
+    validate(BROWSE_SCHEMA, response, 200)
+
+
+def test_project_selections_schema_without_selection(
+    client, services, selection, project_selection, Session  # noqa
+):
+    # selection_id is null if the selection does not exist
+    session = Session()
+    session.execute(delete(Selection))
+    session.commit()
+    response = client.get(prefix_url("/projects/12345678/selections"))
+    assert len(response.json) == 5
+    assert all(row["selection_id"] is None for row in response.json)
     validate(BROWSE_SCHEMA, response, 200)
 
 

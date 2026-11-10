@@ -166,8 +166,10 @@ class Selection(Base):
 
     This table defines the selections or combinations
     of modification, organism, and technology identifiers that are
-    currently available in the database, i.e. not all possible
-    combinations.
+    currently available in the database. A `Selection` makes the
+    combination available for search, and only exists if there is
+    at least one dataset with this combination. It is created on
+    dataset upload, and deleted with its last dataset.
     """
 
     __tablename__ = "selection"
@@ -313,6 +315,9 @@ class Project(Base):
 
     sources: Mapped[List["ProjectSource"]] = relationship(back_populates="inst_project")
     datasets: Mapped[List["Dataset"]] = relationship(back_populates="inst_project")
+    selections: Mapped[List["ProjectSelection"]] = relationship(
+        back_populates="inst_project"
+    )
 
 
 class ProjectContact(Base):
@@ -341,6 +346,41 @@ class ProjectSource(Base):
     pmid: Mapped[Optional[int]] = mapped_column(nullable=True)
 
     inst_project: Mapped["Project"] = relationship(back_populates="sources")
+
+
+class ProjectSelection(Base):
+    """Association: Project, Modification, Organism, DetectionTechnology.
+
+    This table defines the combinations of modification, organism,
+    and technology (selections) for which datasets may be added to a
+    project. This is the declaration of what a project may contain,
+    which may be empty for some time, e.g. if a project is created
+    before its data are uploaded, and which does not depend on the
+    existence of the corresponding `Selection` (no FK to `Selection`).
+    """
+
+    __tablename__ = "project_selection"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[str] = mapped_column(ForeignKey("project.id"), index=True)
+    modification_id: Mapped[int] = mapped_column(
+        ForeignKey("modification.id"), index=True
+    )
+    organism_id: Mapped[int] = mapped_column(ForeignKey("organism.id"), index=True)
+    technology_id: Mapped[int] = mapped_column(ForeignKey("technology.id"), index=True)
+
+    __table_args__ = (
+        Index(
+            "idx_project_select",
+            "project_id",
+            "modification_id",
+            "organism_id",
+            "technology_id",
+            unique=True,
+        ),
+    )
+
+    inst_project: Mapped["Project"] = relationship(back_populates="selections")
 
 
 class Dataset(Base):

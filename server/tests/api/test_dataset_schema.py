@@ -35,6 +35,7 @@ def services(Session, dataset, mocker):
         annotation_service=mocker.Mock(),
         file_service=mocker.Mock(),
         validator_service=mock_validator,
+        selection_service=mocker.Mock(),
     )
     mocker.patch(
         "scimodom.api.dataset.get_dataset_service",

@@ -3,9 +3,9 @@
 Flask CLI
 =========
 
-How to initialize or update the database and manage projects and data.
+.. admonition:: For maintainers
 
-Most commands ask for confirmation. Use ``--yes`` to skip and ``--traceback`` to show the full traceback of an error.
+  How to initialize or update the database and manage projects and data. Most commands ask for confirmation; use ``--yes`` to skip and ``--traceback`` to show the full traceback of an error.
 
 .. _data_setup:
 
@@ -32,7 +32,7 @@ The command ``flask setup upsert [FILE_NAME]...`` performs an ``INSERT... ON DUP
     }
 
 
-These files allow to define base options for project creation, and establish a standard terminology for the application. They must exist and be located under ``IMPORT_PATH`` (development) or ``HOST_IMPORT_DIR`` (production). By default, this path is located under *server/import*, and can be specified in the environment file. The import format is *CSV*, and the header must match the column names (including *id*) from the corresponding database table.
+These files provide seed data to populate the database, establishing a standard terminology for the application. They must exist and be located under ``IMPORT_PATH`` (development) or ``HOST_IMPORT_DIR`` (production). By default, this path is located under *server/import*, and can be specified in the environment file. The import format is *CSV*, and the header must match the column names (including *id*) from each of the corresponding database table.
 
 For example:
 
@@ -66,7 +66,7 @@ The models are defined in `scimodom.database.models <https://github.com/dieteric
 
 .. important::
 
-   The command is idempotent, and must be run after the database schema was created or upgraded, and whenever the files change. The app does not do this when it starts: this is done in the production container before the server is started, and must be called in development.
+   The command is idempotent, and must be run after the database schema was created or upgraded, and whenever the files change. The app does not do this on startup: this is done in the production container before the server is started, and must be called before starting the development server.
 
 
 Assembly and annotation
@@ -106,19 +106,24 @@ Project and data management
 
 Projects-related sub-commands are called using the ``project`` command.
 
-To add a new selection
-
-.. code-block:: bash
-
-    flask selection add [OPTIONS] --rna-type TEXT --modification TEXT --taxid INTEGER --cto TEXT --method TEXT --technology TEXT
-
-To added a project
+To add a project
 
 .. code-block:: bash
 
     flask project add [OPTIONS] REQUEST_UUID
 
-To add a user to the project use the option ``--add-user``. The email address given in the template associated with the ``REQUEST_UUID`` must match a valid user. After project creation, a dataset can be added with
+To add a user to the project use the option ``--add-user``. The email address given in the template associated with the ``REQUEST_UUID`` must match a valid user. The metadata entries of the template define the project selections, *i.e.* the combinations of modification, organism, and technology for which datasets can be added to this project. A dataset (``dataset add``, ``dataset batch``, or upload via the web interface) is rejected if its combination is not a selection of its project.
+
+.. note::
+  The corresponding selection, which makes the data available for search, is automatically created when the first dataset is added, and removed with the last dataset. The table ``project_selection`` has no foreign key to ``selection``, so the two keep their separate life cycles.
+
+To add a selection to an existing project
+
+.. code-block:: bash
+
+    flask project add-selection [OPTIONS] --rna-type TEXT --modification TEXT --taxid INTEGER --cto TEXT --method TEXT --technology TEXT SMID
+
+After project creation, a dataset can be added with
 
 .. code-block:: bash
 
@@ -130,9 +135,9 @@ These steps, *i.e.* project creation and dataset upload, can be done all at once
 
 .. code-block:: bash
 
-    flask dataset batch [OPTIONS] --rna-type TEXT REQUEST_UUID INPUT_DIRECTORY
+    flask dataset batch [OPTIONS] REQUEST_UUID INPUT_DIRECTORY
 
-The ``note`` from the standard project metadata template must contain the dataset file name and title as follows: ``file=filename.bedrmod, title=title``. All bedRMod files must be under ``INPUT_DIRECTORY``. The request and all files are validated first (use ``--dry-run`` to only validate), and nothing is written if there is a problem. Datasets are then imported one by one: a dataset that fails is skipped, the command exits with an error, and the dataset can be added afterwards with ``flask dataset add``.
+The ``note`` from the standard project metadata template must contain the dataset file name and title as follows: ``file=filename.bedrmod, title=title``. All bedRMod files must be under ``INPUT_DIRECTORY``. The RNA type of a dataset is taken from the template, and must be the same for all its modifications. The request and all files are validated first (use ``--dry-run`` to only validate), and nothing is written if there is a problem. Datasets are then imported one by one: a dataset that fails is skipped, the command exits with an error, and the dataset can be added afterwards with ``flask dataset add``.
 
 To facilitate batch upload, project templates can be created from a tabulated list of datasets with
 
@@ -166,7 +171,7 @@ To force update the charts, run
 Audit trail
 ^^^^^^^^^^^
 
-Commands that add or remove datasets, projects and selections (``dataset add``, ``dataset batch``, ``project add``, ``project add-user``, ``project delete``, ``selection add``) write two records to the logger ``scimodom.audit``: *started* (before any confirmation), and *finished* with the outcome (*success*, *aborted* if the confirmation was refused, *interrupted*, or *failed* with the error). A record contains the time (UTC), the OS user, the command and its arguments, *e.g.*
+Commands that add or remove datasets, projects and project selections (``dataset add``, ``dataset batch``, ``project add``, ``project add-user``, ``project add-selection``, ``project delete``) write two records to the logger ``scimodom.audit``: *started* (before any confirmation), and *finished* with the outcome (*success*, *aborted* if the confirmation was refused, *interrupted*, or *failed* with the error). A record contains the time (UTC), the OS user, the command and its arguments, *e.g.*
 
 .. code-block:: text
 
@@ -174,4 +179,4 @@ Commands that add or remove datasets, projects and selections (``dataset add``, 
 
 Records are written to *stderr*. For a persistent trail, set ``AUDIT_LOG_FILE`` in the environment file to a file path: only audit records are written to this file (appended; opened when the first record is written, and reopened if the file is rotated). Other logging is not affected. If the file cannot be written, a warning is shown on *stderr*, and the command is not affected (the records are still written to *stderr*).
 
-In the production container, ``AUDIT_LOG_FILE`` is ``/logs/audit.log``, and the directory is mounted from ``HOST_LOG_DIR``. The file is created at container start, owned by the application user, and is also used by commands run with ``docker exec``.
+In the production container, ``AUDIT_LOG_FILE`` is ``/logs/audit.log``, and the directory is mounted from ``HOST_LOG_DIR``. The file is created at container startup, owned by the application user, and is also used by commands run with ``docker exec``.

@@ -1,6 +1,8 @@
 from pathlib import Path
 
 import pytest
+
+from scimodom.utils.specs.enums import AnnotationSource
 from flask import Flask
 from sqlalchemy.exc import NoResultFound
 
@@ -214,6 +216,7 @@ def _batch_dataset(name):
         method_id="01d26feb",
         tech="Tech-seq",
         modifications=(("WTS", "2000000006A"),),
+        annotation_source=AnnotationSource.ENSEMBL,
     )
 
 
@@ -236,8 +239,7 @@ def batch_services(mocker):
 
 def _batch(test_runner, tmp_path, *extra):
     return test_runner.invoke(
-        args=["dataset", "batch", *extra, "--rna-type", "WTS"]
-        + ["UUID", tmp_path.as_posix()]
+        args=["dataset", "batch", *extra] + ["UUID", tmp_path.as_posix()]
     )
 
 

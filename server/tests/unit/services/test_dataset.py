@@ -5,7 +5,7 @@ from typing import Any, Generator
 from pathlib import Path
 
 import pytest
-from sqlalchemy import select, func
+from sqlalchemy import delete, select, func
 from sqlalchemy.sql.operators import and_
 
 from scimodom.database.models import (
@@ -13,9 +13,11 @@ from scimodom.database.models import (
     Dataset,
     DatasetModificationAssociation,
     Data,
+    Selection,
     User,
 )
 from scimodom.services.dataset import DatasetService
+from scimodom.services.selection import SelectionService
 from scimodom.services.validator import _DatasetImportContext, DatasetUpdateError
 from scimodom.utils.importer.bed_importer import EufImporter
 from scimodom.utils.dtos.bedtools import EufRecord
@@ -73,9 +75,14 @@ class MockFileService:
         }
 
 
+class MockGeneService:
+    pass
+
+
 class MockAnnotationService:
     def __init__(self):
         self._annotated = False
+        self._selection_ids = None
 
     def annotate_data(
         self,
@@ -85,6 +92,7 @@ class MockAnnotationService:
         selection_ids: list[int],
     ):
         self._annotated = True
+        self._selection_ids = selection_ids
 
 
 class MockValidatorService:
@@ -102,7 +110,6 @@ class MockValidatorService:
     def create_import_context(self, importer: EufImporter, **kwargs) -> None:
         kwargs = {**kwargs, "taxa_id": 9606}
         self._context = _DatasetImportContext(**kwargs)
-        self._context.selection_ids = [1]
         self._context.modification_names = {"m6A": {"short_name": "m6A", "id": 1}}
 
         read_header = {}
@@ -124,6 +131,7 @@ def _get_dataset_service(session):
         annotation_service=MockAnnotationService(),
         file_service=MockFileService(session),
         validator_service=MockValidatorService(),
+        selection_service=SelectionService(session, gene_service=MockGeneService()),
     )
 
 
@@ -258,6 +266,69 @@ def test_import_dataset(
         assert data[0].score == 1000
 
     assert service._annotation_service._annotated is True
+
+
+def _import(service, project_id, **kwargs):
+    return service.import_dataset(
+        StringIO(GOOD_EUF_FILE),
+        source="test",
+        project_id=project_id,
+        title="title",
+        assembly_id=1,
+        modification_ids=[1],
+        technology_id=1,
+        organism_id=1,
+        annotation_source=AnnotationSource.ENSEMBL,
+        **kwargs,
+    )
+
+
+def test_import_dataset_uses_existing_selection(Session, selection, project):  # noqa
+    project_id = project[0].id
+    service = _get_dataset_service(Session())
+    with Session() as session:
+        expected = session.execute(
+            select(Selection.id).filter_by(
+                modification_id=1, organism_id=1, technology_id=1
+            )
+        ).scalar_one()
+    _import(service, project_id)
+    with Session() as session:
+        assert session.scalar(select(func.count()).select_from(Selection)) == 5
+    assert service._annotation_service._selection_ids == [expected]
+
+
+def test_import_dataset_creates_selection(Session, selection, project):  # noqa
+    project_id = project[0].id
+    # the selection does not exist (e.g. deleted with the last dataset)
+    with Session() as session:
+        session.execute(delete(Selection))
+        session.commit()
+    service = _get_dataset_service(Session())
+    _import(service, project_id)
+    with Session() as session:
+        selections = session.execute(select(Selection)).scalars().all()
+        assert len(selections) == 1
+        assert (
+            selections[0].modification_id,
+            selections[0].organism_id,
+            selections[0].technology_id,
+        ) == (1, 1, 1)
+        assert service._annotation_service._selection_ids == [selections[0].id]
+
+
+def test_import_dataset_dry_run_does_not_create_selection(
+    Session, selection, project  # noqa
+):
+    project_id = project[0].id
+    with Session() as session:
+        session.execute(delete(Selection))
+        session.commit()
+    service = _get_dataset_service(Session())
+    _import(service, project_id, dry_run_flag=True)
+    with Session() as session:
+        assert session.scalar(select(func.count()).select_from(Selection)) == 0
+    assert service._annotation_service._annotated is False
 
 
 def test_import_dataset_dry_run(Session, selection, project, freezer):  # noqa

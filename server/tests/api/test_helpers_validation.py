@@ -18,6 +18,7 @@ from scimodom.api.helpers import (
     get_valid_strand,
     expand_coords_context,
     parse_valid_dataset,
+    parse_valid_project,
     parse_valid_bam,
     # get_optional_valid_dataset_id_list, # test_comparison_api
     # get_optional_valid_tmp_file_id, # test_comparison_api
@@ -87,37 +88,20 @@ class MockDatasetService:
             raise NoResultFound
 
 
+class MockProjectService:
+    @staticmethod
+    def get_by_id(project_id):
+        if project_id != "12345678":
+            raise NoResultFound
+
+
 class MockFileService:
     @staticmethod
     def get_bam_file(dataset, name):
         raise NoResultFound
 
 
-class MockUtilitiesService:
-    @staticmethod
-    def get_rna_types():
-        return [
-            {"id": "Type1", "name": "Description"},
-            {"id": "Type2", "name": "Description2"},
-        ]
-
-    @staticmethod
-    def get_taxa():
-        return [
-            {
-                "taxa_id": 9606,
-                "taxa_name": "Homo sapiens",
-                "taxa_short_name": "H. sapiens",
-                "domain": "Eukarya",
-                "kingdom": "Animalia",
-                "phylum": "Chordata",
-            }
-        ]
-
-    @staticmethod
-    def get_biotypes():
-        return {"biotypes": ["biotype1", "biotype2"]}
-
+class MockSelectionService:
     @staticmethod
     def get_selections():
         return [
@@ -158,6 +142,32 @@ class MockUtilitiesService:
                 "technology_id": 7,
             },
         ]
+
+
+class MockUtilitiesService:
+    @staticmethod
+    def get_rna_types():
+        return [
+            {"id": "Type1", "name": "Description"},
+            {"id": "Type2", "name": "Description2"},
+        ]
+
+    @staticmethod
+    def get_taxa():
+        return [
+            {
+                "taxa_id": 9606,
+                "taxa_name": "Homo sapiens",
+                "taxa_short_name": "H. sapiens",
+                "domain": "Eukarya",
+                "kingdom": "Animalia",
+                "phylum": "Chordata",
+            }
+        ]
+
+    @staticmethod
+    def get_biotypes():
+        return {"biotypes": ["biotype1", "biotype2"]}
 
 
 # tests: validation helpers (only domain validation)
@@ -279,8 +289,8 @@ def test_get_valid_selections_fail(
     app, mocker, part, http_status, message, user_message
 ):
     mocker.patch(
-        "scimodom.api.helpers.validation.get_utilities_service",
-        return_value=MockUtilitiesService(),
+        "scimodom.api.helpers.validation.get_selection_service",
+        return_value=MockSelectionService(),
     )
     with app.test_request_context(f"/?modification=2&organism=3{part}", method="GET"):
         with pytest.raises(ClientResponseException) as exc:
@@ -464,6 +474,26 @@ def test_parse_valid_dataset(dataset_id, expected_status, expected_message, mock
     )
     with pytest.raises(ClientResponseException) as exc:
         parse_valid_dataset(dataset_id)
+    returned_message, returned_status = exc.value.response_tuple
+    assert returned_message["message"] == expected_message
+    assert returned_status == expected_status
+
+
+@pytest.mark.parametrize(
+    "project_id,expected_status,expected_message",
+    [
+        ("ABCDEFGHIJKLM", 400, "Invalid projectId 'ABCDEFGHIJKLM'"),
+        ("AB!DEF./", 400, "Invalid projectId 'AB!DEF./'"),
+        ("12345689", 404, "projectId '12345689' not found"),
+    ],
+)
+def test_parse_valid_project(project_id, expected_status, expected_message, mocker):
+    mocker.patch(
+        "scimodom.api.helpers.validation.get_project_service",
+        return_value=MockProjectService(),
+    )
+    with pytest.raises(ClientResponseException) as exc:
+        parse_valid_project(project_id)
     returned_message, returned_status = exc.value.response_tuple
     assert returned_message["message"] == expected_message
     assert returned_status == expected_status

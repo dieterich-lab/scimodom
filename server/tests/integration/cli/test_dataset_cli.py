@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 from flask import Flask
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 
 from scimodom.database.models import (
     DataAnnotation,
@@ -12,6 +12,8 @@ from scimodom.database.models import (
     Dataset,
     GenomicAnnotation,
     Project,
+    ProjectSelection,
+    Selection,
 )
 from scimodom.cli.dataset import dataset_cli
 from scimodom.cli.chart import chart_cli
@@ -261,6 +263,7 @@ def _get_dataset_service(Session, tmp_path):
         annotation_service=_get_annotation_service(Session, tmp_path),
         file_service=_get_file_service(Session, tmp_path),
         validator_service=_get_validator_service(Session, tmp_path),
+        selection_service=_get_selection_service(Session, tmp_path),
     )
 
 
@@ -358,12 +361,90 @@ def mock_services(mocker, Session, tmp_path, test_runner):
 # tests
 
 
+def _add_args(datafiles, smid, *extra):
+    return [
+        "dataset",
+        "add",
+        "--yes",
+        *extra,
+        "--assembly-id",
+        1,
+        "--rna-type",
+        "WTS",
+        "-m",
+        1,
+        "-m",
+        2,
+        "-o",
+        1,
+        "-t",
+        1,
+        smid,
+        "Dataset title CLI test",
+        Path(datafiles, "file1.bedrmod").as_posix(),
+    ]
+
+
+@pytest.mark.datafiles(Path(DATA_DIR, "file1.bedrmod"))
+@pytest.mark.parametrize("dry_run", [False, True])
+def test_add_dataset_selection_not_in_project(
+    dry_run,
+    Session,
+    test_runner,
+    datafiles,
+    selection,
+    project,
+    test_data,
+    mock_services,
+    caplog,
+):
+    # the selections exist, but are not declared for the project
+    smid = project[0].id
+    extra = ["--dry-run"] if dry_run else []
+    result = test_runner.invoke(args=_add_args(datafiles, smid, *extra))
+    assert result.exit_code == 1
+    assert (
+        f"Selection with m5C, m6A, Cell type 1, and Technology 1 (9606) is not available for project '{smid}'"
+        in caplog.text
+    )
+    with Session() as session:
+        assert session.scalar(select(func.count()).select_from(Dataset)) == 0
+        assert session.scalar(select(func.count()).select_from(Data)) == 0
+
+
+@pytest.mark.datafiles(Path(DATA_DIR, "file1.bedrmod"))
+def test_add_dataset_creates_selections(
+    Session,
+    test_runner,
+    datafiles,
+    selection,
+    project_selection,
+    project,
+    test_data,
+    mock_services,
+):
+    # selections are created on upload
+    smid = project[0].id
+    with Session() as session:
+        session.execute(delete(Selection))
+        session.commit()
+    result = test_runner.invoke(args=_add_args(datafiles, smid))
+    assert result.exit_code == 0
+    with Session() as session:
+        rows = session.execute(select(Selection)).scalars().all()
+        assert {(r.modification_id, r.organism_id, r.technology_id) for r in rows} == {
+            (1, 1, 1),
+            (2, 1, 1),
+        }
+
+
 @pytest.mark.datafiles(Path(DATA_DIR, "file1.bedrmod"))
 def test_add_dataset(
     Session,
     test_runner,
     datafiles,
     selection,
+    project_selection,
     project,
     test_data,
     tmp_path,
@@ -442,6 +523,7 @@ def test_add_dataset_dry_run(
     test_runner,
     datafiles,
     selection,
+    project_selection,
     project,
     test_data,
     tmp_path,
@@ -515,7 +597,14 @@ def _record_state(Session):
 
 @pytest.fixture
 def existing_dataset(
-    Session, test_runner, datafiles, selection, project, test_data, mock_services
+    Session,
+    test_runner,
+    datafiles,
+    selection,
+    project,
+    project_selection,
+    test_data,
+    mock_services,
 ):
     # create a dataset, and return the EUFID, the project, and the update file
     project_id = project[0].id
@@ -575,8 +664,6 @@ def test_add_dataset_in_batch(
         "dataset",
         "batch",
         "--yes",
-        "--rna-type",
-        "WTS",
         "test_request",
         datafiles.as_posix(),
     ]
@@ -586,6 +673,8 @@ def test_add_dataset_in_batch(
 
     with Session() as session:
         assert session.scalar(select(func.count()).select_from(Project)) == 1
+        # declared by the template of the new project
+        assert session.scalar(select(func.count()).select_from(ProjectSelection)) == 3
         assert session.scalar(select(func.count()).select_from(Dataset)) == 2
         assert session.scalar(select(func.count()).select_from(Dataset)) == 2
         assert session.scalar(select(func.count()).select_from(Data)) == 6

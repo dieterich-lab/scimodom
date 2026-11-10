@@ -9,6 +9,7 @@ from typing import Iterator
 from pydantic import ValidationError
 from sqlalchemy.exc import NoResultFound
 
+from scimodom.services.annotation import AnnotationService
 from scimodom.services.assembly import (
     AssemblyNotFoundError,
     AssemblyService,
@@ -27,7 +28,6 @@ from scimodom.utils.dtos.project import (
     ProjectSourceDto,
     ProjectTemplate,
 )
-
 
 _NOTE_PATTERN = re.compile(r"(?:file=)(?P<file>.*),\s*(?:title=)(?P<title>.*)")
 
@@ -77,29 +77,9 @@ class ProjectIngestionResult:
     user_added: bool | None = None
 
 
-def parse_dataset_note(note: str | None) -> tuple[str, str]:
-    """Get the dataset file name and title from a metadata note.
-
-    :param note: Note with format 'file=filename.bedrmod, title=title'
-    :raises ProjectTemplateError: If the note does not have this format
-    :return: File name and title
-    """
-    if note is None:
-        raise ProjectTemplateError(
-            "'note' must be str with format 'file=filename.bedrmod, title=title'"
-        )
-    match = _NOTE_PATTERN.match(note)
-    if match is None:
-        raise ProjectTemplateError("Unable to match 'file' or 'title' from 'note'.")
-    return match["file"].strip(), match["title"].strip()
-
-
 @dataclass(frozen=True)
 class BatchDataset:
-    """A dataset to import: one file, one or more modifications.
-
-    :param modifications: (RNA type, MODOMICS ID) for each modification
-    """
+    """A dataset to import: one file, one or more modifications."""
 
     file_path: Path
     title: str
@@ -109,6 +89,7 @@ class BatchDataset:
     method_id: str
     tech: str
     modifications: tuple[tuple[str, str], ...]
+    annotation_source: AnnotationSource
 
     @property
     def filename(self) -> str:
@@ -317,7 +298,9 @@ class ProjectIngestionService:
         The 'note' of each metadata entry must contain the dataset file
         name and title, 'file=filename.bedrmod, title=title'. Entries
         with the same file name are modifications of the same dataset
-        and must agree on title, assembly, organism, and technology.
+        and must agree on title, assembly, organism, and technology,
+        and have the same RNA type, from which the annotation source
+        is derived. Datasets of a project may have different RNA types.
         All files must exist under the input directory.
 
         :param input_directory: Directory with the bedRMod (EU-formatted) files
@@ -332,7 +315,7 @@ class ProjectIngestionService:
         entries: dict[str, dict] = {}
         for index, metadata in enumerate(template.metadata, start=1):
             try:
-                filename, title = parse_dataset_note(metadata.note)
+                filename, title = _parse_dataset_note(metadata.note)
             except ProjectTemplateError as exc:
                 problems.append(f"Metadata entry {index}: {exc}")
                 continue
@@ -353,6 +336,26 @@ class ProjectIngestionService:
                 )
             entry["modifications"].append((metadata.rna, metadata.modomics_id))
 
+        for filename, entry in entries.items():
+            rna_types = {rna for rna, _ in entry["modifications"]}
+            if len(rna_types) > 1:
+                problems.append(
+                    f"File '{filename}' has modifications with different "
+                    f"RNA types: {', '.join(sorted(rna_types))}."
+                )
+                entry["annotation_source"] = None
+                continue
+            rna_type = rna_types.pop()
+            try:
+                entry["annotation_source"] = AnnotationService.get_annotation_source(
+                    rna_type
+                )
+            except NotImplementedError:
+                problems.append(
+                    f"File '{filename}': RNA type '{rna_type}' is not implemented."
+                )
+                entry["annotation_source"] = None
+
         parent = Path(input_directory).resolve()
         datasets = []
         for filename, entry in entries.items():
@@ -361,7 +364,7 @@ class ProjectIngestionService:
                 problems.append(f"File '{filename}' is not under the input directory.")
             elif not file_path.is_file():
                 problems.append(f"File '{filename}' not found in '{input_directory}'.")
-            else:
+            elif entry["annotation_source"] is not None:
                 title, assembly_id, taxa_id, cto, method_id, tech = entry["key"]
                 datasets.append(
                     BatchDataset(
@@ -373,6 +376,7 @@ class ProjectIngestionService:
                         method_id=method_id,
                         tech=tech,
                         modifications=tuple(entry["modifications"]),
+                        annotation_source=entry["annotation_source"],
                     )
                 )
         if problems:
@@ -385,7 +389,6 @@ class ProjectIngestionService:
         self,
         plan: BatchImportPlan,
         project_id: str,
-        annotation_source: AnnotationSource,
     ) -> Iterator[BatchDatasetOutcome]:
         """Import the datasets of a plan into an existing project.
 
@@ -394,25 +397,17 @@ class ProjectIngestionService:
 
         :param plan: Plan
         :param project_id: Project SMID
-        :param annotation_source: Annotation source (the same for all datasets)
         :return: Outcomes, in the order of the plan
         """
         for dataset in plan.datasets:
             try:
-                dataset_id = self._import_batch_dataset(
-                    dataset, project_id, annotation_source
-                )
+                dataset_id = self._import_batch_dataset(dataset, project_id)
             except Exception as exc:
                 yield BatchDatasetOutcome(dataset, error=exc)
             else:
                 yield BatchDatasetOutcome(dataset, dataset_id=dataset_id)
 
-    def _import_batch_dataset(
-        self,
-        dataset: BatchDataset,
-        project_id: str,
-        annotation_source: AnnotationSource,
-    ) -> str:
+    def _import_batch_dataset(self, dataset: BatchDataset, project_id: str) -> str:
         # selections (modification, organism, technology) exist once
         # the project is created, so their IDs are only known now
         modification_ids = [
@@ -435,7 +430,7 @@ class ProjectIngestionService:
                 modification_ids=modification_ids,
                 organism_id=organism_id,
                 technology_id=technology_id,
-                annotation_source=annotation_source,
+                annotation_source=dataset.annotation_source,
             )
 
     # helpers
@@ -487,6 +482,17 @@ class ProjectIngestionService:
             )
             for dv, pv in zip(doi, pmid)
         ]
+
+
+def _parse_dataset_note(note: str | None) -> tuple[str, str]:
+    if note is None:
+        raise ProjectTemplateError(
+            "'note' must be str with format 'file=filename.bedrmod, title=title'"
+        )
+    match = _NOTE_PATTERN.match(note)
+    if match is None:
+        raise ProjectTemplateError("Unable to match 'file' or 'title' from 'note'.")
+    return match["file"].strip(), match["title"].strip()
 
 
 @cache

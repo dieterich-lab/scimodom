@@ -16,6 +16,7 @@ from scimodom.services.annotation.gtrnadb import GtRNAdbAnnotationService
 from scimodom.services.assembly import AssemblyService
 from scimodom.services.bedtools import BedToolsService
 from scimodom.services.data import DataService
+from scimodom.services.selection import SelectionService
 from scimodom.services.dataset import DatasetService
 from scimodom.services.ensembl import EnsemblAssemblyClient
 from scimodom.services.external import ExternalService
@@ -270,13 +271,16 @@ def _get_dataset_service(session, tmp_path):
         annotation_service=annotation_service,
         file_service=file_service,
         validator_service=validator_service,
+        selection_service=SelectionService(session, gene_service=gene_service),
     )
 
 
 # tests
 
 
-def test_import_data(Session, selection, project, test_data, tmp_path, freezer, mocker):
+def test_import_data(
+    Session, selection, project, project_selection, test_data, tmp_path, freezer, mocker
+):
     mocker.patch("scimodom.services.annotation.ensembl.Ensembl", MockEnsembl)
     service = _get_dataset_service(Session(), tmp_path)
     file_handle = StringIO(EUF_FILE)

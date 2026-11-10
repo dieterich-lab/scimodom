@@ -74,7 +74,7 @@ In the background, the following standard template is created:
         ]
     }
 
-``"external_sources": []`` and ``"date_published": null`` are allowed (no public sources). If there is at least one source, one of DOI or PMID must be defined, *i.e.* they cannot be both ``"doi": null`` and ``"pmid": null``. DOI format includes only the prefix and suffix, without the doi.org proxy server. ``"metadata"`` is a list of entries with at least one entry. All keys are required, ``"assembly_id"`` and ``"note"`` are optional. Each ``"metadata"`` entry provides information for a given dataset (bedRMod file). A single dataset may also require two or more entries for ``metadata`` *e.g.* if two or more modifications are given in the same bedRMod file.
+``"external_sources": []`` and ``"date_published": null`` are allowed (no public sources). If there is at least one source, one of DOI or PMID must be defined, *i.e.* they cannot be both ``"doi": null`` and ``"pmid": null``. DOI format includes only the prefix and suffix, without the doi.org proxy server. ``"metadata"`` is a list of entries with at least one entry. All keys are required, ``"assembly_id"`` and ``"note"`` are optional. Each ``"metadata"`` entry provides information for a given dataset (bedRMod file). A single dataset may also require two or more entries for ``metadata`` *e.g.* if two or more modifications are given in the same bedRMod file. The combinations of modification, organism, and technology given in ``metadata`` are the *selections* of the project: a dataset can only be added to the project for one of these combinations (additional selections can be added by the system administrator).
 
 
 Dataset upload

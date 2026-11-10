@@ -7,6 +7,7 @@ from sqlalchemy import func, select
 
 from scimodom.database.models import (
     Project,
+    ProjectSelection,
     Selection,
     UserProjectAssociation,
     User,
@@ -195,6 +196,7 @@ def _get_dataset_service(Session, tmp_path):
         annotation_service=_get_annotation_service(Session, tmp_path),
         file_service=_get_file_service(Session, tmp_path),
         validator_service=_get_validator_service(Session, tmp_path),
+        selection_service=_get_selection_service(Session, tmp_path),
     )
 
 
@@ -265,6 +267,14 @@ def mock_services(mocker, Session, tmp_path, test_runner):
     mocker.patch(
         "scimodom.cli.project.get_project_deletion_service",
         return_value=_get_project_deletion_service(Session, tmp_path),
+    )
+    mocker.patch(
+        "scimodom.cli.project.get_selection_service",
+        return_value=_get_selection_service(Session, tmp_path),
+    )
+    mocker.patch(
+        "scimodom.cli.project.get_project_service",
+        return_value=_get_project_service(Session, tmp_path),
     )
 
 
@@ -378,7 +388,9 @@ def test_add_project(Session, test_runner, tmp_path, setup, mock_services):
     project_template = d / f"{smid}.json"
 
     with Session() as session:
-        assert session.scalar(select(func.count()).select_from(Selection)) == 2
+        # selections of the project only (the selection exists with data)
+        assert session.scalar(select(func.count()).select_from(ProjectSelection)) == 2
+        assert session.scalar(select(func.count()).select_from(Selection)) == 0
         assert session.scalar(select(func.count()).select_from(Project)) == 1
         assert (
             session.scalar(select(func.count()).select_from(UserProjectAssociation))
@@ -388,8 +400,70 @@ def test_add_project(Session, test_runner, tmp_path, setup, mock_services):
     assert Path(project_template).exists() is True
 
 
+SELECTION_ARGS = [
+    "--rna-type",
+    "WTS",
+    "--modification",
+    "m6A",
+    "--taxid",
+    "9606",
+    "--cto",
+    "Cell type 1",
+    "--method",
+    "Antibody-based sequencing",
+    "--technology",
+    "Technology 1",
+]
+
+
+def test_add_selection(Session, test_runner, setup, project, mock_services):
+    args = ["project", "add-selection", "--yes", *SELECTION_ARGS, "12345678"]
+    result = test_runner.invoke(args=args)
+    assert result.exit_code == 0
+    # idempotent
+    result = test_runner.invoke(args=args)
+    assert result.exit_code == 0
+
+    with Session() as session:
+        rows = session.execute(select(ProjectSelection)).scalars().all()
+        assert [(r.project_id, r.modification_id) for r in rows] == [("12345678", 1)]
+        # a selection exists only with data
+        assert session.scalar(select(func.count()).select_from(Selection)) == 0
+
+
+def test_add_selection_no_such_project(
+    Session, test_runner, setup, project, mock_services, caplog
+):
+    args = ["project", "add-selection", "--yes", *SELECTION_ARGS, "XXXXXXXX"]
+    result = test_runner.invoke(args=args)
+    assert result.exit_code == 1
+    assert "No such SMID 'XXXXXXXX'" in caplog.text
+    with Session() as session:
+        assert session.scalar(select(func.count()).select_from(ProjectSelection)) == 0
+
+
+def test_add_selection_invalid_input(
+    Session, test_runner, setup, project, mock_services, caplog
+):
+    args = SELECTION_ARGS.copy()
+    args[args.index("m6A")] = "nonexistent"
+    result = test_runner.invoke(
+        args=["project", "add-selection", "--yes", *args, "12345678"]
+    )
+    assert result.exit_code == 1
+    assert "invalid input value" in caplog.text
+    with Session() as session:
+        assert session.scalar(select(func.count()).select_from(ProjectSelection)) == 0
+
+
 def test_delete_project(
-    Session, test_runner, tmp_path, bam_file, annotation, mock_services
+    Session,
+    test_runner,
+    tmp_path,
+    bam_file,
+    annotation,
+    project_selection,
+    mock_services,
 ):
     d = tmp_path / "t_data" / "metadata"
     project_template = Path(d, "12345678.json")
@@ -416,6 +490,8 @@ def test_delete_project(
 
     with Session() as session:
         assert session.scalar(select(func.count()).select_from(Selection)) == 1
+        # all project selections of the fixture belong to the deleted project
+        assert session.scalar(select(func.count()).select_from(ProjectSelection)) == 0
         assert session.scalar(select(func.count()).select_from(DataAnnotation)) == 0
         assert session.scalar(select(func.count()).select_from(Data)) == 0
         assert (

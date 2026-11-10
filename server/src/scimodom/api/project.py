@@ -5,10 +5,15 @@ from flask import Blueprint, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from pydantic import ValidationError
 
-from scimodom.api.helpers import create_error_response
+from scimodom.api.helpers import (
+    ClientResponseException,
+    create_error_response,
+    parse_valid_project,
+)
 from scimodom.services.mail import get_mail_service
 from scimodom.services.project import get_project_service
 from scimodom.services.user import get_user_service
+from scimodom.services.selection import get_selection_service
 from scimodom.utils.dtos.project import ProjectTemplate
 
 logger = logging.getLogger(__name__)
@@ -26,6 +31,31 @@ def get_projects():
     :statuscode 500: Internal Server Error
     """
     return _get_projects()
+
+
+@project_api.get("/projects/<project_id>/selections")
+def get_project_selections(project_id: str):
+    """Get the selections of a project.
+
+    These are the combinations of modification, organism, and
+    technology for which datasets can be added to the project.
+    The selection ID is null if the selection does not exist yet,
+    i.e. if there is no dataset with this combination.
+
+    :param project_id: Project identifier (SMID)
+    :return: JSON array with detailed information for
+    all combinations of modifications, organisms, and
+    technology that are available for this project.
+    :statuscode 200: OK
+    :statuscode 400: Bad Request - invalid project identifier
+    :statuscode 404: Not Found - Project
+    :statuscode 500: Internal Server Error
+    """
+    try:
+        project = parse_valid_project(project_id)
+    except ClientResponseException as e:
+        return e.response_tuple
+    return get_selection_service().get_project_selections(project.id)
 
 
 @project_api.post("/projects/requests")

@@ -14,7 +14,6 @@ from scimodom.database.models import (
     RNAType,
     Taxonomy,
     Taxa,
-    Selection,
 )
 from scimodom.services.annotation import BIOTYPES
 
@@ -163,57 +162,6 @@ class UtilitiesService:
         return self._session.execute(
             select(DetectionTechnology.id).filter_by(method_id=method_id, tech=tech)
         ).scalar_one()
-
-    def get_selections(self) -> list[dict[str, Any]]:
-        """Get all selections.
-
-        Selections are defined by an association:
-        Modification, Organism, DetectionTechnology.
-
-        :return: Selected columns from various ORM models
-        describing each selection in detail.
-        """
-        query = (
-            select(
-                Modification.id.label("modification_id"),
-                Modification.rna.label("rna_type"),
-                RNAType.name.label("rna_type_name"),
-                Modomics.short_name.label("modomics_short_name"),
-                DetectionTechnology.id.label("technology_id"),
-                DetectionMethod.cls,
-                DetectionMethod.meth,
-                DetectionTechnology.tech,
-                Organism.id.label("organism_id"),
-                Taxonomy.domain,
-                Taxonomy.kingdom,
-                Taxa.id.label("taxa_id"),
-                Taxa.name.label("taxa_name"),
-                Taxa.short_name.label("taxa_short_name"),
-                Organism.cto,
-                Selection.id.label("selection_id"),
-            )
-            .join_from(
-                Selection,
-                Modification,
-                Selection.inst_modification,
-            )
-            .join_from(
-                Selection,
-                DetectionTechnology,
-                Selection.inst_technology,
-            )
-            .join_from(Selection, Organism, Selection.inst_organism)
-            .join_from(Modification, Modomics, Modification.inst_modomics)
-            .join_from(Modification, RNAType, Modification.inst_rna)
-            .join_from(
-                DetectionTechnology,
-                DetectionMethod,
-                DetectionTechnology.inst_method,
-            )
-            .join_from(Organism, Taxa, Organism.inst_taxa)
-            .join_from(Taxa, Taxonomy, Taxa.inst_taxonomy)
-        )
-        return [row._asdict() for row in self._session.execute(query)]
 
     def get_release_info(self) -> dict[str, Any]:
         """Get build, API and data-release information.

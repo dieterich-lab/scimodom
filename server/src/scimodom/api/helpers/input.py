@@ -29,7 +29,7 @@ T = TypeVar("T")
 _FILENAME_CHARS = r"a-zA-Z0-9.,_-"
 VALID_FILENAME_REGEXP = re.compile(rf"\A[{_FILENAME_CHARS}]{{1,256}}\Z")
 INVALID_CHARS_REGEXP = re.compile(rf"[^{_FILENAME_CHARS}]")
-VALID_DATASET_ID_REGEXP = re.compile(r"\A[a-zA-Z0-9]{1,256}\Z")
+VALID_ID_REGEXP = re.compile(r"\A[a-zA-Z0-9]{1,256}\Z")
 
 
 # Query parameter parsing/conversion
@@ -329,7 +329,7 @@ def _parse_enum_member(name: str, raw: str | None, enum_cls: type[T]) -> T:
 
 
 def _is_valid_identifier(identifier: str, length: int) -> bool:
-    return bool(VALID_DATASET_ID_REGEXP.match(identifier) and len(identifier) == length)
+    return bool(VALID_ID_REGEXP.match(identifier) and len(identifier) == length)
 
 
 def _validate_file_name(name: str, raw: str) -> None:

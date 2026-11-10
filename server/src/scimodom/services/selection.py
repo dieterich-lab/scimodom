@@ -1,17 +1,24 @@
 from functools import cache
 import logging
+from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
 from scimodom.database.database import get_session
 from scimodom.database.models import (
     Dataset,
     DatasetModificationAssociation,
-    Modification,
+    DetectionMethod,
     DetectionTechnology,
+    Modification,
+    Modomics,
     Organism,
+    ProjectSelection,
+    RNAType,
     Selection,
+    Taxa,
+    Taxonomy,
 )
 from scimodom.services.gene import GeneService, get_gene_service
 from scimodom.utils.dtos.project import ProjectMetaDataDto
@@ -23,39 +30,126 @@ class SelectionService:
     """Provide a service to handle selections.
 
     :param session: SQLAlchemy ORM session
-    :type session: Session
     """
 
     def __init__(self, session: Session, gene_service: GeneService) -> None:
         self._session = session
         self._gene_service = gene_service
 
-    def create_selection(
-        self, metadata: list[ProjectMetaDataDto], is_flush_only: bool = False
+    def get_selections(self) -> list[dict[str, Any]]:
+        """Get all selections.
+
+        Selections are defined by an association:
+        Modification, Organism, DetectionTechnology.
+
+        :return: Selected columns from various ORM models
+        describing each selection in detail.
+        """
+        query = self._get_selection_query(Selection).add_columns(
+            Selection.id.label("selection_id")
+        )
+        return [row._asdict() for row in self._session.execute(query)]
+
+    def get_project_selections(self, project_id: str) -> list[dict[str, Any]]:
+        """Get the selections of a project.
+
+        These are the combinations of modification, organism, and
+        technology for which datasets can be added to the project.
+        The result is the same as for get_selections, except that
+        the selection ID is None if the selection does not exist
+        (yet), i.e. if there is no dataset with this combination.
+
+        NOTE: Return an empty list if the project_id does not exists
+        or if no selections exist for this project.
+
+        :param project_id: Project identifier (SMID).
+        :return: Selected columns from various ORM models
+        describing each selection in detail.
+        """
+        query = (
+            self._get_selection_query(ProjectSelection)
+            .add_columns(Selection.id.label("selection_id"))
+            .join(
+                Selection,
+                and_(
+                    Selection.modification_id == ProjectSelection.modification_id,
+                    Selection.organism_id == ProjectSelection.organism_id,
+                    Selection.technology_id == ProjectSelection.technology_id,
+                ),
+                isouter=True,
+            )
+            .where(ProjectSelection.project_id == project_id)
+        )
+        return [row._asdict() for row in self._session.execute(query)]
+
+    def add_project_selections(
+        self,
+        project_id: str,
+        metadata: list[ProjectMetaDataDto],
+        is_flush_only: bool = False,
     ) -> None:
-        """Add a new selection to the database.
+        """Declare the selections of a project.
 
-        If a selection already exists, nothing is done.
-        The project metadata template must be a valid template
-        with valid entries.
+        A project selection is a combination of modification, organism,
+        and technology for which datasets may be added to the project.
+        If it already exists, nothing is done. This does not create
+        a selection (cf. get_or_create_selection), which only exists
+        once there is data. Modifications, organisms, and technologies
+        are created if they do not exist. The project metadata must be valid.
 
+        :param project_id: Project identifier (SMID), the caller is
+        responsible to reference a valid project identifier
         :param metadata: Validated project metadata
-        :type metadata: list of ProjectMetadataDto
         :param is_flush_only: If True, flush w/o commit. Default is False.
-        This can be useful if adding a selection as part of a project,
+        This can be useful if adding selections as part of a project,
         before a final commit is called.
-        :type is_flush_only: bool
-        :raises Exception: If fail to add selection.
-        :return: Selection (newly create or existing)
-        :rtype: Selection
         """
         try:
-            self._flush_selections(metadata)
+            for dto in metadata:
+                modification_id = self._add_modification_if_none(dto)
+                organism_id = self._add_organism_if_none(dto)
+                technology_id = self._add_technology_if_none(dto)
+                self._add_project_selection_if_none(
+                    project_id, modification_id, organism_id, technology_id
+                )
             if not is_flush_only:
                 self._session.commit()
         except Exception:
             self._session.rollback()
             raise
+
+    def get_or_create_selection(
+        self, modification_id: int, organism_id: int, technology_id: int
+    ) -> int:
+        """Get a selection ID, create the selection if it does not exist.
+
+        Flush w/o commit: the caller is responsible for the transaction.
+
+        :param modification_id: Modification ID
+        :param organism_id: Organism ID
+        :param technology_id: Technology ID
+        :return: Selection ID
+        """
+        selection = self._session.execute(
+            select(Selection).filter_by(
+                modification_id=modification_id,
+                organism_id=organism_id,
+                technology_id=technology_id,
+            )
+        ).scalar_one_or_none()
+        if selection is None:
+            selection = Selection(
+                modification_id=modification_id,
+                organism_id=organism_id,
+                technology_id=technology_id,
+            )
+            self._session.add(selection)
+            self._session.flush()
+            logger.info(
+                f"Flushed selection '{selection.id}' (m={modification_id}, "
+                f"o={organism_id}, t={technology_id})."
+            )
+        return selection.id
 
     def delete_selections_by_dataset(self, dataset: Dataset) -> None:
         """Delete selection(s) associated with a Dataset and clear gene cache.
@@ -66,7 +160,6 @@ class SelectionService:
         regenerated on demand using the database.
 
         :param dataset: Dataset
-        :type dataset: Dataset
         """
         modification_ids = [
             association.modification_id for association in dataset.associations
@@ -102,31 +195,67 @@ class SelectionService:
             )
             self._delete_selection(selection, cache_only)
 
-    def _flush_selections(self, metadata: list[ProjectMetaDataDto]) -> None:
-        for dto in metadata:
-            modification_id = self._add_modification_if_none(dto)
-            organism_id = self._add_organism_if_none(dto)
-            technology_id = self._add_technology_if_none(dto)
-            selection = self._session.execute(
-                select(Selection).filter_by(
-                    modification_id=modification_id,
-                    organism_id=organism_id,
-                    technology_id=technology_id,
-                )
-            ).scalar_one_or_none()
-            if not selection:
-                selection = Selection(
-                    modification_id=modification_id,
-                    organism_id=organism_id,
-                    technology_id=technology_id,
-                )
-                self._session.add(selection)
-                self._session.flush()
+    @staticmethod
+    def _get_selection_query(root: type[Selection] | type[ProjectSelection]):
+        # root: any table with modification_id, organism_id, technology_id
+        return (
+            select(
+                Modification.id.label("modification_id"),
+                Modification.rna.label("rna_type"),
+                RNAType.name.label("rna_type_name"),
+                Modomics.short_name.label("modomics_short_name"),
+                DetectionTechnology.id.label("technology_id"),
+                DetectionMethod.cls,
+                DetectionMethod.meth,
+                DetectionTechnology.tech,
+                Organism.id.label("organism_id"),
+                Taxonomy.domain,
+                Taxonomy.kingdom,
+                Taxa.id.label("taxa_id"),
+                Taxa.name.label("taxa_name"),
+                Taxa.short_name.label("taxa_short_name"),
+                Organism.cto,
+            )
+            .select_from(root)
+            .join(Modification, Modification.id == root.modification_id)
+            .join(DetectionTechnology, DetectionTechnology.id == root.technology_id)
+            .join(Organism, Organism.id == root.organism_id)
+            .join(Modomics, Modomics.id == Modification.modomics_id)
+            .join(RNAType, RNAType.id == Modification.rna)
+            .join(DetectionMethod, DetectionMethod.id == DetectionTechnology.method_id)
+            .join(Taxa, Taxa.id == Organism.taxa_id)
+            .join(Taxonomy, Taxonomy.id == Taxa.taxonomy_id)
+        )
 
-                logger.info(
-                    f"Flushed selection '{selection.id}' "
-                    f"(m={modification_id}, o={organism_id}, t={technology_id})."
+    def _add_project_selection_if_none(
+        self,
+        project_id: str,
+        modification_id: int,
+        organism_id: int,
+        technology_id: int,
+    ) -> None:
+        exists = self._session.execute(
+            select(ProjectSelection.id).filter_by(
+                project_id=project_id,
+                modification_id=modification_id,
+                organism_id=organism_id,
+                technology_id=technology_id,
+            )
+        ).scalar_one_or_none()
+        if exists is None:
+            self._session.add(
+                ProjectSelection(
+                    project_id=project_id,
+                    modification_id=modification_id,
+                    organism_id=organism_id,
+                    technology_id=technology_id,
                 )
+            )
+            self._session.flush()
+            logger.info(
+                f"Flushed selection for project '{project_id}' (m={modification_id}, "
+                f"o={organism_id}, t={technology_id})."
+            )
 
     def _add_modification_if_none(self, metadata: ProjectMetaDataDto) -> int:
         modification_id = self._session.execute(

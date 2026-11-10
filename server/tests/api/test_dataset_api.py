@@ -189,8 +189,8 @@ def test_add_dataset(authenticated_client, dataset_mocks):
             404,
             "Error",
             "Invalid combination of modification(s), organism, and/or technology.\n"
-            "Modify the request form to match a valid selection for this dataset.\n"
-            "Use GET /catalogs/selections for valid combinations.",
+            "Modify the request form to match a valid selection for this project.\n"
+            "Use GET /projects/<project_id>/selections for valid combinations.",
         ),
         (DatasetExistsError("Exists"), 409, "Exists", None),
         (

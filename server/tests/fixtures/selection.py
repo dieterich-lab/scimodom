@@ -4,6 +4,7 @@ from scimodom.database.models import (
     Organism,
     Modification,
     DetectionTechnology,
+    ProjectSelection,
     Selection,
 )
 
@@ -49,4 +50,27 @@ def selection(Session, setup):  # noqa
     )
 
     session.add_all([selection1, selection2, selection3, selection4, selection5])
+    session.commit()
+
+
+@pytest.fixture
+def project_selection(Session, project, selection):  # noqa
+    """Selections of project '12345678'.
+
+    Same as the selection fixture (the second project has no selection).
+    """
+    session = Session()
+    # (modification, organism, technology)
+    combinations = [(1, 1, 1), (2, 1, 1), (1, 2, 2), (1, 1, 2), (2, 2, 2)]
+    session.add_all(
+        [
+            ProjectSelection(
+                project_id="12345678",
+                modification_id=modification_id,
+                organism_id=organism_id,
+                technology_id=technology_id,
+            )
+            for modification_id, organism_id, technology_id in combinations
+        ]
+    )
     session.commit()

@@ -29,7 +29,10 @@ paths:
       description: >-
         Import a previously uploaded bedRMod file (see
         `POST /uploads`) into an existing project. The caller
-        must be associated with the target project's SMID.
+        must be associated with the target project's SMID. The
+        combination of modification(s), organism, and technology
+        must be one of the project's selections (see
+        `GET /projects/{project_id}/selections`).
       security:
         - BearerAuth: []
       requestBody:
@@ -52,7 +55,9 @@ paths:
         "403":
           $ref: "#/components/responses/ForbiddenError"
         "404":
-          description: Parameter not found
+          description: >-
+            Parameter not found, or the combination of modification(s),
+            organism, and technology is not a selection of the project
         "409":
           description: A dataset with the same content already exists
         "422":

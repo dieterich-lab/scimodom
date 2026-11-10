@@ -44,6 +44,10 @@ def mock_services(mocker):
         return_value=MockUtilitiesService(),
     )
     mocker.patch(
+        "scimodom.api.helpers.validation.get_selection_service",
+        return_value=MockSelectionService(),
+    )
+    mocker.patch(
         "scimodom.api.helpers.validation.get_assembly_service",
         return_value=MockAssemblyService(),
     )
@@ -79,6 +83,49 @@ class MockAssemblyService:
             ]
         else:
             raise FileNotFoundError
+
+
+class MockSelectionService:
+    @staticmethod
+    def get_selections():
+        return [
+            {
+                "cls": "NGS 2nd generation",
+                "cto": "HeLa",
+                "domain": "Eukarya",
+                "kingdom": "Animalia",
+                "meth": "Chemical-assisted sequencing",
+                "modification_id": 2,
+                "modomics_short_name": "m6A",
+                "organism_id": 3,
+                "rna_type": "WTS",
+                "rna_type_name": "whole transcriptome",
+                "selection_id": 3,
+                "taxa_id": 9606,
+                "taxa_name": "Homo sapiens",
+                "taxa_short_name": "H. sapiens",
+                "tech": "MePMe-seq",
+                "technology_id": 2,
+            },
+            {
+                "cls": "NGS 2nd generation",
+                "cto": "HeLa",
+                "domain": "Eukarya",
+                "kingdom": "Animalia",
+                "meth": "Enzyme/protein-assisted sequencing",
+                "modification_id": 2,
+                "modomics_short_name": "m6A",
+                "organism_id": 3,
+                "rna_type": "WTS",
+                "rna_type_name": "whole transcriptome",
+                "selection_id": 29,
+                "taxa_id": 9606,
+                "taxa_name": "Homo sapiens",
+                "taxa_short_name": "H. sapiens",
+                "tech": "eTAM-seq",
+                "technology_id": 7,
+            },
+        ]
 
 
 class MockUtilitiesService:
@@ -121,47 +168,6 @@ class MockUtilitiesService:
     @staticmethod
     def get_biotypes():
         return {"biotypes": ["Protein coding", "lncRNA"]}
-
-    @staticmethod
-    def get_selections():
-        return [
-            {
-                "cls": "NGS 2nd generation",
-                "cto": "HeLa",
-                "domain": "Eukarya",
-                "kingdom": "Animalia",
-                "meth": "Chemical-assisted sequencing",
-                "modification_id": 2,
-                "modomics_short_name": "m6A",
-                "organism_id": 3,
-                "rna_type": "WTS",
-                "rna_type_name": "whole transcriptome",
-                "selection_id": 3,
-                "taxa_id": 9606,
-                "taxa_name": "Homo sapiens",
-                "taxa_short_name": "H. sapiens",
-                "tech": "MePMe-seq",
-                "technology_id": 2,
-            },
-            {
-                "cls": "NGS 2nd generation",
-                "cto": "HeLa",
-                "domain": "Eukarya",
-                "kingdom": "Animalia",
-                "meth": "Enzyme/protein-assisted sequencing",
-                "modification_id": 2,
-                "modomics_short_name": "m6A",
-                "organism_id": 3,
-                "rna_type": "WTS",
-                "rna_type_name": "whole transcriptome",
-                "selection_id": 29,
-                "taxa_id": 9606,
-                "taxa_name": "Homo sapiens",
-                "taxa_short_name": "H. sapiens",
-                "tech": "eTAM-seq",
-                "technology_id": 7,
-            },
-        ]
 
 
 class MockFileService:

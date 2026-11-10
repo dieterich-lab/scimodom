@@ -9,6 +9,7 @@ from scimodom.database.models import (
     Project,
     ProjectSource,
     ProjectContact,
+    ProjectSelection,
     User,
     UserProjectAssociation,
 )
@@ -83,12 +84,15 @@ class MockFileService:
 
 class MockSelectionService:
     def __init__(self):
-        pass
+        self.added: list[tuple[str, list[ProjectMetaDataDto], bool]] = []
 
-    def create_selection(
-        self, metadata: list[ProjectMetaDataDto], is_flush_only: bool = False
+    def add_project_selections(
+        self,
+        project_id: str,
+        metadata: list[ProjectMetaDataDto],
+        is_flush_only: bool = False,
     ) -> None:  # noqa
-        pass
+        self.added.append((project_id, metadata, is_flush_only))
 
 
 @pytest.fixture
@@ -303,6 +307,26 @@ def test_create_project_existing_contact(Session, file_service, setup):
         assert session.scalar(select(func.count()).select_from(Project)) == 1
         assert session.scalar(select(func.count()).select_from(ProjectSource)) == 1
         assert session.scalar(select(func.count()).select_from(ProjectContact)) == 1
+
+
+def test_create_project_adds_project_selections(Session, file_service, setup):
+    service = _get_project_service(Session, file_service)
+    project_id = service.create_project(PROJECT, "abcdef123456")
+    # the project selections are added in the transaction of the project
+    assert service._selection_service.added == [(project_id, PROJECT.metadata, True)]
+
+
+def test_delete_project_deletes_project_selections(
+    Session, project, project_selection, file_service
+):
+    service = _get_project_service(Session, file_service)
+    count = select(func.count()).select_from(ProjectSelection)
+    assert service._session.scalar(count) == 5
+    service.delete_project(project[0])
+    with Session() as session:
+        assert session.scalar(select(func.count()).select_from(ProjectSelection)) == 0
+        assert session.scalar(select(func.count()).select_from(Project)) == 1
+    assert file_service.deleted_projects == ["/data/metadata/12345678.json"]
 
 
 def test_delete_project(Session, project, file_service):

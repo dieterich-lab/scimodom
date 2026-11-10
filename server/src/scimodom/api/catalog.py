@@ -11,6 +11,7 @@ from scimodom.api.helpers import (
 from scimodom.services.annotation import get_annotation_service
 from scimodom.services.assembly import get_assembly_service
 from scimodom.services.gene import get_gene_service
+from scimodom.services.selection import get_selection_service
 from scimodom.services.utilities import get_utilities_service
 
 catalog_api = Blueprint("catalog_api", __name__)
@@ -24,8 +25,7 @@ def get_rna_types():
     :statuscode 200: OK
     :statuscode 500: Internal Server Error
     """
-    utilities_service = get_utilities_service()
-    return utilities_service.get_rna_types()
+    return get_utilities_service().get_rna_types()
 
 
 @catalog_api.get("/rna-types/<rna_type>/biotypes")
@@ -39,8 +39,7 @@ def get_biotypes(rna_type: str):  # noqa
     :statuscode 200: OK
     :statuscode 500: Internal Server Error
     """
-    utilities_service = get_utilities_service()
-    return utilities_service.get_biotypes()
+    return get_utilities_service().get_biotypes()
 
 
 @catalog_api.get("/rna-types/<rna_type>/features")
@@ -56,10 +55,9 @@ def get_features(rna_type: str):
     :statuscode 500: Internal Server Error
     :statuscode 501: Not Implemented - RNA type annotation
     """
-    annotation_service = get_annotation_service()
     try:
         rna_type = parse_valid_rna_type(rna_type)
-        return {"features": annotation_service.get_features_by_rna_type(rna_type)}
+        return {"features": get_annotation_service().get_features_by_rna_type(rna_type)}
     except ClientResponseException as exc:
         return exc.response_tuple
     except NotImplementedError:
@@ -78,8 +76,7 @@ def get_taxa():
     :statuscode 200: OK
     :statuscode 500: Internal Server Error
     """
-    utilities_service = get_utilities_service()
-    return utilities_service.get_taxa()
+    return get_utilities_service().get_taxa()
 
 
 @catalog_api.get("/taxa/<taxa_id>/chromosomes")
@@ -95,10 +92,9 @@ def get_chroms(taxa_id: str):
     :statuscode 404: Not Found - Taxa ID or chromosome-related data
     :statuscode 500: Internal Server Error
     """
-    assembly_service = get_assembly_service()
     try:
         taxa_id_as_int = parse_valid_taxa_id(taxa_id)
-        return assembly_service.get_chroms(taxa_id_as_int)
+        return get_assembly_service().get_chroms(taxa_id_as_int)
     except ClientResponseException as exc:
         return exc.response_tuple
     except NoResultFound:
@@ -126,10 +122,9 @@ def get_assemblies(taxa_id: str):
     :statuscode 404: Not Found - Taxa ID
     :statuscode 500: Internal Server Error
     """
-    assembly_service = get_assembly_service()
     try:
         taxa_id_as_int = parse_valid_taxa_id(taxa_id)
-        assemblies = assembly_service.get_assemblies_by_taxa(taxa_id_as_int)
+        assemblies = get_assembly_service().get_assemblies_by_taxa(taxa_id_as_int)
         return [{"id": assembly.id, "name": assembly.name} for assembly in assemblies]
     except ClientResponseException as exc:
         return exc.response_tuple
@@ -144,8 +139,7 @@ def get_modomics():
     :statuscode 200: OK
     :statuscode 500: Internal Server Error
     """
-    utilities_service = get_utilities_service()
-    return utilities_service.get_modomics()
+    return get_utilities_service().get_modomics()
 
 
 @catalog_api.get("/methods")
@@ -157,8 +151,7 @@ def get_methods():
     :statuscode 200: OK
     :statuscode 500: Internal Server Error
     """
-    utilities_service = get_utilities_service()
-    return utilities_service.get_methods()
+    return get_utilities_service().get_methods()
 
 
 @catalog_api.get("/selections")
@@ -171,8 +164,7 @@ def get_selections():
     :statuscode 200: OK
     :statuscode 500: Internal Server Error
     """
-    utilities_service = get_utilities_service()
-    return utilities_service.get_selections()
+    return get_selection_service().get_selections()
 
 
 @catalog_api.get("/genes")
@@ -188,10 +180,9 @@ def get_genes():
     :statuscode 404: Not Found - selection identifier
     :statuscode 500: Internal Server Error
     """
-    gene_service = get_gene_service()
     try:
         selection_ids = get_required_list("selection", int)
-        return gene_service.get_genes(selection_ids)
+        return get_gene_service().get_genes(selection_ids)
     except ClientResponseException as exc:
         return exc.response_tuple
     except NoResultFound:

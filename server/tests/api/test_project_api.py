@@ -4,6 +4,8 @@ import pytest
 from flask import Flask
 from flask_jwt_extended import JWTManager, create_access_token
 
+from scimodom.services.project import ProjectService
+from scimodom.services.selection import SelectionService
 from scimodom.api.project import project_api
 
 
@@ -45,10 +47,45 @@ def project_mocks(mocker):
     )
 
 
+@pytest.fixture
+def services(Session, project_selection, mocker):
+    selection_service = SelectionService(Session(), gene_service=mocker.Mock())
+    project_service = ProjectService(
+        session=Session(),
+        file_service=mocker.Mock(),
+        selection_service=selection_service,
+    )
+    mocker.patch(
+        "scimodom.api.helpers.validation.get_project_service",
+        return_value=project_service,
+    )
+    mocker.patch(
+        "scimodom.api.project.get_selection_service",
+        return_value=selection_service,
+    )
+
+
 def test_get_my_projects(unauthenticated_client):
     result = unauthenticated_client.get("/users/me/projects")
     assert result.status_code == 401
     assert result.json["msg"] == "Missing Authorization Header"
+
+
+def test_get_project_selections(unauthenticated_client, services):
+    result = unauthenticated_client.get("/projects/12345678/selections")
+    assert result.status_code == 200
+
+
+def test_get_project_selections_invalid_project(unauthenticated_client, services):
+    result = unauthenticated_client.get("/projects/1234567/selections")
+    assert result.status_code == 400
+    assert result.json["message"] == "Invalid projectId '1234567'"
+
+
+def test_get_project_selections_not_found(unauthenticated_client, services):
+    result = unauthenticated_client.get("/projects/87654321/selections")
+    assert result.status_code == 404
+    assert result.json["message"] == "projectId '87654321' not found"
 
 
 def test_create_project_request(authenticated_client, mocker, project_mocks):

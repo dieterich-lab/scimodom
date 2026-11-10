@@ -3,11 +3,18 @@ from io import StringIO
 from decimal import Decimal
 
 import pytest
+from sqlalchemy import delete
 from sqlalchemy.exc import NoResultFound
 
 from datetime import datetime
 
-from scimodom.database.models import Assembly, Dataset, DatasetModificationAssociation
+from scimodom.database.models import (
+    Assembly,
+    Dataset,
+    DatasetModificationAssociation,
+    ProjectSelection,
+    Selection,
+)
 from scimodom.services.assembly import AssemblyNotFoundError
 from scimodom.services.validator import (
     _DatasetImportContext,
@@ -137,7 +144,7 @@ class MockAnnotationService:
 
 
 @pytest.fixture
-def input_ctx(selection, project):  # noqa
+def input_ctx(project, project_selection):  # noqa
     yield {
         "project_id": project[0].id,
         "dataset_id": "NEWNEWNEWNEW",
@@ -261,7 +268,6 @@ def test_create_import_context(Session, input_ctx):
         annotation_source=AnnotationSource.ENSEMBL,
         dry_run_flag=False,
         update_flag=False,
-        selection_ids=[1],
         taxa_id=9606,
         assembly_id=1,
         is_liftover=False,
@@ -891,10 +897,58 @@ def test_selection_not_found(Session, input_ctx):
     service = _get_validator_service(Session())
     with pytest.raises(SelectionNotFoundError) as exc:
         service.create_import_context(importer=importer, **input_ctx)
-    assert (
-        str(exc.value)
-        == "Selection with m6A, Cell type 2, and Technology 1 (9606) not found."
+    assert str(exc.value) == (
+        "Selection with m6A, Cell type 2, and Technology 1 (9606) "
+        "is not available for project '12345678'."
     )
+
+
+def test_selection_not_in_project(Session, input_ctx, project):  # noqa
+    # the combination exists (and is a selection of the other project),
+    # but not for this project
+    importer = EufImporter(stream=StringIO(GOOD_EUF_FILE), source="test")
+    input_ctx["project_id"] = "ABCDEFGH"
+    service = _get_validator_service(Session())
+    with pytest.raises(SelectionNotFoundError) as exc:
+        service.create_import_context(importer=importer, **input_ctx)
+    assert str(exc.value) == (
+        "Selection with m6A, Cell type 1, and Technology 1 (9606) "
+        "is not available for project 'ABCDEFGH'."
+    )
+
+
+def test_selection_not_in_project_reports_missing_modifications(Session, input_ctx):
+    euf_file = GOOD_EUF_FILE.replace(
+        "#modification_names=a:m6A:A", "#modification_names=a:m6A:A,b:m5C:C"
+    )
+    input_ctx["modification_ids"] = [1, 2]
+    with Session() as session:
+        # only the combination with m6A (1) remains
+        session.execute(
+            delete(ProjectSelection).filter_by(
+                modification_id=2, organism_id=1, technology_id=1
+            )
+        )
+        session.commit()
+    importer = EufImporter(stream=StringIO(euf_file), source="test")
+    service = _get_validator_service(Session())
+    with pytest.raises(SelectionNotFoundError) as exc:
+        service.create_import_context(importer=importer, **input_ctx)
+    assert str(exc.value) == (
+        "Selection with m5C, Cell type 1, and Technology 1 (9606) "
+        "is not available for project '12345678'."
+    )
+
+
+def test_selection_is_not_required_to_exist(Session, input_ctx):
+    # the selection is created on import, only the project selection matters
+    with Session() as session:
+        session.execute(delete(Selection))
+        session.commit()
+    importer = EufImporter(stream=StringIO(GOOD_EUF_FILE), source="test")
+    service = _get_validator_service(Session())
+    service.create_import_context(importer=importer, **input_ctx)
+    assert service.get_import_context().modification_ids == [1]
 
 
 @pytest.mark.parametrize(

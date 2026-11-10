@@ -122,30 +122,6 @@ def test_get_method_id_by_name_fail(Session, utilities_service, setup):
         utilities_service.get_method_id_by_name("XXX")
 
 
-def test_get_selection(Session, utilities_service, selection):
-    expected_selection = {
-        "modification_id": 1,
-        "rna_type": "WTS",
-        "rna_type_name": "whole transcriptome",
-        "modomics_short_name": "m6A",
-        "technology_id": 1,
-        "cls": "NGS 2nd generation",
-        "meth": "Antibody-based sequencing",
-        "tech": "Technology 1",
-        "organism_id": 1,
-        "domain": "Eukarya",
-        "kingdom": "Animalia",
-        "taxa_id": 9606,
-        "taxa_name": "Homo sapiens",
-        "taxa_short_name": "H. sapiens",
-        "cto": "Cell type 1",
-        "selection_id": 1,
-    }
-    selections = utilities_service.get_selections()
-    assert len(selections) == 5
-    assert selections[0] == expected_selection
-
-
 def test_get_release_info(Session, utilities_service, mocker):
     mocker.patch(
         "scimodom.services.utilities.BUILD_INFO",

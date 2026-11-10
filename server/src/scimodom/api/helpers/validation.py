@@ -11,13 +11,15 @@ from flask import request
 from flask_jwt_extended import get_jwt_identity
 from sqlalchemy.exc import NoResultFound
 
-from scimodom.database.models import BamFile, Dataset, User
+from scimodom.database.models import BamFile, Dataset, Project, User
 from scimodom.services.annotation import get_annotation_service
 from scimodom.services.assembly import get_assembly_service
 from scimodom.services.dataset import DatasetService, get_dataset_service
 from scimodom.services.file import get_file_service
 from scimodom.services.permission import get_permission_service
+from scimodom.services.project import ProjectService, get_project_service
 from scimodom.services.user import NoSuchUser, get_user_service
+from scimodom.services.selection import get_selection_service
 from scimodom.services.utilities import get_utilities_service
 from scimodom.utils.specs.enums import (
     Identifiers,
@@ -252,8 +254,18 @@ def parse_valid_dataset(raw: str) -> Dataset:
     :return: Dataset
     """
     dataset_id: str = _parse_param("datasetId", raw)
-    dataset_service = get_dataset_service()
-    return _get_valid_dataset_by_id(dataset_id, dataset_service)
+    return _get_valid_dataset_by_id(dataset_id, get_dataset_service())
+
+
+def parse_valid_project(raw: str) -> Project:
+    """Parse a valid project and return the matching object.
+
+    :param raw: Route parameter for project identifier
+    :raises ClientResponseException: 400, 404.
+    :return: Project
+    """
+    project_id: str = _parse_param("projectId", raw)
+    return _get_valid_project_by_id(project_id, get_project_service())
 
 
 def parse_valid_bam(dataset: Dataset, raw: str) -> BamFile:
@@ -464,10 +476,9 @@ def _validate_features(features: list[str], rna_type: str) -> None:
 
 
 def _validate_selections(selections: list[tuple[int, int, int]]) -> None:
-    utilities_service = get_utilities_service()
     valid_selections = [
         (obj["modification_id"], obj["organism_id"], obj["technology_id"])
-        for obj in utilities_service.get_selections()
+        for obj in get_selection_service().get_selections()
     ]
     unknown_selections = [s for s in selections if s not in valid_selections]
     if unknown_selections:
@@ -501,4 +512,15 @@ def _get_valid_dataset_by_id(dataset_id: str, dataset_service: DatasetService):
     except NoResultFound as exc:
         raise ClientResponseException(
             404, f"datasetId '{dataset_id}' not found"
+        ) from exc
+
+
+def _get_valid_project_by_id(project_id: str, project_service: ProjectService):
+    if not _is_valid_identifier(project_id, Identifiers.SMID.length):
+        raise ClientResponseException(400, f"Invalid projectId '{project_id}'")
+    try:
+        return project_service.get_by_id(project_id)
+    except NoResultFound as exc:
+        raise ClientResponseException(
+            404, f"projectId '{project_id}' not found"
         ) from exc

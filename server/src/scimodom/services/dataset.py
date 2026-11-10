@@ -16,9 +16,7 @@ from scimodom.database.models import (
     Modomics,
     Modification,
     Organism,
-    Project,
     Taxa,
-    ProjectSource,
     User,
     UserProjectAssociation,
     Data,
@@ -26,6 +24,7 @@ from scimodom.database.models import (
 )
 from scimodom.services.annotation import get_annotation_service, AnnotationService
 from scimodom.services.file import FileService, get_file_service
+from scimodom.services.selection import SelectionService, get_selection_service
 from scimodom.services.validator import (
     _DatasetImportContext,
     DatasetUpdateError,
@@ -45,13 +44,10 @@ class DatasetService:
     datasets and related data.
 
     :param session: SQLAlchemy ORM session
-    :type session: Session
     :param annotation_service: Annotation service instance
-    :type annotation_service: AnnotationService
     :param file_service: File service instance
-    :type file_service: FileService
     :param validator_service: Validator service instance
-    :type validator_service: ValidatorService
+    :param selection_service: Selection service instance
     """
 
     def __init__(
@@ -60,11 +56,13 @@ class DatasetService:
         annotation_service: AnnotationService,
         file_service: FileService,
         validator_service: ValidatorService,
+        selection_service: SelectionService,
     ):
         self._session = session
         self._annotation_service = annotation_service
         self._file_service = file_service
         self._validator_service = validator_service
+        self._selection_service = selection_service
 
     def get_by_id(self, dataset_id: str) -> Dataset:
         """Retrieve dataset by EUFID.
@@ -274,17 +272,26 @@ class DatasetService:
             self._import_data_records(context, importer)
             self._add_association(context)
             if not context.dry_run_flag:
+                selection_ids = [
+                    self._selection_service.get_or_create_selection(
+                        modification_id,
+                        context.organism_id,
+                        context.technology_id,
+                    )
+                    for modification_id in context.modification_ids
+                ]
                 self._annotation_service.annotate_data(
                     taxa_id=context.taxa_id,
                     annotation_source=context.annotation_source,
                     dataset_id=context.dataset_id,
-                    selection_ids=context.selection_ids,
+                    selection_ids=selection_ids,
                 )
                 self._session.commit()
 
                 logger.info(
-                    f"Added dataset {context.dataset_id} to project {context.project_id} with title = {context.title}, "
-                    f"and the following selections: {context.selection_ids}. "
+                    f"Added dataset {context.dataset_id} to project "
+                    f"{context.project_id} with title = {context.title} "
+                    f"and the following selections: {selection_ids}. "
                 )
 
     def _create_dataset(self, context: _DatasetImportContext):
@@ -368,4 +375,5 @@ def get_dataset_service() -> DatasetService:
         annotation_service=get_annotation_service(),
         file_service=get_file_service(),
         validator_service=get_validator_service(),
+        selection_service=get_selection_service(),
     )

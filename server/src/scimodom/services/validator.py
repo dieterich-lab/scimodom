@@ -18,7 +18,7 @@ from scimodom.database.models import (
     Modification,
     Organism,
     Project,
-    Selection,
+    ProjectSelection,
 )
 from scimodom.services.annotation import get_annotation_service, AnnotationService
 from scimodom.services.assembly import (
@@ -61,8 +61,6 @@ class _DatasetImportContext(_ReadOnlyImportContext):
     dry_run_flag: bool
     update_flag: bool
 
-    selection_ids: list[int] = field(default_factory=list)
-
 
 class SpecsError(Exception):
     """Exception for handling specification errors."""
@@ -94,7 +92,7 @@ class SelectionNotFoundError(Exception):
 
     Handles Dataset instantiation with a choice of
     modification, organism, and technology (selection)
-    that does not exists.
+    that is not available for the project.
     """
 
     pass
@@ -415,7 +413,7 @@ class ValidatorService:
             raise DatasetImportError(
                 f"No such technology ID: {self._context.technology_id}."
             )
-        self._sanitize_selection_ids()
+        self._check_project_selections()
         if self._context.update_flag:
             self._check_dataset_update()
         else:
@@ -441,10 +439,7 @@ class ValidatorService:
                     f"Expected '{short_name}' for short name; "
                     "missing from 'modification_names'."
                 )
-        selected = sorted(
-            name_map["short_name"]
-            for name_map in self._context.modification_names.values()
-        )
+        selected = sorted(n["short_name"] for n in self._selected_modifications())
         declared = sorted(self._name_map)
         if selected != declared:
             raise DatasetHeaderError(
@@ -456,31 +451,41 @@ class ValidatorService:
         ):
             raise DatasetImportError("Inconsistent source!")
 
-    def _sanitize_selection_ids(self) -> None:
-        """Retrieve and validate selection IDs associated with a dataset.
+    def _check_project_selections(self) -> None:
+        """Validate the selections of a dataset against its project.
 
-        NOTE: Depending on the choice of modification_id(s),
-        organism_id, and technology_id, a selection_id may
-        or may not exists in the database.
+        Datasets can only be added to a project for the combinations of
+        modification, organism, and technology that are declared for
+        the project (project selection). The corresponding selection
+        itself is created on import, if needed.
         """
-        for _, name_map in self._context.modification_names.items():
-            short_name = name_map["short_name"]
-            try:
-                selection_id = self._session.execute(
-                    select(Selection.id).filter_by(
-                        modification_id=name_map["id"],
-                        technology_id=self._context.technology_id,
-                        organism_id=self._context.organism_id,
-                    )
-                ).scalar_one()
-                self._context.selection_ids.append(selection_id)
-            except NoResultFound:
-                technology = self._get_technology(self._context.technology_id)
-                organism = self._get_organism(self._context.organism_id)
-                raise SelectionNotFoundError(
-                    f"Selection with {short_name}, {organism.cto}, and "
-                    f"{technology.tech} ({organism.taxa_id}) not found."
+        found = set(
+            self._session.execute(
+                select(ProjectSelection.modification_id).where(
+                    ProjectSelection.project_id == self._context.project_id,
+                    ProjectSelection.organism_id == self._context.organism_id,
+                    ProjectSelection.technology_id == self._context.technology_id,
+                    ProjectSelection.modification_id.in_(
+                        self._context.modification_ids
+                    ),
                 )
+            )
+            .scalars()
+            .all()
+        )
+        missing = sorted(
+            n["short_name"]
+            for n in self._selected_modifications()
+            if n["id"] not in found
+        )
+        if missing:
+            technology = self._get_technology(self._context.technology_id)
+            organism = self._get_organism(self._context.organism_id)
+            raise SelectionNotFoundError(
+                f"Selection with {', '.join(missing)}, {organism.cto}, and "
+                f"{technology.tech} ({organism.taxa_id}) is not available "
+                f"for project '{self._context.project_id}'."
+            )
 
     def _check_for_duplicate_dataset(self) -> None:
         dataset_id = self._session.execute(
@@ -554,6 +559,9 @@ class ValidatorService:
                 f"Cannot update records for dataset '{dataset.id}'. "
                 f"The metadata has changed. {'; '.join(mismatches)}."
             )
+
+    def _selected_modifications(self) -> dict[str, str | int]:
+        yield from self._context.modification_names.values()
 
     def _modification_id_to_name(self, idx: int) -> str:
         return self._session.execute(

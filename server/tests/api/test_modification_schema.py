@@ -9,6 +9,7 @@ from scimodom.services.data import DataService
 from scimodom.services.gene import GeneService
 from scimodom.services.modification import ModificationService, MultiSortError
 from scimodom.services.url import MODIFICATION_API_ROUTE
+from scimodom.services.selection import SelectionService
 from scimodom.services.utilities import UtilitiesService
 from scimodom.utils.specs.enums import AnnotationSource, AssemblyFileType
 
@@ -41,6 +42,10 @@ def services(Session, annotation, mocker):
     mocker.patch(
         "scimodom.api.helpers.validation.get_utilities_service",
         return_value=utilities_service,
+    )
+    mocker.patch(
+        "scimodom.api.helpers.validation.get_selection_service",
+        return_value=SelectionService(Session(), gene_service=mocker.Mock()),
     )
     data_service = DataService(session=Session())
     gene_service = GeneService(session=Session(), file_service=MockFileService())
