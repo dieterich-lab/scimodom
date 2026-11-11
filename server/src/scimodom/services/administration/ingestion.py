@@ -167,7 +167,7 @@ class ProjectIngestionService:
         """
         try:
             metadata = self._read_metadata(dataset_csv)
-            return ProjectTemplate(
+            template = ProjectTemplate(
                 title=info.title,
                 summary=info.summary,
                 contact_name=f"{info.surname}, {info.forename}",
@@ -177,6 +177,8 @@ class ProjectIngestionService:
                 external_sources=self._get_sources(info.doi, info.pmid),
                 metadata=metadata,
             )
+            self.assign_assembly_ids(template)
+            return template
         except KeyError as exc:
             raise ProjectTemplateError(
                 f"Malformed DATASET_CSV. Missing header {exc}"
@@ -189,6 +191,8 @@ class ProjectIngestionService:
             raise ProjectTemplateError(f"DATASET_CSV values not found. {exc}") from exc
         except OSError as exc:
             raise ProjectTemplateError(f"Cannot read DATASET_CSV. {exc}") from exc
+        except AssemblyNotFoundError as exc:
+            raise ProjectTemplateError(f"Failed to validate assembly. {exc}") from exc
 
     def save_request(self, template: ProjectTemplate) -> str:
         """Write a project request (template) to the file system.
@@ -221,7 +225,8 @@ class ProjectIngestionService:
     def assign_assembly_ids(self, template: ProjectTemplate) -> None:
         """Set the assembly ID in the template where it is None.
 
-        If an ID is given, check that it exists.
+        If an ID is given, check that it exists, and that it
+        matches the assembly name and taxon.
 
         :param template: Project template, modified in place
         :raises AssemblyNotFoundError: If an assembly does not exist.
@@ -235,7 +240,15 @@ class ProjectIngestionService:
                     )
                     organism.assembly_id = assembly.id
                 else:
-                    self._assembly_service.get_by_id(organism.assembly_id)
+                    assembly = self._assembly_service.get_by_id(organism.assembly_id)
+                    if (
+                        assembly.name != organism.assembly_name
+                        or assembly.taxa_id != organism.taxa_id
+                    ):
+                        raise AssemblyNotFoundError(
+                            f"Assembly ID '{assembly.id}' is {assembly.name} for {assembly.taxa_id}, "
+                            f"not {organism.assembly_name} for {organism.taxa_id}"
+                        )
             except NoResultFound as exc:
                 raise AssemblyNotFoundError(
                     f"No such assembly '{organism.assembly_name}' "

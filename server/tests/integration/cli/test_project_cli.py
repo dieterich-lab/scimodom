@@ -67,7 +67,7 @@ JSON_TEMPLATE = """
                 "taxa_id": 9606,
                 "cto": "HeLa",
                 "assembly_name": "GRCh38",
-                "assembly_id": null
+                "assembly_id": 1
             },
             "note": "file=filename1.bedrmod, title=Title dataset 1"
         },
@@ -80,7 +80,7 @@ JSON_TEMPLATE = """
                 "taxa_id": 10090,
                 "cto": "mESC",
                 "assembly_name": "GRCm38",
-                "assembly_id": null
+                "assembly_id": 2
             },
             "note": "file=filename2.bedrmod, title=Title dataset 2"
         }

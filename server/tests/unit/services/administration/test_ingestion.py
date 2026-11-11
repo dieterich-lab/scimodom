@@ -28,6 +28,11 @@ f1.bedrmod,Title 1,WTS,m6A,9606,HeLa,GRCh38,Tech-seq,Method 1
 f2.bedrmod,Title 2,WTS,m6A,10090,mESC, GRCm38 ,Tech-seq,Method 1
 """
 
+CSV_ASSEMBLY_ID = """file,title,rna_type,modification,taxa_id,cto,assembly,technology,method,assembly_id
+f1.bedrmod,Title 1,WTS,m6A,9606,HeLa,GRCh38,Tech-seq,Method 1,1
+f2.bedrmod,Title 2,WTS,m6A,10090,mESC, GRCm38 ,Tech-seq,Method 1,2
+"""
+
 INFO = ProjectRequestInfo(
     title="Title",
     summary="Summary",
@@ -113,7 +118,7 @@ def test_build_template(service, mocks, tmp_path):
     assert template.metadata[0].modomics_id == "2000000006A"
     assert template.metadata[0].note == "file=f1.bedrmod, title=Title 1"
     mocks.utilities.get_modomics_id_by_short_name.assert_any_call("m6A")
-    # no side effects
+    # called by the CLI, not the service
     mocks.project.create_project_request.assert_not_called()
 
 
@@ -162,6 +167,19 @@ def test_build_template_no_such_file(service, tmp_path):
         service.build_template(tmp_path / "missing.csv", INFO)
 
 
+def test_build_template_invalid_assembly(service, mocks, tmp_path):
+    path = _csv(tmp_path, CSV_ASSEMBLY_ID)
+
+    mocks.assembly.get_by_id.return_value.id = 1
+    mocks.assembly.get_by_id.return_value.name = "GRCh99"
+    mocks.assembly.get_by_id.return_value.taxa_id = 9606
+    with pytest.raises(
+        ProjectTemplateError,
+        match="Assembly ID '1' is GRCh99 for 9606, not GRCh38 for 9606",
+    ):
+        service.build_template(path, INFO)
+
+
 def test_save_request(service, mocks):
     mocks.project.create_project_request.return_value = "UUID"
     assert service.save_request("template") == "UUID"
@@ -193,11 +211,14 @@ def test_load_template_no_such_request(service, mocks):
 
 def test_assign_assembly_ids_given_id_is_checked(service, mocks):
     template = ProjectTemplate.model_validate(TEMPLATE)
-    template.metadata[0].organism.assembly_id = 3
+    template.metadata[0].organism.assembly_id = 1
+    mocks.assembly.get_by_id.return_value.id = 1
+    mocks.assembly.get_by_id.return_value.name = "GRCh38"
+    mocks.assembly.get_by_id.return_value.taxa_id = 9606
     service.assign_assembly_ids(template)
-    mocks.assembly.get_by_id.assert_called_once_with(3)
+    mocks.assembly.get_by_id.assert_called_once_with(1)
     mocks.assembly.get_by_taxa_and_name.assert_not_called()
-    assert template.metadata[0].organism.assembly_id == 3
+    assert template.metadata[0].organism.assembly_id == 1
 
 
 @pytest.mark.parametrize("assembly_id", [None, 3])
@@ -338,6 +359,8 @@ def test_parse_dataset_note_fail(note):
 
 
 def test_plan_batch_import(service, mocks, tmp_path):
+    mocks.assembly.get_by_id.return_value.name = "GRCh38"
+    mocks.assembly.get_by_id.return_value.taxa_id = 9606
     _files(tmp_path, "a.bedrmod", "b.bedrmod")
     # a.bedrmod has 2 modifications
     _batch_request(
@@ -365,6 +388,8 @@ def test_plan_batch_import(service, mocks, tmp_path):
 
 
 def test_plan_batch_import_mixed_rna_types_in_a_file(service, mocks, tmp_path):
+    mocks.assembly.get_by_id.return_value.name = "GRCh38"
+    mocks.assembly.get_by_id.return_value.taxa_id = 9606
     _files(tmp_path, "a.bedrmod")
     _batch_request(
         mocks,
@@ -376,6 +401,8 @@ def test_plan_batch_import_mixed_rna_types_in_a_file(service, mocks, tmp_path):
 
 
 def test_plan_batch_import_rna_type_not_implemented(service, mocks, tmp_path):
+    mocks.assembly.get_by_id.return_value.name = "GRCh38"
+    mocks.assembly.get_by_id.return_value.taxa_id = 9606
     _files(tmp_path, "a.bedrmod", "b.bedrmod")
     _batch_request(
         mocks,
@@ -389,6 +416,8 @@ def test_plan_batch_import_rna_type_not_implemented(service, mocks, tmp_path):
 
 
 def test_plan_batch_import_reports_all_problems(service, mocks, tmp_path):
+    mocks.assembly.get_by_id.return_value.name = "GRCh38"
+    mocks.assembly.get_by_id.return_value.taxa_id = 9606
     _files(tmp_path, "a.bedrmod")
     bad_note = _entry("x")
     bad_note["note"] = "nothing"
@@ -413,6 +442,8 @@ def test_plan_batch_import_reports_all_problems(service, mocks, tmp_path):
 
 
 def test_plan_batch_import_absolute_file_name(service, mocks, tmp_path):
+    mocks.assembly.get_by_id.return_value.name = "GRCh38"
+    mocks.assembly.get_by_id.return_value.taxa_id = 9606
     outside = tmp_path / "outside.bedrmod"
     outside.write_text("data")
     inner = tmp_path / "inner"
@@ -442,6 +473,8 @@ def _plan(service, mocks, tmp_path, *entries):
 
 
 def test_import_batch_datasets(service, mocks, tmp_path):
+    mocks.assembly.get_by_id.return_value.name = "GRCh38"
+    mocks.assembly.get_by_id.return_value.taxa_id = 9606
     plan = _plan(
         service,
         mocks,
@@ -477,6 +510,8 @@ def test_import_batch_datasets(service, mocks, tmp_path):
 
 
 def test_import_batch_datasets_failure_does_not_stop_others(service, mocks, tmp_path):
+    mocks.assembly.get_by_id.return_value.name = "GRCh38"
+    mocks.assembly.get_by_id.return_value.taxa_id = 9606
     plan = _plan(
         service, mocks, tmp_path, _entry("a.bedrmod", "A"), _entry("b.bedrmod", "B")
     )
@@ -492,6 +527,8 @@ def test_import_batch_datasets_failure_does_not_stop_others(service, mocks, tmp_
 def test_import_batch_datasets_unresolved_id_is_a_dataset_failure(
     service, mocks, tmp_path
 ):
+    mocks.assembly.get_by_id.return_value.name = "GRCh38"
+    mocks.assembly.get_by_id.return_value.taxa_id = 9606
     plan = _plan(
         service, mocks, tmp_path, _entry("a.bedrmod", "A"), _entry("b.bedrmod", "B")
     )
@@ -504,6 +541,8 @@ def test_import_batch_datasets_unresolved_id_is_a_dataset_failure(
 
 
 def test_import_batch_datasets_is_lazy(service, mocks, tmp_path):
+    mocks.assembly.get_by_id.return_value.name = "GRCh38"
+    mocks.assembly.get_by_id.return_value.taxa_id = 9606
     plan = _plan(service, mocks, tmp_path, _entry("a.bedrmod", "A"))
     outcomes = service.import_batch_datasets(plan, "SMID1")
     mocks.dataset.import_dataset.assert_not_called()

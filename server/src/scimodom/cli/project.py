@@ -305,7 +305,7 @@ def add_selection(
         organism = ProjectOrganismDto(
             taxa_id=taxid,
             cto=cto,
-            assembly_name="assembly",
+            assembly_name="assembly",  # required, but unused here
         )
         metadata = ProjectMetaDataDto(
             rna=rna_type,
