@@ -3,7 +3,8 @@ import { ref, watch } from 'vue'
 import TreeSelect from 'primevue/treeselect'
 import {
   type Technology,
-  getTechnologiesByModificationIdsAndOrganismId
+  getTechnologiesByModificationIdsAndOrganismId,
+  resolveSelections
 } from '@/services/selection'
 import { type GenericFieldProps, GENERIC_FIELD_DEFAULTS } from '@/utils/ui-style'
 import {
@@ -36,9 +37,15 @@ const options = ref<TreeNode[]>([])
 watch(
   () => [props.modificationIds, props.organismId],
   () => {
-    if (props.modificationIds && props.organismId) {
-      getTechnologiesByModificationIdsAndOrganismId(props.modificationIds, props.organismId)
-        .then((data) => {
+    const { modificationIds, organismId } = props
+    if (modificationIds && organismId) {
+      resolveSelections()
+        .then((available) => {
+          const data = getTechnologiesByModificationIdsAndOrganismId(
+            available,
+            modificationIds,
+            organismId
+          )
           rawOptions.value = data
           options.value = getOptionsForPrimvueTreeSelect(data, ['meth', 'tech'], 'technology_id')
         })

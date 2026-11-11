@@ -3,7 +3,9 @@ import { computed, ref, watch } from 'vue'
 import CascadeSelect, { type CascadeSelectChangeEvent } from 'primevue/cascadeselect'
 import {
   type Technology,
-  getTechnologiesByModificationIdsAndOrganismId
+  type SelectionBase,
+  getTechnologiesByModificationIdsAndOrganismId,
+  resolveSelections
 } from '@/services/selection'
 import { type GenericFieldProps, GENERIC_FIELD_DEFAULTS } from '@/utils/ui-style'
 import {
@@ -12,7 +14,10 @@ import {
 } from '@/utils/technology'
 import { type CascadeItem, getOptionsForPrimvueCascadeSelect } from '@/utils/primevue'
 
-export interface Props extends GenericFieldProps, TechnologySelectionExtraProps {}
+export interface Props extends GenericFieldProps, TechnologySelectionExtraProps {
+  // choose from these selections (e.g. of a project) instead of all selections
+  selections?: SelectionBase[]
+}
 
 const props = withDefaults(defineProps<Props>(), {
   ...GENERIC_FIELD_DEFAULTS,
@@ -30,14 +35,16 @@ const options = ref<CascadeItem<Technology>[]>([])
 const realDisabled = computed(() => props.disabled || !options.value?.length)
 
 watch(
-  () => [props.modificationIds, props.organismId],
+  () => [props.modificationIds, props.organismId, props.selections],
   () => {
-    if (props.modificationIds && props.organismId) {
-      getTechnologiesByModificationIdsAndOrganismId(props.modificationIds, props.organismId).then(
-        (data) => {
-          options.value = getOptionsForPrimvueCascadeSelect(data, ['meth', 'tech'])
-        }
-      )
+    const { modificationIds, organismId } = props
+    if (modificationIds && organismId) {
+      resolveSelections(props.selections).then((available) => {
+        options.value = getOptionsForPrimvueCascadeSelect(
+          getTechnologiesByModificationIdsAndOrganismId(available, modificationIds, organismId),
+          ['meth', 'tech']
+        )
+      })
     } else {
       options.value = []
     }

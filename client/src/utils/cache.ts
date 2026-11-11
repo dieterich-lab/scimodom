@@ -29,6 +29,25 @@ abstract class Cache<T> {
   }
 }
 
+/**
+ * Group items by key, keeping the value of the first item for each key.
+ * The order is that of the first occurrence of each key.
+ */
+function uniqueByKey<RAW_VALUES, GROUPED_VALUES, KEY>(
+  data: readonly RAW_VALUES[],
+  getKey: (x: RAW_VALUES) => KEY,
+  getValue: (x: RAW_VALUES) => GROUPED_VALUES
+): GROUPED_VALUES[] {
+  const byKey = new Map<KEY, GROUPED_VALUES>()
+  for (const item of data) {
+    const key: KEY = getKey(item)
+    if (!byKey.has(key)) {
+      byKey.set(key, getValue(item))
+    }
+  }
+  return [...byKey.values()]
+}
+
 abstract class DependentCache<MASTER_T, MY_T> extends Cache<MY_T> {
   protected masterCache: Cache<MASTER_T>
   private masterCacheRevision: number
@@ -86,15 +105,8 @@ class GroupedCache<GROUPED_VALUES, RAW_VALUES extends GROUPED_VALUES, KEY> exten
   }
 
   protected convertMasterCache(data: RAW_VALUES[]): GROUPED_VALUES[] {
-    const byKey = new Map<KEY, GROUPED_VALUES>()
-    for (const item of data) {
-      const key: KEY = this.getKey(item)
-      if (!byKey.has(key)) {
-        byKey.set(key, this.getValue(item))
-      }
-    }
-    return [...byKey.values()]
+    return uniqueByKey(data, this.getKey, this.getValue)
   }
 }
 
-export { Cache, DependentCache, ByKeyCache, GroupedCache }
+export { Cache, DependentCache, ByKeyCache, GroupedCache, uniqueByKey }

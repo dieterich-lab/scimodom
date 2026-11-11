@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onBeforeUnmount, ref } from 'vue'
 import Message from 'primevue/message'
 import Button from 'primevue/button'
 import { useRouter } from 'vue-router'
@@ -18,7 +18,13 @@ import FormAssemblySelect from '@/components/ui/FormAssemblySelect.vue'
 import FormTechnologySelection from '@/components/ui/FormTechnologySelection.vue'
 
 import { type Project } from '@/services/project'
-import { type ModificationType, type Cto, type Technology } from '@/services/selection'
+import {
+  type ModificationType,
+  type Cto,
+  type Technology,
+  type ProjectSelection,
+  getProjectSelections
+} from '@/services/selection'
 
 import { type DatasetPostRequest, postDataset } from '@/services/management'
 import { type RnaType } from '@/services/rna-type'
@@ -29,6 +35,8 @@ import { trashRequestErrors } from '@/services/API'
 const MAX_UPLOAD_SIZE = 50 * 1024 * 1024
 const dialogState = useDialogState()
 const router = useRouter()
+
+let activeProjectRequest = Symbol()
 
 const message = ref<string>()
 const rnaTypeRef = ref<RnaType>()
@@ -86,6 +94,11 @@ const [technology_id] = defineField('technology_id')
 const [title] = defineField('title')
 
 const modificationTypes = ref<ModificationType[]>([])
+const projectSelections = ref<ProjectSelection[]>([])
+
+onBeforeUnmount(() => {
+  activeProjectRequest = Symbol()
+})
 
 const onSubmit = handleSubmit((values: DatasetPostRequest) => {
   message.value = undefined
@@ -102,15 +115,43 @@ const onSubmit = handleSubmit((values: DatasetPostRequest) => {
 })
 
 function selectProject(project: Project) {
-  project_id.value = project.project_id
+  const nextProjectId = project.project_id
+  // nothing to do if the project hasn't changed
+  if (project_id.value === nextProjectId) return
+  project_id.value = nextProjectId
+  // invalidate previous async requests
+  const requestToken = Symbol()
+  activeProjectRequest = requestToken
+  // reset state belonging to previous project
+  message.value = undefined
+  projectSelections.value = []
+  rnaTypeRef.value = undefined
+  resetField('file_id')
+  resetField('title')
+  resetField('rna_type')
+  resetSelectionFields()
+  // load project selections
+  getProjectSelections(nextProjectId)
+    .then((data) => {
+      if (requestToken !== activeProjectRequest) return
+      projectSelections.value = data
+      if (data.length === 0) {
+        message.value = `Cannot upload data to project '${nextProjectId}'; contact our support team.`
+      }
+    })
+    .catch((e) => {
+      if (requestToken === activeProjectRequest) {
+        trashRequestErrors(e)
+      }
+    })
 }
 
 const dropForm = () => {
   router.push({ name: 'home' })
 }
 
-function selectRnaType(rnaType: RnaType) {
-  rna_type.value = rnaType.id
+// reset everything that depends on the RNA type
+function resetSelectionFields() {
   modificationTypes.value = []
   ctoRef.value = undefined
   assemblyRef.value = undefined
@@ -119,6 +160,11 @@ function selectRnaType(rnaType: RnaType) {
   resetField('organism_id')
   resetField('assembly_id')
   resetField('technology_id')
+}
+
+function selectRnaType(rnaType: RnaType) {
+  rna_type.value = rnaType.id
+  resetSelectionFields()
 }
 
 function selectModificationTypes(data: ModificationType[]) {
@@ -172,6 +218,7 @@ function selectTechnology(data: Technology) {
         <div />
 
         <FormTempFileUploader
+          :key="project_id"
           v-model:file-id="file_id"
           label="Dataset file"
           accept="text/plain,.bed,.bedrmod,.bedmethyl"
@@ -192,6 +239,7 @@ function selectTechnology(data: Technology) {
         <FormMultiModificationTypeSelection
           v-model="modificationTypes"
           :rna-type="rnaTypeRef?.id"
+          :selections="projectSelections"
           :error="errors.modification_id"
           @change="selectModificationTypes"
         />
@@ -199,6 +247,7 @@ function selectTechnology(data: Technology) {
         <FormCtoSelection
           v-model="ctoRef"
           :modification-ids="modification_id"
+          :selections="projectSelections"
           :error="errors.organism_id"
           @change="selectOrganism"
         />
@@ -214,6 +263,7 @@ function selectTechnology(data: Technology) {
           v-model="technologyRef"
           :modification-ids="modification_id"
           :organism-id="organism_id"
+          :selections="projectSelections"
           :error="errors.technology_id"
           @change="selectTechnology"
         />

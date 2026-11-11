@@ -45,7 +45,7 @@ import type {
 import type { Modomics } from '@/services/modomics'
 import type { Project } from '@/services/project'
 import type { RnaType } from '@/services/rna-type'
-import type { Selection } from '@/services/selection'
+import type { ProjectSelection, Selection } from '@/services/selection'
 import type { Taxa } from '@/services/taxa'
 import type { PostFileResponse } from '@/services/upload'
 import type { LoginResponse } from '@/services/user'
@@ -59,7 +59,10 @@ expectTypeOf<Item<Attachment['schemas']['BamFileList']>>().toEqualTypeOf<BamFile
 
 // --- browse ---
 
+// ProjectSelection uses toExtend, as Selection (catalog): the client does not consume `phylum`.
+
 expectTypeOf<Item<Browse['schemas']['Project']>>().toEqualTypeOf<Project>()
+expectTypeOf<Item<Browse['schemas']['ProjectSelection']>>().toExtend<ProjectSelection>()
 
 // --- catalog ---
 

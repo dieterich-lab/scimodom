@@ -30,6 +30,7 @@ const id = useId()
       <MultiModificationTypeSelection
         v-model="model"
         :rna-type="rnaType"
+        :selections="selections"
         :id="id"
         :markAsError="!!error"
         :ui-style="uiStyle"

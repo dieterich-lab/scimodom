@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { useId } from 'vue'
-import { type Cto } from '@/services/selection'
+import { type Cto, type SelectionBase } from '@/services/selection'
 import FormFieldWrapper from '@/components/ui/FormFieldWrapper.vue'
 import CtoSelection from '@/components/ui/CtoSelection.vue'
 import { type FormFieldProps, FORM_FIELD_DEFAULTS } from '@/utils/ui-style'
 
 interface Props extends FormFieldProps {
   modificationIds?: number[]
+  selections?: SelectionBase[]
 }
 
 withDefaults(defineProps<Props>(), FORM_FIELD_DEFAULTS)
@@ -29,6 +30,7 @@ const id = useId()
         v-model="model"
         :id="id"
         :modification-ids="modificationIds"
+        :selections="selections"
         :markAsError="!!error"
         :ui-style="uiStyle"
         @change="change"

@@ -1,11 +1,18 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import MultiSelect from 'primevue/multiselect'
-import { type ModificationType, getModificationTypesByRnaType } from '@/services/selection'
+import {
+  type ModificationType,
+  type SelectionBase,
+  getModificationTypesByRnaType,
+  resolveSelections
+} from '@/services/selection'
 import { type GenericFieldProps, GENERIC_FIELD_DEFAULTS } from '@/utils/ui-style'
 
 export interface MultiModificationTypeSelectionExtraProps {
   rnaType?: string
+  // choose from these selections (e.g. of a project) instead of all selections
+  selections?: SelectionBase[]
 }
 interface Props extends GenericFieldProps, MultiModificationTypeSelectionExtraProps {}
 
@@ -22,11 +29,12 @@ const options = ref<ModificationType[]>([])
 const disabled = computed(() => !options.value?.length)
 
 watch(
-  () => props.rnaType,
+  () => [props.rnaType, props.selections],
   () => {
-    if (props.rnaType) {
-      getModificationTypesByRnaType(props.rnaType).then((data) => {
-        options.value = [...data]
+    const rnaType = props.rnaType
+    if (rnaType) {
+      resolveSelections(props.selections).then((available) => {
+        options.value = getModificationTypesByRnaType(available, rnaType)
       })
     } else {
       options.value = []

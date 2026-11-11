@@ -1,17 +1,17 @@
 import { test, expect, vi, beforeEach } from 'vitest'
 import {
-  // SelectionCache,
   selectionsCache,
   modificationTypeSelectionCache,
-  ctoSelectionCache,
-  technologySelectionCache,
-  getCtosByModificationIds,
-  getTechnologiesByModificationIdsAndOrganismId,
   getSelectionsByIds,
   getSelectionsByTaxaId,
-  getTechnologiesByIds,
   getModificationTypesByRnaType,
-  type Selection
+  getCtos,
+  getCtosByModificationIds,
+  getTechnologiesByModificationIdsAndOrganismId,
+  resolveSelections,
+  getProjectSelections,
+  type Selection,
+  type ProjectSelection
 } from '@/services/selection'
 import { HTTP } from '@/services/API'
 import { type AxiosResponse } from 'axios'
@@ -133,19 +133,19 @@ test('getPromise propagates error on failure', async () => {
   await expect(selectionsCache.getPromise()).rejects.toBe(error)
 })
 
-test('getCtosByModificationIds', async () => {
+test('getCtosByModificationIds (all selections)', async () => {
   mockResponse(selection)
 
-  const ctos = await getCtosByModificationIds([5, 7])
+  const ctos = getCtosByModificationIds(await resolveSelections(), [5, 7])
 
   expect(ctos.map((c) => c.organism_id).sort()).toEqual([1, 3])
   expect(ctos.map((c) => c.cto).sort()).toEqual(['HeLa', 'Heart'])
 })
 
-test('getTechnologiesByModificationIdsAndOrganismId', async () => {
+test('getTechnologiesByModificationIdsAndOrganismId (all selections)', async () => {
   mockResponse(selection)
 
-  const techs = await getTechnologiesByModificationIdsAndOrganismId([5, 7], 1)
+  const techs = getTechnologiesByModificationIdsAndOrganismId(await resolveSelections(), [5, 7], 1)
   expect(techs.map((t) => t.technology_id)).toEqual([1])
 })
 
@@ -166,26 +166,54 @@ test('getSelectionsByTaxaId', async () => {
   expect(humanSelections.map((s) => s.selection_id).sort()).toEqual([1, 2])
 })
 
-test('getTechnologiesByIds', async () => {
+test('getModificationTypesByRnaType (all selections)', async () => {
   mockResponse(selection)
 
-  const techs = await getTechnologiesByIds([1, 2])
-
-  expect(techs.map((t) => t.technology_id).sort()).toEqual([1, 2])
-})
-
-// all other functions return empty...
-test('getTechnologiesByIds throws an error', async () => {
-  mockResponse(selection)
-
-  await expect(getTechnologiesByIds([5, 6])).rejects.toThrow(/Technologies '5,6' not found/)
-})
-
-test('getModificationTypesByRnaType', async () => {
-  mockResponse(selection)
-
-  const mods = await getModificationTypesByRnaType('WTS')
+  const mods = getModificationTypesByRnaType(await resolveSelections(), 'WTS')
 
   expect(mods).toHaveLength(2)
   expect(mods.map((m) => m.modification_id).sort()).toEqual([5, 6])
+})
+
+// selections of a project
+const projectSelections: ProjectSelection[] = [
+  { ...selection[0], selection_id: null },
+  selection[3]
+]
+
+test('selection functions only use the given selections', () => {
+  expect(
+    getModificationTypesByRnaType(projectSelections, 'WTS').map((m) => m.modification_id)
+  ).toEqual([5])
+  expect(
+    getModificationTypesByRnaType(projectSelections, 'RNA').map((m) => m.modification_id)
+  ).toEqual([7])
+  expect(getCtos(projectSelections).map((c) => c.organism_id)).toEqual([1, 3])
+  expect(getCtosByModificationIds(projectSelections, [5]).map((c) => c.organism_id)).toEqual([1])
+  expect(getCtosByModificationIds(projectSelections, [])).toEqual([])
+  expect(
+    getTechnologiesByModificationIdsAndOrganismId(projectSelections, [5], 1).map(
+      (t) => t.technology_id
+    )
+  ).toEqual([1])
+  expect(getTechnologiesByModificationIdsAndOrganismId(projectSelections, [5], 3)).toEqual([])
+})
+
+test('resolveSelections uses the given selections, even if empty', async () => {
+  mockResponse(selection)
+
+  expect(await resolveSelections(projectSelections)).toBe(projectSelections)
+  expect(await resolveSelections([])).toEqual([])
+  expect(mockedGet).not.toHaveBeenCalled()
+  expect(await resolveSelections()).toEqual(selection)
+})
+
+test('getProjectSelections', async () => {
+  mockedGet.mockResolvedValueOnce({ data: projectSelections } as AxiosResponse)
+
+  const data = await getProjectSelections('12345678')
+
+  expect(mockedGet).toHaveBeenCalledWith('/projects/12345678/selections')
+  expect(data).toEqual(projectSelections)
+  expect(data[0].selection_id).toBeNull()
 })

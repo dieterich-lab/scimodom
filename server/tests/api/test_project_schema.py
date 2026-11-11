@@ -122,6 +122,13 @@ def test_project_selections_schema_without_selection(
     validate(BROWSE_SCHEMA, response, 200)
 
 
+def test_project_selections_schema_no_selections(client, services):
+    # valid project, no selections: not an error
+    response = client.get(prefix_url("/projects/12345678/selections"))
+    assert response.json == []
+    validate(BROWSE_SCHEMA, response, 200)
+
+
 def test_project_request_schema(auth_client, services):
     response = auth_client.post(
         prefix_url("/projects/requests"), json=PROJECT_REQUEST.model_dump()

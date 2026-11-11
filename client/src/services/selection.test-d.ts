@@ -1,12 +1,14 @@
 import { expectTypeOf } from 'vitest'
 import {
   selectionsCache,
-  getCtosByModificationIds,
-  getTechnologiesByModificationIdsAndOrganismId,
   getSelectionsByIds,
   getSelectionsByTaxaId,
-  getTechnologiesByIds,
   getModificationTypesByRnaType,
+  getCtos,
+  getCtosByModificationIds,
+  getTechnologiesByModificationIdsAndOrganismId,
+  getProjectSelections,
+  type ProjectSelection,
   type Selection,
   type ModificationType,
   type Cto,
@@ -14,11 +16,11 @@ import {
 } from '@/services/selection'
 
 expectTypeOf(selectionsCache.getPromise).returns.resolves.toEqualTypeOf<Selection[]>()
-expectTypeOf(getCtosByModificationIds).returns.resolves.toEqualTypeOf<Cto[]>()
-expectTypeOf(getTechnologiesByModificationIdsAndOrganismId).returns.resolves.toEqualTypeOf<
-  Technology[]
->()
 expectTypeOf(getSelectionsByIds).returns.resolves.toEqualTypeOf<Selection[]>()
 expectTypeOf(getSelectionsByTaxaId).returns.resolves.toEqualTypeOf<Selection[]>()
-expectTypeOf(getTechnologiesByIds).returns.resolves.toEqualTypeOf<Technology[]>()
-expectTypeOf(getModificationTypesByRnaType).returns.resolves.toEqualTypeOf<ModificationType[]>()
+expectTypeOf(getProjectSelections).returns.resolves.toEqualTypeOf<ProjectSelection[]>()
+expectTypeOf(getModificationTypesByRnaType).returns.toEqualTypeOf<ModificationType[]>()
+expectTypeOf(getCtos).returns.toEqualTypeOf<Cto[]>()
+expectTypeOf(getCtosByModificationIds).returns.toEqualTypeOf<Cto[]>()
+expectTypeOf(getTechnologiesByModificationIdsAndOrganismId).returns.toEqualTypeOf<Technology[]>()
+expectTypeOf<Selection>().toMatchTypeOf<ProjectSelection>()

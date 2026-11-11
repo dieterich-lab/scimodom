@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import CascadeSelect, { type CascadeSelectChangeEvent } from 'primevue/cascadeselect'
-import { type Cto, getCtosByModificationIds, ctoSelectionCache } from '@/services/selection'
+import {
+  type Cto,
+  type SelectionBase,
+  getCtos,
+  getCtosByModificationIds,
+  resolveSelections
+} from '@/services/selection'
 import { type CascadeItem, getOptionsForPrimvueCascadeSelect } from '@/utils/primevue'
 
 const props = withDefaults(
@@ -9,6 +15,8 @@ const props = withDefaults(
     placeholder?: string
     error?: string
     modificationIds?: number[]
+    // choose from these selections (e.g. of a project) instead of all selections
+    selections?: SelectionBase[]
     cls?: string
     disabled?: boolean
   }>(),
@@ -27,13 +35,13 @@ const emit = defineEmits<{
 const options = ref<CascadeItem<Cto>[]>([])
 
 watch(
-  () => props.modificationIds,
+  () => [props.modificationIds, props.selections],
   () => {
-    const p = props.modificationIds
-      ? getCtosByModificationIds(props.modificationIds)
-      : ctoSelectionCache.getData()
-    p.then((data) => {
-      const rawOptions = data.map((x) => {
+    resolveSelections(props.selections).then((available) => {
+      const ctos = props.modificationIds
+        ? getCtosByModificationIds(available, props.modificationIds)
+        : getCtos(available)
+      const rawOptions = ctos.map((x) => {
         return { ...x, kingdom: x.kingdom ? x.kingdom : x.domain }
       })
       options.value = getOptionsForPrimvueCascadeSelect(rawOptions, [

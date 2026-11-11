@@ -46,7 +46,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ProjectSelection"
-        "401":
+        "400":
           description: Invalid project identifier
         "404":
           description: Project identifier not found

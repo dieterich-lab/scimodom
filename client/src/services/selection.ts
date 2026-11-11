@@ -1,4 +1,4 @@
-import { Cache, GroupedCache } from '@/utils/cache'
+import { Cache, GroupedCache, uniqueByKey } from '@/utils/cache'
 import { HTTP } from '@/services/API'
 import { type Taxa } from '@/services/taxa'
 
@@ -21,8 +21,16 @@ interface Technology {
   tech: string
 }
 
-interface Selection extends ModificationType, Cto, Technology {
+// w/o selection_id
+interface SelectionBase extends ModificationType, Cto, Technology {}
+
+interface Selection extends SelectionBase {
   selection_id: number
+}
+
+// a selection itself is first created on dataset upload
+interface ProjectSelection extends SelectionBase {
+  selection_id: number | null
 }
 
 class SelectionCache extends Cache<Selection[]> {
@@ -32,37 +40,33 @@ class SelectionCache extends Cache<Selection[]> {
   }
 }
 
-const selectionsCache = new SelectionCache()
-const modificationTypeSelectionCache: GroupedCache<ModificationType, Selection, number> =
-  new GroupedCache(
-    selectionsCache,
-    (x) => x.modification_id,
-    (x) => {
-      return {
-        modification_id: x.modification_id,
-        modomics_short_name: x.modomics_short_name,
-        rna_type: x.rna_type,
-        rna_type_name: x.rna_type_name
-      }
-    }
-  )
+// selections of a project, not cached
+async function getProjectSelections(projectId: string): Promise<ProjectSelection[]> {
+  const response = await HTTP.get<ProjectSelection[]>(`/projects/${projectId}/selections`)
+  return response.data
+}
 
-const taxaSelectionCache: GroupedCache<Taxa, Selection, number> = new GroupedCache(
-  selectionsCache,
-  (x) => x.taxa_id,
-  (x) => ({
+function toModificationType(x: SelectionBase): ModificationType {
+  return {
+    modification_id: x.modification_id,
+    modomics_short_name: x.modomics_short_name,
+    rna_type: x.rna_type,
+    rna_type_name: x.rna_type_name
+  }
+}
+
+function toTaxa(x: SelectionBase): Taxa {
+  return {
     taxa_id: x.taxa_id,
     domain: x.domain,
     kingdom: x.kingdom,
     taxa_name: x.taxa_name,
     taxa_short_name: x.taxa_short_name
-  })
-)
+  }
+}
 
-const ctoSelectionCache: GroupedCache<Cto, Selection, number> = new GroupedCache(
-  selectionsCache,
-  (x) => x.organism_id,
-  (x) => ({
+function toCto(x: SelectionBase): Cto {
+  return {
     organism_id: x.organism_id,
     domain: x.domain,
     kingdom: x.kingdom,
@@ -70,45 +74,34 @@ const ctoSelectionCache: GroupedCache<Cto, Selection, number> = new GroupedCache
     taxa_name: x.taxa_name,
     taxa_short_name: x.taxa_short_name,
     cto: x.cto
-  })
-)
-
-const technologySelectionCache: GroupedCache<Technology, Selection, number> = new GroupedCache(
-  selectionsCache,
-  (x) => x.technology_id,
-  (x) => {
-    return {
-      technology_id: x.technology_id,
-      cls: x.cls,
-      meth: x.meth,
-      tech: x.tech
-    }
   }
-)
-
-async function getCtosByModificationIds(modificationIds: number[]): Promise<Cto[]> {
-  const organismIds = new Set<number>()
-  for (const item of await selectionsCache.getData()) {
-    if (modificationIds.includes(item.modification_id)) {
-      organismIds.add(item.organism_id)
-    }
-  }
-  return (await ctoSelectionCache.getData()).filter((x) => organismIds.has(x.organism_id))
 }
 
-async function getTechnologiesByModificationIdsAndOrganismId(
-  modificationIds: number[],
-  organismId: number
-) {
-  const technologyIds = new Set<number>()
-  for (const item of await selectionsCache.getData()) {
-    if (modificationIds.includes(item.modification_id) && item.organism_id === organismId) {
-      technologyIds.add(item.technology_id)
-    }
+function toTechnology(x: SelectionBase): Technology {
+  return {
+    technology_id: x.technology_id,
+    cls: x.cls,
+    meth: x.meth,
+    tech: x.tech
   }
-  return (await technologySelectionCache.getData()).filter((x) =>
-    technologyIds.has(x.technology_id)
-  )
+}
+
+const selectionsCache = new SelectionCache()
+
+const modificationTypeSelectionCache: GroupedCache<ModificationType, Selection, number> =
+  new GroupedCache(selectionsCache, (x) => x.modification_id, toModificationType)
+
+const taxaSelectionCache: GroupedCache<Taxa, Selection, number> = new GroupedCache(
+  selectionsCache,
+  (x) => x.taxa_id,
+  toTaxa
+)
+
+// NOTE: an empty list is a valid choice (no selections)
+async function resolveSelections(
+  selections?: readonly SelectionBase[]
+): Promise<readonly SelectionBase[]> {
+  return selections ?? (await selectionsCache.getData())
 }
 
 async function getSelectionsByIds(
@@ -128,35 +121,72 @@ async function getSelectionsByTaxaId(taxaId: number): Promise<Selection[]> {
   return (await selectionsCache.getData()).filter((x) => x.taxa_id === taxaId)
 }
 
-async function getTechnologiesByIds(technologyIds: number[]): Promise<Technology[]> {
-  const candidates = (await technologySelectionCache.getData()).filter((x) =>
-    technologyIds.includes(x.technology_id)
-  )
-  if (candidates.length > 0) {
-    return candidates
-  } else {
-    throw Error(`Technologies '${technologyIds}' not found`)
-  }
+// These functions group the selections they are given (e.g. those of a project) and do not
+// use the grouped caches above, which are built from all selections only. The grouping is
+// recomputed on each call, which is cheap for the number of selections (cf. resolveSelections).
+
+function getModificationTypes(selections: readonly SelectionBase[]): ModificationType[] {
+  return uniqueByKey(selections, (x) => x.modification_id, toModificationType)
 }
 
-async function getModificationTypesByRnaType(rnaType: string): Promise<ModificationType[]> {
-  return (await modificationTypeSelectionCache.getData()).filter((x) => x.rna_type === rnaType)
+function getModificationTypesByRnaType(
+  selections: readonly SelectionBase[],
+  rnaType: string
+): ModificationType[] {
+  return getModificationTypes(selections).filter((x) => x.rna_type === rnaType)
+}
+
+function getCtos(selections: readonly SelectionBase[]): Cto[] {
+  return uniqueByKey(selections, (x) => x.organism_id, toCto)
+}
+
+function getCtosByModificationIds(
+  selections: readonly SelectionBase[],
+  modificationIds: number[]
+): Cto[] {
+  const organismIds = new Set<number>()
+  for (const item of selections) {
+    if (modificationIds.includes(item.modification_id)) {
+      organismIds.add(item.organism_id)
+    }
+  }
+  return getCtos(selections).filter((x) => organismIds.has(x.organism_id))
+}
+
+function getTechnologies(selections: readonly SelectionBase[]): Technology[] {
+  return uniqueByKey(selections, (x) => x.technology_id, toTechnology)
+}
+
+function getTechnologiesByModificationIdsAndOrganismId(
+  selections: readonly SelectionBase[],
+  modificationIds: number[],
+  organismId: number
+): Technology[] {
+  const technologyIds = new Set<number>()
+  for (const item of selections) {
+    if (modificationIds.includes(item.modification_id) && item.organism_id === organismId) {
+      technologyIds.add(item.technology_id)
+    }
+  }
+  return getTechnologies(selections).filter((x) => technologyIds.has(x.technology_id))
 }
 
 export {
   type Selection,
+  type ProjectSelection,
+  type SelectionBase,
   type ModificationType,
   type Cto,
   type Technology,
   selectionsCache,
   modificationTypeSelectionCache,
   taxaSelectionCache,
-  ctoSelectionCache,
-  technologySelectionCache,
+  resolveSelections,
+  getProjectSelections,
+  getModificationTypesByRnaType,
+  getCtos,
   getCtosByModificationIds,
   getTechnologiesByModificationIdsAndOrganismId,
   getSelectionsByTaxaId,
-  getSelectionsByIds,
-  getTechnologiesByIds,
-  getModificationTypesByRnaType
+  getSelectionsByIds
 }
