@@ -22,20 +22,18 @@ classifiers = [
   "Topic :: Scientific/Engineering :: Bio-Informatics",
   "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
   "Operating System :: POSIX :: Linux",
-  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.13",
 ]
 dynamic = ["version"]
-requires-python = ">=3.10,<3.13"
+requires-python = ">=3.13"
 dependencies = [
   "alembic",
   "CrossMap",
   "Flask",
   "Flask-Cors",
   "Flask-JWT-Extended",
-  "click>=8.5.0",
+  "click",
   "mysqlclient",
-  "numpy<2",
-  "pandas",
   "pybedtools",
   "python-dotenv",
   "requests",
@@ -84,7 +82,7 @@ dev = [
   "types-Flask-Cors",
   "types-requests",
   "PyYAML",
-  "openapi-core",
+  "openapi-core>=0.19", # Config, OpenAPI cf. tests/api/schematise.py
 ]
 
 

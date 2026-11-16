@@ -1,6 +1,5 @@
 import pytest
 from flask import Flask
-
 from scimodom.cli.setup import setup_cli
 from scimodom.services.setup import SetupService
 
@@ -19,7 +18,6 @@ def service(mocker):
     service = mocker.create_autospec(SetupService, instance=True)
     service.get_valid_import_file_names.return_value = NAMES
     service.is_valid_import_file.side_effect = lambda name: name in NAMES
-    service.get_upsert_message.side_effect = lambda name: f"Updating {name}..."
     mocker.patch("scimodom.cli.setup.get_setup_service", return_value=service)
     return service
 

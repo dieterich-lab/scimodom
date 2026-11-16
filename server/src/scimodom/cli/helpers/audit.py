@@ -23,17 +23,34 @@ class UtcFormatter(logging.Formatter):
 
 
 class AuditFileHandler(WatchedFileHandler):
-    """Write to a file, reopened if rotated, without ever raising."""
+    """Write to a file, reopened if rotated, without ever raising.
+
+    A failure to write is reported on stderr; raised by emit or
+    passed to handleError.
+    """
 
     def emit(self, record: logging.LogRecord) -> None:
+        """Emit a record.
+
+        :param record: logging record
+        """
         try:
             super().emit(record)
         except Exception as exc:  # noqa
-            print(
-                f"Warning: failed to log audit record to '{self.baseFilename}': "
-                f"{exc}",
-                file=sys.stderr,
-            )
+            self._warn(exc)
+
+    def handleError(self, record: logging.LogRecord) -> None:
+        """Handle errors which occur during an emit() call.
+
+        :param record: logging record
+        """
+        self._warn(sys.exc_info()[1])
+
+    def _warn(self, exc: BaseException | None) -> None:
+        print(
+            f"Warning: failed to log audit record to '{self.baseFilename}': {exc}",
+            file=sys.stderr,
+        )
 
 
 def _get_os_user() -> str:
@@ -42,7 +59,7 @@ def _get_os_user() -> str:
         # not USER/LOGNAME: these are set by the caller
         return f"{pwd.getpwuid(uid).pw_name}"
     except KeyError:  # e.g. arbitrary uid in a container
-        return f"uid:{uid}"
+        return f"uid: {uid}"
 
 
 def _format(action: str, state: str, **fields) -> str:

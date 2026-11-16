@@ -6,7 +6,6 @@ import pwd
 import click
 import click.testing
 import pytest
-
 from scimodom.cli.helpers import (
     CliResponseException,
     audited,
@@ -133,7 +132,7 @@ def test_keyboard_interrupt(records):
 def test_unknown_uid(runner, command, records, mocker):
     mocker.patch("scimodom.cli.helpers.audit.pwd.getpwuid", side_effect=KeyError(1))
     runner.invoke(command, ["--yes", "abc"])
-    assert f"user=uid:{os.getuid()}" in records[0]
+    assert f"user=uid: {os.getuid()}" in records[0]
 
 
 def test_audit_file_is_reopened_after_rotation(tmp_path):

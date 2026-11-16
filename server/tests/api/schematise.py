@@ -20,18 +20,16 @@ from pathlib import Path
 
 import pytest
 import yaml
-from flask import Flask
+from flask import Blueprint, Flask
 from flask.testing import FlaskClient
 from flask_jwt_extended import JWTManager, create_access_token
-from flask import Blueprint
 from openapi_core import Config, OpenAPI
 from openapi_core.contrib.werkzeug import (
     WerkzeugOpenAPIRequest,
     WerkzeugOpenAPIResponse,
 )
-
-from scimodom.services.url import API_PREFIX
 from scimodom.api.helpers.serialisation import set_json_provider
+from scimodom.services.url import API_PREFIX
 
 SERVER_DIR = Path(__file__).parents[2]
 OPENAPI_DIR = SERVER_DIR / "docs" / "source" / "openapi"
@@ -88,6 +86,8 @@ def validate(schema: str, response, status: int | None = None) -> None:
 
 # fixtures
 
+SECRET_KEY = "test-secret-should-be-long-enough-to-avoid-warning"
+
 
 def make_client(
     blueprint: Blueprint, prefix: str, *, authenticated: bool = False
@@ -95,7 +95,7 @@ def make_client(
     """Provide a test client mounted at its production URL prefix."""
     app = Flask(__name__)
     set_json_provider(app)
-    app.config["JWT_SECRET_KEY"] = "test-secret"
+    app.config["JWT_SECRET_KEY"] = SECRET_KEY
     JWTManager(app)
     app.register_blueprint(blueprint, url_prefix=prefix)
     client = app.test_client()
