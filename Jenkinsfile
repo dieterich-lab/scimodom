@@ -60,7 +60,7 @@ pipeline {
                     . ./venv/bin/activate
                     export PYTHONPATH=$(pwd)/server/src:$(pwd)/server/tests
                     cd server
-                    pytest --junitxml results.xml -m "not cifail" tests --cov=src/scimodom --cov-report xml
+                    pytest --junitxml results.xml tests --cov=src/scimodom --cov-report xml
                 '''
             }
         }
