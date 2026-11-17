@@ -1,47 +1,47 @@
+import logging
+from collections.abc import Iterable
 from csv import DictWriter
 from dataclasses import dataclass
-import logging
 from datetime import datetime, timezone
 from io import StringIO
-from typing import Iterable, TextIO, Any
+from typing import Any, TextIO
 
 from flask import Blueprint, Response
 from pydantic import BaseModel
 
-from scimodom.services.annotation import AnnotationService
-from scimodom.services.modification import (
-    SearchParams,
-    PageParams,
-    MultiSortError,
-    get_modification_service,
-)
 from scimodom.api.helpers import (
     ClientResponseException,
-    get_optional_str,
-    get_non_negative_int,
-    get_optional_positive_int,
-    get_optional_non_negative_int,
-    get_valid_rna_type,
-    get_optional_valid_biotypes,
-    get_optional_valid_features,
-    get_valid_taxa_id,
-    get_valid_coords,
-    get_optional_valid_coords,
-    get_valid_strand,
-    expand_coords_context,
     ValidCoords,
-    get_valid_target_type,
-    get_valid_selections,
-    get_response_from_pydantic_object,
+    create_cache_unavailable_response,
+    expand_coords_context,
+    get_non_negative_int,
     get_optional_list,
+    get_optional_non_negative_int,
+    get_optional_positive_int,
+    get_optional_str,
+    get_optional_valid_biotypes,
+    get_optional_valid_coords,
+    get_optional_valid_features,
+    get_optional_valid_taxa_id,
+    get_response_from_pydantic_object,
+    get_valid_coords,
+    get_valid_rna_type,
+    get_valid_selections,
+    get_valid_strand,
+    get_valid_target_type,
+    get_valid_taxa_id,
 )
+from scimodom.services.annotation import AnnotationService
 from scimodom.services.bedtools import BedToolsService, get_bedtools_service
-from scimodom.utils.dtos.bedtools import Bed6Record
-from scimodom.services.file import get_file_service
-from scimodom.utils.specs.enums import (
-    Strand,
-    AssemblyFileType,
+from scimodom.services.file import CacheNotAvailableException, get_file_service
+from scimodom.services.modification import (
+    MultiSortError,
+    PageParams,
+    SearchParams,
+    get_modification_service,
 )
+from scimodom.utils.dtos.bedtools import Bed6Record
+from scimodom.utils.specs.enums import AssemblyFileType, Strand
 
 logger = logging.getLogger(__name__)
 
@@ -107,17 +107,27 @@ def get_modification_records():
     return records
 
 
-@modification_api.get("/records/summary")
-def get_modification_records_summary():
+@modification_api.get("/records/count")
+def get_modification_records_count():
     """Get count of modifications (data records).
 
+    :param request: The request with (optional) taxaId.
     :return: JSON object with number of records
     :statuscode 200: OK
+    :statuscode 400: Bad request - invalid request, syntax
+    :statuscode 404: Not found - semantic validation
     :statuscode 500: Internal Server Error
+    :statuscode 503: Service Unavailable - cache is being generated
     """
-    return {
-        "count": get_modification_service().get_modification_records_count(),
-    }
+    try:
+        taxa_id = get_optional_valid_taxa_id()
+    except ClientResponseException as exc:
+        return exc.response_tuple
+    try:
+        count = get_modification_service().get_modification_records_count(taxa_id)
+    except CacheNotAvailableException as exc:
+        return create_cache_unavailable_response(exc)
+    return {"count": count}
 
 
 @modification_api.get("/sites")
@@ -148,17 +158,27 @@ def get_modification_sites():
     return records
 
 
-@modification_api.get("/sites/summary")
-def get_modification_sites_summary():
+@modification_api.get("/sites/count")
+def get_modification_sites_count():
     """Get count of modifications sites.
 
+    :param request: The request with (optional) taxaId.
     :return: JSON object with number of sites
     :statuscode 200: OK
+    :statuscode 400: Bad request - invalid request, syntax
+    :statuscode 404: Not found - semantic validation
     :statuscode 500: Internal Server Error
+    :statuscode 503: Service Unavailable - cache is being generated
     """
-    return {
-        "count": get_modification_service().get_modification_sites_count(),
-    }
+    try:
+        taxa_id = get_optional_valid_taxa_id()
+    except ClientResponseException as exc:
+        return exc.response_tuple
+    try:
+        count = get_modification_service().get_modification_sites_count(taxa_id)
+    except CacheNotAvailableException as exc:
+        return create_cache_unavailable_response(exc)
+    return {"count": count}
 
 
 @modification_api.get("/sites/context")

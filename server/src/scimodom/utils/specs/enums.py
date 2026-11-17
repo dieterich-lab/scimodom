@@ -1,6 +1,5 @@
 from enum import Enum
 
-
 # Data and models
 
 
@@ -13,7 +12,9 @@ class UserState(Enum):
 
 class Strand(Enum):
     """Define strand for declarative model Data.
-    This is also used to define data-related DTOs."""
+
+    This is also used to define data-related DTOs.
+    """
 
     FORWARD = "+"
     REVERSE = "-"
@@ -121,7 +122,20 @@ class TargetsFileType(Enum):
 # Misc. e.g. charts
 
 
+class IndexCacheType(Enum):
+    """Caches of the index (main page), generated in the background.
+
+    The values are the names of the commands to update them
+    (``flask cache update-<value>``).
+    """
+
+    SUNBURST = "sunburst"
+    AGGREGATES = "aggregates"
+
+
 class SunburstChartType(Enum):
+    """Sunburst charts type for the index (main page)."""
+
     search = "search"
     browse = "browse"
 

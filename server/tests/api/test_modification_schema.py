@@ -1,3 +1,6 @@
+import shutil
+from pathlib import Path
+
 import pytest
 
 from scimodom.api.modification import modification_api
@@ -6,18 +9,14 @@ from scimodom.services.annotation import (
     EnsemblAnnotationService,
 )
 from scimodom.services.data import DataService
+from scimodom.services.file import FileService
 from scimodom.services.gene import GeneService
-from scimodom.services.modification import ModificationService, MultiSortError
+from scimodom.services.modification import ModificationService
 from scimodom.services.url import MODIFICATION_API_ROUTE
 from scimodom.services.selection import SelectionService
 from scimodom.services.utilities import UtilitiesService
-from scimodom.utils.specs.enums import AnnotationSource, AssemblyFileType
+from scimodom.utils.specs.enums import AnnotationSource
 
-# the mocks of the existing API tests are reused: same services, same data
-# from tests.api.test_modification_api import (  # noqa: F401
-#     MockModificationService,
-#     mock_services,
-# )
 from tests.unit.services.test_modification import _mock_build_query
 from tests.api.test_modification_api import (
     MockAssemblyService,
@@ -37,7 +36,7 @@ TARGET_SITE = "taxaId=9606&chrom=1&chromStart=3284723&chromEnd=3284724&strand=%2
 
 
 @pytest.fixture
-def services(Session, annotation, mocker):
+def services(Session, annotation, mocker, dataset, tmp_path):
     utilities_service = UtilitiesService(Session())
     mocker.patch(
         "scimodom.api.helpers.validation.get_utilities_service",
@@ -63,10 +62,19 @@ def services(Session, annotation, mocker):
             ),
         },
     )
+    file_service = FileService(
+        session=Session(),
+        data_path=Path(tmp_path, "t_data"),
+        temp_path=Path(tmp_path, "t_temp"),
+        upload_path=Path(tmp_path, "t_upload"),
+        import_path=Path(tmp_path, "t_import"),
+    )
     modification_service = ModificationService(
         session=Session(),
         annotation_service=annotation_service,
+        file_service=file_service,
     )
+    modification_service.do_aggregates_update()
     mocker.patch.object(modification_service, "_build_query", _mock_build_query)
     mocker.patch(
         "scimodom.api.helpers.validation.get_annotation_service",
@@ -107,9 +115,15 @@ def test_records_csv_schema(client, services, query):
     validate(SCHEMA, response, 200)
 
 
-def test_records_summary_schema(client, services):
-    response = client.get(prefix_url("/records/summary"))
+def test_records_count_schema(client, services):
+    response = client.get(prefix_url("/records/count"))
     validate(SCHEMA, response, 200)
+
+
+def test_records_count_taxa_schema(client, services):
+    response = client.get(prefix_url("/records/count?taxaId=9606"))
+    validate(SCHEMA, response, 200)
+    assert response.json["count"] == 7
 
 
 def test_sites_schema(client, services):
@@ -118,9 +132,24 @@ def test_sites_schema(client, services):
     validate(SCHEMA, response, 200)
 
 
-def test_sites_summary_schema(client, services):
-    response = client.get(prefix_url("/sites/summary"))
+def test_sites_count_schema(client, services):
+    response = client.get(prefix_url("/sites/count"))
     validate(SCHEMA, response, 200)
+
+
+def test_sites_count_taxa_schema(client, services):
+    response = client.get(prefix_url("/sites/count?taxaId=9606"))
+    validate(SCHEMA, response, 200)
+    assert response.json["count"] == 6
+
+
+@pytest.mark.parametrize("kind", ["records", "sites"])
+def test_count_not_available_schema(client, services, mocker, tmp_path, kind):
+    mocker.patch("scimodom.api.helpers.errors.get_external_service")
+    shutil.rmtree(tmp_path / "t_data" / FileService.INDEX_CACHE_DEST)
+    response = client.get(prefix_url(f"/{kind}/count"))
+    validate(SCHEMA, response, 503)
+    assert response.headers["Retry-After"]
 
 
 def test_context_schema(client, services):

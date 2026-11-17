@@ -32,7 +32,7 @@ from scimodom.services.administration.ingestion import (
     ProjectIngestionService,
 )
 from scimodom.services.assembly import AssemblyNotFoundError
-from scimodom.services.sunburst import SunburstService
+from scimodom.services.external import ExternalService
 
 
 @pytest.fixture
@@ -60,18 +60,18 @@ def deletion_service(mocker):
 
 
 @pytest.fixture
-def sunburst_service(mocker):
-    service = mocker.create_autospec(SunburstService, instance=True)
-    mocker.patch("scimodom.cli.project.get_sunburst_service", return_value=service)
+def external_service(mocker):
+    service = mocker.create_autospec(ExternalService, instance=True)
+    mocker.patch("scimodom.cli.project.get_external_service", return_value=service)
     return service
 
 
-def test_delete(test_runner, deletion_service, sunburst_service):
+def test_delete(test_runner, deletion_service, external_service):
     deletion_service.execute.return_value = ProjectDeletionResult("SMID1", ["A"])
     result = test_runner.invoke(args=["project", "delete", "--yes", "SMID1"])
     assert result.exit_code == 0
     deletion_service.execute.assert_called_once_with(DELETION_PLAN)
-    sunburst_service.trigger_background_update.assert_called_once()
+    external_service.trigger_cache_update.assert_called_once()
 
 
 def test_delete_not_found(test_runner, deletion_service):
@@ -82,7 +82,7 @@ def test_delete_not_found(test_runner, deletion_service):
     deletion_service.execute.assert_not_called()
 
 
-def test_delete_partial_failure(test_runner, deletion_service, sunburst_service):
+def test_delete_partial_failure(test_runner, deletion_service, external_service):
     deletion_service.execute.side_effect = ProjectDeletionError(
         "Failure in handling Dataset 'B'.", ["A"], ["B"]
     )
@@ -92,14 +92,14 @@ def test_delete_partial_failure(test_runner, deletion_service, sunburst_service)
         "Failed to delete project 'SMID1'. Failure in handling Dataset 'B'. Run the command again to resume"
         in result.output
     )
-    sunburst_service.trigger_background_update.assert_called_once()
+    external_service.trigger_cache_update.assert_called_once()
 
 
-def test_delete_complete_failure(test_runner, deletion_service, sunburst_service):
+def test_delete_complete_failure(test_runner, deletion_service, external_service):
     deletion_service.execute.side_effect = ProjectDeletionError("x", [], ["A"])
     result = test_runner.invoke(args=["project", "delete", "--yes", "SMID1"])
     assert result.exit_code == 1
-    sunburst_service.trigger_background_update.assert_not_called()
+    external_service.trigger_cache_update.assert_not_called()
 
 
 # project add
@@ -229,12 +229,12 @@ def batch_services(mocker):
         "UUID", template, [_batch_dataset("a.bedrmod"), _batch_dataset("b.bedrmod")]
     )
     ingestion.create_project.return_value = ProjectIngestionResult("SMID1")
-    sunburst = mocker.create_autospec(SunburstService, instance=True)
+    external = mocker.create_autospec(ExternalService, instance=True)
     mocker.patch(
         "scimodom.cli.dataset.get_project_ingestion_service", return_value=ingestion
     )
-    mocker.patch("scimodom.cli.dataset.get_sunburst_service", return_value=sunburst)
-    return ingestion, sunburst
+    mocker.patch("scimodom.cli.dataset.get_external_service", return_value=external)
+    return ingestion, external
 
 
 def _batch(test_runner, tmp_path, *extra):
@@ -244,7 +244,7 @@ def _batch(test_runner, tmp_path, *extra):
 
 
 def test_batch(test_runner, batch_services, tmp_path):
-    ingestion, sunburst = batch_services
+    ingestion, external = batch_services
     ingestion.import_batch_datasets.return_value = iter(
         [
             BatchDatasetOutcome(_batch_dataset("a.bedrmod"), dataset_id="E1"),
@@ -256,21 +256,21 @@ def test_batch(test_runner, batch_services, tmp_path):
     assert "SMID 'SMID1'" in result.output
     assert "EUFID 'E1'" in result.output and "EUFID 'E2'" in result.output
     assert "done (2/2 datasets)" in result.output
-    sunburst.trigger_background_update.assert_called_once()
+    external.trigger_cache_update.assert_called_once()
 
 
 def test_batch_dry_run_writes_nothing(test_runner, batch_services, tmp_path):
-    ingestion, sunburst = batch_services
+    ingestion, external = batch_services
     result = _batch(test_runner, tmp_path, "--dry-run")
     assert result.exit_code == 0
     assert "a.bedrmod" in result.output and "b.bedrmod" in result.output
     ingestion.create_project.assert_not_called()
     ingestion.import_batch_datasets.assert_not_called()
-    sunburst.trigger_background_update.assert_not_called()
+    external.trigger_cache_update.assert_not_called()
 
 
 def test_batch_invalid_input_creates_nothing(test_runner, batch_services, tmp_path):
-    ingestion, sunburst = batch_services
+    ingestion, external = batch_services
     ingestion.plan_batch_import.side_effect = ProjectTemplateError(
         "Invalid batch import:\n  - File 'x' not found"
     )
@@ -301,7 +301,7 @@ def test_batch_project_creation_fails(test_runner, batch_services, tmp_path):
 def test_batch_failed_dataset_is_skipped_and_exit_is_non_zero(
     test_runner, batch_services, tmp_path
 ):
-    ingestion, sunburst = batch_services
+    ingestion, external = batch_services
     ingestion.import_batch_datasets.return_value = iter(
         [
             BatchDatasetOutcome(_batch_dataset("a.bedrmod"), error=ValueError("bad")),
@@ -316,13 +316,13 @@ def test_batch_failed_dataset_is_skipped_and_exit_is_non_zero(
         result.output
     )
     # the imported dataset is in the charts
-    sunburst.trigger_background_update.assert_called_once()
+    external.trigger_cache_update.assert_called_once()
 
 
 def test_batch_all_datasets_fail_does_not_update_charts(
     test_runner, batch_services, tmp_path
 ):
-    ingestion, sunburst = batch_services
+    ingestion, external = batch_services
     ingestion.import_batch_datasets.return_value = iter(
         [
             BatchDatasetOutcome(_batch_dataset("a.bedrmod"), error=ValueError("x")),
@@ -332,4 +332,4 @@ def test_batch_all_datasets_fail_does_not_update_charts(
     result = _batch(test_runner, tmp_path, "--yes")
     assert "done (0/2 datasets)" in result.output
     assert result.exit_code == 1
-    sunburst.trigger_background_update.assert_not_called()
+    external.trigger_cache_update.assert_not_called()

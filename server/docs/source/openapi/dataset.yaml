@@ -1,3 +1,4 @@
+---
 info:
   title: datasets
   description: >-
@@ -88,11 +89,18 @@ paths:
           $ref: "#/components/responses/UnauthorizedError"
         "422":
           $ref: "#/components/responses/UnprocessableContentError"
-  /datasets/summary:
+  /datasets/count:
     get:
       tags:
         - Dataset
       summary: Get dataset count
+      parameters:
+        - in: query
+          name: taxaId
+          required: false
+          schema:
+            type: integer
+          description: NCBI taxon. Restricts the count to a taxon.
       responses:
         "200":
           description: OK
@@ -100,6 +108,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Count"
+        "400":
+          description: Invalid NCBI taxon
+        "404":
+          description: NCBI taxon not found
   /datasets/{dataset_id}/bedrmod:
     get:
       tags:

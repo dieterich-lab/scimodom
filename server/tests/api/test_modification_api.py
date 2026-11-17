@@ -1,6 +1,7 @@
 from io import StringIO
 from pathlib import Path
-from typing import Any, Iterable, Sequence
+from collections.abc import Iterable, Sequence
+from typing import Any, ClassVar
 from csv import DictReader
 
 import pytest
@@ -12,7 +13,9 @@ from scimodom.api.modification import (
     modification_api,
     IntersectResponse,
 )
+from scimodom.services.file import CacheNotAvailableException
 from scimodom.services.modification import MultiSortError
+from scimodom.utils.specs.enums import IndexCacheType
 from scimodom.utils.dtos.bedtools import Bed6Record
 from scimodom.utils.specs.enums import (
     Strand,
@@ -62,7 +65,7 @@ def mock_services(mocker):
 
 
 class MockAnnotationService:
-    VALID_RNA_TYPES = ["WTS"]
+    VALID_RNA_TYPES: ClassVar = ["WTS"]
 
     @staticmethod
     def get_features_by_rna_type(rna_type: str):
@@ -72,7 +75,7 @@ class MockAnnotationService:
 
 
 class MockAssemblyService:
-    VALID_TAXA = [9606, 10090, 7227]
+    VALID_TAXA: ClassVar = [9606, 10090, 7227]
 
     @staticmethod
     def get_chroms(taxa_id: int) -> list[dict[str, str | int]]:
@@ -171,8 +174,8 @@ class MockUtilitiesService:
 
 
 class MockFileService:
-    VALID_TAXA = [9606, 10090]
-    FILE_CONTENT = {
+    VALID_TAXA: ClassVar = [9606, 10090]
+    FILE_CONTENT: ClassVar = {
         TargetsFileType.MIRNA: "1\t3284722\t3284729\tTargetScan:Target:miR\t75\t+",
         TargetsFileType.RBP: "1\t2403126\t2403133\toRNAment:Target:1:Motif\t750\t+",
     }
@@ -184,7 +187,7 @@ class MockFileService:
     @staticmethod
     def open_annotation_targets_file(
         taxa_id: int, target_type: TargetsFileType, chrom: str
-    ):  # noqa
+    ):
         if taxa_id in MockFileService.VALID_TAXA and isinstance(
             target_type, TargetsFileType
         ):
@@ -193,7 +196,7 @@ class MockFileService:
             raise FileNotFoundError
 
     @staticmethod
-    def get_assembly_file_path(  # noqa
+    def get_assembly_file_path(
         taxa_id: int,
         file_type: AssemblyFileType,
         assembly_name: str | None = None,
@@ -209,7 +212,7 @@ class MockFileService:
 
 
 class MockBedtoolsService:
-    RECORDS = [
+    RECORDS: ClassVar = [
         Bed6Record(
             chrom="1",
             start=3284722,
@@ -232,7 +235,7 @@ class MockBedtoolsService:
     def create_temp_file_from_records(
         records: Iterable[Sequence[Any]],
         sort: bool = True,  # pylint: disable=unused-argument
-    ) -> str:  # noqa
+    ) -> str:
         MockBedtoolsService.INTERSECTION_RECORDS = []
         return "/tmp/pybedtools.tmp"
 
@@ -242,7 +245,7 @@ class MockBedtoolsService:
         b_stream: StringIO,
         is_strand: bool,  # pylint: disable=unused-argument
         is_sorted: bool = True,  # pylint: disable=unused-argument
-    ) -> Iterable[Bed6Record]:  # noqa
+    ) -> Iterable[Bed6Record]:
         line = b_stream.getvalue()
         if "TargetScan" in line:
             MockBedtoolsService.INTERSECTION_RECORDS = [MockBedtoolsService.RECORDS[0]]
@@ -260,7 +263,7 @@ class MockBedtoolsService:
 
 
 class MockModificationService:
-    RECORDS = [
+    RECORDS: ClassVar = [
         {
             "id": 1,
             "chrom": "17",
@@ -302,7 +305,7 @@ class MockModificationService:
             "reference_id": 96,
         },
     ]
-    SITEWISE_RECORDS = [
+    SITEWISE_RECORDS: ClassVar = [
         {
             "chrom": "1",
             "coverage": 53,
@@ -340,12 +343,12 @@ class MockModificationService:
     ]
 
     @staticmethod
-    def get_modification_records_count() -> int:
-        return 2
+    def get_modification_records_count(taxa_id: int | None = None) -> int:
+        return {None: 3, 9606: 2, 10090: 1}[taxa_id]
 
     @staticmethod
-    def get_modification_sites_count() -> int:
-        return 1
+    def get_modification_sites_count(taxa_id: int | None = None) -> int:
+        return {None: 2, 9606: 1, 10090: 1}[taxa_id]
 
     @staticmethod
     def get_modification_records_by_selection(
@@ -356,7 +359,7 @@ class MockModificationService:
         technology_ids: list[int],
         search_params: SearchParams,
         page_params: PageParams,
-    ) -> dict[str, Any]:  # noqa
+    ) -> dict[str, Any]:
         return {
             "total": 1,
             "records": [MockModificationService.RECORDS[0].copy()],
@@ -368,7 +371,7 @@ class MockModificationService:
         taxa_id: int,
         search_params: SearchParams,
         page_params: PageParams,
-    ) -> dict[str, Any]:  # noqa
+    ) -> dict[str, Any]:
         return {
             "total": 1,
             "records": [MockModificationService.RECORDS[1].copy()],
@@ -379,29 +382,84 @@ class MockModificationService:
         chrom: str,
         start: int,
         end: int,
-    ) -> dict[str, list[str, Any]]:  # noqa
+    ) -> dict[str, list[str, Any]]:
         return {"records": MockModificationService.SITEWISE_RECORDS.copy()}
 
 
 # tests
 
 
-def test_get_modification_records_summary(test_client, mocker):
-    mocker.patch(
-        "scimodom.api.modification.get_modification_service",
-        return_value=MockModificationService(),
-    )
-    result = test_client.get("/records/summary")
-    assert result.json["count"] == 2
+@pytest.mark.parametrize(
+    "kind,query,count",
+    [
+        ("records", "", 3),
+        ("records", "?taxaId=9606", 2),
+        ("records", "?taxaId=10090", 1),
+        ("sites", "", 2),
+        ("sites", "?taxaId=9606", 1),
+        ("sites", "?taxaId=10090", 1),
+    ],
+)
+def test_get_modification_count(test_client, mock_services, kind, query, count):
+    result = test_client.get(f"/{kind}/count{query}")
+    assert result.status_code == 200
+    assert result.json["count"] == count
 
 
-def test_get_modification_sites_summary(test_client, mocker):
+@pytest.mark.parametrize("kind", ["records", "sites"])
+@pytest.mark.parametrize(
+    "query,http_status",
+    [("?taxaId=abc", 400), ("?taxaId=1", 404)],
+)
+def test_get_modification_count_invalid_taxa(
+    test_client, mock_services, kind, query, http_status
+):
+    result = test_client.get(f"/{kind}/count{query}")
+    assert result.status_code == http_status
+
+
+@pytest.mark.parametrize("kind", ["records", "sites"])
+def test_get_modification_count_not_available(test_client, mock_services, mocker, kind):
+    service = mocker.Mock()
+    getattr(
+        service, f"get_modification_{kind}_count"
+    ).side_effect = CacheNotAvailableException(IndexCacheType.AGGREGATES)
     mocker.patch(
-        "scimodom.api.modification.get_modification_service",
-        return_value=MockModificationService(),
+        "scimodom.api.modification.get_modification_service", return_value=service
     )
-    result = test_client.get("/sites/summary")
-    assert result.json["count"] == 1
+    external_service = mocker.Mock()
+    mocker.patch(
+        "scimodom.api.helpers.errors.get_external_service",
+        return_value=external_service,
+    )
+    result = test_client.get(f"/{kind}/count")
+    assert result.status_code == 503
+    assert result.headers["Retry-After"] == "30"
+    assert "try again" in result.json["user_message"]
+    # only the cache that is missing is generated, in the background
+    external_service.trigger_cache_update.assert_called_once_with(
+        IndexCacheType.AGGREGATES
+    )
+
+
+def test_get_modification_count_not_available_trigger_fails(
+    test_client, mock_services, mocker
+):
+    service = mocker.Mock()
+    service.get_modification_sites_count.side_effect = CacheNotAvailableException(
+        IndexCacheType.AGGREGATES
+    )
+    mocker.patch(
+        "scimodom.api.modification.get_modification_service", return_value=service
+    )
+    external_service = mocker.Mock()
+    external_service.trigger_cache_update.side_effect = OSError
+    mocker.patch(
+        "scimodom.api.helpers.errors.get_external_service",
+        return_value=external_service,
+    )
+    result = test_client.get("/sites/count")
+    assert result.status_code == 503
 
 
 @pytest.mark.parametrize(

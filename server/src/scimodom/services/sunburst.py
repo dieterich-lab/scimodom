@@ -1,27 +1,24 @@
-import sys
 from collections import defaultdict
 from functools import cache
 from json import dumps
-from subprocess import DEVNULL, Popen
-from threading import Thread
-from typing import TextIO
+from typing import ClassVar, TextIO
 
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from scimodom.database.database import get_session
 from scimodom.database.models import (
-    Modomics,
-    Taxa,
-    Organism,
-    DetectionTechnology,
     Data,
-    Modification,
     Dataset,
     DatasetModificationAssociation,
+    DetectionTechnology,
+    Modification,
+    Modomics,
+    Organism,
+    Taxa,
 )
 from scimodom.services.file import FileService, get_file_service
-from scimodom.utils.specs.enums import SunburstChartType
+from scimodom.utils.specs.enums import IndexCacheType, SunburstChartType
 
 
 class SunburstService:
@@ -31,6 +28,8 @@ class SunburstService:
     :param file_service: File service instance
     """
 
+    CACHE_PREFIX: ClassVar[str] = "sunburst"
+
     def __init__(
         self,
         session: Session,
@@ -39,45 +38,19 @@ class SunburstService:
         self._session = session
         self._file_service = file_service
 
-    @staticmethod
-    def trigger_background_update() -> None:
-        """Trigger update in the background using the CLI.
-
-        Runs with the interpreter of the current process,
-        fully detached and independent from the parent,
-        cannot hang waiting for input, and is properly
-        reaped to avoid zombie processes. Output and errors
-        go to the stdout and stderr of the caller. Concurrent
-        updates are coalesced by the lock in the file service.
-        """
-        process = Popen(
-            [
-                sys.executable,
-                "-m",
-                "flask",
-                "--app",
-                "scimodom.app",
-                "charts",
-                "sunburst-update",
-            ],
-            stdin=DEVNULL,
-            start_new_session=True,
-        )
-        Thread(target=process.wait, daemon=True).start()
-
     def open_json(self, chart_type: SunburstChartType) -> TextIO:
         """Open a chart json data file.
 
-        Attempt to create a file if does not exist.
+        The file is generated in the background when data changes,
+        and is not generated here.
 
         :param chart_type: Chart type
+        :raises CacheNotAvailableException: If the file was never generated
         :return: Opened file handle for reading
         """
-        try:
-            return self._file_service.open_sunburst_cache(chart_type.value)
-        except FileNotFoundError:
-            self.update_cache(chart_type)
-            return self._file_service.open_sunburst_cache(chart_type.value)
+        return self._file_service.open_index_cache(
+            IndexCacheType.SUNBURST, self._get_cache_name(chart_type)
+        )
 
     def update_cache(self, chart_type: SunburstChartType) -> None:
         """Update Sunburst charts data.
@@ -90,12 +63,13 @@ class SunburstService:
         query = self._get_query(chart_type)
         result = self._session.execute(query).fetchall()
         json_data = self._get_data_from_result(chart_type, result)
-        as_string = dumps(json_data)
 
         def generator():
-            yield as_string
+            yield dumps(json_data)
 
-        self._file_service.update_sunburst_cache(chart_type.value, generator())
+        self._file_service.update_index_cache(
+            self._get_cache_name(chart_type), generator()
+        )
 
     def do_background_update(self):
         """Provide the actual background update method."""
@@ -104,7 +78,14 @@ class SunburstService:
             for chart_type in SunburstChartType:
                 self.update_cache(chart_type)
 
-        self._file_service.run_sunburst_update(update_all)
+        self._file_service.run_index_update(
+            IndexCacheType.SUNBURST,
+            update_all,
+        )
+
+    @classmethod
+    def _get_cache_name(cls, chart_type: SunburstChartType) -> str:
+        return f"{cls.CACHE_PREFIX}_{chart_type.value}.json"
 
     @staticmethod
     def _get_data_from_result(chart_type, result):
@@ -190,8 +171,7 @@ class SunburstService:
 def get_sunburst_service() -> SunburstService:
     """Instantiate a SunburstService object by injecting its dependencies.
 
-    :returns: Sunburst service instance
-    :rtype: SunburstService
+    :return: Sunburst service instance
     """
     return SunburstService(
         session=get_session(),

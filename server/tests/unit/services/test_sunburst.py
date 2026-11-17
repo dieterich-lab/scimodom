@@ -15,7 +15,7 @@ class MockFileService:
     def __init__(self):
         self._sunburst_cache_content = ""
 
-    def update_sunburst_cache(
+    def update_index_cache(
         self, name: str, generator: Generator[str, None, None]
     ):  # noqa
         for element in generator:
@@ -41,36 +41,3 @@ def test_update_browse_cache(sunburst_service: SunburstService, dataset):
         sunburst_service._file_service._sunburst_cache_content
         == EXTECTED_BROWSE_CACHE_CONTENT
     )
-
-
-def test_trigger_background_update_is_detached(mocker):
-    import sys
-    from subprocess import DEVNULL
-
-    popen = mocker.patch("scimodom.services.sunburst.Popen")
-    thread = mocker.patch("scimodom.services.sunburst.Thread")
-    SunburstService.trigger_background_update()
-    popen.assert_called_once_with(
-        [
-            sys.executable,  # not 'flask' from PATH
-            "-m",
-            "flask",
-            "--app",
-            "scimodom.app",
-            "charts",
-            "sunburst-update",
-        ],
-        stdin=DEVNULL,
-        start_new_session=True,
-    )
-    # the finished process is reaped (no zombie in a long-running server)
-    thread.assert_called_once_with(target=popen.return_value.wait, daemon=True)
-    thread.return_value.start.assert_called_once()
-
-
-def test_trigger_background_update_propagates_start_failure(mocker):
-    mocker.patch("scimodom.services.sunburst.Popen", side_effect=OSError("nope"))
-    thread = mocker.patch("scimodom.services.sunburst.Thread")
-    with pytest.raises(OSError):
-        SunburstService.trigger_background_update()
-    thread.assert_not_called()

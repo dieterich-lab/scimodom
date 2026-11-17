@@ -7,6 +7,7 @@ from sqlalchemy.exc import NoResultFound
 
 from scimodom.api.helpers import (
     ClientResponseException,
+    get_optional_valid_taxa_id,
     create_error_response,
     parse_valid_rna_type,
     validate_project_write_permission,
@@ -17,7 +18,7 @@ from scimodom.services.dataset import get_dataset_service
 from scimodom.services.exporter import get_exporter, NoSuchDataset
 from scimodom.services.file import get_file_service
 from scimodom.services.permission import get_permission_service
-from scimodom.services.sunburst import get_sunburst_service
+from scimodom.services.external import get_external_service
 from scimodom.services.user import get_user_service
 from scimodom.services.validator import (
     SpecsError,
@@ -50,15 +51,22 @@ def get_datasets():
     return dataset_service.get_datasets()
 
 
-@dataset_api.get("/datasets/summary")
-def get_datasets_summary():
+@dataset_api.get("/datasets/count")
+def get_datasets_count():
     """Get count of datasets.
 
+    :param request: The request with (optional) taxaId.
     :return: JSON object with number of datasets
     :statuscode 200: OK
+    :statuscode 400: Bad request - invalid request, syntax
+    :statuscode 404: Not found - semantic validation
     :statuscode 500: Internal Server Error
     """
-    return {"count": get_dataset_service().get_dataset_count()}
+    try:
+        taxa_id = get_optional_valid_taxa_id()
+    except ClientResponseException as exc:
+        return exc.response_tuple
+    return {"count": get_dataset_service().get_dataset_count(taxa_id=taxa_id)}
 
 
 @dataset_api.post("/datasets")
@@ -94,8 +102,7 @@ def add_dataset():
     except ClientResponseException as exc:
         return exc.response_tuple
 
-    sunburst_service = get_sunburst_service()
-    sunburst_service.trigger_background_update()
+    get_external_service().trigger_cache_update()
     return {"dataset_id": dataset_id}, 201
 
 
@@ -226,14 +233,14 @@ def _import_dataset(dataset_form: DatasetPostRequest) -> str:
         raise ClientResponseException(
             422,
             str(exc),
-            f"The request form must agree with the file header:\n{exc}\n"
+            f"The request form must agree with the file header: \n{exc}\n"
             "Modify the request form or select the correct dataset to upload.",
         )
     except SpecsError as exc:
         raise ClientResponseException(
             422,
             str(exc),
-            f"Invalid bedRMod format specifications:\n{exc}\n"
+            f"Invalid bedRMod format specifications: \n{exc}\n"
             "Modify the file header to conform to the latest specifications.",
         )
     except BedImportEmptyFile as exc:

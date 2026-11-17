@@ -101,6 +101,18 @@ def get_valid_taxa_id() -> int:
     return taxa_id
 
 
+def get_optional_valid_taxa_id() -> int | None:
+    """Parse query for optional taxon identifier and validate.
+
+    :raises ClientResponseException: 400, 404
+    :return: The validated taxon identifier, or None
+    """
+    taxa_id = get_optional_positive_int("taxaId")
+    if taxa_id is not None:
+        _validate_taxa_id(taxa_id)
+    return taxa_id
+
+
 def parse_valid_taxa_id(raw: str) -> int:
     """Parse raw taxon identifier and validate.
 

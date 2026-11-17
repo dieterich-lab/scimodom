@@ -7,11 +7,11 @@ from flask import Blueprint
 from sqlalchemy.exc import NoResultFound
 
 from scimodom.cli.helpers import (
-    audited,
     CliResponseException,
-    register_cli_errors,
+    audited,
     confirm,
-    trigger_charts_update,
+    register_cli_errors,
+    trigger_cache_update,
 )
 from scimodom.services.administration.deletion import (
     ProjectDeletionError,
@@ -24,20 +24,19 @@ from scimodom.services.administration.ingestion import (
     get_project_ingestion_service,
 )
 from scimodom.services.assembly import AssemblyNotFoundError
+from scimodom.services.external import get_external_service
 from scimodom.services.project import get_project_service
 from scimodom.services.selection import get_selection_service
-from scimodom.services.sunburst import get_sunburst_service
 from scimodom.services.user import NoSuchUser
 from scimodom.services.utilities import get_utilities_service
 from scimodom.utils.dtos.project import ProjectMetaDataDto, ProjectOrganismDto
 
 project_cli = Blueprint("project", __name__)
 
+EPILOG = "Consult https://dieterich-lab.github.io/scimodom/flask.html#project-and-data-management"
 
-@project_cli.cli.command(
-    "create-template",
-    epilog="Consult https://dieterich-lab.github.io/scimodom/flask.html#project-and-data-management",
-)
+
+@project_cli.cli.command("create-template", epilog=EPILOG)
 @register_cli_errors
 @click.option("--yes", is_flag=True, help="Confirm the action without prompting")
 @click.option("--traceback", is_flag=True, help="Show traceback")
@@ -86,7 +85,7 @@ def create_project_template(
     published: datetime.date,
     doi: list[str],
     pmid: list[int],
-):  # noqa: D301
+):
     """Create a new project template from a list of datasets.
 
     \b
@@ -140,10 +139,7 @@ def create_project_template(
     click.secho(f"   ... created request with ID: '{uuid}'.", fg="green")
 
 
-@project_cli.cli.command(
-    "add",
-    epilog="Consult https://dieterich-lab.github.io/scimodom/flask.html#project-and-data-management",
-)
+@project_cli.cli.command("add", epilog=EPILOG)
 @register_cli_errors
 @audited("project.add")
 @click.option("--yes", is_flag=True, help="Confirm the action without prompting")
@@ -192,10 +188,7 @@ def add_project(yes: bool, traceback: bool, request_uuid: str, add_user: bool):
         )
 
 
-@project_cli.cli.command(
-    "add-user",
-    epilog="Consult https://dieterich-lab.github.io/scimodom/flask.html#project-and-data-management",
-)
+@project_cli.cli.command("add-user", epilog=EPILOG)
 @register_cli_errors
 @audited("project.add-user")
 @click.option("--yes", is_flag=True, help="Confirm the action without prompting")
@@ -227,10 +220,7 @@ def add_user(yes: bool, traceback: bool, username: str, smid: str):
     click.secho("   ... done.", fg="green")
 
 
-@project_cli.cli.command(
-    "add-selection",
-    epilog="Consult https://dieterich-lab.github.io/scimodom/flask.html#project-and-data-management",
-)
+@project_cli.cli.command("add-selection", epilog=EPILOG)
 @register_cli_errors
 @audited("project.add-selection")
 @click.option("--yes", is_flag=True, help="Confirm the action without prompting")
@@ -334,16 +324,13 @@ def add_selection(
     click.secho("   ... done.", fg="green")
 
 
-@project_cli.cli.command(
-    "delete",
-    epilog="Consult https://dieterich-lab.github.io/scimodom/flask.html#project-and-data-management",
-)
+@project_cli.cli.command("delete", epilog=EPILOG)
 @register_cli_errors
 @audited("project.delete")
 @click.option("--yes", is_flag=True, help="Confirm the action without prompting")
 @click.option("--traceback", is_flag=True, help="Show traceback")
 @click.argument("smid", type=click.STRING, help="Sci-ModoM project ID")
-def delete_project(yes: bool, traceback: bool, smid: str):  # noqa: D301
+def delete_project(yes: bool, traceback: bool, smid: str):
     """Delete a project and all associated data.
 
     \b
@@ -386,9 +373,9 @@ def delete_project(yes: bool, traceback: bool, smid: str):  # noqa: D301
     try:
         result = deletion_service.execute(plan)
     except ProjectDeletionError as exc:
-        # what was deleted stays deleted, update the charts accordingly
+        # what was deleted stays deleted, update the caches accordingly
         if exc.deleted_dataset_ids:
-            trigger_charts_update(get_sunburst_service())
+            trigger_cache_update(get_external_service())
         raise CliResponseException(
             f"Failed to delete project '{plan.project_id}'. {exc} "
             "Run the command again to resume."
@@ -402,4 +389,4 @@ def delete_project(yes: bool, traceback: bool, smid: str):  # noqa: D301
         f"   ... deleted project and {len(result.deleted_dataset_ids)} dataset(s).",
         fg="green",
     )
-    trigger_charts_update(get_sunburst_service())
+    trigger_cache_update(get_external_service())

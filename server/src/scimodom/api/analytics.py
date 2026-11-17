@@ -1,11 +1,11 @@
 from flask import Blueprint, Response
-
-from scimodom.services.sunburst import get_sunburst_service
-
 from scimodom.api.helpers import (
     ClientResponseException,
+    create_cache_unavailable_response,
     get_valid_sunburst_type,
 )
+from scimodom.services.file import CacheNotAvailableException
+from scimodom.services.sunburst import get_sunburst_service
 
 analytics_api = Blueprint("analytics_api", __name__)
 
@@ -22,6 +22,7 @@ def get_sunburst_chart():
     :statuscode 200: OK
     :statuscode 400: Bad Request - invalid chart type
     :statuscode 500: Internal Server Error
+    :statuscode 503: Service Unavailable - cache is being generated
     """
     try:
         valid_sunburst_type = get_valid_sunburst_type()
@@ -29,10 +30,15 @@ def get_sunburst_chart():
     except ClientResponseException as exc:
         return exc.response_tuple
 
+    try:
+        fh = sunburst_service.open_json(valid_sunburst_type)
+    except CacheNotAvailableException as exc:
+        return create_cache_unavailable_response(exc)
+
     def generate():
-        with sunburst_service.open_json(valid_sunburst_type) as fp:
+        with fh:
             while True:
-                buffer = fp.read(BUFFER_SIZE)
+                buffer = fh.read(BUFFER_SIZE)
                 if len(buffer) == 0:
                     break
                 yield buffer

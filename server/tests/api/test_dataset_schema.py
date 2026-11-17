@@ -72,7 +72,7 @@ def services(Session, dataset, mocker):
         return_value=exporter,
     )
     mocker.patch(
-        "scimodom.api.dataset.get_sunburst_service",
+        "scimodom.api.dataset.get_external_service",
         return_value=mocker.Mock(),
     )
 
@@ -87,8 +87,8 @@ def test_datasets_schema(client, services):
     validate(SCHEMA, response, 200)
 
 
-def test_datasets_summary_schema(client, services):
-    response = client.get(prefix_url("/datasets/summary"))
+def test_datasets_count_schema(client, services):
+    response = client.get(prefix_url("/datasets/count"))
     validate(SCHEMA, response, 200)
 
 

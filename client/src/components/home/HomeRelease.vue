@@ -4,18 +4,18 @@ import SunburstChart from '@/components/ui/SunburstChart.vue'
 import { trashRequestErrors } from '@/services/API.js'
 import SectionLayout from '@/components/layout/SectionLayout.vue'
 import { useDialogState } from '@/stores/DialogState'
-import { getDatasetSummary } from '@/services/dataset'
-import { getSitesSummary } from '@/services/modification'
+import { getDatasetCount } from '@/services/dataset'
+import { getSitesCount } from '@/services/modification'
 
 const dialogState = useDialogState()
 const sites = ref()
 const datasets = ref()
 
 onMounted(() => {
-  Promise.all([getSitesSummary(dialogState), getDatasetSummary(dialogState)])
-    .then(([modificationSummary, datasetSummary]) => {
-      sites.value = modificationSummary.count
-      datasets.value = datasetSummary.count
+  Promise.all([getSitesCount(dialogState), getDatasetCount(dialogState)])
+    .then(([modificationCount, datasetCount]) => {
+      sites.value = modificationCount.count
+      datasets.value = datasetCount.count
     })
     .catch((e) => trashRequestErrors(e))
 })

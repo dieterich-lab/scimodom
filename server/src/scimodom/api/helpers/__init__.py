@@ -1,6 +1,7 @@
 """Provide API helpers."""
 
 from .errors import (
+    create_cache_unavailable_response,
     ClientResponseException,
     FileTooLargeException,
     create_error_response,
@@ -35,6 +36,7 @@ from .validation import (
     get_valid_rna_type,
     parse_valid_rna_type,
     get_valid_taxa_id,
+    get_optional_valid_taxa_id,
     parse_valid_taxa_id,
     get_optional_valid_biotypes,
     get_optional_valid_features,
@@ -89,6 +91,7 @@ __all__ = [
     "get_valid_rna_type",
     "parse_valid_rna_type",
     "get_valid_taxa_id",
+    "get_optional_valid_taxa_id",
     "parse_valid_taxa_id",
     "get_optional_valid_biotypes",
     "get_optional_valid_features",

@@ -1,38 +1,38 @@
+import logging
 from datetime import datetime, timezone
 from functools import cache
-import logging
-from typing import List, Dict, Optional, TextIO
+from typing import TextIO
 
-from sqlalchemy import select, func, delete
+from sqlalchemy import delete, func, select
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session
 
 from scimodom.database.buffer import InsertBuffer
 from scimodom.database.database import get_session
 from scimodom.database.models import (
+    Data,
+    DataAnnotation,
     Dataset,
     DatasetModificationAssociation,
     DetectionTechnology,
-    Modomics,
     Modification,
+    Modomics,
     Organism,
     Taxa,
     User,
     UserProjectAssociation,
-    Data,
-    DataAnnotation,
 )
-from scimodom.services.annotation import get_annotation_service, AnnotationService
+from scimodom.services.annotation import AnnotationService, get_annotation_service
 from scimodom.services.file import FileService, get_file_service
 from scimodom.services.selection import SelectionService, get_selection_service
 from scimodom.services.validator import (
-    _DatasetImportContext,
     DatasetUpdateError,
     ValidatorService,
+    _DatasetImportContext,
     get_validator_service,
 )
-from scimodom.utils.importer.bed_importer import EufImporter
 from scimodom.utils.dtos.bedtools import EufRecord
+from scimodom.utils.importer.bed_importer import EufImporter
 from scimodom.utils.specs.enums import AnnotationSource, Identifiers
 from scimodom.utils.utils import gen_short_uuid
 
@@ -40,8 +40,7 @@ logger = logging.getLogger(__name__)
 
 
 class DatasetService:
-    """Provides methods to retrieve and manage
-    datasets and related data.
+    """Provides methods to retrieve and manage datasets and related data.
 
     :param session: SQLAlchemy ORM session
     :param annotation_service: Annotation service instance
@@ -72,13 +71,20 @@ class DatasetService:
         """
         return self._session.get_one(Dataset, dataset_id)
 
-    def get_dataset_count(self, user: Optional[User] = None) -> int:
+    def get_dataset_count(
+        self, user: User | None = None, taxa_id: int | None = None
+    ) -> int:
         """Count datasets.
 
         :param user: Restricts the count to projects associated with user.
+        :param taxa_id: Restricts the count to a taxon.
         :return: Number of datasets
         """
         query = select(func.count(Dataset.id))
+        if taxa_id is not None:
+            query = query.join(Organism, Organism.id == Dataset.organism_id).where(
+                Organism.taxa_id == taxa_id
+            )
         if user is not None:
             query = (
                 query.join(
@@ -92,8 +98,8 @@ class DatasetService:
 
     def get_datasets(
         self,
-        user: Optional[User] = None,
-    ) -> List[Dict[str, str]]:
+        user: User | None = None,
+    ) -> list[dict[str, str]]:
         """Get all datasets (metadata and selection).
 
         :param user: Restricts results based on projects associated with user.

@@ -1,3 +1,5 @@
+import errno
+import os
 from io import BytesIO
 from pathlib import Path
 
@@ -5,8 +7,12 @@ import pytest
 from sqlalchemy import select, func
 
 from scimodom.database.models import BamFile
-from scimodom.services.file import FileService
-from scimodom.utils.specs.enums import AssemblyFileType
+from scimodom.services.file import (
+    CacheNotAvailableException,
+    CacheUpdateAlreadyRunning,
+    FileService,
+)
+from scimodom.utils.specs.enums import AssemblyFileType, IndexCacheType
 
 
 def _get_file_service(Session, tmp_path):
@@ -79,18 +85,173 @@ def test_gene_cache(Session, tmp_path):
         service.get_gene_cache(124)
 
 
-def test_sunburst_cache(Session, tmp_path):
+def test_gene_cache_permissions(Session, tmp_path):
+    service = _get_file_service(Session, tmp_path)
+    gene_dir = tmp_path / "t_data" / FileService.GENE_CACHE_DEST
+    old_umask = os.umask(0o077)  # the umask of the process is not used
+    try:
+        service.update_gene_cache(122, ["1"])
+        service.update_gene_cache(122, ["2"])
+    finally:
+        os.umask(old_umask)
+    assert (gene_dir / "122").stat().st_mode & 0o777 == 0o660
+    assert [p.name for p in gene_dir.iterdir()] == ["122"]
+
+
+def test_index_cache(Session, tmp_path):
     service = _get_file_service(Session, tmp_path)
 
     def update_cache():
         def generator():
             yield "cache content"
 
-        service.update_sunburst_cache("chart", generator())
+        service.update_index_cache("chart", generator())
 
-    service.run_sunburst_update(update_cache)
-    with service.open_sunburst_cache("chart") as fh:
+    service.run_index_update(IndexCacheType.SUNBURST, update_cache)
+    with service.open_index_cache(IndexCacheType.SUNBURST, "chart") as fh:
         assert fh.read() == "cache content"
+    path = tmp_path / "t_data" / FileService.INDEX_CACHE_DEST / "chart"
+    # same as before (sunburst): for the owner only
+    assert path.stat().st_mode & 0o777 == 0o600
+
+
+def test_index_cache_not_available(Session, tmp_path):
+    service = _get_file_service(Session, tmp_path)
+    with pytest.raises(CacheNotAvailableException) as exc_info:
+        service.open_index_cache(IndexCacheType.AGGREGATES, "any_name.json")
+    assert exc_info.value.cache == IndexCacheType.AGGREGATES
+    service.update_index_cache("any_name.json", ["cache ", "content"])
+    with service.open_index_cache(IndexCacheType.AGGREGATES, "any_name.json") as fh:
+        assert fh.read() == "cache content"
+
+
+@pytest.mark.parametrize("kind", ["gene", "index"])
+def test_cache_update_is_atomic(Session, tmp_path, kind):
+    service = _get_file_service(Session, tmp_path)
+
+    def update(content):
+        if kind == "gene":
+            service.update_gene_cache(1, content)
+        else:
+            service.update_index_cache("name", content)
+
+    def read():
+        if kind == "gene":
+            return service.get_gene_cache(1)
+        with service.open_index_cache(IndexCacheType.SUNBURST, "name") as fh:
+            return fh.read()
+
+    update(["old"])
+    path = (
+        tmp_path
+        / "t_data"
+        / (
+            FileService.GENE_CACHE_DEST / "1"
+            if kind == "gene"
+            else FileService.INDEX_CACHE_DEST / "name"
+        )
+    )
+    with open(path) as reader:
+        # a reader gets the old file, also while and after it is replaced
+        update(["new"])
+        assert reader.read().strip() == "old"
+    assert read() in ("new", ["new"])
+
+
+@pytest.mark.parametrize("kind", ["gene", "index"])
+def test_cache_update_failure_is_raised_and_keeps_cache(Session, tmp_path, kind):
+    service = _get_file_service(Session, tmp_path)
+
+    def generator():
+        yield "partial"
+        raise OSError("disk full")
+
+    if kind == "gene":
+        cache_dir = tmp_path / "t_data" / FileService.GENE_CACHE_DEST
+        name = "1"
+        service.update_gene_cache(1, ["old"])
+        with pytest.raises(OSError):
+            service.update_gene_cache(1, generator())
+    else:
+        cache_dir = tmp_path / "t_data" / FileService.INDEX_CACHE_DEST
+        name = "name"
+        service.update_index_cache("name", ["old"])
+        with pytest.raises(OSError):
+            service.update_index_cache("name", generator())
+    # the previous content is kept, no temporary file is left behind
+    assert [p.name for p in cache_dir.iterdir()] == [name]
+    assert (cache_dir / name).read_text().strip() == "old"
+
+
+def test_cache_update_runs_again_if_requested_while_running(Session, tmp_path):
+    service = _get_file_service(Session, tmp_path)
+    marker = (
+        tmp_path / "t_data" / FileService.INDEX_CACHE_DEST / "aggregates.update_marker"
+    )
+    runs = []
+
+    def update_cache():
+        runs.append(1)
+        if len(runs) == 1:
+            # a request comes in while the update is running (cf. next test):
+            # it is coalesced, the running update will run once more
+            marker.touch()
+
+    service.run_index_update(IndexCacheType.AGGREGATES, update_cache)
+    assert len(runs) == 2
+    assert marker.exists() is False
+
+
+@pytest.mark.parametrize("code", [errno.EACCES, errno.EAGAIN])
+def test_cache_update_already_running(mocker, Session, tmp_path, code):
+    service = _get_file_service(Session, tmp_path)
+    marker = (
+        tmp_path / "t_data" / FileService.INDEX_CACHE_DEST / "aggregates.update_marker"
+    )
+    # another process holds the lock
+    mocker.patch("scimodom.services.file.lockf", side_effect=OSError(code, "locked"))
+    update_cache = mocker.Mock()
+    with pytest.raises(CacheUpdateAlreadyRunning):
+        service.run_index_update(IndexCacheType.AGGREGATES, update_cache)
+    update_cache.assert_not_called()
+    # the running update will see the request
+    assert marker.exists() is True
+
+
+def test_cache_update_other_lock_errors_are_not_already_running(
+    mocker, Session, tmp_path
+):
+    service = _get_file_service(Session, tmp_path)
+    mocker.patch(
+        "scimodom.services.file.lockf", side_effect=OSError(errno.ENOLCK, "no locks")
+    )
+    update_cache = mocker.Mock()
+    with pytest.raises(OSError) as exc_info:
+        service.run_index_update(IndexCacheType.AGGREGATES, update_cache)
+    assert not isinstance(exc_info.value, CacheUpdateAlreadyRunning)
+    update_cache.assert_not_called()
+
+
+def test_cache_update_failure_is_raised(Session, tmp_path):
+    service = _get_file_service(Session, tmp_path)
+
+    def update_cache():
+        raise ValueError("failed")
+
+    with pytest.raises(ValueError):
+        service.run_index_update(IndexCacheType.AGGREGATES, update_cache)
+    # not locked anymore
+    service.run_index_update(IndexCacheType.AGGREGATES, lambda: None)
+
+
+def test_index_updates_are_independent(Session, tmp_path):
+    service = _get_file_service(Session, tmp_path)
+
+    def update_sunburst():
+        # a different cache can be updated at the same time
+        service.run_index_update(IndexCacheType.AGGREGATES, lambda: None)
+
+    service.run_index_update(IndexCacheType.SUNBURST, update_sunburst)
 
 
 # Project
@@ -356,7 +517,7 @@ def test_upload(Session, tmp_path):
 
 def test_create_bam_file(Session, tmp_path, dataset):
     dataset2 = dataset[1]
-    stream = BytesIO(b"\x53\x6F\x6D\x65\x20\x62\x61\x6D\x20\x64\x61\x74\x61")
+    stream = BytesIO(b"\x53\x6f\x6d\x65\x20\x62\x61\x6d\x20\x64\x61\x74\x61")
 
     service = _get_file_service(Session, tmp_path)
     service.create_or_update_bam_file(dataset2, "test.bam", stream, 1024)
@@ -444,7 +605,7 @@ def test_remove_files(tmp_path, caplog):
 
 def test_update_bam_file(Session, tmp_path, dataset, bam_file):
     dataset2 = dataset[1]
-    stream = BytesIO(b"\x53\x6F\x6D\x65\x20\x62\x61\x6D\x20\x64\x61\x74\x61")
+    stream = BytesIO(b"\x53\x6f\x6d\x65\x20\x62\x61\x6d\x20\x64\x61\x74\x61")
     service = _get_file_service(Session, tmp_path)
     service.create_or_update_bam_file(dataset2, "dataset00002.bam", stream, 1024)
     bam = service.get_bam_file(dataset2, "dataset00002.bam")

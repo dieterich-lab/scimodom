@@ -1,6 +1,6 @@
 import { test, expect, vi, beforeEach } from 'vitest'
 import {
-  getSitesSummary,
+  getSitesCount,
   getModifications,
   getModificationExportLink,
   getTargetSites,
@@ -49,26 +49,26 @@ function makeSearchParameters(overrides: Partial<SearchParameters> = {}): Search
   }
 }
 
-test('getSitesSummary', async () => {
+test('getSitesCount', async () => {
   const expectedResponse = { count: 1 }
   mockedHandle.mockResolvedValueOnce(expectedResponse)
 
-  const response = await getSitesSummary(dialogState)
+  const response = await getSitesCount(dialogState)
 
   expect(mockedHandle).toHaveBeenCalledWith(
     expect.anything(),
-    'Failed to load modification sites summary',
+    'Failed to load modification sites count',
     dialogState
   )
-  expect(mockedGet).toHaveBeenCalledWith('/modifications/records/summary')
+  expect(mockedGet).toHaveBeenCalledWith('/modifications/sites/count')
   expect(response).toBe(expectedResponse)
 })
 
-test('getSitesSummary does not swallow failures', async () => {
+test('getSitesCount does not swallow failures', async () => {
   const error = new Error()
   mockedHandle.mockRejectedValueOnce(error)
 
-  await expect(getSitesSummary(dialogState)).rejects.toBe(error)
+  await expect(getSitesCount(dialogState)).rejects.toBe(error)
 })
 
 test.each<{ searchBy: SearchBy; expectedBy: string | undefined }>([

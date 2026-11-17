@@ -143,6 +143,6 @@ class SetupService:
 def get_setup_service() -> SetupService:
     """Instantiate a SetupService object by injecting its dependencies.
 
-    :returns: Setup service instance
+    :return: Setup service instance
     """
     return SetupService(session=get_session(), file_service=get_file_service())

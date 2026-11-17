@@ -1,3 +1,4 @@
+---
 info:
   title: modifications
   description: >-
@@ -53,11 +54,13 @@ paths:
           $ref: "#/components/responses/ClientResponseException404"
         "501":
           $ref: "#/components/responses/ClientResponseException501"
-  /modifications/records/summary:
+  /modifications/records/count:
     get:
       tags:
         - Record
       summary: Get count of modification records
+      parameters:
+        - $ref: "#/components/parameters/taxaIdOptionalQueryParam"
       responses:
         "200":
           description: OK
@@ -65,6 +68,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Count"
+        "400":
+          $ref: "#/components/responses/ClientResponseException400"
+        "404":
+          $ref: "#/components/responses/ClientResponseException404"
+        "503":
+          $ref: "#/components/responses/CacheUnavailableError"
   /modifications/sites:
     get:
       tags:
@@ -87,11 +96,13 @@ paths:
           $ref: "#/components/responses/ClientResponseException400"
         "404":
           $ref: "#/components/responses/ClientResponseException404"
-  /modifications/sites/summary:
+  /modifications/sites/count:
     get:
       tags:
         - Site
       summary: Get count of modification sites
+      parameters:
+        - $ref: "#/components/parameters/taxaIdOptionalQueryParam"
       responses:
         "200":
           description: OK
@@ -99,6 +110,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Count"
+        "400":
+          $ref: "#/components/responses/ClientResponseException400"
+        "404":
+          $ref: "#/components/responses/ClientResponseException404"
+        "503":
+          $ref: "#/components/responses/CacheUnavailableError"
   /modifications/sites/context:
     get:
       tags:
@@ -187,6 +204,13 @@ components:
       schema:
         type: integer
       description: NCBI taxon
+    taxaIdOptionalQueryParam:
+      in: query
+      name: taxaId
+      required: false
+      schema:
+        type: integer
+      description: NCBI taxon. Restricts the count to a taxon.
     modificationQueryParam:
       in: query
       name: modification
@@ -344,6 +368,8 @@ components:
       schema:
         type: integer
   responses:
+    CacheUnavailableError:
+      $ref: "_common.yaml#/components/responses/CacheUnavailableError"
     ClientResponseException400:
       description: Invalid request format or validation error
     ClientResponseException404:

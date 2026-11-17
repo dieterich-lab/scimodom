@@ -25,7 +25,11 @@ from scimodom.services.gene import GeneService
 from scimodom.services.sunburst import SunburstService
 from scimodom.services.web import WebService
 from scimodom.services.validator import ValidatorService
-from scimodom.utils.specs.enums import AnnotationSource, SunburstChartType
+from scimodom.utils.specs.enums import (
+    AnnotationSource,
+    IndexCacheType,
+    SunburstChartType,
+)
 from tests.mocks.enums import MockEnsembl
 
 EXON = """1\t65000\t65300\tGENE1\t.\t+\tENSG00000000001\tprotein_coding
@@ -326,6 +330,8 @@ def test_import_data(
         gene_set = set(service._file_service.get_gene_cache(1))
         assert gene_set == {"GENE1", "GENE2"}
         for chart_type in SunburstChartType:
-            # tmp_path / FileService.SUNBURST_CACHE_DEST / chart_type.value
-            with service._file_service.open_sunburst_cache(chart_type.value) as fh:
+            # tmp_path / FileService.INDEX_CACHE_DEST / chart_type.value
+            with service._file_service.open_index_cache(
+                IndexCacheType.SUNBURST, f"sunburst_{chart_type.value}.json"
+            ) as fh:
                 assert fh.read() == EXPECTED_CHARTS[chart_type.value]

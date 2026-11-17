@@ -1,4 +1,4 @@
-from typing import Generator
+from collections.abc import Generator
 
 import pytest
 from flask import Flask
@@ -77,22 +77,25 @@ def dataset_mocks(mocker):
         "scimodom.api.dataset.validate_project_write_permission",
         return_value=None,
     )
-    mock_sunburst_service = mocker.Mock()
-    mock_sunburst_service.trigger_background_update.return_value = None
+    mock_external_service = mocker.Mock()
+    mock_external_service.trigger_cache_update.return_value = None
     mocker.patch(
-        "scimodom.api.dataset.get_sunburst_service",
-        return_value=mock_sunburst_service,
+        "scimodom.api.dataset.get_external_service",
+        return_value=mock_external_service,
     )
     yield mock_file_service
 
 
 @pytest.fixture
 def exporter(mocker):
-    mocker.patch("scimodom.api.dataset.get_exporter", return_value=ExporterMock())
+    mocker.patch(
+        "scimodom.api.dataset.get_exporter",
+        return_value=ExporterMock(),
+    )
 
 
 class ExporterMock(Exporter):
-    def __init__(self):  # noqa
+    def __init__(self):
         pass
 
     def get_dataset_file_name(self, dataset_id: str) -> str:
@@ -112,14 +115,14 @@ class ExporterMock(Exporter):
 # tests
 
 
-def test_get_dataset_summary(unauthenticated_client, mocker):
+def test_get_dataset_count(unauthenticated_client, mocker):
     mock_dataset_service = mocker.Mock()
     mock_dataset_service.get_dataset_count.return_value = 1
     mocker.patch(
         "scimodom.api.dataset.get_dataset_service",
         return_value=mock_dataset_service,
     )
-    result = unauthenticated_client.get("/datasets/summary")
+    result = unauthenticated_client.get("/datasets/count")
     assert result.json["count"] == 1
 
 
@@ -204,14 +207,14 @@ def test_add_dataset(authenticated_client, dataset_mocks):
             DatasetHeaderError("Header error"),
             422,
             "Header error",
-            "The request form must agree with the file header:\nHeader error\n"
+            "The request form must agree with the file header: \nHeader error\n"
             "Modify the request form or select the correct dataset to upload.",
         ),
         (
             SpecsError("specs"),
             422,
             "specs",
-            "Invalid bedRMod format specifications:\nspecs\n"
+            "Invalid bedRMod format specifications: \nspecs\n"
             "Modify the file header to conform to the latest specifications.",
         ),
         (BedImportEmptyFile, 422, "", "File upload failed. The file is empty."),

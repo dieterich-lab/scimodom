@@ -1,16 +1,18 @@
-from functools import cache
+import json
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, ClassVar
+from functools import cache
+from typing import Any, ClassVar, Literal
 
-from sqlalchemy import select, func, and_
-from sqlalchemy.sql import Select
+from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import Select
 
 from scimodom.database.database import get_session
 from scimodom.database.models import (
-    Data,
     Annotation,
+    Data,
     DataAnnotation,
     Dataset,
     DetectionTechnology,
@@ -21,11 +23,12 @@ from scimodom.database.models import (
     Taxa,
 )
 from scimodom.services.annotation import (
-    get_annotation_service,
-    AnnotationService,
     BIOTYPES,
+    AnnotationService,
+    get_annotation_service,
 )
-from scimodom.utils.specs.enums import AnnotationSource
+from scimodom.services.file import FileService, get_file_service
+from scimodom.utils.specs.enums import AnnotationSource, IndexCacheType
 
 
 @dataclass(kw_only=True)
@@ -52,14 +55,13 @@ class SearchParams:
 class MultiSortError(Exception):
     """Exception handling for sort columns."""
 
-    pass
-
 
 class ModificationService:
     """Utility class to query modifications.
 
     :param session: SQLAlchemy ORM session
     :param annotation_service: Annotation service instance
+    :param file_service: File service instance
     """
 
     class SortOrder(Enum):
@@ -67,6 +69,11 @@ class ModificationService:
 
         ASC = "asc"
         DESC = "desc"
+
+    CACHE_PREFIX: ClassVar[str] = "modification"
+    AGGREGATES_CACHE_NAME: ClassVar[
+        str
+    ] = f"{CACHE_PREFIX}_{IndexCacheType.AGGREGATES.value}.json"
 
     SORT_COLUMNS: ClassVar[dict[str, Any]] = {
         "chrom": Data.chrom,
@@ -81,9 +88,15 @@ class ModificationService:
         "start+asc",
     )
 
-    def __init__(self, session: Session, annotation_service: AnnotationService):
+    def __init__(
+        self,
+        session: Session,
+        annotation_service: AnnotationService,
+        file_service: FileService,
+    ):
         self._session = session
         self._annotation_service = annotation_service
+        self._file_service = file_service
 
     # TODO MS14
     def get_modification_records_by_selection(
@@ -170,15 +183,19 @@ class ModificationService:
         )
         return self._execute_query(query, page_params.offset)
 
-    def get_modification_records_count(self) -> int:
+    def get_modification_records_count(
+        self,
+        taxa_id: int | None = None,
+    ) -> int:
         """Get total count of data records.
 
-        Within a dataset, #records = #sites,
-        but not across datasets.
+        The count is read from the aggregates cache. See
+        :meth:`do_aggregates_update`.
 
+        :param taxa_id: Restricts the count to a taxon
         :return: The number of data records
         """
-        return self._session.scalar(select(func.count()).select_from(Data))
+        return self._get_aggregates_count("records", taxa_id)
 
     def get_modification_site(
         self,
@@ -221,23 +238,27 @@ class ModificationService:
 
         return {"records": [row._asdict() for row in self._session.execute(query)]}
 
-    def get_modification_sites_count(self) -> int:
+    def get_modification_sites_count(self, taxa_id: int | None = None) -> int:
         """Get total count of modification sites.
 
-        TODO: site table
+        The count is read from the aggregates cache. See
+        :meth:`do_aggregates_update`.
 
+        :param taxa_id: Restricts the count to a taxon
         :return: The number of sites
         """
-        site_query = select(
-            Data.modification_id,
-            Data.chrom,
-            Data.start,
-            Data.end,
-            Data.strand,
-        ).distinct()
+        return self._get_aggregates_count("sites", taxa_id)
 
-        return self._session.scalar(
-            select(func.count()).select_from(site_query.subquery())
+    def do_aggregates_update(self) -> None:
+        """Update the aggregates.
+
+        A request while an update is running is not lost, the running
+        update will run again once it has finished.
+
+        :raises CacheUpdateAlreadyRunning: If an update is running
+        """
+        self._file_service.run_index_update(
+            IndexCacheType.AGGREGATES, self._update_aggregates_cache
         )
 
     @staticmethod
@@ -488,7 +509,11 @@ class ModificationService:
             select(func.count()).select_from(count_query.subquery())
         )
 
-    def _execute_query(self, query: Select[Any], offset: int | None) -> dict[str, Any]:
+    def _execute_query(
+        self,
+        query: Select[Any],
+        offset: int | None,
+    ) -> dict[str, Any]:
         rows = self._session.execute(query).all()
         if rows:
             total = rows[0].total_count
@@ -505,6 +530,85 @@ class ModificationService:
         total = self._get_fallback_count(query)
         return {"total": total, "records": []}
 
+    def _update_aggregates_cache(self) -> None:
+        content = json.dumps(
+            {
+                "generated_at": datetime.now(timezone.utc).isoformat(
+                    timespec="seconds"
+                ),
+                "strata": self._get_aggregates_strata(),
+            }
+        )
+        self._file_service.update_index_cache(
+            self.AGGREGATES_CACHE_NAME,
+            [content],
+        )
+
+    def _get_aggregates_strata(self) -> list[dict[str, int]]:
+        taxa_id = Organism.taxa_id.label("taxa_id")
+        modification_id = Data.modification_id.label("modification_id")
+
+        def select_from_data(*columns):
+            return (
+                select(*columns)
+                .select_from(Data)
+                .join(Dataset, Data.dataset_id == Dataset.id)
+                .join(Organism, Dataset.organism_id == Organism.id)
+            )
+
+        records = self._session.execute(
+            select_from_data(
+                taxa_id, modification_id, func.count().label("n")
+            ).group_by(taxa_id, modification_id)
+        ).all()
+        distinct_sites = (
+            select_from_data(
+                taxa_id,
+                modification_id,
+                Data.chrom,
+                Data.start,
+                Data.end,
+                Data.strand,
+            )
+            .distinct()
+            .subquery()
+        )
+        sites = self._session.execute(
+            select(
+                distinct_sites.c.taxa_id,
+                distinct_sites.c.modification_id,
+                func.count().label("n"),
+            ).group_by(distinct_sites.c.taxa_id, distinct_sites.c.modification_id)
+        ).all()
+
+        strata: dict[tuple[int, int], dict[str, int]] = {}
+        for kind, rows in (("records", records), ("sites", sites)):
+            for row in rows:
+                stratum = strata.setdefault(
+                    (row.taxa_id, row.modification_id),
+                    {
+                        "taxa_id": row.taxa_id,
+                        "modification_id": row.modification_id,
+                        "records": 0,
+                        "sites": 0,
+                    },
+                )
+                stratum[kind] = row.n
+        return [strata[key] for key in sorted(strata)]
+
+    def _get_aggregates_count(
+        self, kind: Literal["records", "sites"], taxa_id: int | None
+    ) -> int:
+        with self._file_service.open_index_cache(
+            IndexCacheType.AGGREGATES, self.AGGREGATES_CACHE_NAME
+        ) as fh:
+            strata = json.load(fh)["strata"]
+        return sum(
+            stratum[kind]
+            for stratum in strata
+            if taxa_id is None or stratum["taxa_id"] == taxa_id
+        )
+
 
 @cache
 def get_modification_service() -> ModificationService:
@@ -513,5 +617,7 @@ def get_modification_service() -> ModificationService:
     :return: ModificationService instance
     """
     return ModificationService(
-        session=get_session(), annotation_service=get_annotation_service()
+        session=get_session(),
+        annotation_service=get_annotation_service(),
+        file_service=get_file_service(),
     )

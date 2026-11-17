@@ -2,7 +2,7 @@
 # from fragments. The info.version below is a FALLBACK only.
 # Keep it in sync by hand only as a last resort for a standalone lint
 # run without the package installed.
-
+---
 openapi: 3.0.4
 
 info:
@@ -12,8 +12,9 @@ info:
     url: https://github.com/dieterich-lab/scimodom/blob/master/LICENSE
 
 servers:
-  - url: "http://127.0.0.1:5000/api/{version}" #"https://scimodom.dieterichlab.org/api/{version}"
+  - url: "http://127.0.0.1:5000/api/{version}"
   - url: "https://scimodom-beta.dieterichlab.org/api/{version}"
+  # - url: "https://scimodom.dieterichlab.org/api/{version}"
 
 components:
   securitySchemes:
@@ -46,3 +47,16 @@ components:
         JWT signature verification failed, invalid or expired token
     InternalServerError:
       description: Internal Server Error
+    CacheUnavailableError:
+      description: >-
+        The cached data was never generated. This is done in the background.
+        Retry after `Retry-After` seconds
+      headers:
+        Retry-After:
+          description: Seconds to wait before the request is repeated
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"

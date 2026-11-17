@@ -1,7 +1,9 @@
+---
 info:
   title: analytics
   description: >-
-    Primarily intended for use by the frontend rather than for general API consumption
+    Primarily intended for use by the frontend rather than
+    for general API consumption
 
 tags:
   - name: charts
@@ -36,13 +38,19 @@ paths:
                   $ref: "#/components/schemas/SunburstNode"
         "400":
           description: Invalid chart type
+        "503":
+          $ref: "#/components/responses/CacheUnavailableError"
 
 components:
+  responses:
+    CacheUnavailableError:
+      $ref: "_common.yaml#/components/responses/CacheUnavailableError"
   schemas:
     SunburstNode:
       type: object
       description: >-
-        One node of a sunburst chart; internal nodes have `children`, leaves have `size`
+        One node of a sunburst chart;
+        internal nodes have `children`, leaves have `size`
       required: [name]
       properties:
         name:

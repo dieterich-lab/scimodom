@@ -16,7 +16,7 @@ from scimodom.database.models import (
     Selection,
 )
 from scimodom.cli.dataset import dataset_cli
-from scimodom.cli.chart import chart_cli
+from scimodom.cli.cache import cache_cli
 from scimodom.services.administration.ingestion import ProjectIngestionService
 from scimodom.services.annotation import AnnotationService
 from scimodom.services.annotation.ensembl import EnsemblAnnotationService
@@ -27,6 +27,7 @@ from scimodom.services.dataset import DatasetService
 from scimodom.services.ensembl import EnsemblAssemblyClient
 from scimodom.services.external import ExternalService
 from scimodom.services.gene import GeneService
+from scimodom.services.modification import ModificationService
 from scimodom.services.file import FileService
 from scimodom.services.project import ProjectService
 from scimodom.services.selection import SelectionService
@@ -166,13 +167,13 @@ EXPECTED_CHARTS_IN_BATCH = {
 }
 
 
-class MockSunburstService(SunburstService):
-    def __init__(self, session, file_service, cli_runner) -> None:
+class MockExternalService(ExternalService):
+    def __init__(self, file_service, cli_runner) -> None:
         self._cli_runner = cli_runner
-        super().__init__(session, file_service)
+        super().__init__(file_service)
 
-    def trigger_background_update(self):
-        self._cli_runner.invoke(args=["charts", "sunburst-update"])
+    def trigger_cache_update(self):
+        self._cli_runner.invoke(args=["cache", "update"])
 
 
 def _get_file_service(Session, tmp_path):
@@ -235,11 +236,25 @@ def _get_validator_service(Session, tmp_path):
     )
 
 
-def _get_sunburst_service(Session, tmp_path, cli_runner):
-    return MockSunburstService(
-        session=Session(),
+def _get_external_service(Session, tmp_path, cli_runner):
+    return MockExternalService(
         file_service=_get_file_service(Session, tmp_path),
         cli_runner=cli_runner,
+    )
+
+
+def _get_sunburst_service(Session, tmp_path):
+    return SunburstService(
+        session=Session(),
+        file_service=_get_file_service(Session, tmp_path),
+    )
+
+
+def _get_modification_service(Session, tmp_path):
+    return ModificationService(
+        session=Session(),
+        annotation_service=None,
+        file_service=_get_file_service(Session, tmp_path),
     )
 
 
@@ -321,7 +336,7 @@ def test_request(tmp_path):
 def test_runner():
     app = Flask(__name__)
     app.register_blueprint(dataset_cli)
-    app.register_blueprint(chart_cli)
+    app.register_blueprint(cache_cli)
     yield app.test_cli_runner()
 
 
@@ -333,12 +348,16 @@ def mock_services(mocker, Session, tmp_path, test_runner):
         return_value=_get_file_service(Session, tmp_path),
     )
     mocker.patch(
-        "scimodom.cli.chart.get_sunburst_service",
-        return_value=_get_sunburst_service(Session, tmp_path, test_runner),
+        "scimodom.cli.cache.get_sunburst_service",
+        return_value=_get_sunburst_service(Session, tmp_path),
     )
     mocker.patch(
-        "scimodom.cli.dataset.get_sunburst_service",
-        return_value=_get_sunburst_service(Session, tmp_path, test_runner),
+        "scimodom.cli.cache.get_modification_service",
+        return_value=_get_modification_service(Session, tmp_path),
+    )
+    mocker.patch(
+        "scimodom.cli.dataset.get_external_service",
+        return_value=_get_external_service(Session, tmp_path, test_runner),
     )
     mocker.patch(
         "scimodom.cli.dataset.get_dataset_service",
@@ -511,9 +530,9 @@ def test_add_dataset(
         with open(Path(d, selection)) as fh:
             gene_set = set(fh.read().strip().split())
         assert gene_set == expected_set
-    d = tmp_path / "t_data" / FileService.SUNBURST_CACHE_DEST
+    d = tmp_path / "t_data" / FileService.INDEX_CACHE_DEST
     for chart_type in SunburstChartType:
-        with open(Path(d, f"{chart_type.value}.json")) as fh:
+        with open(Path(d, f"sunburst_{chart_type.value}.json")) as fh:
             assert fh.read() == EXPECTED_CHARTS[chart_type.value]
 
 
@@ -569,7 +588,7 @@ def test_add_dataset_dry_run(
 
     d = tmp_path / "t_data" / FileService.GENE_CACHE_DEST
     assert any(Path(d).iterdir()) is False
-    d = tmp_path / "t_data" / FileService.SUNBURST_CACHE_DEST
+    d = tmp_path / "t_data" / FileService.INDEX_CACHE_DEST
     assert any(Path(d).iterdir()) is False
 
 
@@ -693,7 +712,7 @@ def test_add_dataset_in_batch(
         with open(Path(d, selection)) as fh:
             gene_set = set(fh.read().strip().split())
         assert gene_set == expected_set
-    d = tmp_path / "t_data" / FileService.SUNBURST_CACHE_DEST
+    d = tmp_path / "t_data" / FileService.INDEX_CACHE_DEST
     for chart_type in SunburstChartType:
-        with open(Path(d, f"{chart_type.value}.json")) as fh:
+        with open(Path(d, f"sunburst_{chart_type.value}.json")) as fh:
             assert fh.read() == EXPECTED_CHARTS_IN_BATCH[chart_type.value]

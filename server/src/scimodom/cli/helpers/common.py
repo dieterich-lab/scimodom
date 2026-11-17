@@ -21,18 +21,18 @@ def confirm(message: str, *, skip: bool = False) -> None:
     click.confirm(prompt, default=False, show_default=False, abort=True)
 
 
-def trigger_charts_update(sunburst_service) -> None:
-    """Trigger the charts update in the background.
+def trigger_cache_update(external_service) -> None:
+    """Trigger the update of all caches in the background.
 
-    :param sunburst_service: A Sunburst service instance
+    :param external_service: An External service instance
     """
-    click.secho("Triggering charts update in the background ...", fg="yellow")
+    click.secho("Triggering cache update in the background ...", fg="yellow")
     try:
-        sunburst_service.trigger_background_update()
+        external_service.trigger_cache_update()
     except Exception as exc:
         click.secho(
-            f"Warning: failed to trigger charts update. {exc}. "
-            "Run 'flask charts sunburst-update'.",
+            f"Warning: failed to trigger cache update. {exc}. "
+            "Run 'flask cache update'.",
             fg="yellow",
         )
     else:

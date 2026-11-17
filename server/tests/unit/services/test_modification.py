@@ -1,4 +1,6 @@
+import json
 from collections import namedtuple
+from pathlib import Path
 
 import pytest
 from sqlalchemy import select, func, and_
@@ -19,7 +21,8 @@ from scimodom.services.modification import (
     ModificationService,
     MultiSortError,
 )
-from scimodom.utils.specs.enums import Strand, AnnotationSource
+from scimodom.services.file import CacheNotAvailableException, FileService
+from scimodom.utils.specs.enums import Strand, AnnotationSource, IndexCacheType
 
 Coord = namedtuple("Coord", "chrom start end")
 
@@ -261,23 +264,127 @@ def _mock_build_query(
     return query
 
 
-def _get_modification_service(session):
+def _get_modification_service(session, file_service=None):
     return ModificationService(
-        session=session, annotation_service=MockAnnotationService(session)
+        session=session,
+        annotation_service=MockAnnotationService(session),
+        file_service=file_service,
     )
+
+
+def _get_file_service(Session, tmp_path):
+    return FileService(
+        session=Session(),
+        data_path=Path(tmp_path, "t_data"),
+        temp_path=Path(tmp_path, "t_temp"),
+        upload_path=Path(tmp_path, "t_upload"),
+        import_path=Path(tmp_path, "t_import"),
+    )
+
+
+def _get_aggregates_service(Session, tmp_path, update=True):
+    service = _get_modification_service(
+        Session(), file_service=_get_file_service(Session, tmp_path)
+    )
+    if update:
+        service.do_aggregates_update()
+    return service
+
+
+def _add_mouse_dataset(session, n_sites):
+    # copy records from human to mouse
+    organism = Organism(cto="Mouse cell type", taxa_id=10090)
+    session.add(organism)
+    session.flush()
+    template = session.get(Dataset, "dataset00001")
+    session.add(
+        Dataset(
+            id="dataset00099",
+            title="mouse",
+            organism_id=organism.id,
+            technology_id=template.technology_id,
+            modification_type=template.modification_type,
+            basecalling=template.basecalling,
+            bioinformatics_workflow=template.bioinformatics_workflow,
+            project_id=template.project_id,
+            sequencing_platform=template.sequencing_platform,
+            experiment=template.experiment,
+            external_source=template.external_source,
+            date_added=template.date_added,
+        )
+    )
+    session.flush()
+    records = session.scalars(
+        select(Data).where(Data.dataset_id == "dataset00001").order_by(Data.id)
+    ).all()[:n_sites]
+    for record in records:
+        session.add(
+            Data(
+                dataset_id="dataset00099",
+                modification_id=record.modification_id,
+                chrom=record.chrom,
+                start=record.start,
+                end=record.end,
+                name=record.name,
+                score=record.score,
+                strand=record.strand,
+                thick_start=record.thick_start,
+                thick_end=record.thick_end,
+                item_rgb=record.item_rgb,
+                coverage=record.coverage,
+                frequency=record.frequency,
+            )
+        )
+    session.commit()
 
 
 # tests
 
 
-def test_get_modification_records_count(Session, dataset):
-    modification_service = _get_modification_service(Session())
-    assert modification_service.get_modification_records_count() == 7
+def test_aggregates_counts(Session, dataset, tmp_path):
+    service = _get_aggregates_service(Session, tmp_path)
+    assert service.get_modification_records_count() == 7
+    assert service.get_modification_sites_count() == 6
+    assert service.get_modification_records_count(9606) == 7
+    assert service.get_modification_sites_count(9606) == 6
+    assert service.get_modification_records_count(10090) == 0
+    assert service.get_modification_sites_count(10090) == 0
 
 
-def test_get_modification_sites_count(Session, dataset):
-    modification_service = _get_modification_service(Session())
-    assert modification_service.get_modification_sites_count() == 6
+def test_aggregates_sites_by_taxa(Session, dataset, tmp_path):
+    _add_mouse_dataset(Session(), n_sites=2)
+    service = _get_aggregates_service(Session, tmp_path)
+    assert service.get_modification_records_count() == 9
+    assert service.get_modification_sites_count() == 8
+    assert service.get_modification_records_count(9606) == 7
+    assert service.get_modification_sites_count(9606) == 6
+    assert service.get_modification_records_count(10090) == 2
+    assert service.get_modification_sites_count(10090) == 2
+
+
+def test_aggregates_is_read_from_cache(Session, dataset, tmp_path):
+    service = _get_aggregates_service(Session, tmp_path)
+    assert service.get_modification_records_count() == 7
+    # the data changes, but the cache is not updated yet
+    _add_mouse_dataset(Session(), n_sites=2)
+    assert service.get_modification_records_count() == 7
+    service.do_aggregates_update()
+    assert service.get_modification_records_count() == 9
+
+
+def test_aggregates_empty_database(Session, setup, tmp_path):
+    service = _get_aggregates_service(Session, tmp_path)
+    assert service.get_modification_records_count() == 0
+    assert service.get_modification_sites_count() == 0
+
+
+@pytest.mark.parametrize("kind", ["records", "sites"])
+def test_aggregates_not_available(Session, dataset, tmp_path, kind):
+    # never generated: no aggregates are generated in a request
+    service = _get_aggregates_service(Session, tmp_path, update=False)
+    with pytest.raises(CacheNotAvailableException) as exc_info:
+        getattr(service, f"get_modification_{kind}_count")()
+    assert exc_info.value.cache == IndexCacheType.AGGREGATES
 
 
 @pytest.mark.parametrize(

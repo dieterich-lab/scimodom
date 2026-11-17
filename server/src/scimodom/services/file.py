@@ -1,28 +1,25 @@
-import logging
 import gzip
+import logging
 import os
 import re
-from enum import Enum
+from collections.abc import Callable, Iterable
 from contextlib import contextmanager
-from fcntl import flock, LOCK_SH, LOCK_EX, LOCK_UN, LOCK_NB, lockf
-from functools import cache
-from os import unlink, rename, makedirs, stat, close, umask, replace
-from os.path import join, exists, dirname, basename, isfile
+from enum import Enum
+from errno import EACCES, EAGAIN
+from fcntl import LOCK_EX, LOCK_NB, LOCK_UN, lockf
+from functools import cache, partial
+from os import close, makedirs, rename, replace, stat, umask, unlink
+from os.path import basename, dirname, exists, isfile, join
 from pathlib import Path
 from shutil import copyfileobj, rmtree
-from tempfile import mkstemp, NamedTemporaryFile
+from tempfile import mkstemp
 from typing import (
-    Optional,
     IO,
-    List,
-    Dict,
-    TextIO,
-    BinaryIO,
-    Iterable,
     Any,
+    BinaryIO,
     ClassVar,
-    Generator,
-    Callable,
+    Optional,
+    TextIO,
 )
 from uuid import uuid4
 
@@ -35,34 +32,44 @@ from sqlalchemy.sql.operators import and_
 
 from scimodom.config import get_config
 from scimodom.database.database import get_session
-from scimodom.database.models import Dataset, BamFile, Taxa, Assembly, AssemblyVersion
-from scimodom.utils.specs.enums import AssemblyFileType, TargetsFileType
+from scimodom.database.models import (
+    Assembly,
+    AssemblyVersion,
+    BamFile,
+    Dataset,
+    Taxa,
+)
+from scimodom.utils.specs.enums import (
+    AssemblyFileType,
+    IndexCacheType,
+    TargetsFileType,
+)
 
 logger = logging.getLogger(__name__)
 
 
 DEFAULT_MODE = 0o660
+PRIVATE_MODE = 0o600  # owner only
 COPY_BUFSIZE = 128 * 1024
 
 
-def write_opener(path, flags):
-    old_umask = umask(0o07)
-    try:
-        return os.open(path, flags, DEFAULT_MODE)
-    finally:
-        umask(old_umask)
+class CacheUpdateAlreadyRunning(Exception):
+    """Exception for handling running cache updates."""
 
 
-class SunburstUpdateAlreadyRunning(Exception):
-    """Exception for handling running chart updates."""
+class CacheNotAvailableException(Exception):
+    """Exception for a cache that was never generated.
 
-    pass
+    :param cache: The cache that must be updated
+    """
+
+    def __init__(self, cache: IndexCacheType):
+        super().__init__(f"Cache '{cache.value}' is not available")
+        self.cache = cache
 
 
 class FileTooLarge(Exception):
     """Exception for handling large files."""
-
-    pass
 
 
 class _Status(str, Enum):
@@ -90,7 +97,7 @@ class FileService:
 
     ANNOTATION_DEST: ClassVar[str] = "annotation"
     GENE_CACHE_DEST: ClassVar[Path] = Path("cache", "gene", "selection")
-    SUNBURST_CACHE_DEST: ClassVar[Path] = Path("cache", "sunburst")
+    INDEX_CACHE_DEST: ClassVar[Path] = Path("cache", "index")
     ASSEMBLY_DEST: ClassVar[str] = "assembly"
     METADATA_DEST: ClassVar[str] = "metadata"
     REQUEST_DEST: ClassVar[str] = "project_requests"
@@ -120,7 +127,7 @@ class FileService:
             self._get_annotation_parent_dir(),
             self._get_assembly_parent_dir(),
             self._get_gene_cache_dir(),
-            self._get_sunburst_cache_dir(),
+            self._get_index_cache_dir(),
             self._get_bam_files_parent_dir(),
         ]:
             self._create_folder(path)
@@ -202,7 +209,7 @@ class FileService:
         """
         return open(Path(self._import_path, name))
 
-    # Annotation incl. extended annotations (miRNA targets, RBP binding sites, etc.)
+    # Annotation incl. extended annotations
 
     def get_annotation_dir(self, taxa_id: int) -> Path:
         """Construct path to annotation files.
@@ -234,7 +241,10 @@ class FileService:
         :returns: File handle
         :rtype: TextIO
         """
-        path = Path(self.get_annotation_dir(taxa_id), target_type.value(chrom=chrom))
+        path = Path(
+            self.get_annotation_dir(taxa_id),
+            target_type.value(chrom=chrom),
+        )
         return open(path, "r")
 
     def _get_annotation_parent_dir(self) -> Path:
@@ -245,107 +255,139 @@ class FileService:
     def get_gene_cache(self, selection_id: int) -> Iterable[str]:
         """Retrieve gene list for a given selection.
 
-        In the case that a project was created but no data was uploaded so far
-        the gene cache may not be initialized and a FileNotFoundError may be
-        generated.
-
         :param selection_id: Selection ID
-        :type selection_id: int
         :returns: The genes of the selection
-        :rtype: list[str]
         """
-        path = Path(self._get_gene_cache_dir(), str(selection_id))
-        with open(path) as fh:
-            flock(fh.fileno(), LOCK_SH)
-            genes = fh.read().strip().split()
-            flock(fh.fileno(), LOCK_UN)
-            return genes
+        with self.open_file_for_reading(
+            Path(self._get_gene_cache_dir(), str(selection_id))
+        ) as fh:
+            return fh.read().strip().split()
 
-    def update_gene_cache(self, selection_id: int, genes: Iterable[str]) -> None:
+    def update_gene_cache(
+        self,
+        selection_id: int,
+        genes: Iterable[str],
+    ) -> None:
         """Update gene cache for a selection ID.
 
         :param selection_id: The selection_id in question.
-        :type selection_id: int
         :param genes: The gene names
-        :type genes: Iterable[str]
         """
-        path = Path(self._get_gene_cache_dir(), str(selection_id))
-        with open(path, "w", opener=write_opener) as fh:
-            flock(fh.fileno(), LOCK_EX)
-            for g in genes:
-                print(g, file=fh)
-            flock(fh.fileno(), LOCK_UN)
+        self._update_cache_file(
+            self._get_gene_cache_dir(),
+            str(selection_id),
+            (f"{gene}\n" for gene in genes),
+        )
 
     def delete_gene_cache(self, selection_id: int) -> None:
         """Remove a gene cache file for a given selection.
 
         :param selection_id: Selection ID
-        :type selection_id: int
         """
         path = Path(self._get_gene_cache_dir(), str(selection_id))
         path.unlink()
 
-    def open_sunburst_cache(self, name: str) -> TextIO:
-        """Open a sunburst file for reading.
+    def open_index_cache(self, cache: IndexCacheType, name: str) -> TextIO:
+        """Open a file of the index cache for reading.
 
+        The file name is chosen by the caller (the service that owns the
+        content), this service only knows the cache directory.
+
+        :param cache: The cache the file belongs to
         :param name: File name
-        :type name: str
-        :returns: Opened file handle for reading
-        :rtype: TextIO
+        :raises CacheNotAvailableException: If the file was never generated
+        :return: Opened file handle for reading
         """
-        file_path = Path(self._get_sunburst_cache_dir(), f"{name}.json")
-        return open(file_path)
-
-    def update_sunburst_cache(
-        self, name: str, generator: Generator[str, None, None]
-    ) -> None:
-        """Update a sunburst file content.
-
-        :param name: File name
-        :type name: str
-        :param generator: Content to be written to file.
-        :type generator: Generator
-        """
-        final_file_path = Path(self._get_sunburst_cache_dir(), f"{name}.json")
         try:
-            temporary_file_path = None
-            with NamedTemporaryFile(
-                mode="w", dir=self._get_sunburst_cache_dir(), delete=False
-            ) as fp:
-                for data in generator:
-                    fp.write(data)
-                temporary_file_path = fp.name
-            replace(temporary_file_path, final_file_path)
-        except IOError:
-            if temporary_file_path is not None and isfile(temporary_file_path):
-                unlink(temporary_file_path)
+            return self.open_file_for_reading(
+                Path(self._get_index_cache_dir(), name),
+            )
+        except FileNotFoundError as exc:
+            raise CacheNotAvailableException(cache) from exc
 
-    def run_sunburst_update(self, do_it: Callable[[], None]) -> None:
-        """Perform a sunburst update.
+    def update_index_cache(self, name: str, generator: Iterable[str]) -> None:
+        """Update a file of the index cache.
+
+        :param name: File name
+        :param generator: Content to be written to file.
+        """
+        self._update_cache_file(
+            self._get_index_cache_dir(), name, generator, PRIVATE_MODE
+        )
+
+    def run_index_update(
+        self, cache: IndexCacheType, do_it: Callable[[], None]
+    ) -> None:
+        """Perform an update of a cache of the index.
+
+        See :meth:`_run_cache_update`. Each cache has its own lock,
+        so that different caches may be updated at the same time.
+
+        :param cache: The cache to update
+        :param do_it: Callable to perform the update
+        :raises CacheUpdateAlreadyRunning: If another process is already
+        running the update, which will also take care of this request
+        """
+        self._run_cache_update(self._get_index_cache_dir(), cache.value, do_it)
+
+    @staticmethod
+    def _update_cache_file(
+        cache_dir: Path,
+        name: str,
+        chunks: Iterable[str],
+        mode: int = DEFAULT_MODE,
+    ) -> None:
+        """Atomically replace the content of a cache file.
+
+        The content is written to a temporary file in the same directory, and
+        then moved into place with os.replace (atomic on POSIX when
+        source and destination are on the same file system). Readers that
+        open the previous file keep reading it, and subsequent readers get
+        the new one. On failure, the temporary file is removed, the cache file
+        is not modified, and the error is raised.
+
+        The permissions of the new file are set when it is created (see
+        _write_opener), and are not changed afterwards.
+        """
+        final_path = Path(cache_dir, name)
+        temporary_path = Path(cache_dir, f".{name}.{uuid4().hex}.tmp")
+        try:
+            with open(
+                temporary_path, "x", opener=partial(_write_opener, mode=mode)
+            ) as fh:
+                for chunk in chunks:
+                    fh.write(chunk)
+            replace(temporary_path, final_path)
+        except BaseException:
+            temporary_path.unlink(missing_ok=True)
+            raise
+
+    @staticmethod
+    def _run_cache_update(
+        cache_dir: Path, name: str, do_it: Callable[[], None]
+    ) -> None:
+        """Perform a cache update.
 
         This function will run the routine passed as long as someone
         requests it. If another processes is already executing this routine,
-        the duty is passed to that processes. This case is signalled
-        by raising a SunburstUpdateAlreadyRunning exception.
+        the duty is passed to that processes, and a CacheUpdateAlreadyRunning
+        exception is raised.
 
-        To communicate with other instances of itself this function uses
-        a lock file 'lock' in the cache/sunburst to ensure that only one
-        instance is active at any time. Another file 'update_marker' in the same
-        place is used to signal that another run is required. Everyone may
-        touch the marker. Only the instance holding the lock may remove it.
-        By removing it, the active instance promises to do another run.
-
-        :param do_it: Callable to perform the update
-        :type do_it: Callable
+        A lock file '<name>.lock' ensures that only one instance is active
+        at any time. The '<name>.update_marker' file is used to signal
+        that another run is required. Everyone may touch the marker. Only
+        the instance holding the lock may remove it, promising another run.
         """
-        lock_file = Path(self._get_sunburst_cache_dir(), "lock")
-        update_marker = Path(self._get_sunburst_cache_dir(), "update_marker")
+        lock_file = Path(cache_dir, f"{name}.lock")
+        update_marker = Path(cache_dir, f"{name}.update_marker")
         update_marker.touch(exist_ok=True)
         with open(lock_file, "w") as fh:
             try:
                 lockf(fh, LOCK_EX | LOCK_NB)
-            except OSError:
-                raise SunburstUpdateAlreadyRunning()
+            except OSError as exc:
+                if exc.errno in (EACCES, EAGAIN):
+                    raise CacheUpdateAlreadyRunning() from exc
+                raise
             while isfile(update_marker):
                 update_marker.unlink()
                 do_it()
@@ -354,8 +396,8 @@ class FileService:
     def _get_gene_cache_dir(self) -> Path:
         return Path(self._data_path, self.GENE_CACHE_DEST)
 
-    def _get_sunburst_cache_dir(self) -> Path:
-        return Path(self._data_path, self.SUNBURST_CACHE_DEST)
+    def _get_index_cache_dir(self) -> Path:
+        return Path(self._data_path, self.INDEX_CACHE_DEST)
 
     # Project related
 
@@ -366,7 +408,7 @@ class FileService:
         :return: File handle
         """
         metadata_file = Path(self._get_project_metadata_dir(), f"{project_id}.json")
-        return open(metadata_file, "w", opener=write_opener)
+        return open(metadata_file, "w", opener=_write_opener)
 
     def delete_project_metadata_file(self, project_id: str) -> None:
         """Remove a metadata file.
@@ -386,7 +428,7 @@ class FileService:
         """
         path = Path(self._get_project_request_file_path(request_uuid))
         logger.info(f"Writing project request to {path}...")
-        return open(path, "w", opener=write_opener)
+        return open(path, "w", opener=_write_opener)
 
     def open_project_request_file(self, request_uuid) -> TextIO:
         """Open a metadata (request) file for reading.
@@ -504,7 +546,7 @@ class FileService:
             raise NotImplementedError()
         path = self.get_assembly_file_path(taxa_id, file_type)
         self._create_folder(path.parent)
-        return open(path, "x", opener=write_opener)
+        return open(path, "x", opener=_write_opener)
 
     def create_chain_file(self, taxa_id: int, assembly_name: str) -> BinaryIO:
         """Create chain file for writing (binary mode).
@@ -524,7 +566,7 @@ class FileService:
             assembly_name=assembly_name,
         )
         self._create_folder(path.parent)
-        return open(path, "xb", opener=write_opener)
+        return open(path, "xb", opener=_write_opener)
 
     def create_dna_sequence_file(self, taxa_id: int, chrom: str) -> BinaryIO:
         """Create DNA sequence file for writing (binary mode).
@@ -545,7 +587,7 @@ class FileService:
             chrom=chrom,
         )
         self._create_folder(path.parent)
-        return self._safe_create_file(path, "xb", opener=write_opener)
+        return self._safe_create_file(path, "xb", opener=_write_opener)
 
     def index_dna_sequence_file(self, taxa_id: int, chrom: str) -> None:
         """Index a DNA sequence file.
@@ -710,7 +752,7 @@ class FileService:
         self._create_folder(dirname(path))
         try:
             bytes_written = 0
-            with open(path, "wb", opener=write_opener) as fp:
+            with open(path, "wb", opener=_write_opener) as fp:
                 while True:
                     buffer = data_stream.read(self.BUFFER_SIZE)
                     if len(buffer) == 0:
@@ -805,7 +847,7 @@ class FileService:
         path = self._get_bam_file_path(bam_file)
         return open(path, "rb")
 
-    def get_bam_info_list(self, dataset: Dataset) -> List[Dict[str, Any]]:
+    def get_bam_info_list(self, dataset: Dataset) -> list[dict[str, Any]]:
         """Get all BAM files attachment info for the given dataset.
 
         :param dataset: Dataset instance
@@ -914,6 +956,19 @@ class FileService:
             "size_in_bytes": stat_info.st_size,
             "mtime_epoch": stat_info.st_mtime,
         }
+
+
+def _write_opener(path, flags, mode=DEFAULT_MODE):
+    """Open new files, with permissions independent of the process umask.
+
+    To be used as `open(path, "w", opener=_write_opener)`, or with
+    another mode: `opener=partial(_write_opener, mode=PRIVATE_MODE)`.
+    """
+    old_umask = umask(0o07)
+    try:
+        return os.open(path, flags, mode)
+    finally:
+        umask(old_umask)
 
 
 @cache

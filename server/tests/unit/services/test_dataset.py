@@ -171,6 +171,12 @@ def test_get_dataset_count(Session, dataset):
     assert service.get_dataset_count() == 4
 
 
+def test_get_dataset_count_for_taxa(Session, dataset):
+    service = _get_dataset_service(Session())
+    assert service.get_dataset_count(taxa_id=9606) == 4
+    assert service.get_dataset_count(taxa_id=10090) == 0
+
+
 def test_get_dataset_count_for_user(Session, project, dataset):
     with Session() as session:
         user = session.get_one(User, 1)

@@ -161,11 +161,13 @@ If required, a project and all associated data can be removed with
 
 Datasets are deleted one by one, and the project last. If the command fails part way, what was deleted stays deleted, and it can be run again to resume with the remaining datasets.
 
-To force update the charts, run
+Cached data for the main page (the *index*: the data for the sunburst charts, and the aggregates, *i.e.* the number of records and sites per taxon and modification) is updated in the background after datasets or projects have been added or removed. To force an update, run
 
 .. code-block:: bash
 
-    flask charts sunburst-update [OPTIONS]
+    flask cache update [OPTIONS]
+
+or only ``flask cache update-sunburst`` or ``flask cache update-aggregates``. The cached files are stored in ``cache/index`` (``sunburst_search.json``, ``sunburst_browse.json``, ``modification_aggregates.json``) and are replaced atomically, so that requests are served from the previous version until the update is complete. Only one update of each kind runs at a time, an update requested while another is running is run once the running update has finished. This cache is never generated within a request (it can take longer than a request is allowed to run): until it has been generated for the first time (*e.g.* after an upgrade, as it replaces ``cache/sunburst``, which is no longer used and can be removed), the affected endpoints respond with *503* (*Service Unavailable*, with a *Retry-After* header), and request the update of this cache. The page has to be reloaded once the update is complete. To avoid this, run ``flask cache update`` after the upgrade.
 
 
 Audit trail

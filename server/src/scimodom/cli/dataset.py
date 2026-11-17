@@ -11,17 +11,19 @@ from scimodom.services.administration.ingestion import (
 from scimodom.services.annotation import AnnotationService
 from scimodom.services.assembly import AssemblyNotFoundError
 from scimodom.services.dataset import get_dataset_service
-from scimodom.services.sunburst import get_sunburst_service
+from scimodom.services.external import get_external_service
 
 from scimodom.cli.helpers import (
     audited,
     CliResponseException,
     register_cli_errors,
     confirm,
-    trigger_charts_update,
+    trigger_cache_update,
 )
 
 dataset_cli = Blueprint("dataset", __name__)
+
+EPILOG = "Consult https://dieterich-lab.github.io/scimodom/flask.html#project-and-data-management"
 
 
 def validate_dataset_title(ctx, param, value):
@@ -31,10 +33,7 @@ def validate_dataset_title(ctx, param, value):
     return value
 
 
-@dataset_cli.cli.command(
-    "add",
-    epilog="Consult https://dieterich-lab.github.io/scimodom/flask.html#project-and-data-management",
-)
+@dataset_cli.cli.command("add", epilog=EPILOG)
 @register_cli_errors
 @audited("dataset.add")
 @click.option("--yes", is_flag=True, help="Confirm the action without prompting")
@@ -189,13 +188,10 @@ def add_dataset(
         ) from exc
 
     if not dry_run:
-        trigger_charts_update(get_sunburst_service())
+        trigger_cache_update(get_external_service())
 
 
-@dataset_cli.cli.command(
-    "batch",
-    epilog="Consult https://dieterich-lab.github.io/scimodom/flask.html#project-and-data-management",
-)
+@dataset_cli.cli.command("batch", epilog=EPILOG)
 @register_cli_errors
 @audited("dataset.batch")
 @click.option("--yes", is_flag=True, help="Confirm the action without prompting")
@@ -261,7 +257,7 @@ def add_dataset_in_batch(
     prefix = "DRY RUN - " if dry_run else ""
     click.secho(
         f"{prefix}Adding project '{plan.template.title}' and "
-        f"{len(plan.datasets)} dataset(s) for {request_uuid}:",
+        f"{len(plan.datasets)} dataset(s) for {request_uuid}: ",
         fg=colour,
     )
     for dataset in plan.datasets:
@@ -303,7 +299,7 @@ def add_dataset_in_batch(
     click.secho(f"   ... done ({imported}/{len(plan.datasets)} datasets).", fg="green")
 
     if imported:
-        trigger_charts_update(get_sunburst_service())
+        trigger_cache_update(get_external_service())
     if failed:
         raise CliResponseException(
             f"Project '{result.project_id}' was created, but {len(failed)} dataset(s) "

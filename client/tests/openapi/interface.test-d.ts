@@ -23,7 +23,7 @@ import type { BamFile } from '@/services/bamfile'
 import type { BioTypesResponse } from '@/services/biotype'
 import type { Chrom } from '@/services/chrom'
 import type { ClosestRecord, IntersectRecord, SubtractRecord } from '@/services/comparison'
-import type { Dataset, DatasetSummaryResponse, MayChangeDatasetResponse } from '@/services/dataset'
+import type { Dataset, DatasetCountResponse, MayChangeDatasetResponse } from '@/services/dataset'
 import type { UploadResponse } from '@/services/dataset-upload'
 import type { DetectionMethod } from '@/services/detection-method'
 import type { FeaturesResponse } from '@/services/feature'
@@ -38,7 +38,7 @@ import type {
 import type {
   GenomicContextResponse,
   ModificationResponse,
-  SiteSummaryResponse,
+  SiteCountResponse,
   SiteWiseResponse,
   TargetSitesResponse
 } from '@/services/modification'
@@ -89,7 +89,7 @@ expectTypeOf<Comparison['schemas']['Subtract']>().toEqualTypeOf<{ records: Subtr
 // --- dataset ---
 
 expectTypeOf<Item<DatasetSpec['schemas']['Dataset']>>().toEqualTypeOf<Dataset>()
-expectTypeOf<DatasetSpec['schemas']['Count']>().toEqualTypeOf<DatasetSummaryResponse>()
+expectTypeOf<DatasetSpec['schemas']['Count']>().toEqualTypeOf<DatasetCountResponse>()
 expectTypeOf<DatasetSpec['schemas']['Permission']>().toEqualTypeOf<MayChangeDatasetResponse>()
 expectTypeOf<DatasetSpec['schemas']['DatasetCreated']>().toEqualTypeOf<DatasetPostResponse>()
 expectTypeOf<DatasetSpec['schemas']['AddDatasetBody']>().toEqualTypeOf<DatasetPostRequest>()
@@ -97,7 +97,7 @@ expectTypeOf<DatasetSpec['schemas']['AddDatasetBody']>().toEqualTypeOf<DatasetPo
 // --- modification ---
 
 expectTypeOf<ModificationSpec['schemas']['Search']>().toEqualTypeOf<ModificationResponse>()
-expectTypeOf<ModificationSpec['schemas']['Count']>().toEqualTypeOf<SiteSummaryResponse>()
+expectTypeOf<ModificationSpec['schemas']['Count']>().toEqualTypeOf<SiteCountResponse>()
 expectTypeOf<ModificationSpec['schemas']['Site']>().toEqualTypeOf<SiteWiseResponse>()
 expectTypeOf<ModificationSpec['schemas']['Context']>().toEqualTypeOf<GenomicContextResponse>()
 expectTypeOf<ModificationSpec['schemas']['BED6']>().toEqualTypeOf<TargetSitesResponse>()

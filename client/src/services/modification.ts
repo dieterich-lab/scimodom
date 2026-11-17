@@ -48,7 +48,7 @@ interface ModificationResponse {
   total: number
 }
 
-interface SiteSummaryResponse {
+interface SiteCountResponse {
   count: number
 }
 
@@ -81,12 +81,10 @@ interface SiteWiseResponse {
   records: SiteWiseInfo[]
 }
 
-// TODO: call records summary; should be sites summary
-// add both records and sites to HomeRelease
-async function getSitesSummary(dialogState: DialogStateStore): Promise<SiteSummaryResponse> {
+async function getSitesCount(dialogState: DialogStateStore): Promise<SiteCountResponse> {
   return await handleRequestWithErrorReporting(
-    HTTP.get<SiteSummaryResponse>('/modifications/records/summary'),
-    'Failed to load modification sites summary',
+    HTTP.get<SiteCountResponse>('/modifications/sites/count'),
+    'Failed to load modification sites count',
     dialogState
   )
 }
@@ -213,11 +211,11 @@ export {
   type Modification,
   type ModificationResponse,
   type SiteWiseInfo,
-  type SiteSummaryResponse,
+  type SiteCountResponse,
   type TargetSitesResponse,
   type GenomicContextResponse,
   type SiteWiseResponse,
-  getSitesSummary,
+  getSitesCount,
   getModifications,
   getModificationExportLink,
   getTargetSites,
