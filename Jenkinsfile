@@ -4,7 +4,7 @@ pipeline {
         stage('Prepare Python venv') {
             steps {
                 sh '''
-                    [ -d venv ] || uv venv --python 3.13 venv
+                    uv venv --python 3.13 --allow-existing venv
                     . ./venv/bin/activate
                     cd server
                     uv pip install -e . --group dev
