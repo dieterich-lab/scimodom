@@ -3,16 +3,17 @@ from smtplib import SMTPException
 import pytest
 from flask import Flask
 from flask_jwt_extended import JWTManager, create_access_token
-
+from scimodom.api.project import project_api
 from scimodom.services.project import ProjectService
 from scimodom.services.selection import SelectionService
-from scimodom.api.project import project_api
+
+SECRET_KEY = "test-secret-should-be-long-enough-to-avoid-warning"
 
 
 @pytest.fixture
 def authenticated_client():
     app = Flask(__name__)
-    app.config["JWT_SECRET_KEY"] = "test-secret"
+    app.config["JWT_SECRET_KEY"] = SECRET_KEY
     JWTManager(app)
     app.register_blueprint(project_api, url_prefix="")
     client = app.test_client()
@@ -25,7 +26,7 @@ def authenticated_client():
 @pytest.fixture
 def unauthenticated_client():
     app = Flask(__name__)
-    app.config["JWT_SECRET_KEY"] = "test-secret"
+    app.config["JWT_SECRET_KEY"] = SECRET_KEY
     JWTManager(app)
     app.register_blueprint(project_api, url_prefix="")
     yield app.test_client()

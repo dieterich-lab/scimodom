@@ -3,28 +3,29 @@ from typing import Generator
 import pytest
 from flask import Flask
 from flask_jwt_extended import JWTManager, create_access_token
-from sqlalchemy.exc import NoResultFound
-
 from scimodom.api.dataset import dataset_api
 from scimodom.services.assembly import LiftOverError
 from scimodom.services.exporter import Exporter, NoSuchDataset
 from scimodom.services.validator import (
-    SpecsError,
+    DatasetExistsError,
     DatasetHeaderError,
     DatasetImportError,
     SelectionNotFoundError,
-    DatasetExistsError,
+    SpecsError,
 )
 from scimodom.utils.importer.bed_importer import (
-    BedImportTooManyErrors,
     BedImportEmptyFile,
+    BedImportTooManyErrors,
 )
+from sqlalchemy.exc import NoResultFound
+
+SECRET_KEY = "test-secret-should-be-long-enough-to-avoid-warning"
 
 
 @pytest.fixture
 def unauthenticated_client():
     app = Flask(__name__)
-    app.config["JWT_SECRET_KEY"] = "test-secret"
+    app.config["JWT_SECRET_KEY"] = SECRET_KEY
     JWTManager(app)
     app.register_blueprint(dataset_api, url_prefix="")
     yield app.test_client()
@@ -33,7 +34,7 @@ def unauthenticated_client():
 @pytest.fixture
 def authenticated_client():
     app = Flask(__name__)
-    app.config["JWT_SECRET_KEY"] = "test-secret"
+    app.config["JWT_SECRET_KEY"] = SECRET_KEY
     JWTManager(app)
     app.register_blueprint(dataset_api, url_prefix="")
     client = app.test_client()

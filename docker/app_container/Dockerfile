@@ -1,4 +1,4 @@
-FROM docker.io/python:3.11-bookworm
+FROM docker.io/python:3.13-trixie
 
 ARG BUILD_TAG
 ARG BUILD_COMMIT

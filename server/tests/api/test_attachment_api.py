@@ -1,15 +1,16 @@
 import pytest
 from flask import Flask
 from flask_jwt_extended import JWTManager, create_access_token
-
 from scimodom.api.attachment import dataset_attachment_api
 from scimodom.services.file import FileTooLarge
+
+SECRET_KEY = "test-secret-should-be-long-enough-to-avoid-warning"
 
 
 @pytest.fixture
 def unauthenticated_client():
     app = Flask(__name__)
-    app.config["JWT_SECRET_KEY"] = "test-secret"
+    app.config["JWT_SECRET_KEY"] = SECRET_KEY
     JWTManager(app)
     app.register_blueprint(dataset_attachment_api, url_prefix="")
     yield app.test_client()
@@ -18,7 +19,7 @@ def unauthenticated_client():
 @pytest.fixture
 def authenticated_client():
     app = Flask(__name__)
-    app.config["JWT_SECRET_KEY"] = "test-secret"
+    app.config["JWT_SECRET_KEY"] = SECRET_KEY
     JWTManager(app)
     app.register_blueprint(dataset_attachment_api, url_prefix="")
     client = app.test_client()

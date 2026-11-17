@@ -1,6 +1,6 @@
 from scimodom.api.upload import upload_api
 from scimodom.services.url import UPLOAD_API_ROUTE
-from tests.api.schematise import validate, client_fixture
+from tests.api.schematise import client_fixture, validate
 
 SCHEMA = "upload.yaml"
 client = client_fixture(upload_api, UPLOAD_API_ROUTE)
