@@ -12,7 +12,11 @@ from scimodom.services.file import (
     CacheUpdateAlreadyRunning,
     FileService,
 )
-from scimodom.utils.specs.enums import AssemblyFileType, IndexCacheType
+from scimodom.utils.specs.enums import (
+    AssemblyFileType,
+    IndexCacheType,
+    TargetsFileType,
+)
 
 
 def _get_file_service(Session, tmp_path):
@@ -66,6 +70,44 @@ def test_get_annotation_dir(Session, tmp_path, setup):
     assert service.get_annotation_dir(9606) == Path(
         tmp_path, "t_data", "annotation", "Homo_sapiens", "GRCh38"
     )
+
+
+def test_get_annotation_dir_explicit_assembly(Session, tmp_path, setup):
+    # an explicit assembly name is used as given, and is not resolved
+    # from the current assembly version
+    service = _get_file_service(Session, tmp_path)
+    assert service.get_annotation_dir(9606, assembly_name="GRCh37") == Path(
+        tmp_path, "t_data", "annotation", "Homo_sapiens", "GRCh37"
+    )
+
+
+def test_get_annotation_release_dir(Session, tmp_path, setup):
+    service = _get_file_service(Session, tmp_path)
+    assert service.get_annotation_release_dir(9606, "ensembl", 110) == Path(
+        tmp_path, "t_data", "annotation", "Homo_sapiens", "GRCh38", "ensembl", "110"
+    )
+
+
+def test_get_annotation_release_dir_differs_by_source(Session, tmp_path, setup):
+    # Annotation is unique on (release, taxa_id, source, version), so two
+    # annotations differing only by source must not share a directory
+    service = _get_file_service(Session, tmp_path)
+    assert service.get_annotation_release_dir(
+        9606, "ensembl", 110
+    ) != service.get_annotation_release_dir(9606, "gtrnadb", 110)
+
+
+def test_annotation_targets_file_is_not_below_release(Session, tmp_path, setup):
+    # miRNA and RBP files belong to the assembly, not to an annotation
+    # release: they stay directly below the annotation directory, cf. #146
+    service = _get_file_service(Session, tmp_path)
+    annotation_dir = service.get_annotation_dir(9606)
+    annotation_dir.mkdir(parents=True, exist_ok=True)
+    Path(annotation_dir, TargetsFileType.MIRNA.value()).write_text("mirna\n")
+    with service.open_annotation_targets_file(
+        9606, TargetsFileType.MIRNA, chrom="1"
+    ) as fh:
+        assert fh.read() == "mirna\n"
 
 
 # Cache

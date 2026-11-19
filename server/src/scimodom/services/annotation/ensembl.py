@@ -1,12 +1,12 @@
 import logging
 import shutil
 from pathlib import Path
-from typing import ClassVar, Callable
-from posixpath import join as urljoin
+from typing import Any, ClassVar, Callable
 
 from scimodom.database.buffer import InsertBuffer
 from scimodom.database.models import Annotation, DataAnnotation, GenomicAnnotation
 from scimodom.services.annotation.generic import GenericAnnotationService
+from scimodom.services.ensembl import EnsemblAssemblyClient
 from scimodom.utils.specs.enums import AssemblyFileType, Ensembl
 
 logger = logging.getLogger(__name__)
@@ -42,6 +42,18 @@ class EnsemblAnnotationService(GenericAnnotationService):
         },
         "extended": {"intron": "Intronic", "intergenic": "Intergenic"},
     }
+    # TODO: organisms served without the ".chr" variant, cf. #149
+    NO_CHR_VARIANT_TAXA: ClassVar[list[int]] = [4932, 6239]
+
+    def __init__(self, ensembl_client: EnsemblAssemblyClient, **kwargs: Any) -> None:
+        """Utility class to handle Ensembl annotation.
+
+        :param ensembl_client: Ensembl assembly client. Owns the Ensembl
+        URL layout; this service does not build URLs itself.
+        :type ensembl_client: EnsemblAssemblyClient
+        """
+        super().__init__(**kwargs)
+        self._ensembl_client = ensembl_client
 
     def get_annotation(self, taxa_id: int) -> Annotation:
         """Retrieve annotation from taxonomy ID.
@@ -141,20 +153,26 @@ class EnsemblAnnotationService(GenericAnnotationService):
     def _get_annotation_paths(
         self, annotation: Annotation, release_path: Path
     ) -> tuple[Path, str]:
+        """Construct the local path and the remote URL of an annotation file.
+
+        Organism and assembly are read from the database, not recovered
+        from the components of release_path.
+        """
+        organism = self._assembly_service.get_organism(annotation.taxa_id)
+        assembly_name = self._assembly_service.get_name_for_version(annotation.taxa_id)
         filen = self.ANNOTATION_FILE(
-            organism=release_path.parent.parent.name,
-            assembly=release_path.parent.name,
+            organism=self._ensembl_client.get_organism_url_name(organism).capitalize(),
+            assembly=assembly_name,
             release=annotation.release,
             fmt=self.FMT,
         )
-        # TODO: AD HOC
-        if annotation.taxa_id in [4932, 6239]:
+        # TODO: AD HOC, cf. #149
+        if annotation.taxa_id in self.NO_CHR_VARIANT_TAXA:
             filen = filen.replace(".chr", "")
-        url = urljoin(
-            Ensembl.FTP.value,
-            f"release-{annotation.release}",
-            self.FMT,
-            release_path.parent.parent.name.lower(),
-            filen,
+        url = self._ensembl_client.get_annotation_file_url(
+            organism=organism,
+            release=annotation.release,
+            fmt=self.FMT,
+            file_name=filen,
         )
         return Path(release_path, filen), url

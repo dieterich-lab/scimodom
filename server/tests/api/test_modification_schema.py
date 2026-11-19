@@ -59,6 +59,8 @@ def services(Session, annotation, mocker, dataset, tmp_path):
                 web_service=mocker.Mock(),
                 gene_service=gene_service,
                 file_service=MockFileService(),
+                assembly_service=mocker.Mock(),
+                ensembl_client=mocker.Mock(),
             ),
         },
     )

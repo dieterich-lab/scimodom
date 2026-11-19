@@ -302,7 +302,7 @@ class AssemblyService:
         logger.info(f"Setting up a new assembly for '{assembly_name}'...")
         try:
             url = self._ensembl_client.get_chain_file_url(
-                self._get_organism(taxa_id),
+                self.get_organism(taxa_id),
                 assembly_name,
                 self.get_name_for_version(taxa_id),
             )
@@ -349,7 +349,14 @@ class AssemblyService:
     def _get_seqids(self, taxa_id: int) -> list[str]:
         return [d["chrom"] for d in self.get_chroms(taxa_id)]
 
-    def _get_organism(self, taxa_id: int) -> str:
+    def get_organism(self, taxa_id: int) -> str:
+        """Get the organism (scientific) name for a taxa ID.
+
+        :param taxa_id: Taxa ID
+        :type taxa_id: int
+        :returns: Organism name e.g. "Homo sapiens"
+        :rtype: str
+        """
         return self._session.execute(
             select(Taxa.name).filter_by(id=taxa_id)
         ).scalar_one()
@@ -363,7 +370,7 @@ class AssemblyService:
 
     def _handle_gene_build(self, assembly: Assembly):
         gene_build = self._ensembl_client.get_gene_build(
-            self._get_organism(assembly.taxa_id)
+            self.get_organism(assembly.taxa_id)
         )
         coord_sysver = self._ensembl_client.get_coord_system_version(gene_build)
         if coord_sysver != assembly.name:
@@ -386,7 +393,7 @@ class AssemblyService:
             )
 
     def _handle_dna_sequences(self, assembly: Assembly):
-        organism = self._get_organism(assembly.taxa_id)
+        organism = self.get_organism(assembly.taxa_id)
         for chrom in self._get_seqids(assembly.taxa_id):
             self._download_dna_sequence(assembly, organism, chrom)
             self._file_service.index_dna_sequence_file(assembly.taxa_id, chrom)

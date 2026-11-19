@@ -700,7 +700,7 @@ def test_cleanup_unexpected_failure_is_logged(
 
 def test_get_organism(Session, file_service, setup):
     service = _get_assembly_service(Session, file_service)
-    assert service._get_organism(10090) == "Mus musculus"
+    assert service.get_organism(10090) == "Mus musculus"
 
 
 def test_dna_fallback_on_404(Session, file_service, setup, mocker):  # noqa

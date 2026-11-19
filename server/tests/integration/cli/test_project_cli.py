@@ -191,6 +191,8 @@ def _get_annotation_service(Session, tmp_path):
                 web_service=WebService(),
                 gene_service=_get_gene_service(Session, tmp_path),
                 file_service=_get_file_service(Session, tmp_path),
+                assembly_service=_get_assembly_service(Session, tmp_path),
+                ensembl_client=EnsemblAssemblyClient(WebService()),
             ),
         },
     )

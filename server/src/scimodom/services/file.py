@@ -211,20 +211,64 @@ class FileService:
 
     # Annotation incl. extended annotations
 
-    def get_annotation_dir(self, taxa_id: int) -> Path:
+    def get_annotation_dir(
+        self, taxa_id: int, assembly_name: str | None = None
+    ) -> Path:
         """Construct path to annotation files.
+
+        This directory holds files that belong to an assembly, but not
+        to any particular annotation release, e.g. miRNA and RBP target
+        files. Per-release files live below it, cf.
+        :meth:`get_annotation_release_dir`.
 
         :param taxa_id: Taxa ID
         :type taxa_id: int
+        :param assembly_name: Assembly name. If None, it is inferred from
+        the current assembly version. Callers that know which assembly
+        they mean should pass it explicitly.
+        :type assembly_name: str | None
         :returns: Path to annotation directory
         :rtype: Path
         """
-        assembly_name = self._get_current_assembly_name_from_taxa_id(taxa_id)
+        if assembly_name is None:
+            assembly_name = self._get_current_assembly_name_from_taxa_id(taxa_id)
         organism = self._get_organism_from_taxa_id(taxa_id)
         return Path(
             self._get_annotation_parent_dir(),
             self._get_dir_name_from_organism(organism),
             assembly_name,
+        )
+
+    def get_annotation_release_dir(
+        self,
+        taxa_id: int,
+        source: str,
+        release: int,
+        assembly_name: str | None = None,
+    ) -> Path:
+        """Construct path to the annotation files of one source and release.
+
+        The source is part of the path because it is part of the identity
+        of an annotation, cf. the unique constraint on Annotation
+        (release, taxa_id, source, version). Without it, two annotations
+        that are distinct in the database would share a directory.
+
+        :param taxa_id: Taxa ID
+        :type taxa_id: int
+        :param source: Annotation source e.g. "ensembl"
+        :type source: str
+        :param release: Annotation release
+        :type release: int
+        :param assembly_name: Assembly name. If None, it is inferred from
+        the current assembly version.
+        :type assembly_name: str | None
+        :returns: Path to annotation release directory
+        :rtype: Path
+        """
+        return Path(
+            self.get_annotation_dir(taxa_id, assembly_name=assembly_name),
+            source,
+            str(release),
         )
 
     def open_annotation_targets_file(

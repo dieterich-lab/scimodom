@@ -149,7 +149,14 @@ def test_data(tmp_path, genomic_annotation):
     with open(d / "chrom.sizes", "w") as fh:
         fh.write("1\t248956422\n")
     # add required annotation files
-    d = tmp_path / FileService.ANNOTATION_DEST / "Homo_sapiens" / "GRCh38" / "110"
+    d = (
+        tmp_path
+        / FileService.ANNOTATION_DEST
+        / "Homo_sapiens"
+        / "GRCh38"
+        / "ensembl"
+        / "110"
+    )
     d.mkdir(parents=True, exist_ok=True)
     for feature, string in FEATURES.items():
         with open(d / feature, "w") as fh:
@@ -179,6 +186,9 @@ def _get_annotation_service(
     gene_service,
     file_service,
 ):
+    assembly_service = _get_assembly_service(
+        session, external_service, web_service, file_service
+    )
     return AnnotationService(
         session=session,
         services_by_annotation_source={
@@ -190,6 +200,8 @@ def _get_annotation_service(
                 web_service=web_service,
                 gene_service=gene_service,
                 file_service=file_service,
+                assembly_service=assembly_service,
+                ensembl_client=EnsemblAssemblyClient(web_service),
             ),
             AnnotationSource.GTRNADB: GtRNAdbAnnotationService(
                 session=session,
@@ -199,6 +211,7 @@ def _get_annotation_service(
                 web_service=web_service,
                 gene_service=gene_service,
                 file_service=file_service,
+                assembly_service=assembly_service,
             ),
         },
     )

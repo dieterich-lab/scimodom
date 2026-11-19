@@ -11,6 +11,7 @@ from scimodom.database.models import (
     AnnotationVersion,
     GenomicAnnotation,
 )
+from scimodom.services.assembly import AssemblyService
 from scimodom.services.bedtools import BedToolsService
 from scimodom.services.data import DataService
 from scimodom.services.external import ExternalService
@@ -38,6 +39,7 @@ class GenericAnnotationService(ABC):
         web_service: WebService,
         gene_service: GeneService,
         file_service: FileService,
+        assembly_service: AssemblyService,
     ) -> None:
         """Utility class to handle annotations.
 
@@ -53,6 +55,9 @@ class GenericAnnotationService(ABC):
         :type web_service: WebService
         :param file_service: FileService
         :type file_service: FileService
+        :param assembly_service: Assembly service instance. Owns the
+        organism and assembly an annotation belongs to.
+        :type assembly_service: AssemblyService
         """
 
         self._session = session
@@ -62,6 +67,7 @@ class GenericAnnotationService(ABC):
         self._web_service = web_service
         self._gene_service = gene_service
         self._file_service = file_service
+        self._assembly_service = assembly_service
 
         self._version = self._session.execute(
             select(AnnotationVersion.version_num)
@@ -96,13 +102,21 @@ class GenericAnnotationService(ABC):
     def get_release_path(self, annotation: Annotation) -> Path:
         """Construct annotation release path.
 
+        NOTE: the assembly is resolved from the current assembly version.
+        Once Annotation references an Assembly directly, the assembly
+        name comes from the annotation itself and this becomes
+        independent of the current version, cf. #157.
+
         :param annotation: Annotation instance
         :type annotation: Annotation
         :returns: Annotation release path
         :rtype: Path
         """
-        path = self._file_service.get_annotation_dir(annotation.taxa_id)
-        return Path(path, str(annotation.release))
+        return self._file_service.get_annotation_release_dir(
+            annotation.taxa_id,
+            annotation.source,
+            annotation.release,
+        )
 
     def _release_exists(self, annotation_id) -> bool:
         """Check if release exists by checking if the database

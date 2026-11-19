@@ -13,6 +13,7 @@ from scimodom.services.annotation import (
     AnnotationNotFoundError,
     AnnotationVersionError,
 )
+from scimodom.services.ensembl import EnsemblAssemblyClient
 from scimodom.utils.specs.enums import AssemblyFileType
 from tests.mocks.web import MockWebService
 from tests.mocks.enums import MockEnsembl
@@ -52,16 +53,37 @@ class MockGeneService:
         pass
 
 
+def _mock_organism_and_assembly(taxa_id):
+    if taxa_id == 9606:
+        return "Homo sapiens", "Homo_sapiens", "GRCh38"
+    return "Mus musculus", "Mus_musculus", "GRCm38"
+
+
 class MockFileService:
     @staticmethod
-    def get_annotation_dir(taxa_id):
-        if taxa_id == 9606:
-            assembly = "GRCh38"
-            name = "Homo_sapiens"
-        else:
-            assembly = "GRCm38"
-            name = "Mus_musculus"
-        return f"/data/annotation/{name}/{assembly}"
+    def get_annotation_dir(taxa_id, assembly_name=None):
+        _, name, current_assembly = _mock_organism_and_assembly(taxa_id)
+        if assembly_name is None:
+            assembly_name = current_assembly
+        return Path("/data", "annotation", name, assembly_name)
+
+    @classmethod
+    def get_annotation_release_dir(cls, taxa_id, source, release, assembly_name=None):
+        return Path(
+            cls.get_annotation_dir(taxa_id, assembly_name=assembly_name),
+            source,
+            str(release),
+        )
+
+
+class MockAssemblyService:
+    @staticmethod
+    def get_organism(taxa_id):
+        return _mock_organism_and_assembly(taxa_id)[0]
+
+    @staticmethod
+    def get_name_for_version(taxa_id):
+        return _mock_organism_and_assembly(taxa_id)[2]
 
 
 def _get_ensembl_annotation_service(
@@ -75,6 +97,8 @@ def _get_ensembl_annotation_service(
         web_service=MockWebService(url_to_result),  # noqa
         gene_service=MockGeneService(),  # noqa
         file_service=MockFileService(),  # noqa
+        assembly_service=MockAssemblyService(),  # noqa
+        ensembl_client=EnsemblAssemblyClient(MockWebService(url_to_result)),  # noqa
     )
 
 
@@ -132,7 +156,10 @@ def test_get_release_path(Session, setup, mocker):
     service = _get_ensembl_annotation_service(Session)
     annotation = service.get_annotation(9606)
     release_path = service.get_release_path(annotation)
-    expected_release_path = Path("/data", "annotation", "Homo_sapiens", "GRCh38", "110")
+    # the source is part of the path, cf. uq_annotation_rtv
+    expected_release_path = Path(
+        "/data", "annotation", "Homo_sapiens", "GRCh38", "ensembl", "110"
+    )
     assert release_path == expected_release_path
 
 
@@ -150,6 +177,7 @@ def test_release_exists(Session, setup, mocker):
 
 def test_ensembl_annotation_paths(Session, setup, mocker):
     mocker.patch("scimodom.services.annotation.ensembl.Ensembl", MockEnsembl)
+    mocker.patch("scimodom.services.ensembl.Ensembl", MockEnsembl)
     service = _get_ensembl_annotation_service(Session)
     annotation = service.get_annotation(9606)
     release_path = service.get_release_path(annotation)
@@ -162,6 +190,7 @@ def test_ensembl_annotation_paths(Session, setup, mocker):
         "annotation",
         "Homo_sapiens",
         "GRCh38",
+        "ensembl",
         "110",
         expected_annotation_file,
     )

@@ -168,6 +168,28 @@ class EnsemblAssemblyClient:
             for name in seq_file_names
         ]
 
+    def get_annotation_file_url(
+        self, organism: str, release: int, fmt: str, file_name: str
+    ) -> str:
+        """Construct the URL of an annotation file.
+
+        The file name is built by the caller, which owns the annotation
+        format and any organism-specific naming exceptions.
+
+        :param organism: Organism name e.g. "Homo sapiens"
+        :param release: Ensembl release
+        :param fmt: Annotation format e.g. "gtf"
+        :param file_name: Annotation file name
+        :return: URL
+        """
+        return urljoin(
+            Ensembl.FTP.value,
+            f"release-{release}",
+            fmt,
+            self.get_organism_url_name(organism),
+            file_name,
+        )
+
 
 @cache
 def get_ensembl_assembly_client() -> EnsemblAssemblyClient:

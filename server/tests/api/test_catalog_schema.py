@@ -64,6 +64,8 @@ def services(Session, selection, mocker):
                 web_service=mocker.Mock(),
                 gene_service=mocker.Mock(),
                 file_service=mocker.Mock(),
+                assembly_service=mocker.Mock(),
+                ensembl_client=mocker.Mock(),
             ),
         },
     )
