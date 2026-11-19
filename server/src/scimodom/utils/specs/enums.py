@@ -60,19 +60,43 @@ class ImportLimits(Enum):
 # Annotation and assembly
 
 
-class Ensembl(Enum):
-    """Define release and destination for Ensembl services."""
+# The Ensembl release and archive that are currently installed.
+#
+# These describe this installation, not Ensembl: which snapshot the
+# reference files were obtained from. They are passed to the services
+# that build URLs rather than baked into the URLs themselves, so that
+# they can be supplied per invocation and recorded with the data.
+#
+# TODO: supply these as CLI arguments, validate them against the REST
+# API and persist them at creation time, cf. #157, #201.
+CURRENT_ENSEMBL_RELEASE = 110
+CURRENT_ENSEMBL_ARCHIVE = "jul2023"
 
-    RELEASE = 110
+
+class Ensembl(Enum):
+    """Define the Ensembl URL layout.
+
+    Members describe where Ensembl serves data and how its URLs are
+    built. They deliberately do not record which release or archive is
+    installed: that is a property of the installation, cf.
+    CURRENT_ENSEMBL_RELEASE and CURRENT_ENSEMBL_ARCHIVE, and is passed
+    in by the caller.
+
+    The archive token e.g. "jul2023" is shared by the REST and the web
+    archive hosts, so both are built from it.
+    """
+
     FTP = "https://ftp.ensembl.org/pub"
-    # http://rest.ensembl.org
-    REST = "http://jul2023.rest.ensembl.org"
-    ARCHIVE = "https://jul2023.archive.ensembl.org"
+    # the unarchived hosts are http://rest.ensembl.org and
+    # https://www.ensembl.org
+    REST = "http://{archive}.rest.ensembl.org".format
+    ARCHIVE = "https://{archive}.archive.ensembl.org".format
     DATA = "info/data"
     ASM = "info/assembly"
     # current_assembly_chain
-    ASM_MAPPING = f"release-{RELEASE}/assembly_chain"
-    FASTA = f"release-{RELEASE}/fasta"
+    ASM_MAPPING = "release-{release}/assembly_chain".format
+    FASTA = "release-{release}/fasta".format
+    ANNOTATION = "release-{release}/{fmt}".format
 
 
 class AnnotationSource(Enum):

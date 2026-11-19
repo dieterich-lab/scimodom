@@ -95,22 +95,27 @@ class EnsemblAssemblyClient:
         """
         return {k: v for k, v in gene_build.items() if k in cls.INFO_KEYS}
 
-    def get_data_release(self) -> dict:
+    def get_data_release(self, archive: str) -> dict:
         """Query the REST API for the data release(s).
 
+        NOTE: the response is not currently checked against the release
+        that was requested, cf. #157.
+
+        :param archive: Ensembl archive token e.g. "jul2023"
         :return: Response as json
         """
-        url = urljoin(Ensembl.REST.value, Ensembl.DATA.value)
+        url = urljoin(Ensembl.REST.value(archive=archive), Ensembl.DATA.value)
         return self._web_service.request_as_json(url)
 
-    def get_gene_build(self, organism: str) -> dict:
+    def get_gene_build(self, organism: str, archive: str) -> dict:
         """Query the REST API for the gene build (assembly info) of an organism.
 
         :param organism: Organism name e.g. "Homo sapiens"
+        :param archive: Ensembl archive token e.g. "jul2023"
         :return: Response as json
         """
         url = urljoin(
-            Ensembl.REST.value,
+            Ensembl.REST.value(archive=archive),
             Ensembl.ASM.value,
             self.get_organism_url_name(organism),
         )
@@ -119,13 +124,18 @@ class EnsemblAssemblyClient:
     # FTP
 
     def get_chain_file_url(
-        self, organism: str, source_assembly: str, target_assembly: str
+        self,
+        organism: str,
+        source_assembly: str,
+        target_assembly: str,
+        release: int,
     ) -> str:
         """Construct the URL of a chain file.
 
         :param organism: Organism name e.g. "Homo sapiens"
         :param source_assembly: Source assembly name
         :param target_assembly: Target assembly name
+        :param release: Ensembl release
         :return: URL
         """
         chain_file_name = AssemblyFileType.CHAIN.value(
@@ -134,13 +144,13 @@ class EnsemblAssemblyClient:
         )
         return urljoin(
             Ensembl.FTP.value,
-            Ensembl.ASM_MAPPING.value,
+            Ensembl.ASM_MAPPING.value(release=release),
             self.get_organism_url_name(organism),
             chain_file_name,
         )
 
     def get_dna_sequence_urls(
-        self, organism: str, assembly_name: str, chrom: str
+        self, organism: str, assembly_name: str, chrom: str, release: int
     ) -> list[str]:
         """Construct the candidate URLs of a chromosome DNA sequence file.
 
@@ -150,6 +160,7 @@ class EnsemblAssemblyClient:
         :param organism: Organism name e.g. "Homo sapiens"
         :param assembly_name: Assembly name
         :param chrom: Chromosome
+        :param release: Ensembl release
         :return: Candidate URLs
         """
         url_name = self.get_organism_url_name(organism)
@@ -160,7 +171,7 @@ class EnsemblAssemblyClient:
         return [
             urljoin(
                 Ensembl.FTP.value,
-                Ensembl.FASTA.value,
+                Ensembl.FASTA.value(release=release),
                 url_name,
                 "dna",
                 name,
@@ -184,8 +195,7 @@ class EnsemblAssemblyClient:
         """
         return urljoin(
             Ensembl.FTP.value,
-            f"release-{release}",
-            fmt,
+            Ensembl.ANNOTATION.value(release=release, fmt=fmt),
             self.get_organism_url_name(organism),
             file_name,
         )

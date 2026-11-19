@@ -61,8 +61,8 @@ def test_organism_url_name():
 
 
 def test_rest(client):
-    assert client.get_data_release() == {"releases": [110]}
-    assert client.get_gene_build("Homo sapiens") == GENE_BUILD
+    assert client.get_data_release("jul2023") == {"releases": [110]}
+    assert client.get_gene_build("Homo sapiens", "jul2023") == GENE_BUILD
 
 
 def test_gene_build_parsing():
@@ -75,14 +75,14 @@ def test_gene_build_parsing():
 
 
 def test_chain_file_url(client):
-    assert client.get_chain_file_url("Homo sapiens", "GRCh37", "GRCh38") == (
+    assert client.get_chain_file_url("Homo sapiens", "GRCh37", "GRCh38", 110) == (
         "https://ftp.ensembl.org/pub/release-110/assembly_chain/homo_sapiens/"
         "GRCh37_to_GRCh38.chain.gz"
     )
 
 
 def test_dna_sequence_urls(client):
-    urls = client.get_dna_sequence_urls("Homo sapiens", "GRCh38", "1")
+    urls = client.get_dna_sequence_urls("Homo sapiens", "GRCh38", "1", 110)
     assert len(urls) == 2
     assert "dna.chromosome.1" in urls[0]
     assert "dna.primary_assembly.1" in urls[1]

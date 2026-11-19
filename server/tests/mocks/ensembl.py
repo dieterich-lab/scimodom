@@ -44,23 +44,27 @@ class MockEnsemblClient:
         self._gene_build = gene_build
         self._release = release
 
-    def get_data_release(self) -> dict:
+    def get_data_release(self, archive: str) -> dict:
         if self._release is None:
             raise MockHTTPError("Mock: Not found!")
         return self._release
 
-    def get_gene_build(self, organism: str) -> dict:
+    def get_gene_build(self, organism: str, archive: str) -> dict:
         if self._gene_build is None:
             raise MockHTTPError("Mock: Not found!")
         return self._gene_build
 
     @staticmethod
-    def get_chain_file_url(organism: str, source_assembly: str, target_assembly: str):
-        return f"mock://chain/{source_assembly}_to_{target_assembly}"
+    def get_chain_file_url(
+        organism: str, source_assembly: str, target_assembly: str, release: int
+    ):
+        return f"mock://chain/{source_assembly}_to_{target_assembly}"  # noqa: E231
 
     @staticmethod
-    def get_dna_sequence_urls(organism: str, assembly_name: str, chrom: str):
+    def get_dna_sequence_urls(
+        organism: str, assembly_name: str, chrom: str, release: int
+    ):
         return [
-            f"mock://dna/chromosome.{chrom}",
-            f"mock://dna/primary_assembly.{chrom}",
+            f"mock://dna/chromosome.{chrom}",  # noqa: E231
+            f"mock://dna/primary_assembly.{chrom}",  # noqa: E231
         ]

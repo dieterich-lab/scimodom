@@ -1,4 +1,6 @@
 from scimodom.utils.specs.enums import (
+    CURRENT_ENSEMBL_ARCHIVE,
+    CURRENT_ENSEMBL_RELEASE,
     UserState,
     Strand,
     Identifiers,
@@ -38,16 +40,30 @@ def test_import_limits():
 
 
 def test_ensembl():
-    CURRENT_RELEASE = 110
-    assert Ensembl.RELEASE == Ensembl(CURRENT_RELEASE)
+    # the enum is URL layout only: release and archive are supplied
+    release = 110
+    archive = "jul2023"
     assert Ensembl.FTP.value == "https://ftp.ensembl.org/pub"
-    assert Ensembl.REST.value == "http://jul2023.rest.ensembl.org"
-    assert Ensembl.ARCHIVE.value == "https://jul2023.archive.ensembl.org"
+    assert Ensembl.REST.value(archive=archive) == "http://jul2023.rest.ensembl.org"
+    assert (
+        Ensembl.ARCHIVE.value(archive=archive) == "https://jul2023.archive.ensembl.org"
+    )
     assert Ensembl.DATA.value == "info/data"
     assert Ensembl.ASM.value == "info/assembly"
-    assert Ensembl.ASM_MAPPING.value == f"release-{CURRENT_RELEASE}/assembly_chain"
-    assert Ensembl.FASTA.value == f"release-{CURRENT_RELEASE}/fasta"
+    assert (
+        Ensembl.ASM_MAPPING.value(release=release)
+        == f"release-{release}/assembly_chain"
+    )
+    assert Ensembl.FASTA.value(release=release) == f"release-{release}/fasta"
+    assert (
+        Ensembl.ANNOTATION.value(release=release, fmt="gtf") == f"release-{release}/gtf"
+    )
     assert len(Ensembl) == 8
+
+
+def test_current_ensembl_installation():
+    assert CURRENT_ENSEMBL_RELEASE == 110
+    assert CURRENT_ENSEMBL_ARCHIVE == "jul2023"
 
 
 def test_annotation_source():

@@ -16,7 +16,7 @@ from scimodom.services.annotation import (
 from scimodom.services.ensembl import EnsemblAssemblyClient
 from scimodom.utils.specs.enums import AssemblyFileType
 from tests.mocks.web import MockWebService
-from tests.mocks.enums import MockEnsembl
+from tests.mocks.enums import MOCK_ENSEMBL_RELEASE, MockEnsembl
 
 
 class MockDataService:
@@ -113,7 +113,10 @@ def test_init(Session):
 
 
 def test_get_annotation(Session, setup, mocker):
-    mocker.patch("scimodom.services.annotation.ensembl.Ensembl", MockEnsembl)
+    mocker.patch(
+        "scimodom.services.annotation.ensembl.CURRENT_ENSEMBL_RELEASE",
+        MOCK_ENSEMBL_RELEASE,
+    )
     service = _get_ensembl_annotation_service(Session)
     annotation = service.get_annotation(9606)
     assert annotation.release == 110
@@ -123,7 +126,10 @@ def test_get_annotation(Session, setup, mocker):
 
 
 def test_get_annotation_wrong_specs(Session, mocker):
-    mocker.patch("scimodom.services.annotation.ensembl.Ensembl", MockEnsembl)
+    mocker.patch(
+        "scimodom.services.annotation.ensembl.CURRENT_ENSEMBL_RELEASE",
+        MOCK_ENSEMBL_RELEASE,
+    )
     with Session() as session, session.begin():
         session.add(AnnotationVersion(version_num="EyRBnPeVwbzW"))
         session.add(
@@ -152,7 +158,10 @@ def test_get_annotation_fail(Session):
 
 
 def test_get_release_path(Session, setup, mocker):
-    mocker.patch("scimodom.services.annotation.ensembl.Ensembl", MockEnsembl)
+    mocker.patch(
+        "scimodom.services.annotation.ensembl.CURRENT_ENSEMBL_RELEASE",
+        MOCK_ENSEMBL_RELEASE,
+    )
     service = _get_ensembl_annotation_service(Session)
     annotation = service.get_annotation(9606)
     release_path = service.get_release_path(annotation)
@@ -164,7 +173,10 @@ def test_get_release_path(Session, setup, mocker):
 
 
 def test_release_exists(Session, setup, mocker):
-    mocker.patch("scimodom.services.annotation.ensembl.Ensembl", MockEnsembl)
+    mocker.patch(
+        "scimodom.services.annotation.ensembl.CURRENT_ENSEMBL_RELEASE",
+        MOCK_ENSEMBL_RELEASE,
+    )
     with Session() as session, session.begin():
         genomic_annotation = GenomicAnnotation(
             id="ENSG00000000001", annotation_id=1, name="A", biotype="protein_coding"
@@ -176,7 +188,10 @@ def test_release_exists(Session, setup, mocker):
 
 
 def test_ensembl_annotation_paths(Session, setup, mocker):
-    mocker.patch("scimodom.services.annotation.ensembl.Ensembl", MockEnsembl)
+    mocker.patch(
+        "scimodom.services.annotation.ensembl.CURRENT_ENSEMBL_RELEASE",
+        MOCK_ENSEMBL_RELEASE,
+    )
     mocker.patch("scimodom.services.ensembl.Ensembl", MockEnsembl)
     service = _get_ensembl_annotation_service(Session)
     annotation = service.get_annotation(9606)

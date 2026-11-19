@@ -19,6 +19,8 @@ from scimodom.services.file import FileService, get_file_service
 from scimodom.services.web import WebService, get_web_service
 from scimodom.utils.utils import gen_short_uuid
 from scimodom.utils.specs.enums import (
+    CURRENT_ENSEMBL_ARCHIVE,
+    CURRENT_ENSEMBL_RELEASE,
     AssemblyFileType,
     Identifiers,
     ImportLimits,
@@ -83,6 +85,14 @@ class AssemblyService:
         self._web_service = web_service
         self._file_service = file_service
         self._ensembl_client = ensembl_client
+
+        # Which Ensembl snapshot this installation uses. The client is
+        # stateless and takes these per call, so that an upgrade can
+        # pass a different release without rebuilding anything.
+        # TODO: take these from the CLI, validate them against the REST
+        # API and persist them at creation time, cf. #157, #201.
+        self._release = CURRENT_ENSEMBL_RELEASE
+        self._archive = CURRENT_ENSEMBL_ARCHIVE
 
     @property
     def _version(self) -> str:
@@ -305,6 +315,7 @@ class AssemblyService:
                 self.get_organism(taxa_id),
                 assembly_name,
                 self.get_name_for_version(taxa_id),
+                self._release,
             )
             with self._file_service.create_chain_file(taxa_id, assembly_name) as fh:
                 self._web_service.stream_request_to_file(url, fh)
@@ -362,7 +373,7 @@ class AssemblyService:
         ).scalar_one()
 
     def _handle_release(self, assembly: Assembly):
-        release = self._ensembl_client.get_data_release()
+        release = self._ensembl_client.get_data_release(self._archive)
         with self._file_service.create_assembly_file(
             assembly.taxa_id, AssemblyFileType.RELEASE
         ) as fp:
@@ -370,7 +381,7 @@ class AssemblyService:
 
     def _handle_gene_build(self, assembly: Assembly):
         gene_build = self._ensembl_client.get_gene_build(
-            self.get_organism(assembly.taxa_id)
+            self.get_organism(assembly.taxa_id), self._archive
         )
         coord_sysver = self._ensembl_client.get_coord_system_version(gene_build)
         if coord_sysver != assembly.name:
@@ -403,7 +414,7 @@ class AssemblyService:
     ) -> None:
         # fall back from "chromosome" to "primary_assembly" only on a 404
         urls = self._ensembl_client.get_dna_sequence_urls(
-            organism, assembly.name, chrom
+            organism, assembly.name, chrom, self._release
         )
         for idx, url in enumerate(urls):
             try:
