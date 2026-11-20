@@ -1,9 +1,5 @@
 from enum import Enum
 
-# cf. scimodom.utils.specs.enums
-MOCK_ENSEMBL_RELEASE = 110
-MOCK_ENSEMBL_ARCHIVE = "jul2023"
-
 
 class MockEnsembl(Enum):
     FTP = "https://ftp.ensembl.org/pub"

@@ -1,6 +1,4 @@
 from scimodom.utils.specs.enums import (
-    CURRENT_ENSEMBL_ARCHIVE,
-    CURRENT_ENSEMBL_RELEASE,
     UserState,
     Strand,
     Identifiers,
@@ -61,11 +59,6 @@ def test_ensembl():
     assert len(Ensembl) == 8
 
 
-def test_current_ensembl_installation():
-    assert CURRENT_ENSEMBL_RELEASE == 110
-    assert CURRENT_ENSEMBL_ARCHIVE == "jul2023"
-
-
 def test_annotation_source():
     assert AnnotationSource.ENSEMBL == AnnotationSource("ensembl")
     assert AnnotationSource.GTRNADB == AnnotationSource("gtrnadb")
@@ -73,6 +66,7 @@ def test_annotation_source():
 
 
 def test_assembly_file_type():
+    assert AssemblyFileType.MANIFEST == AssemblyFileType("manifest.json")
     assert AssemblyFileType.INFO == AssemblyFileType("info.json")
     assert AssemblyFileType.RELEASE == AssemblyFileType("release.json")
     assert AssemblyFileType.CHROM == AssemblyFileType("chrom.sizes")
@@ -107,9 +101,12 @@ def test_assembly_file_type():
         == "organism.assembly.dna.chromosome.chrom.fa.gz.gzi"
     )
     assert AssemblyFileType.common() == (
+        AssemblyFileType.MANIFEST,
+        AssemblyFileType.CHROM,
+    )
+    assert AssemblyFileType.legacy() == (
         AssemblyFileType.INFO,
         AssemblyFileType.RELEASE,
-        AssemblyFileType.CHROM,
     )
     assert AssemblyFileType.fasta() == (
         AssemblyFileType.DNA,
@@ -122,7 +119,7 @@ def test_assembly_file_type():
     assert AssemblyFileType.is_fasta(AssemblyFileType.DNA_IDX) is True
     assert AssemblyFileType.is_fasta(AssemblyFileType.DNA_BGZ) is True
     assert AssemblyFileType.is_fasta("test") is False
-    assert len(AssemblyFileType) == 7
+    assert len(AssemblyFileType) == 8
 
 
 def test_targets_fie_type():

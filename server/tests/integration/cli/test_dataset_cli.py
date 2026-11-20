@@ -36,7 +36,6 @@ from scimodom.services.utilities import UtilitiesService
 from scimodom.services.validator import ValidatorService
 from scimodom.services.web import WebService
 from scimodom.utils.specs.enums import AnnotationSource, SunburstChartType
-from tests.mocks.enums import MOCK_ENSEMBL_RELEASE
 
 DATA_DIR = Path(Path(__file__).parent.parent, "data")
 
@@ -345,10 +344,6 @@ def test_runner():
 
 @pytest.fixture
 def mock_services(mocker, Session, tmp_path, test_runner):
-    mocker.patch(
-        "scimodom.services.annotation.ensembl.CURRENT_ENSEMBL_RELEASE",
-        MOCK_ENSEMBL_RELEASE,
-    )
     mocker.patch(
         "scimodom.services.sunburst.get_file_service",
         return_value=_get_file_service(Session, tmp_path),

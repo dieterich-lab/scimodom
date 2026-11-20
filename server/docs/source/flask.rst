@@ -98,6 +98,30 @@ where ``ASSEMBLY_ID=1`` matches the assembly ID from *Assembly* corresponding to
 
 Data is written to ``DATA_PATH`` (development) or ``HOST_DATA_DIR`` (production).
 
+The Ensembl release and archive that the reference files are obtained from must be given
+
+.. code-block:: bash
+
+    flask assembly add --release 110 --archive jul2023 1
+
+Nothing is inferred from the code: which snapshot to install is stated once, when it is installed. The release is validated
+against the archive before anything is downloaded, and both are recorded in the assembly manifest (``manifest.json``),
+together with the assembly information reported by the REST API. Everything that needs to know which snapshot is installed
+reads it from there, so it stays true after an upgrade changes what is current.
+
+.. note::
+
+    ``manifest.json`` supersedes ``info.json`` and ``release.json``. For an installation created before it existed, write it
+    from the files already on the system with
+
+    .. code-block:: bash
+
+        flask assembly migrate-manifest [OPTIONS] TAXA_ID
+
+    Nothing is downloaded and the current assembly is not touched. The release and archive are recorded as given, so they must
+    match the files actually installed. The legacy files are left in place and can be removed once the application has been
+    verified against the manifest.
+
 
 .. _project_data_setup:
 

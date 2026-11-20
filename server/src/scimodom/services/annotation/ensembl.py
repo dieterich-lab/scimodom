@@ -7,15 +7,9 @@ from scimodom.database.buffer import InsertBuffer
 from scimodom.database.models import Annotation, DataAnnotation, GenomicAnnotation
 from scimodom.services.annotation.generic import GenericAnnotationService
 from scimodom.services.ensembl import EnsemblAssemblyClient
-from scimodom.utils.specs.enums import CURRENT_ENSEMBL_RELEASE, AssemblyFileType
+from scimodom.utils.specs.enums import AssemblyFileType
 
 logger = logging.getLogger(__name__)
-
-
-class AnnotationVersionError(Exception):
-    """Exception handling for Annotation version mismatch."""
-
-    pass
 
 
 class EnsemblAnnotationService(GenericAnnotationService):
@@ -65,16 +59,14 @@ class EnsemblAnnotationService(GenericAnnotationService):
 
         :raises: AnnotationNotFoundError
         """
-        annotation = self.get_annotation_from_taxid_and_source(taxa_id, "ensembl")
-        # TODO: this forces every organism into lockstep with one global
-        # release, which is what blocks an annotation-only upgrade. It
-        # goes once the release is recorded per annotation, cf. #157.
-        if not annotation.release == CURRENT_ENSEMBL_RELEASE:
-            raise AnnotationVersionError(
-                f"Mismatch between annotation release '{annotation.release}' and "
-                f"current database Ensembl release '{CURRENT_ENSEMBL_RELEASE}'."
-            )
-        return annotation
+        # NOTE: the annotation release used to be checked against a
+        # global constant, which forced every organism into lockstep
+        # with one release and is what blocked an annotation-only
+        # upgrade. The annotation row is now the only statement of
+        # which release an annotation is; there is nothing left for it
+        # to disagree with. The release gets a database record of its
+        # own, per source, in #157.
+        return self.get_annotation_from_taxid_and_source(taxa_id, "ensembl")
 
     def create_annotation(self, taxa_id: int, **kwargs) -> None:
         """This method automates the creation of Ensembl
@@ -99,7 +91,9 @@ class EnsemblAnnotationService(GenericAnnotationService):
         )
 
         try:
-            release_path.mkdir(parents=True, exist_ok=False)
+            self._file_service.create_annotation_release_dir(
+                annotation.taxa_id, annotation.source, annotation.release
+            )
         except FileExistsError as exc:
             exc.add_note(f"... but no records found for annotation {annotation.id}.")
             raise

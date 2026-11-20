@@ -1,3 +1,4 @@
+import json
 from io import StringIO, BytesIO
 from pathlib import Path
 
@@ -8,6 +9,7 @@ from sqlalchemy.exc import NoResultFound
 from scimodom.database.models import Assembly, AssemblyVersion
 from scimodom.services.assembly import (
     AssemblyService,
+    AssemblyManifestNotFoundError,
     AssemblyNotFoundError,
     AssemblyVersionError,
     AssemblyAbortedError,
@@ -21,7 +23,6 @@ from tests.mocks.ensembl import (
 )
 from tests.mocks.io import MockStringIO, MockBytesIO
 from tests.mocks.web import MockWebService
-
 
 INFO = """{
 \t"assembly_accession": "GCA_000001405.29",
@@ -49,6 +50,43 @@ EXPECTED_RELEASE_JSON = """{
 \t\t110
 \t]
 }"""
+
+DATA_RELEASE = {"releases": [110]}
+
+# what the assembly manifest looks like on disk
+MANIFEST = json.dumps(
+    {
+        "schema_version": 1,
+        "assembly": json.loads(INFO),
+        "source": {
+            "provider": "ensembl",
+            "release": 110,
+            "archive": "jul2023",
+            "fetched_at": "2024-01-01T00:00:00+00:00",
+            "data_release_response": DATA_RELEASE,
+        },
+    }
+)
+
+
+def assert_manifest(file_service, taxa_id=9606):
+    """The manifest holds the assembly info and the install provenance.
+
+    'fetched_at' is not asserted, it is the time of the run.
+    """
+    written = json.loads(
+        file_service.created_files_by_name[
+            f"/data/assembly/{taxa_id}/manifest.json"
+        ].final_content
+    )
+    assert written["schema_version"] == 1
+    assert written["assembly"] == json.loads(EXPECTED_INFO_JSON)
+    source = written["source"]
+    assert source["provider"] == "ensembl"
+    assert source["release"] == 110
+    assert source["archive"] == "jul2023"
+    assert source["data_release_response"] == DATA_RELEASE
+    assert source["fetched_at"]
 
 
 class MockExternalService:
@@ -110,9 +148,17 @@ class MockFileService:
         if AssemblyFileType.is_chain(file_type) or AssemblyFileType.is_fasta(file_type):
             raise NotImplementedError()
         name = self.get_assembly_file_path(taxa_id, file_type).as_posix()
-        file = self.opened_files_by_name[name]
-        file.seek(0)
-        return file
+        try:
+            file = self.opened_files_by_name[name]
+        except KeyError as exc:
+            # as the real file service does, cf. open()
+            raise FileNotFoundError(name) from exc
+        # callers close what they open, so hand out a new handle each
+        # time, as open() does; snapshot the content on first access
+        if isinstance(file, (StringIO, BytesIO)):
+            file = file.getvalue()
+            self.opened_files_by_name[name] = file
+        return BytesIO(file) if isinstance(file, bytes) else StringIO(file)
 
     def create_assembly_file(
         self, taxa_id: int, file_type: AssemblyFileType
@@ -371,7 +417,9 @@ def test_create_lifted_file_fail_version(Session, file_service, setup):  # noqa
 
 
 def test_add_assembly(Session, file_service, setup, mocker):
-    file_service.opened_files_by_name["/data/assembly/9606/info.json"] = StringIO(INFO)
+    file_service.opened_files_by_name["/data/assembly/9606/manifest.json"] = StringIO(
+        MANIFEST
+    )
     service = _get_assembly_service(
         Session,
         file_service,
@@ -387,88 +435,20 @@ def test_add_assembly(Session, file_service, setup, mocker):
     assert file.final_content == b"foo"
 
 
-def test_add_current_assembly(Session, file_service, setup, mocker):
-    file_service.opened_files_by_name["/data/assembly/9606/chrom.sizes"] = StringIO(
-        "1\t248956422\n2\t242193529\nX\t156040895"
-    )
-    service = _get_assembly_service(
-        Session,
-        file_service,
-        gene_build=GENE_BUILD,
-        release={"releases": [110]},
-        url_to_data={
-            "mock://dna/chromosome.1": b"foo1",
-            "mock://dna/chromosome.2": b"foo2",
-            "mock://dna/chromosome.X": b"foox",
-        },
-    )
+def test_add_current_assembly_does_nothing(Session, file_service, setup, caplog):
+    # add_assembly installs assemblies other than the current one: the
+    # current one is set up by create_current, which states the Ensembl
+    # snapshot it installs
+    service = _get_assembly_service(Session, file_service, gene_build=GENE_BUILD)
     service.add_assembly(9606, "GRCh38")
-    with Session() as session:
-        assert session.query(Assembly).count() == 3
-    assert (
-        file_service.created_files_by_name[
-            "/data/assembly/9606/chrom.sizes"
-        ].final_content
-        == EXPECTED_CHROM_SIZES
-    )
-    assert (
-        file_service.created_files_by_name[
-            "/data/assembly/9606/info.json"
-        ].final_content
-        == EXPECTED_INFO_JSON
-    )
-    assert (
-        file_service.created_files_by_name[
-            "/data/assembly/9606/release.json"
-        ].final_content
-        == EXPECTED_RELEASE_JSON
-    )
-    assert (
-        file_service.created_files_by_name[
-            "/data/assembly/9606/GRCh38/chromosome.1.fa.gz"
-        ].final_content
-        == b"foo1"
-    )
-    assert (
-        "/data/assembly/9606/GRCh38/chromosome.1.fa.gz.fai"
-        in file_service.created_files_by_name
-    )
-    assert (
-        "/data/assembly/9606/GRCh38/chromosome.1.fa.gz.gzi"
-        in file_service.created_files_by_name
-    )
-    assert (
-        file_service.created_files_by_name[
-            "/data/assembly/9606/GRCh38/chromosome.2.fa.gz"
-        ].final_content
-        == b"foo2"
-    )
-    assert (
-        "/data/assembly/9606/GRCh38/chromosome.2.fa.gz.fai"
-        in file_service.created_files_by_name
-    )
-    assert (
-        "/data/assembly/9606/GRCh38/chromosome.2.fa.gz.gzi"
-        in file_service.created_files_by_name
-    )
-    assert (
-        file_service.created_files_by_name[
-            "/data/assembly/9606/GRCh38/chromosome.X.fa.gz"
-        ].final_content
-        == b"foox"
-    )
-    assert (
-        "/data/assembly/9606/GRCh38/chromosome.X.fa.gz.fai"
-        in file_service.created_files_by_name
-    )
-    assert (
-        "/data/assembly/9606/GRCh38/chromosome.X.fa.gz.gzi"
-        in file_service.created_files_by_name
-    )
+    assert file_service.created_files_by_name == {}
+    assert "this is the current assembly" in caplog.text
 
 
 def test_add_assembly_exist_in_database(Session, file_service, setup, mocker):
-    file_service.opened_files_by_name["/data/assembly/9606/info.json"] = StringIO(INFO)
+    file_service.opened_files_by_name["/data/assembly/9606/manifest.json"] = StringIO(
+        MANIFEST
+    )
     service = _get_assembly_service(
         Session,
         file_service,
@@ -517,7 +497,9 @@ def test_add_assembly_no_current(Session, file_service):
 
 
 def test_add_assembly_invalid_name(Session, file_service, setup, mocker):
-    file_service.opened_files_by_name["/data/assembly/9606/info.json"] = StringIO(INFO)
+    file_service.opened_files_by_name["/data/assembly/9606/manifest.json"] = StringIO(
+        MANIFEST
+    )
     service = _get_assembly_service(Session, file_service)
     with pytest.raises(AssemblyNotFoundError) as exc:
         service.add_assembly(9606, "NCBI33")
@@ -530,7 +512,9 @@ def test_add_assembly_invalid_name(Session, file_service, setup, mocker):
 
 
 def test_add_assembly_wrong_url(Session, file_service, setup, mocker):  # noqa
-    file_service.opened_files_by_name["/data/assembly/9606/info.json"] = StringIO(INFO)
+    file_service.opened_files_by_name["/data/assembly/9606/manifest.json"] = StringIO(
+        MANIFEST
+    )
     service = _get_assembly_service(Session, file_service)
     with pytest.raises(AssemblyAbortedError) as exc:  # traceback MockHTTPError
         service.add_assembly(9606, "NCBI36")
@@ -556,7 +540,7 @@ def test_create_current(Session, file_service, setup, mocker):
         },
     )
     assembly = service.get_by_id(1)
-    service.create_current(assembly)
+    service.create_current(assembly, 110, "jul2023")
     with Session() as session:
         assert session.query(Assembly).count() == 3
     assert (
@@ -565,18 +549,7 @@ def test_create_current(Session, file_service, setup, mocker):
         ].final_content
         == EXPECTED_CHROM_SIZES
     )
-    assert (
-        file_service.created_files_by_name[
-            "/data/assembly/9606/info.json"
-        ].final_content
-        == EXPECTED_INFO_JSON
-    )
-    assert (
-        file_service.created_files_by_name[
-            "/data/assembly/9606/release.json"
-        ].final_content
-        == EXPECTED_RELEASE_JSON
-    )
+    assert_manifest(file_service)
     assert (
         file_service.created_files_by_name[
             "/data/assembly/9606/GRCh38/chromosome.1.fa.gz"
@@ -628,7 +601,7 @@ def test_create_current_wrong_version(Session, file_service, setup):  # noqa
     )
     assembly = service.get_by_id(3)
     with pytest.raises(AssemblyVersionError) as exc:
-        service.create_current(assembly)
+        service.create_current(assembly, 110, "jul2023")
     assert (
         (str(exc.value))
         == "Version mismatch for 'GRCh37': Version is 'J9dit7Tfc6Sb', but database provides 'GcatSmFcytpU'"
@@ -640,7 +613,7 @@ def test_create_current_exist_in_file_system(Session, file_service, setup):  # n
     file_service.existing_assemblies = [(9606, "GRCh38")]
     service = _get_assembly_service(Session, file_service)
     assembly = service.get_by_id(1)
-    service.create_current(assembly)
+    service.create_current(assembly, 110, "jul2023")
 
 
 def test_create_current_build_error(Session, file_service, setup, mocker):
@@ -648,11 +621,11 @@ def test_create_current_build_error(Session, file_service, setup, mocker):
         Session,
         file_service,
         gene_build=NEWEST_GENE_BUILD,
-        release={"releases": [112]},
+        release=DATA_RELEASE,
     )
     assembly = service.get_by_id(1)
     with pytest.raises(AssemblyVersionError) as exc:
-        service.create_current(assembly)
+        service.create_current(assembly, 110, "jul2023")
     assert (
         str(exc.value)
     ) == "Version mismatch for 'GRCh38': coord system version provides 'GRCh39'"
@@ -660,11 +633,56 @@ def test_create_current_build_error(Session, file_service, setup, mocker):
     assert file_service.deleted_assemblies == [(9606, "GRCh38")]
 
 
+def test_create_current_release_not_served(Session, file_service, setup):
+    # the archive must serve the release that was requested; this is
+    # checked before anything is downloaded
+    service = _get_assembly_service(
+        Session,
+        file_service,
+        release={"releases": [112]},
+    )
+    assembly = service.get_by_id(1)
+    with pytest.raises(AssemblyVersionError) as exc:
+        service.create_current(assembly, 110, "jul2023")
+    assert (str(exc.value)) == (
+        "Ensembl archive 'jul2023' serves release(s) [112], "
+        "but release '110' was requested."
+    )
+    assert file_service.created_files_by_name == {}
+    assert file_service.deleted_assemblies == [(9606, "GRCh38")]
+
+
+def test_create_current_explicit_release_and_archive(Session, file_service, setup):
+    file_service.opened_files_by_name["/data/assembly/9606/chrom.sizes"] = StringIO(
+        "1\t248956422\n2\t242193529\nX\t156040895"
+    )
+    service = _get_assembly_service(
+        Session,
+        file_service,
+        gene_build=GENE_BUILD,
+        release={"releases": [112]},
+        url_to_data={
+            "mock://dna/chromosome.1": b"foo1",
+            "mock://dna/chromosome.2": b"foo2",
+            "mock://dna/chromosome.X": b"foox",
+        },
+    )
+    assembly = service.get_by_id(1)
+    service.create_current(assembly, release=112, archive="may2024")
+    written = json.loads(
+        file_service.created_files_by_name[
+            "/data/assembly/9606/manifest.json"
+        ].final_content
+    )
+    assert written["source"]["release"] == 112
+    assert written["source"]["archive"] == "may2024"
+
+
 def test_create_current_wrong_url(Session, file_service, setup, mocker):  # noqa
     service = _get_assembly_service(Session, file_service)
     assembly = service.get_by_id(1)
     with pytest.raises(AssemblyAbortedError) as exc:  # traceback MockHTTPError
-        service.create_current(assembly)
+        service.create_current(assembly, 110, "jul2023")
     assert str(exc.value) == "Aborted: Could not create system files for 'GRCh38'"
     assert exc.type == AssemblyAbortedError
     assert file_service.deleted_assemblies == [(9606, "GRCh38")]
@@ -680,7 +698,7 @@ def test_cleanup_failure_does_not_mask_error(
     service = _get_assembly_service(Session, file_service)
     assembly = service.get_by_id(1)
     with pytest.raises(AssemblyAbortedError) as exc:
-        service.create_current(assembly)
+        service.create_current(assembly, 110, "jul2023")
     assert str(exc.value) == "Aborted: Could not create system files for 'GRCh38'"
 
 
@@ -694,7 +712,7 @@ def test_cleanup_unexpected_failure_is_logged(
     service = _get_assembly_service(Session, file_service)
     assembly = service.get_by_id(1)
     with pytest.raises(AssemblyAbortedError):
-        service.create_current(assembly)
+        service.create_current(assembly, 110, "jul2023")
     assert "Failed to remove files for assembly 'GRCh38'." in caplog.text
 
 
@@ -708,7 +726,7 @@ def test_dna_fallback_on_404(Session, file_service, setup, mocker):  # noqa
     web = FlakyWebService(404)
     service._web_service = web
     assembly = service.get_by_id(1)
-    service._download_dna_sequence(assembly, "Homo sapiens", "1")
+    service._download_dna_sequence(assembly, "Homo sapiens", "1", 110)
     assert len(web.urls) == 2 and "primary_assembly" in web.urls[1]
     print(file_service.created_files_by_name)
 
@@ -721,5 +739,99 @@ def test_dna_no_fallback_on_server_error(Session, file_service, setup, mocker): 
     service._web_service = web
     assembly = service.get_by_id(1)
     with pytest.raises(HTTPError):
-        service._download_dna_sequence(assembly, "Homo sapiens", "1")
+        service._download_dna_sequence(assembly, "Homo sapiens", "1", 110)
     assert len(web.urls) == 1
+
+
+# manifest
+
+
+def test_read_manifest(Session, file_service, setup):
+    file_service.opened_files_by_name["/data/assembly/9606/manifest.json"] = StringIO(
+        MANIFEST
+    )
+    service = _get_assembly_service(Session, file_service)
+    manifest = service.read_manifest(9606)
+    assert manifest["source"]["release"] == 110
+    assert manifest["source"]["archive"] == "jul2023"
+    assert manifest["assembly"]["coord_system_versions"] == [
+        "GRCh38",
+        "GRCh37",
+        "NCBI36",
+        "NCBI35",
+        "NCBI34",
+    ]
+
+
+def test_read_manifest_missing_points_at_migration(Session, file_service, setup):
+    service = _get_assembly_service(Session, file_service)
+    with pytest.raises(AssemblyManifestNotFoundError) as exc:
+        service.read_manifest(9606)
+    assert "flask assembly migrate-manifest" in str(exc.value)
+
+
+def test_migrate_manifest(Session, file_service, setup):
+    # an existing installation has info.json and release.json
+    file_service.opened_files_by_name["/data/assembly/9606/info.json"] = StringIO(INFO)
+    file_service.opened_files_by_name["/data/assembly/9606/release.json"] = StringIO(
+        EXPECTED_RELEASE_JSON
+    )
+    service = _get_assembly_service(Session, file_service)
+    path = service.migrate_manifest(9606, 110, "jul2023")
+    assert path == Path("/data/assembly/9606/manifest.json")
+    assert_manifest(file_service)
+
+
+def test_migrate_manifest_without_release_json(Session, file_service, setup):
+    # release.json was only ever written, never read: a missing one is
+    # not a reason to refuse the migration
+    file_service.opened_files_by_name["/data/assembly/9606/info.json"] = StringIO(INFO)
+    service = _get_assembly_service(Session, file_service)
+    service.migrate_manifest(9606, 110, "jul2023")
+    written = json.loads(
+        file_service.created_files_by_name[
+            "/data/assembly/9606/manifest.json"
+        ].final_content
+    )
+    assert written["assembly"] == json.loads(EXPECTED_INFO_JSON)
+    assert written["source"]["data_release_response"] is None
+
+
+def test_migrate_manifest_no_legacy_files(Session, file_service, setup):
+    service = _get_assembly_service(Session, file_service)
+    with pytest.raises(FileNotFoundError):
+        service.migrate_manifest(9606, 110, "jul2023")
+
+
+def test_add_assembly_chain_release_from_manifest(Session, file_service, setup):
+    # a chain file maps onto the current assembly, so it comes from the
+    # release the current assembly was installed from, not from a
+    # global constant
+    file_service.opened_files_by_name["/data/assembly/9606/manifest.json"] = StringIO(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "assembly": json.loads(INFO),
+                "source": {
+                    "provider": "ensembl",
+                    "release": 112,
+                    "archive": "may2024",
+                    "fetched_at": "2024-01-01T00:00:00+00:00",
+                    "data_release_response": {"releases": [112]},
+                },
+            }
+        )
+    )
+    service = _get_assembly_service(
+        Session,
+        file_service,
+        url_to_data={"mock://chain/GRCh37_to_GRCh38": b"chain"},
+    )
+    service.add_assembly(9606, "GRCh37")
+    assert (
+        file_service.created_files_by_name[
+            "/data/assembly/9606/GRCh37/chain.gz"
+        ].final_content
+        == b"chain"
+    )
+    assert service.get_installed_release(9606) == 112

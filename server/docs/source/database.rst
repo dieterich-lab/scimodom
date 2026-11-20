@@ -179,13 +179,14 @@ Database upgrade
   It is currently not possible to perform a database upgrade. A method implementation is described below.
 
 
-* Update the Ensembl emumeration prior to running the upgrade method.
+* Give the Ensembl release and archive to the upgrade method; they are no longer held in the Ensembl enumeration.
 * Update ``assembly_version``, ``assembly``, ``annotation_version``, and ``annotation``, or only the latter two tables if performing
   an annotation-only upgrade.
 * Update ``genomic_annotation`` and ``data_annotation``.
 
-For an annotation-only upgrade, the assembly information (``release.json`` and ``info.json``) will change, but the data
-files (``chrom.sizes``, FASTA and CHAIN files) should not. A general liftover is not necessary, but data records need to be re-annotated.
+For an annotation-only upgrade, neither the assembly manifest nor the assembly data files (``chrom.sizes``, FASTA and
+CHAIN files) change: the manifest records which Ensembl snapshot those files were obtained from, and they are not
+re-downloaded. Only the annotation files and the annotation records change. A general liftover is not necessary, but data records need to be re-annotated.
 Since the PK of ``genomic_annotation`` is ``gene_id``, before calling ``create_annotation``, ``data_annotation`` must be deleted, then
 the old ``annotation_id`` from ``GenomicAnnotation`` must be deleted *e.g.*
 

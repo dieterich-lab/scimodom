@@ -97,6 +97,23 @@ def test_get_annotation_release_dir_differs_by_source(Session, tmp_path, setup):
     ) != service.get_annotation_release_dir(9606, "gtrnadb", 110)
 
 
+def test_create_annotation_release_dir(Session, tmp_path, setup):
+    service = _get_file_service(Session, tmp_path)
+    path = service.create_annotation_release_dir(9606, "ensembl", 110)
+    assert path.is_dir()
+    assert path == Path(
+        tmp_path, "t_data", "annotation", "Homo_sapiens", "GRCh38", "ensembl", "110"
+    )
+    assert path.stat().st_mode & 0o777 == 0o770
+
+
+def test_create_annotation_release_dir_exists(Session, tmp_path, setup):
+    service = _get_file_service(Session, tmp_path)
+    service.create_annotation_release_dir(9606, "ensembl", 110)
+    with pytest.raises(FileExistsError):
+        service.create_annotation_release_dir(9606, "ensembl", 110)
+
+
 def test_annotation_targets_file_is_not_below_release(Session, tmp_path, setup):
     # miRNA and RBP files belong to the assembly, not to an annotation
     # release: they stay directly below the annotation directory, cf. #146
@@ -535,11 +552,11 @@ def test_check_if_assembly_exists_reports_missing_files(
     Session, tmp_path, setup, assembly_files
 ):
     d = tmp_path / "t_data" / FileService.ASSEMBLY_DEST / "Homo_sapiens" / "GRCh38"
-    Path(d / AssemblyFileType.INFO.value).unlink()
+    Path(d / AssemblyFileType.MANIFEST.value).unlink()
     service = _get_file_service(Session, tmp_path)
     with pytest.raises(FileExistsError) as exc:
         service.check_if_assembly_exists(9606)
-    assert any(AssemblyFileType.INFO.value in n for n in exc.value.__notes__)
+    assert any(AssemblyFileType.MANIFEST.value in n for n in exc.value.__notes__)
 
 
 #  Files

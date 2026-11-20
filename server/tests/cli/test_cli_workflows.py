@@ -147,7 +147,7 @@ def test_add_project_assembly_not_found(mocker, test_runner):
 
 # assembly add
 
-ASSEMBLY_PLAN = AssemblyProvisioningPlan(1, 9606, "GRCh38")
+ASSEMBLY_PLAN = AssemblyProvisioningPlan(1, 9606, "GRCh38", 110, "jul2023")
 
 
 @pytest.fixture
@@ -165,7 +165,18 @@ def test_assembly_add(test_runner, provisioning_service):
     provisioning_service.execute.return_value = AssemblyProvisioningResult(
         9606, "GRCh38", added=["GRCh37"]
     )
-    result = test_runner.invoke(args=["assembly", "add", "--yes", "1"])
+    result = test_runner.invoke(
+        args=[
+            "assembly",
+            "add",
+            "--yes",
+            "--release",
+            "110",
+            "--archive",
+            "jul2023",
+            "1",
+        ]
+    )
     assert result.exit_code == 0
     assert "done with GRCh37" in result.output
 
@@ -177,7 +188,18 @@ def test_assembly_add_others_failed_is_not_an_error(test_runner, provisioning_se
         added=["GRCh37"],
         failed={"NCBI36": RuntimeError("no chain")},
     )
-    result = test_runner.invoke(args=["assembly", "add", "--yes", "1"])
+    result = test_runner.invoke(
+        args=[
+            "assembly",
+            "add",
+            "--yes",
+            "--release",
+            "110",
+            "--archive",
+            "jul2023",
+            "1",
+        ]
+    )
     assert result.exit_code == 1
     assert "Failed to provision NCBI36. no chain" in result.output
     assert "done with GRCh37" in result.output
@@ -191,14 +213,36 @@ def test_assembly_add_current_fails(test_runner, provisioning_service):
     provisioning_service.execute.side_effect = AssemblyProvisioningError(
         "Failed to set up current assembly 'GRCh38'. Error."
     )
-    result = test_runner.invoke(args=["assembly", "add", "--yes", "1"])
+    result = test_runner.invoke(
+        args=[
+            "assembly",
+            "add",
+            "--yes",
+            "--release",
+            "110",
+            "--archive",
+            "jul2023",
+            "1",
+        ]
+    )
     assert result.exit_code == 1
     assert "Failed to set up current assembly 'GRCh38'" in result.output
 
 
 def test_assembly_add_no_such_assembly(test_runner, provisioning_service):
     provisioning_service.plan.side_effect = AssemblyNotFoundError("No assembly")
-    result = test_runner.invoke(args=["assembly", "add", "--yes", "1"])
+    result = test_runner.invoke(
+        args=[
+            "assembly",
+            "add",
+            "--yes",
+            "--release",
+            "110",
+            "--archive",
+            "jul2023",
+            "1",
+        ]
+    )
     assert result.exit_code == 1
     provisioning_service.execute.assert_not_called()
 

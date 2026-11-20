@@ -12,7 +12,6 @@ from scimodom.database.models import (
 )
 from scimodom.services.annotation.ensembl import (
     EnsemblAnnotationService,
-    AnnotationVersionError,
 )
 from scimodom.services.annotation.generic import (
     GenericAnnotationService,

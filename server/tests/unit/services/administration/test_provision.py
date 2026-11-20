@@ -8,7 +8,13 @@ from scimodom.services.administration.assembly.provision import (
 )
 from scimodom.services.assembly import AssemblyNotFoundError, AssemblyService
 
-PLAN = AssemblyProvisioningPlan(assembly_id=1, taxa_id=9606, assembly_name="GRCh38")
+PLAN = AssemblyProvisioningPlan(
+    assembly_id=1,
+    taxa_id=9606,
+    assembly_name="GRCh38",
+    release=110,
+    archive="jul2023",
+)
 
 
 @pytest.fixture
@@ -23,7 +29,7 @@ def assembly_service(mocker):
 
 
 def test_plan(assembly_service):
-    plan = AssemblyProvisioningService(assembly_service).plan(1)
+    plan = AssemblyProvisioningService(assembly_service).plan(1, 110, "jul2023")
     assert plan == PLAN
     assembly_service.create_current.assert_not_called()
 
@@ -31,13 +37,13 @@ def test_plan(assembly_service):
 def test_plan_no_such_assembly(assembly_service):
     assembly_service.get_by_id.side_effect = NoResultFound
     with pytest.raises(AssemblyNotFoundError):
-        AssemblyProvisioningService(assembly_service).plan(1)
+        AssemblyProvisioningService(assembly_service).plan(1, 110, "jul2023")
 
 
 def test_execute(mocker, assembly_service):
     result = AssemblyProvisioningService(assembly_service).execute(PLAN)
     assembly_service.create_current.assert_called_once_with(
-        assembly_service.get_by_id.return_value
+        assembly_service.get_by_id.return_value, release=110, archive="jul2023"
     )
     # the current assembly is not added again
     assert assembly_service.add_assembly.call_args_list == [

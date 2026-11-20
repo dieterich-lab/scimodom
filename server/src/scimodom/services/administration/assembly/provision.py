@@ -28,6 +28,8 @@ class AssemblyProvisioningPlan:
     assembly_id: int
     taxa_id: int
     assembly_name: str
+    release: int
+    archive: str
 
 
 @dataclass(frozen=True)
@@ -60,10 +62,14 @@ class AssemblyProvisioningService:
     def __init__(self, assembly_service: AssemblyService) -> None:
         self._assembly_service = assembly_service
 
-    def plan(self, assembly_id: int) -> AssemblyProvisioningPlan:
+    def plan(
+        self, assembly_id: int, release: int, archive: str
+    ) -> AssemblyProvisioningPlan:
         """Validate the current assembly (from the database).
 
         :param assembly_id: Assembly ID
+        :param release: Ensembl release to obtain the files from
+        :param archive: Ensembl archive to obtain the files from
         :raises AssemblyNotFoundError: If no such assembly
         :return: Plan
         """
@@ -75,6 +81,8 @@ class AssemblyProvisioningService:
             assembly.id,
             assembly.taxa_id,
             assembly.name,
+            release,
+            archive,
         )
 
     def execute(
@@ -89,7 +97,7 @@ class AssemblyProvisioningService:
         """
         assembly = self._assembly_service.get_by_id(plan.assembly_id)
         try:
-            self._assembly_service.create_current(assembly)
+            self._assembly_service.create_current(assembly, plan.release, plan.archive)
         except Exception as exc:
             raise AssemblyProvisioningError(
                 f"Failed to provision current assembly '{plan.assembly_name}'. {exc}"

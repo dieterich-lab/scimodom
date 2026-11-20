@@ -271,6 +271,40 @@ class FileService:
             str(release),
         )
 
+    def create_annotation_release_dir(
+        self,
+        taxa_id: int,
+        source: str,
+        release: int,
+        assembly_name: str | None = None,
+    ) -> Path:
+        """Create the annotation directory of one source and release.
+
+        Created like every other directory of the data tree, i.e. with
+        the mode and umask of :meth:`_create_folder`, so that it does
+        not depend on the umask of the calling process.
+
+        :param taxa_id: Taxa ID
+        :type taxa_id: int
+        :param source: Annotation source e.g. "ensembl"
+        :type source: str
+        :param release: Annotation release
+        :type release: int
+        :param assembly_name: Assembly name. If None, it is inferred
+        from the current assembly version.
+        :type assembly_name: str | None
+        :raises FileExistsError: If the directory already exists
+        :returns: Path to annotation release directory
+        :rtype: Path
+        """
+        path = self.get_annotation_release_dir(
+            taxa_id, source, release, assembly_name=assembly_name
+        )
+        if path.exists():
+            raise FileExistsError(f"Annotation release directory exists: '{path}'.")
+        self._create_folder(path)
+        return path
+
     def open_annotation_targets_file(
         self, taxa_id: int, target_type: TargetsFileType, chrom: str
     ) -> TextIO:

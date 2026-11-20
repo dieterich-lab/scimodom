@@ -60,27 +60,14 @@ class ImportLimits(Enum):
 # Annotation and assembly
 
 
-# The Ensembl release and archive that are currently installed.
-#
-# These describe this installation, not Ensembl: which snapshot the
-# reference files were obtained from. They are passed to the services
-# that build URLs rather than baked into the URLs themselves, so that
-# they can be supplied per invocation and recorded with the data.
-#
-# TODO: supply these as CLI arguments, validate them against the REST
-# API and persist them at creation time, cf. #157, #201.
-CURRENT_ENSEMBL_RELEASE = 110
-CURRENT_ENSEMBL_ARCHIVE = "jul2023"
-
-
 class Ensembl(Enum):
     """Define the Ensembl URL layout.
 
     Members describe where Ensembl serves data and how its URLs are
     built. They deliberately do not record which release or archive is
-    installed: that is a property of the installation, cf.
-    CURRENT_ENSEMBL_RELEASE and CURRENT_ENSEMBL_ARCHIVE, and is passed
-    in by the caller.
+    installed: that is a property of the installation. It is stated
+    when an assembly is created and recorded in its manifest, cf.
+    scimodom.utils.specs.manifest.
 
     The archive token e.g. "jul2023" is shared by the REST and the web
     archive hosts, so both are built from it.
@@ -105,6 +92,9 @@ class AnnotationSource(Enum):
 
 
 class AssemblyFileType(Enum):
+    MANIFEST = "manifest.json"
+    # superseded by MANIFEST: read by the migration command only,
+    # cf. "flask assembly migrate-manifest"
     INFO = "info.json"
     RELEASE = "release.json"
     CHROM = "chrom.sizes"
@@ -119,7 +109,12 @@ class AssemblyFileType(Enum):
 
     @classmethod
     def common(cls):
-        return cls.INFO, cls.RELEASE, cls.CHROM
+        return cls.MANIFEST, cls.CHROM
+
+    @classmethod
+    def legacy(cls):
+        """File types superseded by MANIFEST."""
+        return cls.INFO, cls.RELEASE
 
     @classmethod
     def fasta(cls):
