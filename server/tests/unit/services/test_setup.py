@@ -1,6 +1,9 @@
 from io import StringIO
 
 import pytest
+from sqlalchemy import UniqueConstraint
+
+from scimodom.database.models import Annotation, AnnotationRelease
 from scimodom.services.setup import SetupService
 
 # cf. #30
@@ -113,3 +116,42 @@ def test_upsert_one_header_only_does_nothing(Session, mocker):
     bulk = mocker.patch.object(setup, "_bulk_upsert")
     setup.upsert_one("taxonomy.csv")
     bulk.assert_not_called()
+
+
+def test_import_order_satisfies_foreign_keys():
+    # the order of FILE_NAME_TO_DB_TABLE_MAP is load-bearing: upsert_all
+    # walks it, so a table must come after every table it references
+    position = {
+        model.__tablename__: i
+        for i, model in enumerate(SetupService.FILE_NAME_TO_DB_TABLE_MAP.values())
+    }
+    for file_name, model in SetupService.FILE_NAME_TO_DB_TABLE_MAP.items():
+        for foreign_key in model.__table__.foreign_keys:
+            referred = foreign_key.column.table.name
+            if referred == model.__tablename__ or referred not in position:
+                continue
+            assert position[referred] < position[model.__tablename__], (
+                f"'{file_name}' references '{referred}', which must be "
+                "imported before it"
+            )
+
+
+def test_annotation_release_archive_is_optional():
+    # not every provider keeps a per-release archive; a null means
+    # there is no release-specific page to link to. The archive is not
+    # part of the key, so this does not weaken the foreign key from
+    # Annotation, cf. AnnotationRelease
+    assert AnnotationRelease.__table__.columns["archive"].nullable is True
+    assert AnnotationRelease.__table__.columns["source"].nullable is False
+    assert AnnotationRelease.__table__.columns["release"].nullable is False
+
+
+def test_only_one_current_annotation_per_assembly_and_source():
+    # the release is deliberately not part of the key: two releases of
+    # the same source must not both be current on the same assembly
+    uniques = {
+        c.name: [col.name for col in c.columns]
+        for c in Annotation.__table__.constraints
+        if isinstance(c, UniqueConstraint)
+    }
+    assert uniques == {"uq_annotation_asv": ["assembly_id", "source", "version"]}

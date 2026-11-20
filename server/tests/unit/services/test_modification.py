@@ -7,6 +7,7 @@ from sqlalchemy import select, func, and_
 
 from scimodom.database.models import (
     Annotation,
+    Assembly,
     AnnotationVersion,
     Data,
     DataAnnotation,
@@ -181,8 +182,12 @@ class MockAnnotationService:
         self, annotation_source: AnnotationSource, taxa_id: int
     ) -> Annotation:
         return self._session.execute(
-            select(Annotation).filter_by(
-                taxa_id=taxa_id, source=annotation_source.value, version=self._version
+            select(Annotation)
+            .join(Assembly, Annotation.inst_assembly)
+            .where(
+                Assembly.taxa_id == taxa_id,
+                Annotation.source == annotation_source.value,
+                Annotation.version == self._version,
             )
         ).scalar_one()
 

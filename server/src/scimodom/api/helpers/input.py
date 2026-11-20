@@ -23,13 +23,12 @@ from .errors import (
     _invalid_choice,
 )
 
-
 T = TypeVar("T")
 
-_FILENAME_CHARS = r"a-zA-Z0-9.,_-"
-VALID_FILENAME_REGEXP = re.compile(rf"\A[{_FILENAME_CHARS}]{{1,256}}\Z")
+_FILENAME_CHARS = r"a-zA-Z0-9.,_-"  # noqa E231
+VALID_FILENAME_REGEXP = re.compile(rf"\A[{_FILENAME_CHARS}]{{1,256}}\Z")  # noqa E231
 INVALID_CHARS_REGEXP = re.compile(rf"[^{_FILENAME_CHARS}]")
-VALID_ID_REGEXP = re.compile(r"\A[a-zA-Z0-9]{1,256}\Z")
+VALID_ID_REGEXP = re.compile(r"\A[a-zA-Z0-9]{1,256}\Z")  # noqa E231
 
 
 # Query parameter parsing/conversion

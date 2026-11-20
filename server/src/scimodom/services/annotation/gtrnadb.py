@@ -81,12 +81,13 @@ class GtRNAdbAnnotationService(GenericAnnotationService):
         annotation_file = annotation_paths["bed"].annotation_file
         fasta_file = annotation_paths["fa"].annotation_file
         # TODO
-        # seqids = self._assembly_service.get_seqids(annotation.taxa_id)
+        # seqids = assembly_service.get_seqids(annotation.inst_assembly.taxa_id)
         # ?
         # seqids = []
 
         logger.info(
-            f"Setting up GtRNAdb {annotation.release} for {annotation.taxa_id}..."
+            f"Setting up GtRNAdb {annotation.release} for "
+            f"{annotation.inst_assembly.taxa_id}..."
         )
 
         try:

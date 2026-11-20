@@ -6,6 +6,7 @@ from typing import Any, ClassVar
 from scimodom.database.database import Base, get_session
 from scimodom.database.models import (
     Annotation,
+    AnnotationRelease,
     AnnotationVersion,
     Assembly,
     AssemblyVersion,
@@ -37,10 +38,14 @@ class SetupService:
         "ncbi_taxa.csv": Taxa,
         "assembly.csv": Assembly,
         "assembly_version.csv": AssemblyVersion,
+        "annotation_release.csv": AnnotationRelease,
         "annotation.csv": Annotation,
         "annotation_version.csv": AnnotationVersion,
         "method.csv": DetectionMethod,
     }
+    # NOTE: the order is load-bearing, cf. upsert_all. A table must come
+    # after the tables it references: annotation references assembly and
+    # annotation_release.
 
     def __init__(self, session: Session, file_service: FileService) -> None:
         self._session = session

@@ -10,7 +10,6 @@ from scimodom.utils.dtos.project import (
     ProjectTemplate,
 )
 
-
 EXAMPLE_TEMPLATE = """
 {
     "title": "Title",

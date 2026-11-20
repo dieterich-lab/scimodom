@@ -3,6 +3,7 @@ from decimal import Decimal
 from typing import List, Optional
 
 from sqlalchemy import (
+    ForeignKeyConstraint,
     Numeric,
     String,
     Text,
@@ -141,7 +142,6 @@ class Taxa(Base):
 
     organisms: Mapped[List["Organism"]] = relationship(back_populates="inst_taxa")
     assemblies: Mapped[List["Assembly"]] = relationship(back_populates="inst_taxa")
-    annotations: Mapped[List["Annotation"]] = relationship(back_populates="inst_taxa")
 
 
 class Organism(Base):
@@ -215,6 +215,13 @@ class Assembly(Base):
     )
 
     inst_taxa: Mapped["Taxa"] = relationship(back_populates="assemblies")
+    # NOTE: every annotation of this assembly, of any version. Only
+    # the current one may be used, cf.
+    # GenericAnnotationService.get_annotation_from_taxid_and_source,
+    # which is the only place an annotation should be obtained from
+    annotations: Mapped[List["Annotation"]] = relationship(
+        back_populates="inst_assembly"
+    )
 
 
 class AssemblyVersion(Base):
@@ -234,21 +241,61 @@ class Annotation(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     release: Mapped[int] = mapped_column(nullable=False)
-    taxa_id: Mapped[int] = mapped_column(ForeignKey("ncbi_taxa.id"), index=True)
+    assembly_id: Mapped[int] = mapped_column(ForeignKey("assembly.id"), index=True)
     source: Mapped[str] = mapped_column(String(128), nullable=False)
     version: Mapped[str] = mapped_column(
         String(12), nullable=False
     )  # current is annotation_version.version_num
 
     __table_args__ = (
-        UniqueConstraint(release, taxa_id, source, version, name="uq_annotation_rtv"),
+        # one annotation per assembly, source and generation: the
+        # release is deliberately not part of the key, so that two
+        # releases of the same source cannot both be current on the
+        # same assembly. An upgrade retires the old row by changing
+        # its version; an annotation-only upgrade changes the release
+        # and the version, an assembly upgrade the assembly_id too
+        UniqueConstraint(assembly_id, source, version, name="uq_annotation_asv"),
+        ForeignKeyConstraint(
+            ["source", "release"],
+            ["annotation_release.source", "annotation_release.release"],
+            name="fk_annotation_annotation_release",
+        ),
         CheckConstraint("LENGTH(version) = 12", name="version"),
     )
 
-    inst_taxa: Mapped["Taxa"] = relationship(back_populates="annotations")
+    # an annotation is a set of features in the coordinate system of an
+    # assembly; the taxa is reached through it
+    inst_assembly: Mapped["Assembly"] = relationship(back_populates="annotations")
     annotations: Mapped[List["GenomicAnnotation"]] = relationship(
         back_populates="inst_annotation"
     )
+
+
+class AnnotationRelease(Base):
+    """Where a provider serves the data of one release.
+
+    The release of an annotation identifies the snapshot it came from,
+    but says nothing about where that snapshot is served. Ensembl
+    publishes the mapping of a release onto its archive as an HTML list
+    only, so it cannot be derived and is recorded here.
+
+    Keyed on the source as well as the release, so that a provider
+    other than Ensembl, or an Ensembl Genomes division with its own
+    release numbering, does not collide with it.
+
+    The archive is nullable because not every provider keeps one: a
+    null means this provider serves no per-release archive, so there
+    is no release-specific page to link to. GtRNAdb is the case in
+    point, cf. https://gtrnadb.ucsc.edu. It is not part of the key, so
+    a null does not weaken the foreign key from Annotation: an
+    annotation can still only exist for a release that was declared.
+    """
+
+    __tablename__ = "annotation_release"
+
+    source: Mapped[str] = mapped_column(String(128), primary_key=True)
+    release: Mapped[int] = mapped_column(primary_key=True)
+    archive: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
 
 
 class AnnotationVersion(Base):

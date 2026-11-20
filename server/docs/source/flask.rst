@@ -26,10 +26,16 @@ The command ``flask setup upsert [FILE_NAME]...`` performs an ``INSERT... ON DUP
         "ncbi_taxa.csv": Taxa,
         "assembly.csv": Assembly,
         "assembly_version.csv": AssemblyVersion,
+        "annotation_release.csv": AnnotationRelease,
         "annotation.csv": Annotation,
         "annotation_version.csv": AnnotationVersion,
         "method.csv": DetectionMethod,
     }
+
+.. important::
+
+   The order is load-bearing: a table must come after the tables it references. *annotation.csv* references both
+   *assembly.csv* and *annotation_release.csv*.
 
 
 These files provide seed data to populate the database, establishing a standard terminology for the application. They must exist and be located under ``IMPORT_PATH`` (development) or ``HOST_IMPORT_DIR`` (production). By default, this path is located under *server/import*, and can be specified in the environment file. The import format is *CSV*, and the header must match the column names (including *id*) from each of the corresponding database table.
@@ -52,15 +58,31 @@ For example:
     1,GRCh38,hg38,9606,K9FeTPiZ4abQ
     2,GRCm39,mm39,10090,K9FeTPiZ4abQ
 
+* *annotation_release.csv* with column names taken from the corresponding declarative model *AnnotationRelease*
+
+.. code-block:: bash
+
+    source,release,archive
+    ensembl,110,jul2023
+
+The *archive* may be left empty for a provider that serves no per-release archive, so that there is no release-specific
+page to link to. It is not part of the key, so this does not affect the constraint that an annotation can only exist for
+a release declared here.
+
 * *annotation.csv* with column names taken from the corresponding declarative model *Annotation*
 
 .. code-block:: bash
 
-    id,release,taxa_id,source,version
-    1,110,9606,ensembl,cp6qKL4t4Wws
-    2,110,10090,ensembl,cp6qKL4t4Wws
+    id,release,assembly_id,source,version
+    1,110,1,ensembl,cp6qKL4t4Wws
+    2,110,2,ensembl,cp6qKL4t4Wws
 
 where *version* for assembly and annotation must match the current version specified in *assembly_version.csv* and *annotation_version.csv*, respectively.
+
+An annotation references the assembly it is in the coordinate system of, not a taxa: the taxa is reached through the
+assembly. The *assembly_id* of an annotation must be an assembly of the current assembly version. The *(source, release)*
+of an annotation must have a row in *annotation_release.csv*, which records where that provider serves that release;
+Ensembl publishes the mapping of a release onto its archive as an HTML list only, so it cannot be derived.
 
 The models are defined in `scimodom.database.models <https://github.com/dieterich-lab/scimodom/blob/master/server/src/scimodom/database/models.py>`_.
 

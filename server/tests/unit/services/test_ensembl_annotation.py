@@ -2,8 +2,10 @@ from pathlib import Path
 from posixpath import join as urljoin
 
 import pytest
+from sqlalchemy import select, update
 
 from scimodom.database.models import (
+    AnnotationRelease,
     Annotation,
     AnnotationVersion,
     GenomicAnnotation,
@@ -96,7 +98,6 @@ def _get_ensembl_annotation_service(
         web_service=MockWebService(url_to_result),  # noqa
         gene_service=MockGeneService(),  # noqa
         file_service=MockFileService(),  # noqa
-        assembly_service=MockAssemblyService(),  # noqa
         ensembl_client=EnsemblAssemblyClient(MockWebService(url_to_result)),  # noqa
     )
 
@@ -115,25 +116,28 @@ def test_get_annotation(Session, setup, mocker):
     service = _get_ensembl_annotation_service(Session)
     annotation = service.get_annotation(9606)
     assert annotation.release == 110
-    assert annotation.taxa_id == 9606
+    assert annotation.inst_assembly.name == "GRCh38"
+    assert annotation.inst_assembly.taxa_id == 9606
     assert annotation.source == "ensembl"
     assert annotation.version == "EyRBnPeVwbzW"
 
 
-def test_get_annotation_any_release(Session, mocker):
+def test_get_annotation_any_release(Session, setup, mocker):
     # the annotation row states which release an annotation is; it is
     # no longer checked against a global one, which is what forced
-    # every organism into lockstep
+    # every organism into lockstep. A second release on the same
+    # assembly is what an annotation-only upgrade produces.
     with Session() as session, session.begin():
-        session.add(AnnotationVersion(version_num="EyRBnPeVwbzW"))
-        session.add(
-            Annotation(
-                release=111, taxa_id=9606, source="ensembl", version="EyRBnPeVwbzW"
-            )
+        session.execute(
+            update(Annotation)
+            .where(Annotation.version == "EyRBnPeVwbzW", Annotation.assembly_id == 1)
+            .values(release=111)
         )
+        session.add(AnnotationRelease(source="ensembl", release=111, archive="jan2024"))
     service = _get_ensembl_annotation_service(Session)
     annotation = service.get_annotation(9606)
     assert annotation.release == 111
+    assert annotation.inst_assembly.name == "GRCh38"
 
 
 def test_get_annotation_fail(Session):
@@ -195,3 +199,40 @@ def test_ensembl_annotation_paths(Session, setup, mocker):
     )
     assert annotation_file == expected_annotation_path
     assert url == expected_url
+
+
+def test_release_path_follows_the_annotation_not_the_current_assembly(
+    Session, setup, mocker
+):
+    # the whole point of the FK: an annotation on an assembly that is
+    # no longer current still resolves to its own directory
+    with Session() as session, session.begin():
+        # GRCh37 (id 3) is not the current assembly
+        session.execute(
+            update(Annotation).where(Annotation.release == 109).values(assembly_id=3)
+        )
+    service = _get_ensembl_annotation_service(Session)
+    current = service.get_annotation_from_taxid_and_source(9606, "ensembl")
+    assert current.release == 110
+    assert service.get_release_path(current) == Path(
+        "/data", "annotation", "Homo_sapiens", "GRCh38", "ensembl", "110"
+    )
+    old_annotation = service._session.execute(
+        select(Annotation).where(Annotation.release == 109)
+    ).scalar_one()
+    assert service.get_release_path(old_annotation) == Path(
+        "/data", "annotation", "Homo_sapiens", "GRCh37", "ensembl", "109"
+    )
+
+
+def test_annotation_version_is_read_on_each_access(Session, setup):
+    # an upgrade changes the current version; a service built once at
+    # start-up must not keep handing out the version it saw then
+    service = _get_ensembl_annotation_service(Session)
+    assert service.get_annotation(9606).release == 110
+    service._session.execute(
+        update(AnnotationVersion).values(version_num="A8syx5TzWlK0")
+    )
+    service._session.commit()
+    # same service instance, no rebuild
+    assert service.get_annotation(9606).release == 109

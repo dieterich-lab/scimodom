@@ -18,7 +18,6 @@ from scimodom.services.annotation.generic import (
     AnnotationNotFoundError,
 )
 from scimodom.services.annotation.gtrnadb import GtRNAdbAnnotationService
-from scimodom.services.assembly import get_assembly_service
 from scimodom.services.bedtools import get_bedtools_service
 from scimodom.services.data import get_data_service
 from scimodom.services.ensembl import get_ensembl_assembly_client
@@ -252,7 +251,6 @@ def get_annotation_service() -> AnnotationService:
     web_service = get_web_service()
     gene_service = get_gene_service()
     file_service = get_file_service()
-    assembly_service = get_assembly_service()
     return AnnotationService(
         session=session,
         services_by_annotation_source={
@@ -264,7 +262,6 @@ def get_annotation_service() -> AnnotationService:
                 web_service=web_service,
                 gene_service=gene_service,
                 file_service=file_service,
-                assembly_service=assembly_service,
                 ensembl_client=get_ensembl_assembly_client(),
             ),
             AnnotationSource.GTRNADB: GtRNAdbAnnotationService(
@@ -275,7 +272,6 @@ def get_annotation_service() -> AnnotationService:
                 web_service=web_service,
                 gene_service=gene_service,
                 file_service=file_service,
-                assembly_service=assembly_service,
             ),
         },
     )

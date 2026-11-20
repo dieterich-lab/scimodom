@@ -18,7 +18,6 @@ from scimodom.utils.importer.bed_importer import (
 )
 from scimodom.utils.specs.enums import Strand
 
-
 EUF_FILE = """#fileformat=bedRModv1.8
 #organism=10090
 #modification_type=RNA

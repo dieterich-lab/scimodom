@@ -137,7 +137,7 @@ Assemblies and annotations for the current version must be available, see `Flask
 Assembly
 ^^^^^^^^
 
-Available assemblies for different organisms are grouped into an ``assembly_version``, which defines the assemblies used in **Sci-ModoM** (w/o patch number/minor release). This version is recorded in a table of the same name. Assemblies are *tagged* by version numbers, in case more than one is available per organism. The current ``assembly_version`` prevails. This ``assembly_version`` is implicitely *matched* with the Ensembl enumeration.
+Available assemblies for different organisms are grouped into an ``assembly_version``, which defines the assemblies used in **Sci-ModoM** (w/o patch number/minor release). This version is recorded in a table of the same name. Assemblies are *tagged* by version numbers, in case more than one is available per organism. The current ``assembly_version`` prevails. The Ensembl snapshot the assembly files were obtained from is recorded in the assembly manifest.
 
 How does it work?
 
@@ -157,7 +157,7 @@ How does it work?
 Annotation
 ^^^^^^^^^^
 
-Available annotations are grouped into an ``annotation_version``, which defines the annotations used in **Sci-ModoM**. This version is recorded in a table of the same name. Annotations are *tagged* by version numbers, in case more than one is available per organism. The current ``annotation_version`` prevails, and must implicitely *match* the current ``assembly_version``, although this is not forced into the database. Currently, the Ensembl annotation service checks that the annotation release matches that from the Ensembl enumeration, but this is not done at instantiation. A given Ensembl release is valid for all organisms.
+Available annotations are grouped into an ``annotation_version``, which defines the annotations used in **Sci-ModoM**. This version is recorded in a table of the same name. Annotations are *tagged* by version numbers, in case more than one is available per organism. The current ``annotation_version`` prevails. An annotation references the assembly it is in the coordinate system of, so that dependency is recorded in the database rather than left to the file system. The release is a property of the annotation: it is no longer checked against a global value, and nothing requires every organism to be on the same one.
 
 How does it work?
 
@@ -196,8 +196,8 @@ the old ``annotation_id`` from ``GenomicAnnotation`` must be deleted *e.g.*
     delete from genomic_annotation where annotation_id = 2;
 
 For a full upgrade, assemblies and data files need to be re-created. In addition to the above, all ``data`` records have to be re-added
-(lifted over and re-annotated). The "dependency" between assembly and annotation should be made explicit, and this should be better integrated
-with the database model.
+(lifted over and re-annotated). Which annotations belong to which assembly is now a foreign key, so the records to re-create can be
+identified from the database rather than inferred from the directory layout.
 
 
 .. _data_model:

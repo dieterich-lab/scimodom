@@ -8,6 +8,7 @@ from scimodom.database.models import (
     Assembly,
     AssemblyVersion,
     Annotation,
+    AnnotationRelease,
     AnnotationVersion,
     DetectionMethod,
 )
@@ -80,21 +81,36 @@ def setup(Session):
     ]
     add.extend(assembly_version)
     assembly = [
-        Assembly(name="GRCh38", alt_name="hg38", taxa_id=9606, version="GcatSmFcytpU"),
-        Assembly(name="GRCm38", alt_name="mm10", taxa_id=10090, version="GcatSmFcytpU"),
-        Assembly(name="GRCh37", alt_name="hg19", taxa_id=9606, version="J9dit7Tfc6Sb"),
+        Assembly(
+            id=1, name="GRCh38", alt_name="hg38", taxa_id=9606, version="GcatSmFcytpU"
+        ),
+        Assembly(
+            id=2, name="GRCm38", alt_name="mm10", taxa_id=10090, version="GcatSmFcytpU"
+        ),
+        Assembly(
+            id=3, name="GRCh37", alt_name="hg19", taxa_id=9606, version="J9dit7Tfc6Sb"
+        ),
     ]
     add.extend(assembly)
     annotation_version = [
         AnnotationVersion(version_num="EyRBnPeVwbzW"),
     ]
     add.extend(annotation_version)
+    annotation_release = [
+        AnnotationRelease(source="ensembl", release=110, archive="jul2023"),
+        AnnotationRelease(source="ensembl", release=109, archive="feb2023"),
+    ]
+    add.extend(annotation_release)
     annotation = [
-        Annotation(release=110, taxa_id=9606, source="ensembl", version="EyRBnPeVwbzW"),
         Annotation(
-            release=110, taxa_id=10090, source="ensembl", version="EyRBnPeVwbzW"
+            release=110, assembly_id=1, source="ensembl", version="EyRBnPeVwbzW"
         ),
-        Annotation(release=109, taxa_id=9606, source="ensembl", version="A8syx5TzWlK0"),
+        Annotation(
+            release=110, assembly_id=2, source="ensembl", version="EyRBnPeVwbzW"
+        ),
+        Annotation(
+            release=109, assembly_id=1, source="ensembl", version="A8syx5TzWlK0"
+        ),
     ]
     add.extend(annotation)
     method = [

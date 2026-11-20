@@ -7,11 +7,11 @@ from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session
 
 from scimodom.database.models import (
+    Assembly,
     Annotation,
     AnnotationVersion,
     GenomicAnnotation,
 )
-from scimodom.services.assembly import AssemblyService
 from scimodom.services.bedtools import BedToolsService
 from scimodom.services.data import DataService
 from scimodom.services.external import ExternalService
@@ -39,7 +39,6 @@ class GenericAnnotationService(ABC):
         web_service: WebService,
         gene_service: GeneService,
         file_service: FileService,
-        assembly_service: AssemblyService,
     ) -> None:
         """Utility class to handle annotations.
 
@@ -55,9 +54,6 @@ class GenericAnnotationService(ABC):
         :type web_service: WebService
         :param file_service: FileService
         :type file_service: FileService
-        :param assembly_service: Assembly service instance. Owns the
-        organism and assembly an annotation belongs to.
-        :type assembly_service: AssemblyService
         """
 
         self._session = session
@@ -67,11 +63,17 @@ class GenericAnnotationService(ABC):
         self._web_service = web_service
         self._gene_service = gene_service
         self._file_service = file_service
-        self._assembly_service = assembly_service
 
-        self._version = self._session.execute(
-            select(AnnotationVersion.version_num)
-        ).scalar_one()
+    @property
+    def _version(self) -> str:
+        """Current annotation (database) version.
+
+        This is read from the database on each access (not cached), as
+        for the assembly version: an upgrade changes it, and a service
+        built once at start-up would otherwise keep handing out the
+        version it saw then.
+        """
+        return self._session.execute(select(AnnotationVersion.version_num)).scalar_one()
 
     def get_annotation_from_taxid_and_source(
         self, taxa_id: int, source: str
@@ -90,8 +92,12 @@ class GenericAnnotationService(ABC):
         """
         try:
             return self._session.execute(
-                select(Annotation).filter_by(
-                    taxa_id=taxa_id, source=source, version=self._version
+                select(Annotation)
+                .join(Assembly, Annotation.inst_assembly)
+                .where(
+                    Assembly.taxa_id == taxa_id,
+                    Annotation.source == source,
+                    Annotation.version == self._version,
                 )
             ).scalar_one()
         except NoResultFound:
@@ -102,20 +108,20 @@ class GenericAnnotationService(ABC):
     def get_release_path(self, annotation: Annotation) -> Path:
         """Construct annotation release path.
 
-        NOTE: the assembly is resolved from the current assembly version.
-        Once Annotation references an Assembly directly, the assembly
-        name comes from the annotation itself and this becomes
-        independent of the current version, cf. #157.
+        The assembly comes from the annotation, so the path does not
+        depend on which assembly is current.
 
         :param annotation: Annotation instance
         :type annotation: Annotation
         :returns: Annotation release path
         :rtype: Path
         """
+        assembly = annotation.inst_assembly
         return self._file_service.get_annotation_release_dir(
-            annotation.taxa_id,
+            assembly.taxa_id,
             annotation.source,
             annotation.release,
+            assembly_name=assembly.name,
         )
 
     def _release_exists(self, annotation_id) -> bool:

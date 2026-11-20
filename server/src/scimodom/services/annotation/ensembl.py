@@ -69,9 +69,15 @@ class EnsemblAnnotationService(GenericAnnotationService):
         return self.get_annotation_from_taxid_and_source(taxa_id, "ensembl")
 
     def create_annotation(self, taxa_id: int, **kwargs) -> None:
-        """This method automates the creation of Ensembl
-        annotations for a given organism for the current
-        release. The annotation must exist in the database.
+        """Create the current Ensembl annotation of an organism.
+
+        This sets up the annotation that is current in the database,
+        on the assembly that annotation references. It is not a way to
+        install an arbitrary release: an upgrade replaces the current
+        annotation and gets a method of its own, cf. #157.
+
+        The annotation must exist in the database, and so must the
+        assembly it references.
 
         :param taxa_id: Taxonomy ID
         :type taxa_id: int
@@ -80,19 +86,24 @@ class EnsemblAnnotationService(GenericAnnotationService):
         if self._release_exists(annotation.id):
             return
 
+        assembly = annotation.inst_assembly
         release_path = self.get_release_path(annotation)
         annotation_file, url = self._get_annotation_paths(annotation, release_path)
         chrom_file = self._file_service.get_assembly_file_path(
-            annotation.taxa_id, AssemblyFileType.CHROM
+            assembly.taxa_id, AssemblyFileType.CHROM, assembly_name=assembly.name
         )
 
         logger.info(
-            f"Setting up Ensembl {annotation.release} for {annotation.taxa_id}..."
+            f"Setting up Ensembl {annotation.release} for '{assembly.name}' "
+            f"(organism {assembly.taxa_id})..."
         )
 
         try:
             self._file_service.create_annotation_release_dir(
-                annotation.taxa_id, annotation.source, annotation.release
+                assembly.taxa_id,
+                annotation.source,
+                annotation.release,
+                assembly_name=assembly.name,
             )
         except FileExistsError as exc:
             exc.add_note(f"... but no records found for annotation {annotation.id}.")
@@ -152,19 +163,19 @@ class EnsemblAnnotationService(GenericAnnotationService):
     ) -> tuple[Path, str]:
         """Construct the local path and the remote URL of an annotation file.
 
-        Organism and assembly are read from the database, not recovered
-        from the components of release_path.
+        Organism and assembly come from the assembly the annotation
+        references, not from the components of release_path.
         """
-        organism = self._assembly_service.get_organism(annotation.taxa_id)
-        assembly_name = self._assembly_service.get_name_for_version(annotation.taxa_id)
+        assembly = annotation.inst_assembly
+        organism = assembly.inst_taxa.name
         filen = self.ANNOTATION_FILE(
             organism=self._ensembl_client.get_organism_url_name(organism).capitalize(),
-            assembly=assembly_name,
+            assembly=assembly.name,
             release=annotation.release,
             fmt=self.FMT,
         )
         # TODO: AD HOC, cf. #149
-        if annotation.taxa_id in self.NO_CHR_VARIANT_TAXA:
+        if assembly.taxa_id in self.NO_CHR_VARIANT_TAXA:
             filen = filen.replace(".chr", "")
         url = self._ensembl_client.get_annotation_file_url(
             organism=organism,

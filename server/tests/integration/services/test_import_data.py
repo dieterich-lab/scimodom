@@ -199,7 +199,6 @@ def _get_annotation_service(
                 web_service=web_service,
                 gene_service=gene_service,
                 file_service=file_service,
-                assembly_service=assembly_service,
                 ensembl_client=EnsemblAssemblyClient(web_service),
             ),
             AnnotationSource.GTRNADB: GtRNAdbAnnotationService(
@@ -210,7 +209,6 @@ def _get_annotation_service(
                 web_service=web_service,
                 gene_service=gene_service,
                 file_service=file_service,
-                assembly_service=assembly_service,
             ),
         },
     )

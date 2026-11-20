@@ -33,18 +33,36 @@ annotation_cli = Blueprint("annotation", __name__)
 def add_annotation(yes: bool, traceback: bool, taxa_id: int, source: str, **kwargs):
     """Add annotations.
 
-    Annotation must exists in the database (only latest version allowed).
+    Set up the annotation that is current in the database, on the
+    assembly it references. The annotation must exist in the database,
+    and so must the assembly, which is set up by 'flask assembly add'.
+
+    This is not a way to install an arbitrary release: the release
+    comes from the annotation record, and upgrading to another one
+    replaces the current annotation.
     """
     annotation_service = get_annotation_service()
 
     if source == "gtrnadb":
         raise CliResponseException("Not implemented for source 'gtrnadb'.")
 
-    click.secho(f"Preparing {source} annotation for {taxa_id}...", fg="yellow")
+    annotation_source = AnnotationSource(source)
+    try:
+        annotation = annotation_service.get_annotation(annotation_source, taxa_id)
+    except Exception as exc:
+        raise CliResponseException(
+            f"No current {source} annotation for organism '{taxa_id}'. {exc}"
+        ) from exc
+
+    assembly = annotation.inst_assembly
+    click.secho(
+        f"Preparing {source} annotation release {annotation.release} for "
+        f"'{assembly.name}' (organism {taxa_id})...",
+        fg="yellow",
+    )
     confirm("Continue?", skip=yes)
 
     try:
-        annotation_source = AnnotationSource(source)
         annotation_service.create_annotation(annotation_source, taxa_id)
         click.secho("   ... done.", fg="green")
     except FileExistsError as exc:

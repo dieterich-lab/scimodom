@@ -82,7 +82,8 @@ class Exporter:
             .join(
                 AnnotationVersion, Annotation.version == AnnotationVersion.version_num
             )
-            .where(Annotation.taxa_id == taxa_id, Annotation.source == "ensembl")
+            .join(Assembly, Annotation.inst_assembly)
+            .where(Assembly.taxa_id == taxa_id, Annotation.source == "ensembl")
         ).scalar_one()
 
     def _get_modification_names(self, dataset: Dataset) -> str:
@@ -91,7 +92,7 @@ class Exporter:
         ).all()
         parts = [
             (
-                f"{name}:{name}:"
+                f"{name}:{name}:"  # noqa: E231
                 f"{self._session.scalar(select(Modomics.reference_nucleobase).where(Modomics.short_name == name))}"
             )
             for name in sorted(short_names)
@@ -115,7 +116,7 @@ class Exporter:
         yield f"#bioinformatics_workflow={_or_default(dataset.bioinformatics_workflow, '')}\n"
         yield f"#experiment={_or_default(dataset.experiment, '')}\n"
         yield f"#external_source={_or_default(dataset.external_source, '')}\n"
-        yield f"#source=EUFID:{dataset.id},SMID:{dataset.project_id}\n"
+        yield f"#source=EUFID:{dataset.id},SMID:{dataset.project_id}\n"  # noqa: E231
         yield "#chrom\tchromStart\tchromEnd\tname\tscore\tstrand\tthickStart\tthickEnd\titemRgb\tcoverage\tfrequency\n"
 
     def _generate_records(self, dataset: Dataset):
