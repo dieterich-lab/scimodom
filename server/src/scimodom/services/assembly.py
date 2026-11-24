@@ -2,7 +2,7 @@ import json
 import logging
 from pathlib import Path
 from functools import cache
-from typing import Sequence, TextIO
+from typing import Any, TextIO
 
 from requests.exceptions import HTTPError
 from sqlalchemy import select, func
@@ -27,7 +27,9 @@ from scimodom.utils.specs.enums import (
 )
 from scimodom.utils.specs.manifest import (
     build_manifest,
+    get_archive,
     get_coord_system_versions,
+    get_provider,
     get_release,
 )
 
@@ -128,20 +130,79 @@ class AssemblyService:
             select(Assembly).filter_by(taxa_id=taxa_id, name=assembly_name)
         ).scalar_one()
 
-    def get_assemblies_by_taxa(self, taxa_id: int) -> Sequence[Assembly]:
-        """Retrieve all assemblies for a given organism.
+    def get_assemblies(
+        self, taxa_id: int | None = None, current: bool | None = None
+    ) -> list[dict[str, Any]]:
+        """Get assemblies with their organism and installed snapshot.
 
-        :param taxa_id: Taxonomy ID
-        :return: list of Assembly instances
+        Every assembly is listed by default, including those kept
+        only to lift over from, which is what `current` distinguishes.
+
+        The snapshot is that of the organism, not of the assembly:
+        there is one manifest per organism, written for the current
+        assembly, and add_assembly installs every other assembly of
+        that organism from the release it records, so they all come
+        from the same snapshot. `source` is null only where there is
+        no manifest at all, cf. _get_installed_source.
+
+        :param taxa_id: Taxonomy ID, or None for every organism
+        :param current: True for the current assemblies only, False
+        for the others only, or None for all of them
+        :return: Assemblies
         """
-        return (
-            self._session.execute(select(Assembly).filter_by(taxa_id=taxa_id))
-            .scalars()
-            .all()
-        )
+        version = self._version
+        query = select(Assembly, Taxa).join(Taxa, Assembly.inst_taxa)
+        if taxa_id is not None:
+            query = query.where(Assembly.taxa_id == taxa_id)
+        if current is not None:
+            query = query.where(
+                Assembly.version == version if current else Assembly.version != version
+            )
+        # one manifest per organism, read once however many of its
+        # assemblies are listed
+        sources: dict[int, dict | None] = {}
+        catalog = []
+        for row in self._session.execute(
+            query.order_by(Assembly.taxa_id, Assembly.name)
+        ):
+            if row.Assembly.taxa_id not in sources:
+                sources[row.Assembly.taxa_id] = self._get_installed_source(
+                    row.Assembly.taxa_id
+                )
+            catalog.append(
+                {
+                    "id": row.Assembly.id,
+                    "name": row.Assembly.name,
+                    "alt_name": row.Assembly.alt_name,
+                    "taxa_id": row.Assembly.taxa_id,
+                    "taxa_name": row.Taxa.name,
+                    "current": row.Assembly.version == version,
+                    "source": sources[row.Assembly.taxa_id],
+                }
+            )
+        return catalog
 
-    def is_latest_assembly(self, assembly: Assembly) -> bool:
-        """Check if assembly version matches latest version.
+    def _get_installed_source(self, taxa_id: int) -> dict | None:
+        """Read what the assemblies of an organism were installed from.
+
+        None if there is no manifest: a current assembly installed
+        before the manifest existed and not yet migrated, cf. 'flask
+        assembly migrate-manifest', or an organism whose assembly has
+        a database record but no files yet. Neither may fail a
+        catalog request.
+        """
+        try:
+            manifest = self.read_manifest(taxa_id)
+        except AssemblyManifestNotFoundError:
+            return None
+        return {
+            "provider": get_provider(manifest),
+            "release": get_release(manifest),
+            "archive": get_archive(manifest),
+        }
+
+    def is_current_assembly(self, assembly: Assembly) -> bool:
+        """Check if assembly version matches current version.
 
         :param assembly: Assembly instance
         :return: True if assembly version is
@@ -150,10 +211,10 @@ class AssemblyService:
         return assembly.version == self._version
 
     def get_name_for_version(self, taxa_id: int) -> str:
-        """Get assembly name for latest version.
+        """Get assembly name for current version.
 
         :param taxa_id: Taxonomy ID
-        :raises NoResultFound: If no assembly for the latest version.
+        :raises NoResultFound: If no assembly for the current version.
         :return: Assembly name
         """
         return self._session.execute(
@@ -161,7 +222,7 @@ class AssemblyService:
         ).scalar_one()
 
     def get_chroms(self, taxa_id: int) -> list[dict[str, str | int]]:
-        """Return chrom.sizes for the latest database version.
+        """Return chrom.sizes for the current database version.
 
         :param taxa_id: Taxonomy ID
         :return: chrom names and sizes
@@ -193,8 +254,8 @@ class AssemblyService:
         :param threshold: Threshold for raising LiftOverError
         :return: File handle pointing to the liftedOver features
         """
-        if self.is_latest_assembly(assembly):
-            raise AssemblyVersionError("Cannot liftover for latest assembly.")
+        if self.is_current_assembly(assembly):
+            raise AssemblyVersionError("Cannot liftover for current assembly.")
 
         chain_file = self._file_service.get_assembly_file_path(
             assembly.taxa_id,
@@ -295,7 +356,7 @@ class AssemblyService:
         archive does not serve the requested release.
         :raises AssemblyAbortedError: If fail to create files.
         """
-        if not self.is_latest_assembly(assembly):
+        if not self.is_current_assembly(assembly):
             raise AssemblyVersionError(
                 f"Version mismatch for '{assembly.name}': "
                 f"Version is '{assembly.version}', "

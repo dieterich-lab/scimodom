@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import ProgressSpinner from 'primevue/progressspinner'
@@ -19,6 +19,7 @@ import {
 import { useDialogState } from '@/stores/DialogState'
 import { trashRequestErrors } from '@/services/API'
 import { formatFrequency } from '@/utils/frequency'
+import { getEnsemblBrowseUrl } from '@/services/annotation'
 
 const props = defineProps<{
   searchParameters: SearchParameters | null
@@ -43,6 +44,25 @@ const exportLink = computed(() =>
 )
 const emptyMessage = computed(() =>
   props.searchParameters && !loading.value ? 'No records match your search criteria!' : ''
+)
+
+// where the records of this search are browsed at the source, for
+// the release they were annotated with. Resolved once per search
+// and not per row: every row of a search shares it
+const browseUrl = ref<string | null>(null)
+
+watch(
+  () => props.searchParameters?.taxa.taxa_id,
+  (taxaId) => {
+    browseUrl.value = null
+    if (taxaId === undefined) {
+      return
+    }
+    getEnsemblBrowseUrl(taxaId)
+      .then((url) => (browseUrl.value = url))
+      .catch((e) => trashRequestErrors(e))
+  },
+  { immediate: true }
 )
 
 onMounted(() => loadData())
@@ -148,7 +168,7 @@ function onOverlay(record: Modification) {
     <Column field="start" header="Start" :sortable="true">
       <template #body="{ data }">
         <ChromRegionEnsemblLink
-          :taxa-name="searchParameters?.taxa.taxa_name || ''"
+          :browse-url="browseUrl"
           :chrom="data.chrom"
           :start="data.start"
           :end="data.end"
@@ -197,7 +217,7 @@ function onOverlay(record: Modification) {
     <Column field="gene_name" header="Gene">
       <template #body="{ data }">
         <GeneEnsemblLink
-          :taxa-name="searchParameters?.taxa.taxa_name || ''"
+          :browse-url="browseUrl"
           :gene-name="data.gene_name"
           :gene-id="data.gene_id"
         />

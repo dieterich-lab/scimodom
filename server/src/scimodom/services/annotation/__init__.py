@@ -1,5 +1,6 @@
 import logging
 from functools import cache
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -208,10 +209,10 @@ class AnnotationService:
     ) -> dict[str, dict[str, str]]:
         return self._services_by_annotation_source[annotation_source].FEATURES
 
-    def get_annotation(
+    def get_by_taxa(
         self, annotation_source: AnnotationSource, taxa_id: int
     ) -> Annotation:
-        return self._services_by_annotation_source[annotation_source].get_annotation(
+        return self._services_by_annotation_source[annotation_source].get_by_taxa(
             taxa_id
         )
 
@@ -232,6 +233,24 @@ class AnnotationService:
         self._services_by_annotation_source[annotation_source].annotate_data(
             taxa_id, dataset_id, selection_ids
         )
+
+    def get_annotations(self, taxa_id: int | None = None) -> list[dict[str, Any]]:
+        """Get the current annotations of every source.
+
+        Each source answers for itself, cf.
+        GenericAnnotationService.get_annotations, so that what is
+        source-specific stays with the source. The order is imposed
+        here, as it is across sources.
+
+        :param taxa_id: Taxonomy ID, or None for every organism
+        :return: Annotations
+        """
+        annotations = [
+            annotation
+            for service in self._services_by_annotation_source.values()
+            for annotation in service.get_annotations(taxa_id)
+        ]
+        return sorted(annotations, key=lambda x: (x["taxa_id"], x["source"]))
 
     def get_features_by_rna_type(self, rna_type: str) -> list[str]:
         annotation_source = self.get_annotation_source(rna_type)

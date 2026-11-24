@@ -178,7 +178,7 @@ class MockAnnotationService:
             select(AnnotationVersion.version_num)
         ).scalar_one()
 
-    def get_annotation(
+    def get_by_taxa(
         self, annotation_source: AnnotationSource, taxa_id: int
     ) -> Annotation:
         return self._session.execute(

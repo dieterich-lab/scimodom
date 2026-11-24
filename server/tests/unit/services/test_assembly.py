@@ -307,26 +307,13 @@ def test_get_by_taxa_and_name_fail(Session):
         service.get_by_taxa_and_name(9606, "GRCh37")
 
 
-def test_get_assemblies_by_taxa(Session, file_service, setup):  # noqa
-    service = _get_assembly_service(Session, file_service)
-    assemblies = service.get_assemblies_by_taxa(9606)
-
-    expected_assemblies = [
-        ("GRCh38", "GcatSmFcytpU"),
-        ("GRCh37", "J9dit7Tfc6Sb"),
-    ]
-    for assembly, expected_assembly in zip(assemblies, expected_assemblies):
-        assert assembly.name == expected_assembly[0]
-        assert assembly.version == expected_assembly[1]
-
-
-@pytest.mark.parametrize("assembly_id,is_latest", [(1, True), (3, False)])
-def test_is_latest_assembly(
-    assembly_id, is_latest, Session, file_service, setup
+@pytest.mark.parametrize("assembly_id,is_current", [(1, True), (3, False)])
+def test_is_current_assembly(
+    assembly_id, is_current, Session, file_service, setup
 ):  # noqa
     service = _get_assembly_service(Session, file_service)
     assembly = service.get_by_id(assembly_id)
-    assert service.is_latest_assembly(assembly) == is_latest
+    assert service.is_current_assembly(assembly) == is_current
 
 
 def test_get_name_for_version(Session, file_service, setup):  # noqa
@@ -412,7 +399,7 @@ def test_create_lifted_file_fail_version(Session, file_service, setup):  # noqa
     assembly = service.get_by_id(1)
     with pytest.raises(AssemblyVersionError) as exc:
         service.create_lifted_file(assembly, "raw_file")
-    assert (str(exc.value)) == "Cannot liftover for latest assembly."
+    assert (str(exc.value)) == "Cannot liftover for current assembly."
     assert exc.type == AssemblyVersionError
 
 
@@ -835,3 +822,115 @@ def test_add_assembly_chain_release_from_manifest(Session, file_service, setup):
         == b"chain"
     )
     assert service.get_installed_release(9606) == 112
+
+
+# catalog
+
+
+def test_get_assemblies(Session, file_service, setup):  # noqa
+    file_service.opened_files_by_name["/data/assembly/9606/manifest.json"] = StringIO(
+        MANIFEST
+    )
+    file_service.opened_files_by_name["/data/assembly/10090/manifest.json"] = StringIO(
+        MANIFEST
+    )
+    service = _get_assembly_service(Session, file_service)
+
+    assert service.get_assemblies() == [
+        # ordered by taxon, then name: the current assembly is not
+        # first, a consumer has to read `current`
+        {
+            "id": 3,
+            "name": "GRCh37",
+            "alt_name": "hg19",
+            "taxa_id": 9606,
+            "taxa_name": "Homo sapiens",
+            "current": False,
+            # kept to lift over from, and installed from the
+            # snapshot the manifest records: add_assembly reads the
+            # release from there, so it cannot be another one
+            "source": {"provider": "ensembl", "release": 110, "archive": "jul2023"},
+        },
+        {
+            "id": 1,
+            "name": "GRCh38",
+            "alt_name": "hg38",
+            "taxa_id": 9606,
+            "taxa_name": "Homo sapiens",
+            "current": True,
+            "source": {"provider": "ensembl", "release": 110, "archive": "jul2023"},
+        },
+        {
+            "id": 2,
+            "name": "GRCm38",
+            "alt_name": "mm10",
+            "taxa_id": 10090,
+            "taxa_name": "Mus musculus",
+            "current": True,
+            "source": {"provider": "ensembl", "release": 110, "archive": "jul2023"},
+        },
+    ]
+
+
+def test_get_assemblies_by_taxa(Session, file_service, setup):  # noqa
+    file_service.opened_files_by_name["/data/assembly/9606/manifest.json"] = StringIO(
+        MANIFEST
+    )
+    service = _get_assembly_service(Session, file_service)
+    assert [row["name"] for row in service.get_assemblies(9606)] == [
+        "GRCh37",
+        "GRCh38",
+    ]
+
+
+@pytest.mark.parametrize(
+    "current,expected",
+    [
+        (None, ["GRCh37", "GRCh38", "GRCm38"]),
+        (True, ["GRCh38", "GRCm38"]),
+        (False, ["GRCh37"]),
+    ],
+)
+def test_get_assemblies_by_current(
+    current, expected, Session, file_service, setup
+):  # noqa
+    # absent means unfiltered, as before; False gives the assemblies
+    # kept only to lift over from
+    file_service.opened_files_by_name["/data/assembly/9606/manifest.json"] = StringIO(
+        MANIFEST
+    )
+    file_service.opened_files_by_name["/data/assembly/10090/manifest.json"] = StringIO(
+        MANIFEST
+    )
+    service = _get_assembly_service(Session, file_service)
+    assert [row["name"] for row in service.get_assemblies(current=current)] == expected
+
+
+def test_get_assemblies_without_manifest(Session, file_service, setup):  # noqa
+    # an assembly installed before the manifest existed: the rest of
+    # the catalog must still be served, cf. 'flask assembly
+    # migrate-manifest'
+    service = _get_assembly_service(Session, file_service)
+    assert [
+        (row["name"], row["current"], row["source"])
+        for row in service.get_assemblies(9606)
+    ] == [("GRCh37", False, None), ("GRCh38", True, None)]
+
+
+def test_get_assemblies_reads_one_manifest_per_organism(
+    Session, file_service, setup, mocker
+):  # noqa
+    # the manifest is the organism's, not the assembly's: reading it
+    # once per row would read the same file for every assembly of
+    # the organism
+    file_service.opened_files_by_name["/data/assembly/9606/manifest.json"] = StringIO(
+        MANIFEST
+    )
+    file_service.opened_files_by_name["/data/assembly/10090/manifest.json"] = StringIO(
+        MANIFEST
+    )
+    service = _get_assembly_service(Session, file_service)
+    spy = mocker.spy(service, "read_manifest")
+    catalog = service.get_assemblies()
+    assert len(catalog) == 3
+    assert spy.call_count == 2

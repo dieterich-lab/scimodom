@@ -112,9 +112,9 @@ def test_init(Session):
     assert service._version == "EyRBnPeVwbzW"
 
 
-def test_get_annotation(Session, setup, mocker):
+def test_get_by_taxa(Session, setup, mocker):
     service = _get_ensembl_annotation_service(Session)
-    annotation = service.get_annotation(9606)
+    annotation = service.get_by_taxa(9606)
     assert annotation.release == 110
     assert annotation.inst_assembly.name == "GRCh38"
     assert annotation.inst_assembly.taxa_id == 9606
@@ -135,7 +135,7 @@ def test_get_annotation_any_release(Session, setup, mocker):
         )
         session.add(AnnotationRelease(source="ensembl", release=111, archive="jan2024"))
     service = _get_ensembl_annotation_service(Session)
-    annotation = service.get_annotation(9606)
+    annotation = service.get_by_taxa(9606)
     assert annotation.release == 111
     assert annotation.inst_assembly.name == "GRCh38"
 
@@ -145,14 +145,14 @@ def test_get_annotation_fail(Session):
         session.add(AnnotationVersion(version_num="EyRBnPeVwbzW"))
     service = _get_ensembl_annotation_service(Session)
     with pytest.raises(AnnotationNotFoundError) as exc:
-        service.get_annotation(9606)
+        service.get_by_taxa(9606)
     assert (str(exc.value)) == "No such ensembl annotation for taxonomy ID: 9606."
     assert exc.type == AnnotationNotFoundError
 
 
 def test_get_release_path(Session, setup, mocker):
     service = _get_ensembl_annotation_service(Session)
-    annotation = service.get_annotation(9606)
+    annotation = service.get_by_taxa(9606)
     release_path = service.get_release_path(annotation)
     # the source is part of the path, cf. uq_annotation_rtv
     expected_release_path = Path(
@@ -168,14 +168,14 @@ def test_release_exists(Session, setup, mocker):
         )
         session.add(genomic_annotation)
     service = _get_ensembl_annotation_service(Session)
-    annotation = service.get_annotation(9606)
+    annotation = service.get_by_taxa(9606)
     assert service._release_exists(annotation.id)
 
 
 def test_ensembl_annotation_paths(Session, setup, mocker):
     mocker.patch("scimodom.services.ensembl.Ensembl", MockEnsembl)
     service = _get_ensembl_annotation_service(Session)
-    annotation = service.get_annotation(9606)
+    annotation = service.get_by_taxa(9606)
     release_path = service.get_release_path(annotation)
     annotation_file, url = service._get_annotation_paths(annotation, release_path)
     expected_annotation_file = service.ANNOTATION_FILE(
@@ -212,7 +212,7 @@ def test_release_path_follows_the_annotation_not_the_current_assembly(
             update(Annotation).where(Annotation.release == 109).values(assembly_id=3)
         )
     service = _get_ensembl_annotation_service(Session)
-    current = service.get_annotation_from_taxid_and_source(9606, "ensembl")
+    current = service.get_by_taxa_and_source(9606, "ensembl")
     assert current.release == 110
     assert service.get_release_path(current) == Path(
         "/data", "annotation", "Homo_sapiens", "GRCh38", "ensembl", "110"
@@ -229,10 +229,83 @@ def test_annotation_version_is_read_on_each_access(Session, setup):
     # an upgrade changes the current version; a service built once at
     # start-up must not keep handing out the version it saw then
     service = _get_ensembl_annotation_service(Session)
-    assert service.get_annotation(9606).release == 110
+    assert service.get_by_taxa(9606).release == 110
     service._session.execute(
         update(AnnotationVersion).values(version_num="A8syx5TzWlK0")
     )
     service._session.commit()
     # same service instance, no rebuild
-    assert service.get_annotation(9606).release == 109
+    assert service.get_by_taxa(9606).release == 109
+
+
+# catalog
+
+
+def test_get_annotations(Session, setup):  # noqa
+    service = _get_ensembl_annotation_service(Session)
+    assert service.get_annotations() == [
+        {
+            "id": 1,
+            "source": "ensembl",
+            "release": 110,
+            "archive": "jul2023",
+            "browse_url": "https://jul2023.archive.ensembl.org/Homo_sapiens",
+            "assembly_id": 1,
+            "assembly_name": "GRCh38",
+            "taxa_id": 9606,
+            "taxa_name": "Homo sapiens",
+        },
+        {
+            "id": 2,
+            "source": "ensembl",
+            "release": 110,
+            "archive": "jul2023",
+            "browse_url": "https://jul2023.archive.ensembl.org/Mus_musculus",
+            "assembly_id": 2,
+            "assembly_name": "GRCm38",
+            "taxa_id": 10090,
+            "taxa_name": "Mus musculus",
+        },
+    ]
+
+
+def test_get_annotations_by_taxa(Session, setup):  # noqa
+    service = _get_ensembl_annotation_service(Session)
+    assert [row["taxa_id"] for row in service.get_annotations(10090)] == [10090]
+
+
+def test_get_annotations_excludes_superseded(Session, setup):  # noqa
+    # the fixture holds a release 109 annotation of a past version;
+    # it has no data in the database and must not be reported
+    service = _get_ensembl_annotation_service(Session)
+    assert [row["release"] for row in service.get_annotations()] == [110, 110]
+
+
+def test_get_annotations_follows_the_annotation_version(Session, setup):  # noqa
+    # an annotation-only upgrade retires release 110 for release 109:
+    # the catalog reports the new release and its archive, without
+    # the service being rebuilt
+    service = _get_ensembl_annotation_service(Session)
+    assert service.get_annotations(9606)[0]["release"] == 110
+    # an upgrade bumps the version rather than rewriting the rows
+    service._session.execute(
+        update(AnnotationVersion).values(version_num="A8syx5TzWlK0")
+    )
+    service._session.commit()
+    row = service.get_annotations(9606)[0]
+    assert row["release"] == 109
+    assert row["browse_url"] == "https://feb2023.archive.ensembl.org/Homo_sapiens"
+
+
+def test_get_annotations_without_archive(Session, setup):  # noqa
+    # a release with no archive recorded: there is no page to link to
+    service = _get_ensembl_annotation_service(Session)
+    service._session.execute(
+        update(AnnotationRelease)
+        .where(AnnotationRelease.release == 110)
+        .values(archive=None)
+    )
+    service._session.commit()
+    row = service.get_annotations(9606)[0]
+    assert row["archive"] is None
+    assert row["browse_url"] is None

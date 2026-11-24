@@ -4,9 +4,11 @@ from sqlalchemy.exc import NoResultFound
 from scimodom.api.helpers import (
     ClientResponseException,
     create_error_response,
-    parse_valid_taxa_id,
-    parse_valid_rna_type,
+    get_optional_bool,
+    get_optional_valid_taxa_id,
     get_required_list,
+    get_valid_taxa_id,
+    parse_valid_rna_type,
 )
 from scimodom.services.annotation import get_annotation_service
 from scimodom.services.assembly import get_assembly_service
@@ -29,7 +31,7 @@ def get_rna_types():
 
 
 @catalog_api.get("/rna-types/<rna_type>/biotypes")
-def get_biotypes(rna_type: str):  # noqa
+def get_biotypes(rna_type: str):
     """Get biotypes.
 
     NOTE: <rna_type> unused
@@ -79,22 +81,24 @@ def get_taxa():
     return get_utilities_service().get_taxa()
 
 
-@catalog_api.get("/taxa/<taxa_id>/chromosomes")
-def get_chroms(taxa_id: str):
+@catalog_api.get("/chromosomes")
+def get_chroms():
     """Get chromosomes and their size for a given taxon.
 
-    :param taxa_id: Incoming NCBI taxon (identifier)
-    :return: JSON array with chromosome and their size for
-    the current assembly for the given taxon.
+    Chromosomes only exist for the current assembly of
+    a given taxon.
+
+    :query taxaId: NCBI taxon (required)
+    :return: JSON array with chromosomes and their size for the
+    current assembly of the given taxon.
     :statuscode 200: OK
-    :statuscode 400: Bad Request - invalid Taxa ID (cannot be
-    coerced to int)
+    :statuscode 400: Bad Request - missing or invalid Taxa ID
     :statuscode 404: Not Found - Taxa ID or chromosome-related data
     :statuscode 500: Internal Server Error
     """
     try:
-        taxa_id_as_int = parse_valid_taxa_id(taxa_id)
-        return get_assembly_service().get_chroms(taxa_id_as_int)
+        taxa_id = get_valid_taxa_id()
+        return get_assembly_service().get_chroms(taxa_id)
     except ClientResponseException as exc:
         return exc.response_tuple
     except NoResultFound:
@@ -109,23 +113,43 @@ def get_chroms(taxa_id: str):
         )
 
 
-@catalog_api.get("/taxa/<taxa_id>/assemblies")
-def get_assemblies(taxa_id: str):
-    """Get assemblies for a given taxon.
+@catalog_api.get("/assemblies")
+def get_assemblies():
+    """Get installed assemblies.
 
-    :param taxa_id: Incoming NCBI taxon (identifier)
-    :return: JSON array with all available assemblies
-    for the given taxon.
+    :query taxaId: Optional NCBI taxon to restrict the result to
+    :query current: Optional, true for the current assemblies only,
+    false for the others only. Omit for all of them
+    :return: JSON array with assemblies.
     :statuscode 200: OK
-    :statuscode 400: Bad Request - invalid Taxa ID (cannot
-    be coerced to int)
+    :statuscode 400: Bad Request - invalid Taxa ID (cannot be
+    coerced to int) or invalid value for current
     :statuscode 404: Not Found - Taxa ID
     :statuscode 500: Internal Server Error
     """
     try:
-        taxa_id_as_int = parse_valid_taxa_id(taxa_id)
-        assemblies = get_assembly_service().get_assemblies_by_taxa(taxa_id_as_int)
-        return [{"id": assembly.id, "name": assembly.name} for assembly in assemblies]
+        taxa_id = get_optional_valid_taxa_id()
+        current = get_optional_bool("current")
+        return get_assembly_service().get_assemblies(taxa_id, current)
+    except ClientResponseException as exc:
+        return exc.response_tuple
+
+
+@catalog_api.get("/annotations")
+def get_annotations():
+    """Get current annotations.
+
+    :query taxaId: Optional NCBI taxon to restrict the result to
+    :return: JSON array with the current annotations.
+    :statuscode 200: OK
+    :statuscode 400: Bad Request - invalid Taxa ID (cannot be
+    coerced to int)
+    :statuscode 404: Not Found - Taxa ID
+    :statuscode 500: Internal Server Error
+    """
+    try:
+        taxa_id = get_optional_valid_taxa_id()
+        return get_annotation_service().get_annotations(taxa_id)
     except ClientResponseException as exc:
         return exc.response_tuple
 
@@ -171,9 +195,9 @@ def get_selections():
 def get_genes():
     """Get genes for one or more selection(s).
 
-    :query selection: One or more selection identifiers
-    (associated with a combination of modification,
-    organism, and technology)
+    :query selection: One or more selection identifiers,
+    associated with a combination of modification,
+    organism, and technology (required)
     :return: Array with gene symbols
     :statuscode 200: OK
     :statuscode 400: Bad Request - missing selection

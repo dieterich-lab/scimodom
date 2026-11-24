@@ -375,7 +375,7 @@ class ValidatorService:
             raise DatasetHeaderError(
                 f"Expected {assembly.name} for 'assembly'; got {assembly_name} from file header."
             )
-        is_liftover = not self._assembly_service.is_latest_assembly(assembly)
+        is_liftover = not self._assembly_service.is_current_assembly(assembly)
         chromosomes = {
             chrom["chrom"]: chrom["size"]
             for chrom in self._assembly_service.get_chroms(assembly.taxa_id)

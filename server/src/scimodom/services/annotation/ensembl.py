@@ -1,13 +1,14 @@
 import logging
 import shutil
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, ClassVar, Callable
+from typing import Any, ClassVar
 
 from scimodom.database.buffer import InsertBuffer
 from scimodom.database.models import Annotation, DataAnnotation, GenomicAnnotation
 from scimodom.services.annotation.generic import GenericAnnotationService
 from scimodom.services.ensembl import EnsemblAssemblyClient
-from scimodom.utils.specs.enums import AssemblyFileType
+from scimodom.utils.specs.enums import AnnotationSource, AssemblyFileType
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,7 @@ class EnsemblAnnotationService(GenericAnnotationService):
     :type FEATURES: dict of {str: dict of {str: str}}
     """
 
+    ANNOTATION_SOURCE: ClassVar[str] = AnnotationSource.ENSEMBL.value
     FMT: ClassVar[str] = "gtf"  # only handles GTF
     ANNOTATION_FILE: ClassVar[
         Callable
@@ -49,15 +51,12 @@ class EnsemblAnnotationService(GenericAnnotationService):
         super().__init__(**kwargs)
         self._ensembl_client = ensembl_client
 
-    def get_annotation(self, taxa_id: int) -> Annotation:
-        """Retrieve annotation from taxonomy ID.
+    def get_by_taxa(self, taxa_id: int) -> Annotation:
+        """Retrieve the current annotation of an organism.
 
         :param taxa_id: Taxonomy ID
-        :type taxa_id: int
-        :returns: Annotation instance
-        :rtype: Annotation
-
         :raises: AnnotationNotFoundError
+        :return: Annotation instance
         """
         # NOTE: the annotation release used to be checked against a
         # global constant, which forced every organism into lockstep
@@ -66,7 +65,29 @@ class EnsemblAnnotationService(GenericAnnotationService):
         # which release an annotation is; there is nothing left for it
         # to disagree with. The release gets a database record of its
         # own, per source, in #157.
-        return self.get_annotation_from_taxid_and_source(taxa_id, "ensembl")
+        return self.get_by_taxa_and_source(taxa_id, self.ANNOTATION_SOURCE)
+
+    def get_annotations(
+        self,
+        taxa_id: int | None = None,
+    ) -> list[dict[str, Any]]:
+        """Get the current Ensembl annotations.
+
+        This adds the browser page of the archive the release is
+        served from, cf.
+        EnsemblAssemblyClient.get_browse_url: a record annotated
+        here is browsed at the release it was annotated with, not at
+        whichever release is current on ensembl.org.
+
+        :param taxa_id: Taxonomy ID, or None for every organism
+        :return: Annotations
+        """
+        annotations = super().get_annotations(taxa_id)
+        for annotation in annotations:
+            annotation["browse_url"] = self._ensembl_client.get_browse_url(
+                annotation["archive"], annotation["taxa_name"]
+            )
+        return annotations
 
     def create_annotation(self, taxa_id: int, **kwargs) -> None:
         """Create the current Ensembl annotation of an organism.
@@ -82,7 +103,7 @@ class EnsemblAnnotationService(GenericAnnotationService):
         :param taxa_id: Taxonomy ID
         :type taxa_id: int
         """
-        annotation = self.get_annotation(taxa_id)
+        annotation = self.get_by_taxa(taxa_id)
         if self._release_exists(annotation.id):
             return
 
@@ -133,7 +154,7 @@ class EnsemblAnnotationService(GenericAnnotationService):
         :param dataset_id: EUF ID
         :type dataset_id: str
         """
-        annotation = self.get_annotation(taxa_id)
+        annotation = self.get_by_taxa(taxa_id)
         release_path = self.get_release_path(annotation)
 
         logger.debug(f"Annotating records for EUFID {dataset_id}...")

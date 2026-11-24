@@ -9,6 +9,7 @@ from sqlalchemy import select
 from scimodom.database.buffer import InsertBuffer
 from scimodom.database.models import Annotation, Assembly, GenomicAnnotation
 from scimodom.services.annotation.generic import GenericAnnotationService
+from scimodom.utils.specs.enums import AnnotationSource
 from posixpath import join as urljoin
 
 logger = logging.getLogger(__name__)
@@ -30,6 +31,7 @@ class GtRNAdbAnnotationService(GenericAnnotationService):
     :type FEATURES: dict of {str: str}
     """
 
+    ANNOTATION_SOURCE: ClassVar[str] = AnnotationSource.GTRNADB.value
     FMT: ClassVar[list[str]] = ["bed", "fa"]
     ANNOTATION_FILE: ClassVar[Callable] = "{species}-tRNAs.{fmt}".format
     FEATURES: ClassVar[dict[str, dict[str, str]]] = {
@@ -41,8 +43,8 @@ class GtRNAdbAnnotationService(GenericAnnotationService):
         "AnnotationPath", [("annotation_file", Path), ("url", str)]
     )
 
-    def get_annotation(self, taxa_id: int) -> Annotation:
-        """Retrieve annotation from taxonomy ID.
+    def get_by_taxa(self, taxa_id: int) -> Annotation:
+        """Retrieve the current annotation of an organism.
 
         :param taxa_id: Taxonomy ID
         :type taxa_id: int
@@ -51,7 +53,7 @@ class GtRNAdbAnnotationService(GenericAnnotationService):
 
         :raises: AnnotationNotFoundError
         """
-        return self.get_annotation_from_taxid_and_source(taxa_id, "gtrnadb")
+        return self.get_by_taxa_and_source(taxa_id, self.ANNOTATION_SOURCE)
 
     def create_annotation(self, taxa_id: int, **kwargs) -> None:
         """This method automates the creation of GtRNAdb
@@ -70,7 +72,7 @@ class GtRNAdbAnnotationService(GenericAnnotationService):
         :param name: GtRNAdb species name (abbreviated) e.g. Mmusc39
         :type name: str
         """
-        annotation = self.get_annotation(taxa_id)
+        annotation = self.get_by_taxa(taxa_id)
         if self._release_exists(annotation.id):
             return
 

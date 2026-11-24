@@ -18,13 +18,13 @@ beforeEach(() => {
   mockedHandle.mockReset()
 })
 
-test('getChromsByTaxaId calls /catalogs/taxa/<taxaId>/chromosomes and returns the array', async () => {
+test('getChromsByTaxaId calls /catalogs/chromosomes and returns the array', async () => {
   const expected = [{ chrom: 1, size: 1 }]
   mockedHandle.mockResolvedValueOnce(expected)
 
   const result = await getChromsByTaxaId(123, dialogState)
 
-  expect(mockedGet).toHaveBeenCalledWith('/catalogs/taxa/123/chromosomes')
+  expect(mockedGet).toHaveBeenCalledWith('/catalogs/chromosomes', { params: { taxaId: 123 } })
   expect(mockedHandle).toHaveBeenCalledWith(
     expect.anything(),
     'Failed to load Chrom: 123',

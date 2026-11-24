@@ -1,14 +1,19 @@
+import json
 from io import StringIO
 from typing import Iterable
 
 import pytest
 
+from sqlalchemy import update
+
 from scimodom.api.catalog import catalog_api
+from scimodom.database.models import AnnotationRelease
 from scimodom.services.annotation import (
     AnnotationService,
     EnsemblAnnotationService,
 )
 from scimodom.services.assembly import AssemblyService
+from scimodom.services.ensembl import EnsemblAssemblyClient
 from scimodom.services.gene import GeneService
 from scimodom.services.url import CATALOG_API_ROUTE
 from scimodom.services.selection import SelectionService
@@ -23,9 +28,24 @@ client = client_fixture(catalog_api, CATALOG_API_ROUTE)
 
 class MockFileService:
     CHROM_SIZES = """1\t248956422"""
+    MANIFEST = json.dumps(
+        {
+            "schema_version": 1,
+            "assembly": {"coord_system_versions": ["GRCh38", "GRCh37"]},
+            "source": {
+                "provider": "ensembl",
+                "release": 110,
+                "archive": "jul2023",
+                "fetched_at": "2024-01-01T00:00:00+00:00",
+                "data_release_response": {"releases": [110]},
+            },
+        }
+    )
 
     @staticmethod
     def open_assembly_file(taxa_id: int, file_type: AssemblyFileType) -> StringIO:
+        if file_type == AssemblyFileType.MANIFEST:
+            return StringIO(MockFileService.MANIFEST)
         return StringIO(MockFileService.CHROM_SIZES)
 
     @staticmethod
@@ -64,7 +84,7 @@ def services(Session, selection, mocker):
                 web_service=mocker.Mock(),
                 gene_service=mocker.Mock(),
                 file_service=mocker.Mock(),
-                ensembl_client=mocker.Mock(),
+                ensembl_client=EnsemblAssemblyClient(mocker.Mock()),
             ),
         },
     )
@@ -118,14 +138,49 @@ def test_features_schema(client, services):
 
 
 def test_chroms_schema(client, services):
-    response = client.get(prefix_url("/taxa/9606/chromosomes"))
+    response = client.get(prefix_url("/chromosomes?taxaId=9606"))
     assert response.json
     validate(SCHEMA, response, 200)
 
 
-def test_assemblies_schema(client, services):
-    response = client.get(prefix_url("/taxa/9606/assemblies"))
+@pytest.mark.parametrize("query", ["", "?taxaId=9606", "?current=true"])
+def test_assemblies_schema(client, services, query):
+    response = client.get(prefix_url(f"/assemblies{query}"))
     assert response.json
+    validate(SCHEMA, response, 200)
+
+
+def test_assemblies_schema_without_manifest(client, services, mocker):
+    # `source` is null for an assembly installed before the manifest
+    # existed, and for every assembly kept only to lift over from
+    mocker.patch.object(
+        MockFileService, "open_assembly_file", side_effect=FileNotFoundError
+    )
+    response = client.get(prefix_url("/assemblies"))
+    assert all(assembly["source"] is None for assembly in response.json)
+    validate(SCHEMA, response, 200)
+
+
+@pytest.mark.parametrize("query", ["", "?taxaId=9606"])
+def test_annotations_schema(client, services, query):
+    response = client.get(prefix_url(f"/annotations{query}"))
+    assert response.json
+    validate(SCHEMA, response, 200)
+
+
+def test_annotations_schema_without_archive(client, services, Session):
+    # a release with no archive recorded: there is no page to link to
+    with Session() as session, session.begin():
+        session.execute(
+            update(AnnotationRelease)
+            .where(AnnotationRelease.release == 110)
+            .values(archive=None)
+        )
+    response = client.get(prefix_url("/annotations"))
+    assert all(
+        annotation["archive"] is None and annotation["browse_url"] is None
+        for annotation in response.json
+    )
     validate(SCHEMA, response, 200)
 
 

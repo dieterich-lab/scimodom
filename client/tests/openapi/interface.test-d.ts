@@ -18,7 +18,8 @@ import type { components as ProjectSpec } from './.schemas/project'
 import type { components as UploadSpec } from './.schemas/upload'
 import type { components as UserSpec } from './.schemas/user'
 
-import type { Assembly } from '@/services/assembly'
+import type { Annotation } from '@/services/annotation'
+import type { Assembly, AssemblySource } from '@/services/assembly'
 import type { BamFile } from '@/services/bamfile'
 import type { BioTypesResponse } from '@/services/biotype'
 import type { Chrom } from '@/services/chrom'
@@ -76,6 +77,8 @@ expectTypeOf<Item<Catalog['schemas']['Method']>>().toEqualTypeOf<DetectionMethod
 expectTypeOf<Item<Catalog['schemas']['Selection']>>().toExtend<Selection>()
 expectTypeOf<Item<Catalog['schemas']['Chromosome']>>().toEqualTypeOf<Chrom>()
 expectTypeOf<Item<Catalog['schemas']['Assembly']>>().toEqualTypeOf<Assembly>()
+expectTypeOf<Catalog['schemas']['InstalledSource']>().toEqualTypeOf<AssemblySource | null>()
+expectTypeOf<Item<Catalog['schemas']['Annotation']>>().toEqualTypeOf<Annotation>()
 expectTypeOf<Catalog['schemas']['Biotype']>().toEqualTypeOf<BioTypesResponse>()
 expectTypeOf<Catalog['schemas']['Feature']>().toEqualTypeOf<FeaturesResponse>()
 expectTypeOf<Catalog['schemas']['Gene']>().toEqualTypeOf<string[]>()

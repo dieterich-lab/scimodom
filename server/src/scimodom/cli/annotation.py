@@ -48,7 +48,7 @@ def add_annotation(yes: bool, traceback: bool, taxa_id: int, source: str, **kwar
 
     annotation_source = AnnotationSource(source)
     try:
-        annotation = annotation_service.get_annotation(annotation_source, taxa_id)
+        annotation = annotation_service.get_by_taxa(annotation_source, taxa_id)
     except Exception as exc:
         raise CliResponseException(
             f"No current {source} annotation for organism '{taxa_id}'. {exc}"

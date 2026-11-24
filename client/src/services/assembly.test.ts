@@ -18,13 +18,25 @@ beforeEach(() => {
   mockedHandle.mockReset()
 })
 
-test('getAssembliesByTaxaId calls /catalogs/taxa/<taxaId>/assemblies and returns the array', async () => {
-  const expected = [{ id: 1, name: 'GRCh38' }]
+test('getAssembliesByTaxaId calls /catalogs/assemblies and returns the array', async () => {
+  const expected: Assembly[] = [
+    {
+      id: 1,
+      name: 'GRCh38',
+      alt_name: 'hg38',
+      taxa_id: 123,
+      taxa_name: 'Homo sapiens',
+      current: true,
+      source: { provider: 'ensembl', release: 110, archive: 'jul2023' }
+    }
+  ]
   mockedHandle.mockResolvedValueOnce(expected)
 
   const result = await getAssembliesByTaxaId(123, dialogState)
 
-  expect(mockedGet).toHaveBeenCalledWith('/catalogs/taxa/123/assemblies')
+  expect(mockedGet).toHaveBeenCalledWith('/catalogs/assemblies', {
+    params: { taxaId: 123 }
+  })
   expect(mockedHandle).toHaveBeenCalledWith(
     expect.anything(),
     'Failed to load Assembly: 123',

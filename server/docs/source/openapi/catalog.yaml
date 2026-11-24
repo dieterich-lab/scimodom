@@ -5,20 +5,21 @@ info:
     Reference, catalogs, shared lookup, and definition tables
 
 tags:
-  - name: Assembly
-    description: Database tables for taxon and assemblies
-  - name: RNA
-    description: Database tables for RNA types and annotations
-  - name: Modification
-    description: Database tables for reference modifications
+  - name: Nomenclature
+    description: >-
+      Reference or seed data, definitions and controlled vocabularies
+  - name: Reference resources
+    description: >-
+      Configured genome assemblies and annotations
   - name: Content
-    description: Database tables for content selection
+    description: >-
+      Content selection that depends on data records
 
 paths:
   /catalogs/rna-types:
     get:
       tags:
-        - RNA
+        - Nomenclature
       summary: Get RNA types
       responses:
         "200":
@@ -30,7 +31,7 @@ paths:
   /catalogs/rna-types/{rna_type}/biotypes:
     get:
       tags:
-        - RNA
+        - Nomenclature
       summary: Get biotypes
       description: >-
         The biotypes are currently independent of `rna_type`;
@@ -52,7 +53,7 @@ paths:
   /catalogs/rna-types/{rna_type}/features:
     get:
       tags:
-        - RNA
+        - Nomenclature
       summary: Get genomic features
       parameters:
         - in: path
@@ -77,8 +78,11 @@ paths:
   /catalogs/taxa:
     get:
       tags:
-        - Assembly
+        - Nomenclature
       summary: Get species with taxonomic information
+      description: >-
+        Every taxon known to this instance. A taxon may have no data,
+        cf. `GET /catalogs/selections`.
       responses:
         "200":
           description: OK
@@ -86,16 +90,16 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Taxon"
-  /catalogs/taxa/{taxa_id}/chromosomes:
+  /catalogs/chromosomes:
     get:
       tags:
-        - Assembly
+        - Reference resources
       summary: Get chromosomes and their size
       description: >-
-        Only the current assembly version is returned
+        The chromosomes of the current assembly of a taxon
       parameters:
-        - in: path
-          name: taxa_id
+        - in: query
+          name: taxaId
           required: true
           schema:
             type: integer
@@ -108,21 +112,33 @@ paths:
               schema:
                 $ref: "#/components/schemas/Chromosome"
         "400":
-          description: Invalid NCBI taxon
+          description: Missing or invalid NCBI taxon
         "404":
           description: NCBI taxon or chromosome data not found
-  /catalogs/taxa/{taxa_id}/assemblies:
+  /catalogs/assemblies:
     get:
       tags:
-        - Assembly
+        - Reference resources
       summary: Get assemblies
+      description: >-
+        Every assembly configured; `current` distinguishes the
+        assembly that is installed (per taxon), `source` records
+        the installed snapshot
       parameters:
-        - in: path
-          name: taxa_id
-          required: true
+        - in: query
+          name: taxaId
+          required: false
           schema:
             type: integer
-          description: NCBI taxon
+          description: NCBI taxon to restrict the result to
+        - in: query
+          name: current
+          required: false
+          schema:
+            type: boolean
+          description: >-
+            `true` for the current assemblies only, `false` for the
+            others only. Omit for all of them
       responses:
         "200":
           description: OK
@@ -131,13 +147,38 @@ paths:
               schema:
                 $ref: "#/components/schemas/Assembly"
         "400":
+          description: Invalid NCBI taxon, or invalid value for `current`
+        "404":
+          description: NCBI taxon not found
+  /catalogs/annotations:
+    get:
+      tags:
+        - Reference resources
+      summary: Get current annotations
+      description: >-
+        Only the annotations in use are returned
+      parameters:
+        - in: query
+          name: taxaId
+          required: false
+          schema:
+            type: integer
+          description: NCBI taxon to restrict the result to
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Annotation"
+        "400":
           description: Invalid NCBI taxon
         "404":
           description: NCBI taxon not found
   /catalogs/modomics:
     get:
       tags:
-        - Modification
+        - Nomenclature
       summary: Get modifications nomenclature
       description: Reference modifications annotated by MODOMICS
       responses:
@@ -150,7 +191,7 @@ paths:
   /catalogs/methods:
     get:
       tags:
-        - Modification
+        - Nomenclature
       summary: Get detection methods and classification
       responses:
         "200":
@@ -165,7 +206,9 @@ paths:
         - Content
       summary: Get selections
       description: >-
-        Available combinations of modification, organism, and technology
+        Only the combinations of modification, organism and
+        technology for which data exists are returned: a selection
+        is created when a dataset is uploaded
       responses:
         "200":
           description: OK
@@ -179,8 +222,8 @@ paths:
         - Content
       summary: Get genes
       description: >-
-        Genes associated with one or more selection(s)
-        (modification, organism, technology).
+        Only the genes annotated in the given selections are
+        returned, not every gene of an annotation
       parameters:
         - in: query
           name: selection
@@ -290,11 +333,107 @@ components:
         required:
           - id
           - name
+          - alt_name
+          - taxa_id
+          - taxa_name
+          - current
+          - source
         properties:
           id:
             type: integer
           name:
             type: string
+            description: Assembly name
+          alt_name:
+            type: string
+            nullable: true
+            description: Alternative assembly name
+          taxa_id:
+            type: integer
+            description: NCBI taxon
+          taxa_name:
+            type: string
+            description: NCBI name for `taxa_id`
+          current:
+            type: boolean
+            description: >-
+              True if the current assembly; any other assembly is
+              kept only to lift over to the current
+          source:
+            $ref: "#/components/schemas/InstalledSource"
+    InstalledSource:
+      type: object
+      # nullable on the schema, not on the property: a sibling of
+      # `$ref` is ignored in OpenAPI 3.0, and `allOf` loses it
+      nullable: true
+      description: >-
+        What the assemblies of an organism were installed from;
+        only null where not recorded (manifest migration,
+        post-install).
+      required:
+        - provider
+        - release
+        - archive
+      properties:
+        provider:
+          type: string
+          description: Reference data provider e.g. `ensembl`
+        release:
+          type: integer
+          description: Release of `provider` the files were obtained from
+        archive:
+          type: string
+          nullable: true
+          description: >-
+            Where `provider` serves `release`. Null if the provider
+            keeps no per-release archive
+    Annotation:
+      type: array
+      items:
+        type: object
+        required:
+          - id
+          - source
+          - release
+          - archive
+          - browse_url
+          - assembly_id
+          - assembly_name
+          - taxa_id
+          - taxa_name
+        properties:
+          id:
+            type: integer
+          source:
+            type: string
+            description: Annotation source e.g. `ensembl`
+          release:
+            type: integer
+            description: Release of `source` the annotation comes from
+          archive:
+            type: string
+            nullable: true
+            description: >-
+              Where `source` serves `release`. Null if the source
+              keeps no per-release archive
+          browse_url:
+            type: string
+            nullable: true
+            description: >-
+              Page of `source` for this organism at `release`, which
+              the path of a record page is appended to. Null if the
+              source serves no browsable page for a release
+          assembly_id:
+            type: integer
+            description: Associated assembly
+          assembly_name:
+            type: string
+          taxa_id:
+            type: integer
+            description: NCBI taxon
+          taxa_name:
+            type: string
+            description: NCBI name for `taxa_id`
     Modomics:
       type: array
       items:

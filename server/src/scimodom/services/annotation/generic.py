@@ -1,6 +1,7 @@
 import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
+from typing import Any, ClassVar
 
 from sqlalchemy import select, func
 from sqlalchemy.exc import NoResultFound
@@ -9,8 +10,10 @@ from sqlalchemy.orm import Session
 from scimodom.database.models import (
     Assembly,
     Annotation,
+    AnnotationRelease,
     AnnotationVersion,
     GenomicAnnotation,
+    Taxa,
 )
 from scimodom.services.bedtools import BedToolsService
 from scimodom.services.data import DataService
@@ -24,12 +27,16 @@ logger = logging.getLogger(__name__)
 
 class AnnotationNotFoundError(Exception):
     """Exception handling for a non-existing Annotation
-    or Annotation that is not the latest version."""
+    or Annotation that is not the current version."""
 
     pass
 
 
 class GenericAnnotationService(ABC):
+    # the AnnotationSource this service handles, cf.
+    # scimodom.utils.specs.enums.AnnotationSource
+    ANNOTATION_SOURCE: ClassVar[str]
+
     def __init__(
         self,
         session: Session,
@@ -68,18 +75,18 @@ class GenericAnnotationService(ABC):
     def _version(self) -> str:
         """Current annotation (database) version.
 
-        This is read from the database on each access (not cached), as
-        for the assembly version: an upgrade changes it, and a service
-        built once at start-up would otherwise keep handing out the
-        version it saw then.
+        This is read from the database on each access (not cached),
+        as for the assembly version: an upgrade changes it, and a
+        service built once at start-up would otherwise keep handing
+        out the version it saw then.
         """
         return self._session.execute(select(AnnotationVersion.version_num)).scalar_one()
 
-    def get_annotation_from_taxid_and_source(
-        self, taxa_id: int, source: str
-    ) -> Annotation:
-        """Retrieve annotation from taxonomy ID and source
-        for the latest database version.
+    def get_by_taxa_and_source(self, taxa_id: int, source: str) -> Annotation:
+        """Retrieve the current annotation of an organism and source.
+
+        NOTE: this returns one annotation, cf. get_annotations for
+        the catalog of all of them.
 
         :param taxa_id: Taxonomy ID
         :type taxa_id: int
@@ -104,6 +111,49 @@ class GenericAnnotationService(ABC):
             raise AnnotationNotFoundError(
                 f"No such {source} annotation for taxonomy ID: {taxa_id}."
             )
+
+    def get_annotations(self, taxa_id: int | None = None) -> list[dict[str, Any]]:
+        """Get the current annotations of this source.
+
+        Only the annotations in use are listed: a retired annotation
+        no longer has data in the database, cf. get_by_taxa_and_source.
+
+        The release is that of the annotation, not of the assembly:
+        an annotation-only upgrade moves one and not the other.
+
+        A source that serves no browsable page for a release leaves
+        `browse_url` null, cf. EnsemblAnnotationService which
+        overrides this.
+
+        :param taxa_id: Taxonomy ID, or None for every organism
+        :return: Annotations
+        """
+        query = (
+            select(Annotation, AnnotationRelease, Assembly, Taxa)
+            .join(Assembly, Annotation.inst_assembly)
+            .join(Taxa, Assembly.inst_taxa)
+            .join(AnnotationRelease, Annotation.inst_release)
+            .where(
+                Annotation.source == self.ANNOTATION_SOURCE,
+                Annotation.version == self._version,
+            )
+        )
+        if taxa_id is not None:
+            query = query.where(Assembly.taxa_id == taxa_id)
+        return [
+            {
+                "id": row.Annotation.id,
+                "source": row.Annotation.source,
+                "release": row.Annotation.release,
+                "archive": row.AnnotationRelease.archive,
+                "browse_url": None,
+                "assembly_id": row.Assembly.id,
+                "assembly_name": row.Assembly.name,
+                "taxa_id": row.Taxa.id,
+                "taxa_name": row.Taxa.name,
+            }
+            for row in self._session.execute(query.order_by(Assembly.taxa_id))
+        ]
 
     def get_release_path(self, annotation: Annotation) -> Path:
         """Construct annotation release path.

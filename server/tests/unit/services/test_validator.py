@@ -65,12 +65,12 @@ class MockBedToolsService:
 class MockAssemblyService:
     def __init__(
         self,
-        is_latest: bool,
+        is_current: bool,
         assemblies_by_id: dict[int, Assembly],
         assemblies_by_name: dict[int, dict[str, Assembly]],
         allowed_assemblies: dict[int, list[str]] | None,
     ):
-        self._is_latest = is_latest
+        self._is_current = is_current
         self._assemblies_by_id = assemblies_by_id
         self._assemblies_by_name = assemblies_by_name
         self._allowed_assemblies = allowed_assemblies
@@ -109,8 +109,8 @@ class MockAssemblyService:
                 else:
                     raise AssemblyNotFoundError
 
-    def is_latest_assembly(self, assembly: Assembly) -> bool:  # noqa
-        return self._is_latest
+    def is_current_assembly(self, assembly: Assembly) -> bool:  # noqa
+        return self._is_current
 
     def get_chroms(self, taxa_id: int) -> list[dict[str, str | int]]:  # noqa
         return [{"chrom": "1", "size": 1000}]
@@ -161,7 +161,7 @@ def input_ctx(project, project_selection):  # noqa
 
 def _get_validator_service(
     session,
-    is_latest_asembly=True,
+    is_current_assembly=True,
     assemblies_by_id=None,
     allowed_assemblies=None,
     check_source_result=True,
@@ -198,7 +198,7 @@ def _get_validator_service(
         session=session,
         bedtools_service=MockBedToolsService(),
         assembly_service=MockAssemblyService(
-            is_latest=is_latest_asembly,
+            is_current=is_current_assembly,
             assemblies_by_id=assemblies_by_id,
             assemblies_by_name=assemblies_by_name,
             allowed_assemblies=allowed_assemblies,
@@ -532,7 +532,7 @@ def test_validate_records(regexp, replacement, Session, input_ctx):
 def test_validate_lifted_records(Session, input_ctx, caplog):
     # thick values are overwritten by ValidatorService._do_lift_over
     importer = EufImporter(stream=StringIO(GOOD_EUF_FILE), source="test")
-    service = _get_validator_service(Session(), is_latest_asembly=False)
+    service = _get_validator_service(Session(), is_current_assembly=False)
     service.create_import_context(importer=importer, **input_ctx)
     for record in service.get_validated_records(importer, service.get_import_context()):
         assert record == EufRecord(
@@ -997,7 +997,7 @@ def test_validate_records_range_is_not_checked_before_liftover(Session, input_ct
         "1\t5000\t5010\ta\t1000\t+\t5000\t5010\t0,0,0\t10\t1",
     )
     importer = EufImporter(stream=StringIO(euf_file), source="test")
-    service = _get_validator_service(Session(), is_latest_asembly=False)
+    service = _get_validator_service(Session(), is_current_assembly=False)
     raw_records = []
 
     def create_temp_euf_file(records):

@@ -1,24 +1,32 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+
+// browseUrl is the page of the annotation source for the release
+// the records were annotated with, cf. services/annotation. Null
+// while it is being resolved, or if the source serves no browsable
+// page: the position is then shown unlinked rather than pointing
+// at a release it does not belong to.
 const props = defineProps<{
-  label?: string
-  taxaName: string
+  browseUrl: string | null
   chrom: string
   start: number
   end: number
 }>()
 
-const text = props.label || props.start
-const cookedTaxaName = props.taxaName.replace(/ /g, '_')
-const link = `https://jul2023.archive.ensembl.org/${cookedTaxaName}/Location/View?r=${
-  props.chrom
-}:${props.start}:${props.end + 1};db=core`
+const link = computed(() =>
+  props.browseUrl
+    ? `${props.browseUrl}/Location/View?r=${props.chrom}:${props.start}:${props.end + 1};db=core`
+    : null
+)
 </script>
 <template>
   <a
+    v-if="link"
     class="text-primary-500 hover:text-secondary-500"
     :href="link"
     target="_blank"
     rel="noopener noreferrer"
-    >{{ text }}
-  </a>
+    >{{ start }}</a
+  >
+  <span v-else>{{ start }}</span>
 </template>

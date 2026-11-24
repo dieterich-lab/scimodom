@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import Divider from 'primevue/divider'
 import SelectButton from 'primevue/selectbutton'
 import StyledHeadline from '@/components/ui/StyledHeadline.vue'
@@ -10,6 +10,8 @@ import PrimaryParametersByModification from '@/components/search/PrimaryParamete
 import PrimaryParametersByGeneChrom from '@/components/search/PrimaryParametersByGeneChrom.vue'
 import SecondarySearchParametersForm from '@/components/search/SecondarySearchParametersForm.vue'
 import SearchResults from '@/components/search/SearchResults.vue'
+import { annotationCache } from '@/services/annotation'
+import { trashRequestErrors } from '@/services/API'
 import {
   type SearchBy,
   type PrimarySearchParameters,
@@ -29,6 +31,13 @@ const primarySearchParameters = ref<PrimarySearchParameters | null>(null)
 const searchParameters = ref<SearchParameters | DummySearchParameters>(DUMMY_SEARCH_PARAMETERS)
 const confirmedSearchParameters = ref<SearchParameters | null>(null)
 const queryRevision = ref<number>(0)
+
+// the results link out to the annotation source; warming the cache
+// while the form is being filled in means the links are there on
+// the first paint of the results, and resolved once rather than
+// per row. A failure leaves the records unlinked, which is not
+// worth interrupting the search for
+onMounted(() => annotationCache.getData().catch((e) => trashRequestErrors(e)))
 
 function updatePrimaryParameters(params: PrimarySearchParameters | null) {
   primarySearchParameters.value = params

@@ -217,7 +217,7 @@ class Assembly(Base):
     inst_taxa: Mapped["Taxa"] = relationship(back_populates="assemblies")
     # NOTE: every annotation of this assembly, of any version. Only
     # the current one may be used, cf.
-    # GenericAnnotationService.get_annotation_from_taxid_and_source,
+    # GenericAnnotationService.get_by_taxa_and_source,
     # which is the only place an annotation should be obtained from
     annotations: Mapped[List["Annotation"]] = relationship(
         back_populates="inst_assembly"
@@ -266,6 +266,9 @@ class Annotation(Base):
     # an annotation is a set of features in the coordinate system of an
     # assembly; the taxa is reached through it
     inst_assembly: Mapped["Assembly"] = relationship(back_populates="annotations")
+    # the composite foreign key is invisible from the ORM side without
+    # this; it is one-way, as nothing needs the annotations of a release
+    inst_release: Mapped["AnnotationRelease"] = relationship(viewonly=True)
     annotations: Mapped[List["GenomicAnnotation"]] = relationship(
         back_populates="inst_annotation"
     )

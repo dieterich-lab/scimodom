@@ -40,10 +40,44 @@ class EnsemblAssemblyClient:
     def get_organism_url_name(organism: str) -> str:
         """Convert an organism name to the name used in Ensembl URLs.
 
+        This is the form used by the REST API and the FTP site. The
+        browser uses a capitalised form, cf. get_organism_web_name.
+
         :param organism: Organism name e.g. "Homo sapiens"
         :return: Name for use in URLs e.g. "homo_sapiens"
         """
         return "_".join(organism.split()).lower()
+
+    @staticmethod
+    def get_organism_web_name(organism: str) -> str:
+        """Convert an organism name to the name used in browser URLs.
+
+        NOTE: this is not get_organism_url_name: the Ensembl browser
+        capitalises the organism, the REST API and the FTP site do
+        not.
+
+        :param organism: Organism name e.g. "Homo sapiens"
+        :return: Name for use in browser URLs e.g. "Homo_sapiens"
+        """
+        return "_".join(organism.split())
+
+    @classmethod
+    def get_browse_url(cls, archive: str | None, organism: str) -> str | None:
+        """Build the browser page of an organism for a given archive.
+
+        This is the common prefix of the record pages, e.g. the gene
+        and the region pages, not a page itself: what is appended to
+        it is specific to the record being linked to.
+
+        :param archive: Archive the data was obtained from e.g.
+        "jul2023", or None if no archive is recorded
+        :param organism: Organism name e.g. "Homo sapiens"
+        :return: URL, or None if there is no archive to link to
+        """
+        if archive is None:
+            return None
+        base = Ensembl.ARCHIVE.value(archive=archive)
+        return f"{base}/{cls.get_organism_web_name(organism)}"
 
     @classmethod
     def get_ensembl_prefix(cls, gene_id: str) -> str:

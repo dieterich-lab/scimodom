@@ -65,6 +65,15 @@ def get_coord_system_versions(manifest: dict[str, Any]) -> list[str]:
     return manifest["assembly"]["coord_system_versions"]
 
 
+def get_provider(manifest: dict[str, Any]) -> str:
+    """Get the provider an assembly was installed from.
+
+    :param manifest: Manifest
+    :return: Provider e.g. "ensembl"
+    """
+    return manifest["source"]["provider"]
+
+
 def get_release(manifest: dict[str, Any]) -> int:
     """Get the release an assembly was installed from.
 
