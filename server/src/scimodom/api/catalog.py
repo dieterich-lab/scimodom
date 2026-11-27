@@ -23,7 +23,7 @@ catalog_api = Blueprint("catalog_api", __name__)
 def get_rna_types():
     """Get RNA types.
 
-    :return: JSON array with RNA type information.
+    :return: JSON array with RNA type information
     :statuscode 200: OK
     :statuscode 500: Internal Server Error
     """
@@ -74,7 +74,7 @@ def get_taxa():
     """Get species with taxonomic information.
 
     :return: JSON array with taxonomic information
-    for each species.
+    for each species
     :statuscode 200: OK
     :statuscode 500: Internal Server Error
     """
@@ -90,7 +90,7 @@ def get_chroms():
 
     :query taxaId: NCBI taxon (required)
     :return: JSON array with chromosomes and their size for the
-    current assembly of the given taxon.
+    current assembly of the given taxon
     :statuscode 200: OK
     :statuscode 400: Bad Request - missing or invalid Taxa ID
     :statuscode 404: Not Found - Taxa ID or chromosome-related data
@@ -120,7 +120,7 @@ def get_assemblies():
     :query taxaId: Optional NCBI taxon to restrict the result to
     :query current: Optional, true for the current assemblies only,
     false for the others only. Omit for all of them
-    :return: JSON array with assemblies.
+    :return: JSON array with assemblies
     :statuscode 200: OK
     :statuscode 400: Bad Request - invalid Taxa ID (cannot be
     coerced to int) or invalid value for current
@@ -140,7 +140,7 @@ def get_annotations():
     """Get current annotations.
 
     :query taxaId: Optional NCBI taxon to restrict the result to
-    :return: JSON array with the current annotations.
+    :return: JSON array with the current annotations
     :statuscode 200: OK
     :statuscode 400: Bad Request - invalid Taxa ID (cannot be
     coerced to int)
@@ -159,7 +159,7 @@ def get_modomics():
     """Get modifications.
 
     :return: JSON array with MODOMICS nomenclature
-    for all modifications.
+    for all modifications
     :statuscode 200: OK
     :statuscode 500: Internal Server Error
     """
@@ -171,7 +171,7 @@ def get_methods():
     """Get detection methods and their classification.
 
     :return: JSON array with classification information
-    for all detection methods.
+    for all detection methods
     :statuscode 200: OK
     :statuscode 500: Internal Server Error
     """
@@ -184,7 +184,7 @@ def get_selections():
 
     :return: JSON array with detailed information for
     all combinations of modifications, organisms, and
-    technology that are available in the database.
+    technology that are available in the database
     :statuscode 200: OK
     :statuscode 500: Internal Server Error
     """

@@ -187,7 +187,7 @@ Database upgrade
 For an annotation-only upgrade, neither the assembly manifest nor the assembly data files (``chrom.sizes``, FASTA and
 CHAIN files) change: the manifest records which Ensembl snapshot those files were obtained from, and they are not
 re-downloaded. Only the annotation files and the annotation records change. A general liftover is not necessary, but data records need to be re-annotated.
-Since the PK of ``genomic_annotation`` is ``gene_id``, before calling ``create_annotation``, ``data_annotation`` must be deleted, then
+Since the PK of ``genomic_annotation`` is ``gene_id``, before calling ``create_current_annotation``, ``data_annotation`` must be deleted, then
 the old ``annotation_id`` from ``GenomicAnnotation`` must be deleted *e.g.*
 
 .. code-block:: mysql

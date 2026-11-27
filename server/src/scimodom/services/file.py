@@ -1,3 +1,5 @@
+"""Classes and methods to interact with the file system."""
+
 import gzip
 import logging
 import os
@@ -214,24 +216,18 @@ class FileService:
     def get_annotation_dir(
         self, taxa_id: int, assembly_name: str | None = None
     ) -> Path:
-        """Construct path to annotation files.
-
-        This directory holds files that belong to an assembly, but not
-        to any particular annotation release, e.g. miRNA and RBP target
-        files. Per-release files live below it, cf.
-        :meth:`get_annotation_release_dir`.
+        """Construct parent path to annotation files.
 
         :param taxa_id: Taxa ID
-        :type taxa_id: int
         :param assembly_name: Assembly name. If None, it is inferred from
         the current assembly version. Callers that know which assembly
         they mean should pass it explicitly.
-        :type assembly_name: str | None
-        :returns: Path to annotation directory
-        :rtype: Path
+        :return: Path to annotation directory
         """
         if assembly_name is None:
-            assembly_name = self._get_current_assembly_name_from_taxa_id(taxa_id)
+            assembly_name = self._get_current_assembly_name_from_taxa_id(
+                taxa_id,
+            )
         organism = self._get_organism_from_taxa_id(taxa_id)
         return Path(
             self._get_annotation_parent_dir(),
@@ -248,22 +244,12 @@ class FileService:
     ) -> Path:
         """Construct path to the annotation files of one source and release.
 
-        The source is part of the path because it is part of the identity
-        of an annotation, cf. the unique constraint on Annotation
-        (release, taxa_id, source, version). Without it, two annotations
-        that are distinct in the database would share a directory.
-
         :param taxa_id: Taxa ID
-        :type taxa_id: int
         :param source: Annotation source e.g. "ensembl"
-        :type source: str
         :param release: Annotation release
-        :type release: int
         :param assembly_name: Assembly name. If None, it is inferred from
         the current assembly version.
-        :type assembly_name: str | None
-        :returns: Path to annotation release directory
-        :rtype: Path
+        :return: Path to annotation release directory
         """
         return Path(
             self.get_annotation_dir(taxa_id, assembly_name=assembly_name),
@@ -280,28 +266,21 @@ class FileService:
     ) -> Path:
         """Create the annotation directory of one source and release.
 
-        Created like every other directory of the data tree, i.e. with
-        the mode and umask of :meth:`_create_folder`, so that it does
-        not depend on the umask of the calling process.
-
         :param taxa_id: Taxa ID
-        :type taxa_id: int
         :param source: Annotation source e.g. "ensembl"
-        :type source: str
         :param release: Annotation release
-        :type release: int
         :param assembly_name: Assembly name. If None, it is inferred
         from the current assembly version.
-        :type assembly_name: str | None
-        :raises FileExistsError: If the directory already exists
-        :returns: Path to annotation release directory
-        :rtype: Path
+        :raise FileExistsError: If the directory already exists
+        :return: Path to annotation release directory
         """
         path = self.get_annotation_release_dir(
             taxa_id, source, release, assembly_name=assembly_name
         )
         if path.exists():
-            raise FileExistsError(f"Annotation release directory exists: '{path}'.")
+            raise FileExistsError(
+                f"Annotation release directory exists: '{path}'.",
+            )
         self._create_folder(path)
         return path
 
@@ -311,13 +290,9 @@ class FileService:
         """Open a target annotation file for reading.
 
         :param taxa_id: Taxa ID
-        :type taxa_id: int
         :param target_type: Which file to open
-        :type target_type: TargetsFileType
         :param chrom: Chromosome (for split targets file)
-        :type chrom: str
-        :returns: File handle
-        :rtype: TextIO
+        :return: File handle
         """
         path = Path(
             self.get_annotation_dir(taxa_id),
@@ -424,8 +399,7 @@ class FileService:
         the new one. On failure, the temporary file is removed, the cache file
         is not modified, and the error is raised.
 
-        The permissions of the new file are set when it is created (see
-        _write_opener), and are not changed afterwards.
+        The permissions of the new file are set when it is created.
         """
         final_path = Path(cache_dir, name)
         temporary_path = Path(cache_dir, f".{name}.{uuid4().hex}.tmp")
@@ -546,27 +520,20 @@ class FileService:
         assembly_name: str | None = None,
         chrom: str | None = None,
     ) -> Path:
-        """Construct an assembly file path for a given organism.
-
-        Provide a general constructor for all assembly file types.
-        Restricted interface methods are used to interact
-        with different file types (cf. below).
+        """Construct an assembly file path for a given taxon.
 
         :param taxa_id: Taxa ID
-        :type taxa_id: int
         :param file_type: Type of assembly file
-        :type file_type: AssemblyFileType
         :param assembly_name: Assembly name. Required if file_type is CHAIN.
         If None, it is inferred from the current assembly version.
-        :type assembly_name: str | None
         :param chrom: Required if file_type is DNA, DNA_IDX, or DNA_BGZ.
-        :type chrom: str | None
-        :raises ValueError: If missing arguments
+        :raise ValueError: If missing arguments
         :return: Full path to file
-        :rtype: Path
         """
         file_name = file_type.value
-        current_assembly_name = self._get_current_assembly_name_from_taxa_id(taxa_id)
+        current_assembly_name = self._get_current_assembly_name_from_taxa_id(
+            taxa_id,
+        )
         if AssemblyFileType.is_chain(file_type):
             if assembly_name is None:
                 raise ValueError("Missing required parameter 'assembly_name'.")
@@ -585,26 +552,34 @@ class FileService:
                 organism=organism, assembly=current_assembly_name, chrom=chrom
             )
 
-        return Path(self._get_assembly_dir(taxa_id, current_assembly_name), file_name)
+        return Path(
+            self._get_assembly_dir(taxa_id, current_assembly_name),
+            file_name,
+        )
 
-    def open_assembly_file(self, taxa_id: int, file_type: AssemblyFileType) -> TextIO:
+    def open_assembly_file(
+        self,
+        taxa_id: int,
+        file_type: AssemblyFileType,
+    ) -> TextIO:
         """Open an assembly file for reading.
 
         :param taxa_id: Taxa ID
-        :type taxa_id: int
         :param file_type: Type of assembly file (CHROM, INFO, RELEASE)
-        :type file_type: AssemblyFileType
-        :raises NotImplementedError: If file_type is CHAIN,
+        :raise NotImplementedError: If file_type is CHAIN,
         DNA, DNA_IDX, DNA_BGZ.
         :return: Opened file handle for reading
-        :rtype: TextIO
         """
         if AssemblyFileType.is_chain(file_type) or AssemblyFileType.is_fasta(file_type):
             raise NotImplementedError()
         path = self.get_assembly_file_path(taxa_id, file_type)
         return open(path)
 
-    def create_assembly_file(self, taxa_id: int, file_type: AssemblyFileType) -> TextIO:
+    def create_assembly_file(
+        self,
+        taxa_id: int,
+        file_type: AssemblyFileType,
+    ) -> TextIO:
         """Open an assembly file for writing.
 
         If missing, the parent directory is created.
@@ -612,13 +587,10 @@ class FileService:
         For DNA sequence files, use create_dna_sequence_file().
 
         :param taxa_id: Taxa ID
-        :type taxa_id: int
         :param file_type: Type of assembly file (CHROM, INFO, RELEASE)
-        :type file_type: AssemblyFileType
-        :raises NotImplementedError: If file_type is CHAIN,
+        :raise NotImplementedError: If file_type is CHAIN,
         DNA, DNA_IDX, DNA_BGZ.
         :return: Opened file handle for writing
-        :rtype: TextIO
         """
         if AssemblyFileType.is_chain(file_type) or AssemblyFileType.is_fasta(file_type):
             raise NotImplementedError()
@@ -704,21 +676,23 @@ class FileService:
     ) -> bool:
         """Check if directory structure and files exist for a given assembly.
 
-        The current assembly (the default) is expected to be complete
-        (info, release, chrom.sizes, and all DNA sequence files), any
+        The current assembly is expected to be complete
+        (manifest, chrom.sizes, and all DNA sequence files), any
         other assembly only needs its chain file. The file content
         is not validated.
 
         :param taxa_id: Taxa ID
         :param assembly_name: Assembly name. If None, or if it is the
         name of the current assembly, the current assembly is checked.
-        :raises FileExistsError: If the directory of the current
+        :raise FileExistsError: If the directory of the current
         assembly is not empty, but files are missing. The missing
         files are given as notes.
         :return: True if all required files exist, else False. A
         missing or empty assembly directory returns False.
         """
-        current_assembly_name = self._get_current_assembly_name_from_taxa_id(taxa_id)
+        current_assembly_name = self._get_current_assembly_name_from_taxa_id(
+            taxa_id,
+        )
         if assembly_name is None or assembly_name == current_assembly_name:
             return self._check_if_current_assembly_exists(
                 taxa_id, current_assembly_name
@@ -737,7 +711,9 @@ class FileService:
             p for p in self._get_expected_current_files(taxa_id) if not p.is_file()
         ]
         if missing:
-            exc = FileExistsError(f"Files exist for assembly '{assembly_name}'.")
+            exc = FileExistsError(
+                f"Files exist for assembly '{assembly_name}'.",
+            )
             for path in missing:
                 exc.add_note(f"Missing: {path}")
             raise exc
@@ -748,9 +724,15 @@ class FileService:
             self.get_assembly_file_path(taxa_id, file_type)
             for file_type in AssemblyFileType.common()
         ]
-        chrom_path = self.get_assembly_file_path(taxa_id, AssemblyFileType.CHROM)
+        chrom_path = self.get_assembly_file_path(
+            taxa_id,
+            AssemblyFileType.CHROM,
+        )
         if chrom_path.is_file():
-            with self.open_assembly_file(taxa_id, AssemblyFileType.CHROM) as fh:
+            with self.open_assembly_file(
+                taxa_id,
+                AssemblyFileType.CHROM,
+            ) as fh:
                 chroms = [line.split()[0] for line in fh if line.strip()]
             paths.extend(
                 self.get_assembly_file_path(taxa_id, file_type, chrom=chrom)

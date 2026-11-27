@@ -127,7 +127,7 @@ class ModificationService:
             raise NotImplementedError(
                 f"Annotation source '{annotation_source}' not implemented"
             )
-        annotation = self._annotation_service.get_by_taxa(
+        annotation = self._annotation_service.get_current(
             annotation_source,
             taxa_id,
         )
@@ -169,7 +169,7 @@ class ModificationService:
             raise NotImplementedError(
                 f"Annotation source '{annotation_source}' not implemented"
             )
-        annotation = self._annotation_service.get_by_taxa(
+        annotation = self._annotation_service.get_current(
             annotation_source,
             taxa_id,
         )

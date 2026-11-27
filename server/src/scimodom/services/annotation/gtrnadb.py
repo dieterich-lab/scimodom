@@ -43,7 +43,7 @@ class GtRNAdbAnnotationService(GenericAnnotationService):
         "AnnotationPath", [("annotation_file", Path), ("url", str)]
     )
 
-    def get_by_taxa(self, taxa_id: int) -> Annotation:
+    def get_current(self, taxa_id: int) -> Annotation:
         """Retrieve the current annotation of an organism.
 
         :param taxa_id: Taxonomy ID
@@ -53,9 +53,12 @@ class GtRNAdbAnnotationService(GenericAnnotationService):
 
         :raises: AnnotationNotFoundError
         """
-        return self.get_by_taxa_and_source(taxa_id, self.ANNOTATION_SOURCE)
+        return self.get_current_by_taxa_and_source(
+            taxa_id,
+            self.ANNOTATION_SOURCE,
+        )
 
-    def create_annotation(self, taxa_id: int, **kwargs) -> None:
+    def create_current_annotation(self, taxa_id: int, **kwargs) -> None:
         """This method automates the creation of GtRNAdb
         annotations for a given organism. The annotation
         must exists in the database.
@@ -72,8 +75,8 @@ class GtRNAdbAnnotationService(GenericAnnotationService):
         :param name: GtRNAdb species name (abbreviated) e.g. Mmusc39
         :type name: str
         """
-        annotation = self.get_by_taxa(taxa_id)
-        if self._release_exists(annotation.id):
+        annotation = self.get_current(taxa_id)
+        if self._has_records(annotation):
             return
 
         domain = kwargs["domain"]

@@ -65,12 +65,8 @@ class Ensembl(Enum):
 
     Members describe where Ensembl serves data and how its URLs are
     built. They deliberately do not record which release or archive is
-    installed: that is a property of the installation. It is stated
-    when an assembly is created and recorded in its manifest, cf.
-    scimodom.utils.specs.manifest.
-
-    The archive token e.g. "jul2023" is shared by the REST and the web
-    archive hosts, so both are built from it.
+    installed: that is a property of the installation, stated
+    when an assembly is created and recorded in its manifest.
     """
 
     FTP = "https://ftp.ensembl.org/pub"

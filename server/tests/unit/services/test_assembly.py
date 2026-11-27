@@ -429,7 +429,7 @@ def test_add_current_assembly_does_nothing(Session, file_service, setup, caplog)
     service = _get_assembly_service(Session, file_service, gene_build=GENE_BUILD)
     service.add_assembly(9606, "GRCh38")
     assert file_service.created_files_by_name == {}
-    assert "this is the current assembly" in caplog.text
+    assert "Wrong method for current assembly 'GRCh38'" in caplog.text
 
 
 def test_add_assembly_exist_in_database(Session, file_service, setup, mocker):
@@ -705,7 +705,7 @@ def test_cleanup_unexpected_failure_is_logged(
 
 def test_get_organism(Session, file_service, setup):
     service = _get_assembly_service(Session, file_service)
-    assert service.get_organism(10090) == "Mus musculus"
+    assert service._get_organism(10090) == "Mus musculus"
 
 
 def test_dna_fallback_on_404(Session, file_service, setup, mocker):  # noqa
@@ -738,7 +738,7 @@ def test_read_manifest(Session, file_service, setup):
         MANIFEST
     )
     service = _get_assembly_service(Session, file_service)
-    manifest = service.read_manifest(9606)
+    manifest = service._read_manifest(9606)
     assert manifest["source"]["release"] == 110
     assert manifest["source"]["archive"] == "jul2023"
     assert manifest["assembly"]["coord_system_versions"] == [
@@ -753,8 +753,8 @@ def test_read_manifest(Session, file_service, setup):
 def test_read_manifest_missing_points_at_migration(Session, file_service, setup):
     service = _get_assembly_service(Session, file_service)
     with pytest.raises(AssemblyManifestNotFoundError) as exc:
-        service.read_manifest(9606)
-    assert "flask assembly migrate-manifest" in str(exc.value)
+        service._read_manifest(9606)
+    assert "No manifest for organism '9606'" in str(exc.value)
 
 
 def test_migrate_manifest(Session, file_service, setup):
@@ -821,7 +821,7 @@ def test_add_assembly_chain_release_from_manifest(Session, file_service, setup):
         ].final_content
         == b"chain"
     )
-    assert service.get_installed_release(9606) == 112
+    assert service._get_installed_release(9606) == 112
 
 
 # catalog
@@ -930,7 +930,7 @@ def test_get_assemblies_reads_one_manifest_per_organism(
         MANIFEST
     )
     service = _get_assembly_service(Session, file_service)
-    spy = mocker.spy(service, "read_manifest")
+    spy = mocker.spy(service, "_read_manifest")
     catalog = service.get_assemblies()
     assert len(catalog) == 3
     assert spy.call_count == 2

@@ -15,7 +15,6 @@ from scimodom.services.annotation import (
     AnnotationNotFoundError,
 )
 from scimodom.services.ensembl import EnsemblAssemblyClient
-from scimodom.utils.specs.enums import AssemblyFileType
 from tests.mocks.web import MockWebService
 from tests.mocks.enums import MockEnsembl
 
@@ -112,9 +111,9 @@ def test_init(Session):
     assert service._version == "EyRBnPeVwbzW"
 
 
-def test_get_by_taxa(Session, setup, mocker):
+def test_get_current(Session, setup, mocker):
     service = _get_ensembl_annotation_service(Session)
-    annotation = service.get_by_taxa(9606)
+    annotation = service.get_current(9606)
     assert annotation.release == 110
     assert annotation.inst_assembly.name == "GRCh38"
     assert annotation.inst_assembly.taxa_id == 9606
@@ -135,7 +134,7 @@ def test_get_annotation_any_release(Session, setup, mocker):
         )
         session.add(AnnotationRelease(source="ensembl", release=111, archive="jan2024"))
     service = _get_ensembl_annotation_service(Session)
-    annotation = service.get_by_taxa(9606)
+    annotation = service.get_current(9606)
     assert annotation.release == 111
     assert annotation.inst_assembly.name == "GRCh38"
 
@@ -145,14 +144,14 @@ def test_get_annotation_fail(Session):
         session.add(AnnotationVersion(version_num="EyRBnPeVwbzW"))
     service = _get_ensembl_annotation_service(Session)
     with pytest.raises(AnnotationNotFoundError) as exc:
-        service.get_by_taxa(9606)
+        service.get_current(9606)
     assert (str(exc.value)) == "No such ensembl annotation for taxonomy ID: 9606."
     assert exc.type == AnnotationNotFoundError
 
 
 def test_get_release_path(Session, setup, mocker):
     service = _get_ensembl_annotation_service(Session)
-    annotation = service.get_by_taxa(9606)
+    annotation = service.get_current(9606)
     release_path = service.get_release_path(annotation)
     # the source is part of the path, cf. uq_annotation_rtv
     expected_release_path = Path(
@@ -161,21 +160,27 @@ def test_get_release_path(Session, setup, mocker):
     assert release_path == expected_release_path
 
 
-def test_release_exists(Session, setup, mocker):
+def test_has_records(Session, setup, mocker):
     with Session() as session, session.begin():
         genomic_annotation = GenomicAnnotation(
             id="ENSG00000000001", annotation_id=1, name="A", biotype="protein_coding"
         )
         session.add(genomic_annotation)
     service = _get_ensembl_annotation_service(Session)
-    annotation = service.get_by_taxa(9606)
-    assert service._release_exists(annotation.id)
+    annotation = service.get_current(9606)
+    assert service._has_records(annotation)
+
+
+def test_has_records_is_false_without_them(Session, setup, mocker):
+    service = _get_ensembl_annotation_service(Session)
+    annotation = service.get_current(9606)
+    assert not service._has_records(annotation)
 
 
 def test_ensembl_annotation_paths(Session, setup, mocker):
     mocker.patch("scimodom.services.ensembl.Ensembl", MockEnsembl)
     service = _get_ensembl_annotation_service(Session)
-    annotation = service.get_by_taxa(9606)
+    annotation = service.get_current(9606)
     release_path = service.get_release_path(annotation)
     annotation_file, url = service._get_annotation_paths(annotation, release_path)
     expected_annotation_file = service.ANNOTATION_FILE(
@@ -212,7 +217,7 @@ def test_release_path_follows_the_annotation_not_the_current_assembly(
             update(Annotation).where(Annotation.release == 109).values(assembly_id=3)
         )
     service = _get_ensembl_annotation_service(Session)
-    current = service.get_by_taxa_and_source(9606, "ensembl")
+    current = service.get_current_by_taxa_and_source(9606, "ensembl")
     assert current.release == 110
     assert service.get_release_path(current) == Path(
         "/data", "annotation", "Homo_sapiens", "GRCh38", "ensembl", "110"
@@ -229,13 +234,13 @@ def test_annotation_version_is_read_on_each_access(Session, setup):
     # an upgrade changes the current version; a service built once at
     # start-up must not keep handing out the version it saw then
     service = _get_ensembl_annotation_service(Session)
-    assert service.get_by_taxa(9606).release == 110
+    assert service.get_current(9606).release == 110
     service._session.execute(
         update(AnnotationVersion).values(version_num="A8syx5TzWlK0")
     )
     service._session.commit()
     # same service instance, no rebuild
-    assert service.get_by_taxa(9606).release == 109
+    assert service.get_current(9606).release == 109
 
 
 # catalog

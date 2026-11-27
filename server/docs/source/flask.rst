@@ -100,7 +100,7 @@ and annotation files, use
 
 .. code-block:: bash
 
-    flask assembly add [OPTIONS] ASSEMBLY_ID
+    flask assembly add [OPTIONS] TAXA_ID
 
 
 .. code-block:: bash
@@ -113,18 +113,12 @@ For example, to create the human assembly and annotation data files
 
 .. code-block:: bash
 
-    flask assembly add 1
+    flask assembly add --release 110 --archive jul2023 9606
     flask annotation --source ensembl 9606
 
-where ``ASSEMBLY_ID=1`` matches the assembly ID from *Assembly* corresponding to the current human assembly version, as initially specified in *assembly.csv*, and where ``TAXA_ID=9606`` matches the value from *Taxa*, as initially specified in *ncbi_taxa.csv*.
+where ``TAXA_ID=9606`` matches the value from *Taxa*, as initially specified in *ncbi_taxa.csv*. Exactly one assembly of an organism matches the current version; there is no way to provision an assembly that is not the current one.
 
 Data is written to ``DATA_PATH`` (development) or ``HOST_DATA_DIR`` (production).
-
-The Ensembl release and archive that the reference files are obtained from must be given
-
-.. code-block:: bash
-
-    flask assembly add --release 110 --archive jul2023 1
 
 Nothing is inferred from the code: which snapshot to install is stated once, when it is installed. The release is validated
 against the archive before anything is downloaded, and both are recorded in the assembly manifest (``manifest.json``),

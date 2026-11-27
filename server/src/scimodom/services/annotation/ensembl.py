@@ -1,3 +1,5 @@
+"""Classes and methods for Ensembl annotations."""
+
 import logging
 import shutil
 from collections.abc import Callable
@@ -5,7 +7,11 @@ from pathlib import Path
 from typing import Any, ClassVar
 
 from scimodom.database.buffer import InsertBuffer
-from scimodom.database.models import Annotation, DataAnnotation, GenomicAnnotation
+from scimodom.database.models import (
+    Annotation,
+    DataAnnotation,
+    GenomicAnnotation,
+)
 from scimodom.services.annotation.generic import GenericAnnotationService
 from scimodom.services.ensembl import EnsemblAssemblyClient
 from scimodom.utils.specs.enums import AnnotationSource, AssemblyFileType
@@ -16,12 +22,11 @@ logger = logging.getLogger(__name__)
 class EnsemblAnnotationService(GenericAnnotationService):
     """Utility class to handle Ensembl annotation.
 
+    :param ensembl_client: Ensembl assembly client (owns
+    the Ensembl URL layout)
     :params FMT: Annotation file format
-    :type FMT: str
     :param ANNOTATION_FILE: Annotation file name
-    :type ANNOTATION_FILE: Callable
     :param FEATURES: Genomic features
-    :type FEATURES: dict of {str: dict of {str: str}}
     """
 
     ANNOTATION_SOURCE: ClassVar[str] = AnnotationSource.ENSEMBL.value
@@ -41,31 +46,25 @@ class EnsemblAnnotationService(GenericAnnotationService):
     # TODO: organisms served without the ".chr" variant, cf. #149
     NO_CHR_VARIANT_TAXA: ClassVar[list[int]] = [4932, 6239]
 
-    def __init__(self, ensembl_client: EnsemblAssemblyClient, **kwargs: Any) -> None:
-        """Utility class to handle Ensembl annotation.
-
-        :param ensembl_client: Ensembl assembly client. Owns the Ensembl
-        URL layout; this service does not build URLs itself.
-        :type ensembl_client: EnsemblAssemblyClient
-        """
+    def __init__(
+        self,
+        ensembl_client: EnsemblAssemblyClient,
+        **kwargs: Any,
+    ) -> None:
         super().__init__(**kwargs)
         self._ensembl_client = ensembl_client
 
-    def get_by_taxa(self, taxa_id: int) -> Annotation:
-        """Retrieve the current annotation of an organism.
+    def get_current(self, taxa_id: int) -> Annotation:
+        """Retrieve the current annotation.
 
-        :param taxa_id: Taxonomy ID
-        :raises: AnnotationNotFoundError
+        :param taxa_id: NCBI taxon
+        :raise: AnnotationNotFoundError
         :return: Annotation instance
         """
-        # NOTE: the annotation release used to be checked against a
-        # global constant, which forced every organism into lockstep
-        # with one release and is what blocked an annotation-only
-        # upgrade. The annotation row is now the only statement of
-        # which release an annotation is; there is nothing left for it
-        # to disagree with. The release gets a database record of its
-        # own, per source, in #157.
-        return self.get_by_taxa_and_source(taxa_id, self.ANNOTATION_SOURCE)
+        return self.get_current_by_taxa_and_source(
+            taxa_id,
+            self.ANNOTATION_SOURCE,
+        )
 
     def get_annotations(
         self,
@@ -73,14 +72,12 @@ class EnsemblAnnotationService(GenericAnnotationService):
     ) -> list[dict[str, Any]]:
         """Get the current Ensembl annotations.
 
-        This adds the browser page of the archive the release is
-        served from, cf.
-        EnsemblAssemblyClient.get_browse_url: a record annotated
-        here is browsed at the release it was annotated with, not at
-        whichever release is current on ensembl.org.
+        This adds the browser page of the archive the
+        release is served from. A record annotated here
+        is browsed at the release it was annotated with.
 
-        :param taxa_id: Taxonomy ID, or None for every organism
-        :return: Annotations
+        :param taxa_id: NCBI taxon or None
+        :return: JSON array with extended annotations
         """
         annotations = super().get_annotations(taxa_id)
         for annotation in annotations:
@@ -89,29 +86,25 @@ class EnsemblAnnotationService(GenericAnnotationService):
             )
         return annotations
 
-    def create_annotation(self, taxa_id: int, **kwargs) -> None:
-        """Create the current Ensembl annotation of an organism.
+    def create_current_annotation(self, taxa_id: int, **kwargs) -> None:
+        """Create the current Ensembl annotation of a taxon.
 
-        This sets up the annotation that is current in the database,
-        on the assembly that annotation references. It is not a way to
-        install an arbitrary release: an upgrade replaces the current
-        annotation and gets a method of its own, cf. #157.
-
-        The annotation must exist in the database, and so must the
-        assembly it references.
-
-        :param taxa_id: Taxonomy ID
-        :type taxa_id: int
+        :param taxa_id: NCBI taxon
         """
-        annotation = self.get_by_taxa(taxa_id)
-        if self._release_exists(annotation.id):
+        annotation = self.get_current(taxa_id)
+        if self._has_records(annotation):
             return
 
         assembly = annotation.inst_assembly
         release_path = self.get_release_path(annotation)
-        annotation_file, url = self._get_annotation_paths(annotation, release_path)
+        annotation_file, url = self._get_annotation_paths(
+            annotation,
+            release_path,
+        )
         chrom_file = self._file_service.get_assembly_file_path(
-            assembly.taxa_id, AssemblyFileType.CHROM, assembly_name=assembly.name
+            assembly.taxa_id,
+            AssemblyFileType.CHROM,
+            assembly_name=assembly.name,
         )
 
         logger.info(
@@ -127,7 +120,10 @@ class EnsemblAnnotationService(GenericAnnotationService):
                 assembly_name=assembly.name,
             )
         except FileExistsError as exc:
-            exc.add_note(f"... but no records found for annotation {annotation.id}.")
+            exc.add_note(
+                f"Orphaned files detected: annotation '{annotation.id}' for "
+                f"taxon '{taxa_id}' has files on the system but no database records"
+            )
             raise
 
         try:
@@ -145,16 +141,17 @@ class EnsemblAnnotationService(GenericAnnotationService):
             shutil.rmtree(release_path)
             raise
 
-    def _annotate_data_in_database(self, taxa_id: int, dataset_id: str) -> None:
-        """Annotate Data: add entries to DataAnnotation
-        for a given dataset.
+    def _annotate_data_in_database(
+        self,
+        taxa_id: int,
+        dataset_id: str,
+    ) -> None:
+        """Add entries to DataAnnotation for a given dataset.
 
-        :param taxa_id: Taxonomy ID
-        :type taxa_id: int
-        :param dataset_id: EUF ID
-        :type dataset_id: str
+        :param taxa_id: NCBI taxon
+        :param dataset_id: Dataset identifier
         """
-        annotation = self.get_by_taxa(taxa_id)
+        annotation = self.get_current(taxa_id)
         release_path = self.get_release_path(annotation)
 
         logger.debug(f"Annotating records for EUFID {dataset_id}...")
@@ -169,7 +166,11 @@ class EnsemblAnnotationService(GenericAnnotationService):
             for record in annotated_records:
                 buffer.queue(DataAnnotation(**record.model_dump()))
 
-    def _update_database(self, annotation_id: int, annotation_file: Path) -> None:
+    def _update_database(
+        self,
+        annotation_id: int,
+        annotation_file: Path,
+    ) -> None:
         records = self._bedtools_service.get_ensembl_annotation_records(
             annotation_file,
             annotation_id,
@@ -182,11 +183,6 @@ class EnsemblAnnotationService(GenericAnnotationService):
     def _get_annotation_paths(
         self, annotation: Annotation, release_path: Path
     ) -> tuple[Path, str]:
-        """Construct the local path and the remote URL of an annotation file.
-
-        Organism and assembly come from the assembly the annotation
-        references, not from the components of release_path.
-        """
         assembly = annotation.inst_assembly
         organism = assembly.inst_taxa.name
         filen = self.ANNOTATION_FILE(

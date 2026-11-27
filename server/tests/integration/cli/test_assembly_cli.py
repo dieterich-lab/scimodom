@@ -64,7 +64,19 @@ def mock_services(mocker, Session, tmp_path):
 
 @pytest.mark.network
 def test_add_assembly(Session, tmp_path, test_runner, setup, mock_services):
-    result = test_runner.invoke(args=["assembly", "add", "--yes", "--traceback", "1"])
+    result = test_runner.invoke(
+        args=[
+            "assembly",
+            "add",
+            "--yes",
+            "--traceback",
+            "--release",
+            "110",
+            "--archive",
+            "jul2023",
+            "9606",
+        ]
+    )
     assert result.exit_code == 0
 
     with Session() as session:
@@ -80,6 +92,5 @@ def test_add_assembly(Session, tmp_path, test_runner, setup, mock_services):
             assert Path(
                 d, "GRCh38", f"Homo_sapiens.GRCh38.dna.chromosome.{chrom}.fa.gz{ext}"
             ).is_file()
-    assert Path(d, "GRCh38", "info.json").is_file()
-    assert Path(d, "GRCh38", "release.json").is_file()
+    assert Path(d, "GRCh38", "manifest.json").is_file()
     assert Path(d, "GRCh38", "chrom.sizes").is_file()

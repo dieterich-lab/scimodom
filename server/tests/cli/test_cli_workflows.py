@@ -174,11 +174,14 @@ def test_assembly_add(test_runner, provisioning_service):
             "110",
             "--archive",
             "jul2023",
-            "1",
+            "9606",
         ]
     )
     assert result.exit_code == 0
     assert "done with GRCh37" in result.output
+    provisioning_service.plan.assert_called_once_with(
+        9606, release=110, archive="jul2023"
+    )
 
 
 def test_assembly_add_others_failed_is_not_an_error(test_runner, provisioning_service):
@@ -197,7 +200,7 @@ def test_assembly_add_others_failed_is_not_an_error(test_runner, provisioning_se
             "110",
             "--archive",
             "jul2023",
-            "1",
+            "9606",
         ]
     )
     assert result.exit_code == 1
@@ -222,14 +225,14 @@ def test_assembly_add_current_fails(test_runner, provisioning_service):
             "110",
             "--archive",
             "jul2023",
-            "1",
+            "9606",
         ]
     )
     assert result.exit_code == 1
     assert "Failed to set up current assembly 'GRCh38'" in result.output
 
 
-def test_assembly_add_no_such_assembly(test_runner, provisioning_service):
+def test_assembly_add_no_current_assembly(test_runner, provisioning_service):
     provisioning_service.plan.side_effect = AssemblyNotFoundError("No assembly")
     result = test_runner.invoke(
         args=[
@@ -240,10 +243,11 @@ def test_assembly_add_no_such_assembly(test_runner, provisioning_service):
             "110",
             "--archive",
             "jul2023",
-            "1",
+            "9606",
         ]
     )
     assert result.exit_code == 1
+    assert "No current assembly for taxon '9606'" in result.output
     provisioning_service.execute.assert_not_called()
 
 

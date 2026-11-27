@@ -1,3 +1,5 @@
+"""Database models."""
+
 from datetime import datetime
 from decimal import Decimal
 from typing import List, Optional
@@ -215,10 +217,6 @@ class Assembly(Base):
     )
 
     inst_taxa: Mapped["Taxa"] = relationship(back_populates="assemblies")
-    # NOTE: every annotation of this assembly, of any version. Only
-    # the current one may be used, cf.
-    # GenericAnnotationService.get_by_taxa_and_source,
-    # which is the only place an annotation should be obtained from
     annotations: Mapped[List["Annotation"]] = relationship(
         back_populates="inst_assembly"
     )
@@ -248,12 +246,6 @@ class Annotation(Base):
     )  # current is annotation_version.version_num
 
     __table_args__ = (
-        # one annotation per assembly, source and generation: the
-        # release is deliberately not part of the key, so that two
-        # releases of the same source cannot both be current on the
-        # same assembly. An upgrade retires the old row by changing
-        # its version; an annotation-only upgrade changes the release
-        # and the version, an assembly upgrade the assembly_id too
         UniqueConstraint(assembly_id, source, version, name="uq_annotation_asv"),
         ForeignKeyConstraint(
             ["source", "release"],
@@ -263,11 +255,9 @@ class Annotation(Base):
         CheckConstraint("LENGTH(version) = 12", name="version"),
     )
 
-    # an annotation is a set of features in the coordinate system of an
-    # assembly; the taxa is reached through it
     inst_assembly: Mapped["Assembly"] = relationship(back_populates="annotations")
-    # the composite foreign key is invisible from the ORM side without
-    # this; it is one-way, as nothing needs the annotations of a release
+    # composite FK is invisible from the ORM without this;
+    # one-way as nothing needs the annotations of a release
     inst_release: Mapped["AnnotationRelease"] = relationship(viewonly=True)
     annotations: Mapped[List["GenomicAnnotation"]] = relationship(
         back_populates="inst_annotation"
@@ -275,24 +265,7 @@ class Annotation(Base):
 
 
 class AnnotationRelease(Base):
-    """Where a provider serves the data of one release.
-
-    The release of an annotation identifies the snapshot it came from,
-    but says nothing about where that snapshot is served. Ensembl
-    publishes the mapping of a release onto its archive as an HTML list
-    only, so it cannot be derived and is recorded here.
-
-    Keyed on the source as well as the release, so that a provider
-    other than Ensembl, or an Ensembl Genomes division with its own
-    release numbering, does not collide with it.
-
-    The archive is nullable because not every provider keeps one: a
-    null means this provider serves no per-release archive, so there
-    is no release-specific page to link to. GtRNAdb is the case in
-    point, cf. https://gtrnadb.ucsc.edu. It is not part of the key, so
-    a null does not weaken the foreign key from Annotation: an
-    annotation can still only exist for a release that was declared.
-    """
+    """Where a provider serves the data of one release."""
 
     __tablename__ = "annotation_release"
 
@@ -404,9 +377,7 @@ class ProjectSelection(Base):
     This table defines the combinations of modification, organism,
     and technology (selections) for which datasets may be added to a
     project. This is the declaration of what a project may contain,
-    which may be empty for some time, e.g. if a project is created
-    before its data are uploaded, and which does not depend on the
-    existence of the corresponding `Selection` (no FK to `Selection`).
+    different from Selection, which are added with data records.
     """
 
     __tablename__ = "project_selection"

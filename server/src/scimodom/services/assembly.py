@@ -1,11 +1,13 @@
+"""Classes and methods for (Ensembl) assemblies."""
+
 import json
 import logging
-from pathlib import Path
 from functools import cache
+from pathlib import Path
 from typing import Any, TextIO
 
 from requests.exceptions import HTTPError
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session
 
@@ -15,10 +17,9 @@ from scimodom.services.ensembl import (
     EnsemblAssemblyClient,
     get_ensembl_assembly_client,
 )
-from scimodom.services.external import get_external_service, ExternalService
+from scimodom.services.external import ExternalService, get_external_service
 from scimodom.services.file import FileService, get_file_service
 from scimodom.services.web import WebService, get_web_service
-from scimodom.utils.utils import gen_short_uuid
 from scimodom.utils.specs.enums import (
     AnnotationSource,
     AssemblyFileType,
@@ -32,6 +33,7 @@ from scimodom.utils.specs.manifest import (
     get_provider,
     get_release,
 )
+from scimodom.utils.utils import gen_short_uuid
 
 logger = logging.getLogger(__name__)
 
@@ -39,19 +41,13 @@ logger = logging.getLogger(__name__)
 class AssemblyNotFoundError(Exception):
     """Exception for handling a non-existing Assembly."""
 
-    pass
-
 
 class AssemblyManifestNotFoundError(Exception):
     """Exception for handling a missing assembly manifest."""
 
-    pass
-
 
 class AssemblyVersionError(Exception):
     """Exception for handling an Assembly version mismatch."""
-
-    pass
 
 
 class AssemblyAbortedError(Exception):
@@ -61,13 +57,9 @@ class AssemblyAbortedError(Exception):
     creating assemblies e.g. request streaming, etc.
     """
 
-    pass
-
 
 class LiftOverError(Exception):
     """Exception for handling errors in liftover."""
-
-    pass
 
 
 class AssemblyService:
@@ -81,8 +73,7 @@ class AssemblyService:
     :param external_service: External service instance
     :param web_service: The web service
     :param file_service: The file service
-    :param ensembl_client: Client for Ensembl, created from
-    'web_service' if not given.
+    :param ensembl_client: Client for Ensembl
     """
 
     def __init__(
@@ -101,29 +92,62 @@ class AssemblyService:
 
     @property
     def _version(self) -> str:
-        """Current assembly (database) version.
+        """Current assembly version.
 
         This is read from the database on each access (not cached).
-        The file and the assembly services always agree,
-        even if the version changes while the process is running.
         """
-        return self._session.execute(select(AssemblyVersion.version_num)).scalar_one()
+        return self._session.execute(
+            select(AssemblyVersion.version_num),
+        ).scalar_one()
+
+    def is_current_assembly(self, assembly: Assembly) -> bool:
+        """Check if assembly version matches current version.
+
+        :param assembly: Assembly instance
+        :return: True if assembly version is
+        the same as database version, else False
+        """
+        return assembly.version == self._version
+
+    def get_current(self, taxa_id: int) -> Assembly:
+        """Retrieve the current assembly for taxa_id.
+
+        :param taxa_id: NCBI taxon
+        :raise NoResultFound: If no assembly for the current version
+        :return: Assembly
+        """
+        return self._session.execute(
+            select(Assembly).filter_by(taxa_id=taxa_id, version=self._version)
+        ).scalar_one()
+
+    def get_name_for_version(self, taxa_id: int) -> str:
+        """Get assembly name for current version.
+
+        :param taxa_id: NCBI taxon
+        :raise NoResultFound: If no assembly for the current version
+        :return: Assembly name
+        """
+        return self.get_current(taxa_id).name
 
     def get_by_id(self, assembly_id: int) -> Assembly:
         """Retrieve assembly by ID.
 
         :param assembly_id: Assembly ID
-        :raises NoResultFound: If no such assembly.
+        :raise NoResultFound: If no such assembly.
         :return: Assembly
         """
         return self._session.get_one(Assembly, assembly_id)
 
-    def get_by_taxa_and_name(self, taxa_id: int, assembly_name: str) -> Assembly:
+    def get_by_taxa_and_name(
+        self,
+        taxa_id: int,
+        assembly_name: str,
+    ) -> Assembly:
         """Retrieve assembly by taxa ID and name.
 
         :param taxa_id: Taxonomy ID
         :param assembly_name: Assembly name
-        :raises NoResultFound: If no such assembly.
+        :raise NoResultFound: If no such assembly.
         :return: Assembly
         """
         return self._session.execute(
@@ -133,19 +157,15 @@ class AssemblyService:
     def get_assemblies(
         self, taxa_id: int | None = None, current: bool | None = None
     ) -> list[dict[str, Any]]:
-        """Get assemblies with their organism and installed snapshot.
+        """Get installed assemblies.
 
-        Every assembly is listed by default, including those kept
-        only to lift over from, which is what `current` distinguishes.
-
-        The snapshot is that of the organism, not of the assembly:
-        there is one manifest per organism, written for the current
+        The snapshot is that of the taxon, not of the assembly:
+        there is one manifest per taxon, written for the current
         assembly, and add_assembly installs every other assembly of
-        that organism from the release it records, so they all come
-        from the same snapshot. `source` is null only where there is
-        no manifest at all, cf. _get_installed_source.
+        that taxon from the release it records, i.e. they all come
+        from the same snapshot.
 
-        :param taxa_id: Taxonomy ID, or None for every organism
+        :param taxa_id: NCBI taxon or None
         :param current: True for the current assemblies only, False
         for the others only, or None for all of them
         :return: Assemblies
@@ -158,8 +178,7 @@ class AssemblyService:
             query = query.where(
                 Assembly.version == version if current else Assembly.version != version
             )
-        # one manifest per organism, read once however many of its
-        # assemblies are listed
+
         sources: dict[int, dict | None] = {}
         catalog = []
         for row in self._session.execute(
@@ -182,50 +201,11 @@ class AssemblyService:
             )
         return catalog
 
-    def _get_installed_source(self, taxa_id: int) -> dict | None:
-        """Read what the assemblies of an organism were installed from.
-
-        None if there is no manifest: a current assembly installed
-        before the manifest existed and not yet migrated, cf. 'flask
-        assembly migrate-manifest', or an organism whose assembly has
-        a database record but no files yet. Neither may fail a
-        catalog request.
-        """
-        try:
-            manifest = self.read_manifest(taxa_id)
-        except AssemblyManifestNotFoundError:
-            return None
-        return {
-            "provider": get_provider(manifest),
-            "release": get_release(manifest),
-            "archive": get_archive(manifest),
-        }
-
-    def is_current_assembly(self, assembly: Assembly) -> bool:
-        """Check if assembly version matches current version.
-
-        :param assembly: Assembly instance
-        :return: True if assembly version is
-        the same as database version, else False
-        """
-        return assembly.version == self._version
-
-    def get_name_for_version(self, taxa_id: int) -> str:
-        """Get assembly name for current version.
-
-        :param taxa_id: Taxonomy ID
-        :raises NoResultFound: If no assembly for the current version.
-        :return: Assembly name
-        """
-        return self._session.execute(
-            select(Assembly.name).filter_by(taxa_id=taxa_id, version=self._version)
-        ).scalar_one()
-
     def get_chroms(self, taxa_id: int) -> list[dict[str, str | int]]:
-        """Return chrom.sizes for the current database version.
+        """Get the content of `CHROM file` for the current version.
 
-        :param taxa_id: Taxonomy ID
-        :return: chrom names and sizes
+        :param taxa_id: NCBI taxon
+        :return: chromosome names and their size
         """
         chroms = []
         with self._file_service.open_assembly_file(
@@ -252,6 +232,7 @@ class AssemblyService:
         :param raw_file: BED file to be lifted over
         :param unmapped_file: Unmapped features
         :param threshold: Threshold for raising LiftOverError
+        :raise AssemblyVersionError: If current assembly
         :return: File handle pointing to the liftedOver features
         """
         if self.is_current_assembly(assembly):
@@ -281,26 +262,19 @@ class AssemblyService:
     def add_assembly(self, taxa_id: int, assembly_name: str) -> None:
         """Add an assembly other than the current one.
 
-        Create the directory structure, and add the corresponding
-        files. The current assembly must already exist in the database,
-        but `assembly_name` may or may not exist; if it does, nothing
+        This installs the chain file that maps `assembly_name` onto the
+        current assembly, so it only handles assemblies other than the
+        current one. The current assembly must already exist, but
+        `assembly_name` may or may not exist; if it does, nothing
         is done. Integrity is checked by asking both the file system
         for the expected directory structure and the database for a
         matching record.
 
-        This installs the chain file that maps `assembly_name` onto the
-        current assembly, so it only handles assemblies other than the
-        current one. The current assembly is created by
-        :meth:`create_current`, which states which Ensembl snapshot it
-        installs; here the release is read from the manifest that call
-        wrote, so an assembly can never be installed from a different
-        snapshot than the one it is mapped onto.
-
         :param taxa_id: Taxa ID
         :param assembly_name: A valid assembly name.
-        :raises NoResultFound: If a required assembly is missing.
-        :raises AssemblyNotFoundError: If 'assembly_name' is not valid.
-        :raises AssemblyManifestNotFoundError: If the current assembly
+        :raise NoResultFound: If a required assembly is missing.
+        :raise AssemblyNotFoundError: If 'assembly_name' is not valid.
+        :raise AssemblyManifestNotFoundError: If the current assembly
         has no manifest, i.e. it has not been created.
         """
         if self._file_service.check_if_assembly_exists(taxa_id, assembly_name):
@@ -323,13 +297,9 @@ class AssemblyService:
             )
             raise
         if assembly_name == current_assembly_name:
-            # we got here because the files are missing, cf. above: the
-            # current assembly is not this method's to create, and a
-            # broken one will fail on its own files soon enough
             logger.warning(
-                f"Nothing to do for '{assembly_name}' (organism '{taxa_id}'): "
-                "this is the current assembly, which is set up by "
-                "'flask assembly add'. Its files appear to be missing."
+                f"Wrong method for current assembly '{assembly_name}'."
+                "Files are missing. Nothing was attempted."
             )
             return
 
@@ -340,10 +310,15 @@ class AssemblyService:
                 f"Valid assemblies are: '{' '.join(valid_assembly_names)}'"
             )
         self._create_version(
-            taxa_id, assembly_name, self.get_installed_release(taxa_id)
+            taxa_id, assembly_name, self._get_installed_release(taxa_id)
         )
 
-    def create_current(self, assembly: Assembly, release: int, archive: str) -> None:
+    def create_current(
+        self,
+        assembly: Assembly,
+        release: int,
+        archive: str,
+    ) -> None:
         """Create directory and files for the current assembly version.
 
         There is no manifest to read the snapshot from yet, so the
@@ -352,9 +327,9 @@ class AssemblyService:
         :param assembly: Current assembly
         :param release: Ensembl release to obtain the files from
         :param archive: Ensembl archive to obtain the files from
-        :raises AssemblyVersionError: If not current version, or if the
+        :raise AssemblyVersionError: If not current version, or if the
         archive does not serve the requested release.
-        :raises AssemblyAbortedError: If fail to create files.
+        :raise AssemblyAbortedError: If fail to create files.
         """
         if not self.is_current_assembly(assembly):
             raise AssemblyVersionError(
@@ -400,163 +375,14 @@ class AssemblyService:
         :param taxa_id: Taxonomy ID
         :return: Valid assembly names
         """
-        return get_coord_system_versions(self.read_manifest(taxa_id))
+        return get_coord_system_versions(self._read_manifest(taxa_id))
 
-    def _create_version(self, taxa_id: int, assembly_name: str, release: int) -> None:
-        logger.info(f"Setting up a new assembly for '{assembly_name}'...")
-        try:
-            url = self._ensembl_client.get_chain_file_url(
-                self.get_organism(taxa_id),
-                assembly_name,
-                self.get_name_for_version(taxa_id),
-                release,
-            )
-            with self._file_service.create_chain_file(taxa_id, assembly_name) as fh:
-                self._web_service.stream_request_to_file(url, fh)
-            self._add_assembly_record_if_missing(taxa_id, assembly_name)
-        except Exception as exc:
-            self._session.rollback()
-            self._discard_assembly_files(taxa_id, assembly_name)
-            raise AssemblyAbortedError(
-                f"Aborted: Could not add '{assembly_name}'"
-            ) from exc
-
-    def _add_assembly_record_if_missing(self, taxa_id: int, assembly_name: str) -> None:
-        try:
-            self.get_by_taxa_and_name(taxa_id, assembly_name)
-        except NoResultFound:
-            version_nums = (
-                self._session.execute(select(func.distinct(Assembly.version)))
-                .scalars()
-                .all()
-            )
-            version_num = gen_short_uuid(Identifiers.ASSEMBLY.length, version_nums)
-            assembly = Assembly(
-                name=assembly_name, taxa_id=taxa_id, version=version_num
-            )
-            self._session.add(assembly)
-            self._session.commit()
-
-    def _discard_assembly_files(self, taxa_id: int, assembly_name: str) -> None:
-        # system clean-up must never raise not to loose the original error
-        try:
-            self._file_service.delete_assembly(taxa_id, assembly_name)
-        except FileNotFoundError:
-            # nothing was created before the failure
-            pass
-        except Exception:
-            logger.warning(
-                f"Failed to remove files for assembly '{assembly_name}'. "
-                "Check the file system!",
-                exc_info=True,
-            )
-
-    def _get_seqids(self, taxa_id: int) -> list[str]:
-        return [d["chrom"] for d in self.get_chroms(taxa_id)]
-
-    def get_organism(self, taxa_id: int) -> str:
-        """Get the organism (scientific) name for a taxa ID.
-
-        :param taxa_id: Taxa ID
-        :type taxa_id: int
-        :returns: Organism name e.g. "Homo sapiens"
-        :rtype: str
-        """
-        return self._session.execute(
-            select(Taxa.name).filter_by(id=taxa_id)
-        ).scalar_one()
-
-    def _validate_release(self, archive: str, release: int) -> dict:
-        """Check the requested release against what the archive serves.
-
-        Ensembl documents info/data as possibly reporting more than one
-        release, and advises taking the first as current. We only need
-        the requested release to be among them.
-
-        :param archive: Ensembl archive token
-        :param release: Requested Ensembl release
-        :raises AssemblyVersionError: If the archive does not serve it
-        :return: Raw response, kept for the manifest
-        """
-        response = self._ensembl_client.get_data_release(archive)
-        reported = response.get("releases", [])
-        if release not in reported:
-            raise AssemblyVersionError(
-                f"Ensembl archive '{archive}' serves release(s) "
-                f"{reported or 'none'}, but release '{release}' was requested."
-            )
-        return response
-
-    def _handle_gene_build(self, assembly: Assembly, archive: str) -> dict:
-        gene_build = self._ensembl_client.get_gene_build(
-            self.get_organism(assembly.taxa_id), archive
-        )
-        coord_sysver = self._ensembl_client.get_coord_system_version(gene_build)
-        if coord_sysver != assembly.name:
-            raise AssemblyVersionError(
-                f"Version mismatch for '{assembly.name}': "
-                f"coord system version provides '{coord_sysver}'"
-            )
-        chroms, top_level = self._ensembl_client.get_top_level_regions(gene_build)
-        with self._file_service.create_assembly_file(
-            assembly.taxa_id, AssemblyFileType.CHROM
-        ) as fh:
-            for chrom in sorted(chroms):
-                fh.write(f"{chrom}\t{top_level[chrom]}\n")
-
-        return self._ensembl_client.get_assembly_info(gene_build)
-
-    def _write_manifest(
+    def migrate_manifest(
         self,
         taxa_id: int,
-        assembly_info: dict,
         release: int,
         archive: str,
-        data_release_response: dict | None = None,
-    ) -> None:
-        manifest = build_manifest(
-            assembly_info=assembly_info,
-            provider=AnnotationSource.ENSEMBL.value,
-            release=release,
-            archive=archive,
-            data_release_response=data_release_response,
-        )
-        with self._file_service.create_assembly_file(
-            taxa_id, AssemblyFileType.MANIFEST
-        ) as fh:
-            json.dump(manifest, fh, indent="\t")
-
-    def read_manifest(self, taxa_id: int) -> dict:
-        """Read the manifest of the current assembly.
-
-        :param taxa_id: Taxonomy ID
-        :raises AssemblyManifestNotFoundError: If there is no manifest
-        :return: Manifest
-        """
-        try:
-            with self._file_service.open_assembly_file(
-                taxa_id, AssemblyFileType.MANIFEST
-            ) as fp:
-                return json.load(fp)
-        except FileNotFoundError as exc:
-            raise AssemblyManifestNotFoundError(
-                f"No manifest for organism '{taxa_id}'. Either the current "
-                "assembly has not been set up, in which case run 'flask "
-                "assembly add --release ... --archive ...', or it predates the "
-                "manifest and has 'info.json' and 'release.json' instead, in "
-                "which case run 'flask assembly migrate-manifest'."
-            ) from exc
-
-    def get_installed_release(self, taxa_id: int) -> int:
-        """Get the release the current assembly was installed from.
-
-        :param taxa_id: Taxonomy ID
-        :raises AssemblyManifestNotFoundError: If there is no manifest
-        :return: Ensembl release
-        """
-        return get_release(self.read_manifest(taxa_id))
-
-    def migrate_manifest(self, taxa_id: int, release: int, archive: str) -> Path:
+    ) -> Path:
         """Write the manifest of an existing assembly from its legacy files.
 
         For assemblies created before the manifest existed. The files
@@ -567,8 +393,8 @@ class AssemblyService:
         :param taxa_id: Taxonomy ID
         :param release: Release the existing files were obtained from
         :param archive: Archive the existing files were obtained from
-        :raises FileNotFoundError: If info.json is missing
-        :raises FileExistsError: If a manifest already exists
+        :raise FileNotFoundError: If info.json is missing
+        :raise FileExistsError: If a manifest already exists
         :return: Path to the manifest
         """
         with self._file_service.open_assembly_file(
@@ -594,8 +420,118 @@ class AssemblyService:
             taxa_id, AssemblyFileType.MANIFEST
         )
 
+    def _create_version(
+        self,
+        taxa_id: int,
+        assembly_name: str,
+        release: int,
+    ) -> None:
+        logger.info(f"Setting up a new assembly for '{assembly_name}'...")
+        try:
+            url = self._ensembl_client.get_chain_file_url(
+                self._get_organism(taxa_id),
+                assembly_name,
+                self.get_name_for_version(taxa_id),
+                release,
+            )
+            with self._file_service.create_chain_file(
+                taxa_id,
+                assembly_name,
+            ) as fh:
+                self._web_service.stream_request_to_file(url, fh)
+            self._add_assembly_record_if_missing(taxa_id, assembly_name)
+        except Exception as exc:
+            self._session.rollback()
+            self._discard_assembly_files(taxa_id, assembly_name)
+            raise AssemblyAbortedError(
+                f"Aborted: Could not add '{assembly_name}'"
+            ) from exc
+
+    def _add_assembly_record_if_missing(
+        self,
+        taxa_id: int,
+        assembly_name: str,
+    ) -> None:
+        try:
+            self.get_by_taxa_and_name(taxa_id, assembly_name)
+        except NoResultFound:
+            version_nums = (
+                self._session.execute(select(func.distinct(Assembly.version)))
+                .scalars()
+                .all()
+            )
+            version_num = gen_short_uuid(
+                Identifiers.ASSEMBLY.length,
+                version_nums,
+            )
+            assembly = Assembly(
+                name=assembly_name, taxa_id=taxa_id, version=version_num
+            )
+            self._session.add(assembly)
+            self._session.commit()
+
+    def _discard_assembly_files(
+        self,
+        taxa_id: int,
+        assembly_name: str,
+    ) -> None:
+        # system clean-up must never raise not to loose the original error
+        try:
+            self._file_service.delete_assembly(taxa_id, assembly_name)
+        except FileNotFoundError:
+            # nothing was created before the failure
+            pass
+        except Exception:
+            logger.warning(
+                f"Failed to remove files for assembly '{assembly_name}'. "
+                "Check the file system!",
+                exc_info=True,
+            )
+
+    def _get_seqids(self, taxa_id: int) -> list[str]:
+        return [d["chrom"] for d in self.get_chroms(taxa_id)]
+
+    def _get_organism(self, taxa_id: int) -> str:
+        return self._session.execute(
+            select(Taxa.name).filter_by(id=taxa_id)
+        ).scalar_one()
+
+    def _validate_release(self, archive: str, release: int) -> dict:
+        # info/data can contain more than one release...
+        response = self._ensembl_client.get_data_release(archive)
+        reported = response.get("releases", [])
+        if release not in reported:
+            raise AssemblyVersionError(
+                f"Ensembl archive '{archive}' serves release(s) "
+                f"{reported or 'none'}, but release '{release}' was requested."
+            )
+        return response
+
+    def _handle_gene_build(self, assembly: Assembly, archive: str) -> dict:
+        gene_build = self._ensembl_client.get_gene_build(
+            self._get_organism(assembly.taxa_id), archive
+        )
+        coord_sysver = self._ensembl_client.get_coord_system_version(
+            gene_build,
+        )
+        if coord_sysver != assembly.name:
+            raise AssemblyVersionError(
+                f"Version mismatch for '{assembly.name}': "
+                f"coord system version provides '{coord_sysver}'"
+            )
+        chroms, top_level = self._ensembl_client.get_top_level_regions(
+            gene_build,
+        )
+        with self._file_service.create_assembly_file(
+            assembly.taxa_id, AssemblyFileType.CHROM
+        ) as fh:
+            for chrom in sorted(chroms):
+                fh.write(f"{chrom}\t{top_level[chrom]}\n")
+
+        return self._ensembl_client.get_assembly_info(gene_build)
+
     def _handle_dna_sequences(self, assembly: Assembly, release: int):
-        organism = self.get_organism(assembly.taxa_id)
+        organism = self._get_organism(assembly.taxa_id)
         for chrom in self._get_seqids(assembly.taxa_id):
             self._download_dna_sequence(assembly, organism, chrom, release)
             self._file_service.index_dna_sequence_file(assembly.taxa_id, chrom)
@@ -619,6 +555,52 @@ class AssemblyService:
                 if is_last or not _is_not_found(exc):
                     raise
 
+    def _read_manifest(self, taxa_id: int) -> dict:
+        try:
+            with self._file_service.open_assembly_file(
+                taxa_id, AssemblyFileType.MANIFEST
+            ) as fp:
+                return json.load(fp)
+        except FileNotFoundError as exc:
+            raise AssemblyManifestNotFoundError(
+                f"No manifest for organism '{taxa_id}'"
+            ) from exc
+
+    def _write_manifest(
+        self,
+        taxa_id: int,
+        assembly_info: dict,
+        release: int,
+        archive: str,
+        data_release_response: dict | None = None,
+    ) -> None:
+        manifest = build_manifest(
+            assembly_info=assembly_info,
+            provider=AnnotationSource.ENSEMBL.value,
+            release=release,
+            archive=archive,
+            data_release_response=data_release_response,
+        )
+        with self._file_service.create_assembly_file(
+            taxa_id, AssemblyFileType.MANIFEST
+        ) as fh:
+            json.dump(manifest, fh, indent="\t")
+
+    def _get_installed_source(self, taxa_id: int) -> dict | None:
+        try:
+            manifest = self._read_manifest(taxa_id)
+        # not installed or not migrated
+        except AssemblyManifestNotFoundError:
+            return None
+        return {
+            "provider": get_provider(manifest),
+            "release": get_release(manifest),
+            "archive": get_archive(manifest),
+        }
+
+    def _get_installed_release(self, taxa_id: int) -> int:
+        return get_release(self._read_manifest(taxa_id))
+
 
 def _is_not_found(exc: HTTPError) -> bool:
     response = getattr(exc, "response", None)
@@ -627,7 +609,7 @@ def _is_not_found(exc: HTTPError) -> bool:
 
 @cache
 def get_assembly_service() -> AssemblyService:
-    """Instantiate an AssemblyService object by injecting its dependencies.
+    """Instantiate an AssemblyService.
 
     :return: Assembly service instance
     """

@@ -1,3 +1,5 @@
+"""Classes and methods for assembly provisioning."""
+
 import logging
 from dataclasses import dataclass, field
 from functools import cache
@@ -21,8 +23,8 @@ class AssemblyProvisioningError(Exception):
 class AssemblyProvisioningPlan:
     """What will be provisioned (no side effects).
 
-    NOTE: The other assemblies are only known once the current assembly
-    exists (they are read from its info file).
+    The other assemblies are only known once the current assembly
+    exists (they are read from its manifest).
     """
 
     assembly_id: int
@@ -43,18 +45,16 @@ class AssemblyProvisioningResult:
 
     @property
     def is_complete(self) -> bool:
-        """Provisioning completed."""
+        """Return provisioning status.
+
+        :return: True if completed,
+        False if failed
+        """
         return not self.failed
 
 
 class AssemblyProvisioningService:
-    """Set up the assemblies for a given taxon.
-
-    The current assembly is mandatory: if it fails, an
-    AssemblyProvisioningError is raised and nothing else is attempted.
-    The other assemblies (chain files to the current one) are
-    all attempted and failures are reported in the result.
-    Rerunning is safe, existing assemblies are skipped.
+    """Provide a utility class to set up assemblies.
 
     :param assembly_service: Assembly service
     """
@@ -63,18 +63,18 @@ class AssemblyProvisioningService:
         self._assembly_service = assembly_service
 
     def plan(
-        self, assembly_id: int, release: int, archive: str
+        self, taxa_id: int, release: int, archive: str
     ) -> AssemblyProvisioningPlan:
-        """Validate the current assembly (from the database).
+        """Resolve the current assembly for taxa_id.
 
-        :param assembly_id: Assembly ID
+        :param taxa_id: NCBI taxon
         :param release: Ensembl release to obtain the files from
         :param archive: Ensembl archive to obtain the files from
-        :raises AssemblyNotFoundError: If no such assembly
-        :return: Plan
+        :raise AssemblyNotFoundError: If no current assembly
+        :return: Provisioning plan
         """
         try:
-            assembly = self._assembly_service.get_by_id(assembly_id)
+            assembly = self._assembly_service.get_current(taxa_id)
         except NoResultFound as exc:
             raise AssemblyNotFoundError from exc
         return AssemblyProvisioningPlan(
@@ -91,27 +91,41 @@ class AssemblyProvisioningService:
     ) -> AssemblyProvisioningResult:
         """Set up the current assembly, then the others.
 
+        If the current assembly fails, nothing else is attempted.
+        The other assemblies (chain files to the current one) are
+        all attempted and failures are reported in the result.
+        Existing assemblies are skipped.
+
         :param plan: Plan
-        :raises AssemblyProvisioningError: If the current assembly fails
-        :return: Result, check 'failed' for assemblies that failed
+        :raise AssemblyProvisioningError: If the current assembly fails
+        :return: Provisioning result
         """
         assembly = self._assembly_service.get_by_id(plan.assembly_id)
         try:
-            self._assembly_service.create_current(assembly, plan.release, plan.archive)
+            self._assembly_service.create_current(
+                assembly,
+                plan.release,
+                plan.archive,
+            )
         except Exception as exc:
             raise AssemblyProvisioningError(
-                f"Failed to provision current assembly '{plan.assembly_name}'. {exc}"
+                f"Failed to provision current assembly '{assembly.name}'. {exc}"
             ) from exc
 
         added: list[str] = []
         failed: dict[str, Exception] = {}
-        for name in self._assembly_service.get_coord_system_versions(plan.taxa_id):
+        for name in self._assembly_service.get_coord_system_versions(
+            plan.taxa_id,
+        ):
             if name == plan.assembly_name:
                 continue
             try:
                 self._assembly_service.add_assembly(plan.taxa_id, name)
             except Exception as exc:
-                logger.warning(f"Failed to provision assembly '{name}'.", exc_info=True)
+                logger.warning(
+                    f"Failed to provision assembly '{name}'.",
+                    exc_info=True,
+                )
                 failed[name] = exc
             else:
                 added.append(name)
@@ -125,7 +139,7 @@ class AssemblyProvisioningService:
 
 @cache
 def get_assembly_provisioning_service() -> AssemblyProvisioningService:
-    """Instantiate an AssemblyProvisioningService object by injecting its dependencies.
+    """Instantiate an AssemblyProvisioningService.
 
     :return: Assembly provisioning service instance
     """

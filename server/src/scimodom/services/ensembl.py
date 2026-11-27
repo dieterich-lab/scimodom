@@ -1,12 +1,9 @@
-"""Remote access to Ensembl for assembly data.
-
-NOTE: Everything is derived from :class:`scimodom.utils.specs.enums.Ensembl`.
-"""
+"""Remote access to Ensembl for assembly data."""
 
 import re
 from functools import cache
 from posixpath import join as urljoin
-from typing import Any
+from typing import Any, ClassVar
 
 from scimodom.services.web import WebService, get_web_service
 from scimodom.utils.specs.enums import AssemblyFileType, Ensembl
@@ -17,7 +14,7 @@ class EnsemblAssemblyClient:
 
     This class has no knowledge of the database or of the local file
     system layout. It does not download files, URLs are returned to the
-    caller (AssembyService) for orchestration.
+    caller for orchestration.
 
     :param web_service: The web service
     """
@@ -25,8 +22,11 @@ class EnsemblAssemblyClient:
     # ENS[3-letter species code]<feature type: G|T|P|E...><11 digits>[.version]
     _STABLE_ID = re.compile(r"^(ENS(?:[A-Z]{3})?)[A-Z]\d{11}(?:\.\d+)?$")
 
-    TOP_LEVEL_COORD_SYSTEMS = ["chromosome", "primary_assembly"]
-    INFO_KEYS = [
+    TOP_LEVEL_COORD_SYSTEMS: ClassVar[list[str]] = [
+        "chromosome",
+        "primary_assembly",
+    ]
+    INFO_KEYS: ClassVar[list[str]] = [
         "assembly_accession",
         "assembly_date",
         "assembly_name",
@@ -40,8 +40,7 @@ class EnsemblAssemblyClient:
     def get_organism_url_name(organism: str) -> str:
         """Convert an organism name to the name used in Ensembl URLs.
 
-        This is the form used by the REST API and the FTP site. The
-        browser uses a capitalised form, cf. get_organism_web_name.
+        This is the form used by the REST API and the FTP site.
 
         :param organism: Organism name e.g. "Homo sapiens"
         :return: Name for use in URLs e.g. "homo_sapiens"
@@ -52,9 +51,7 @@ class EnsemblAssemblyClient:
     def get_organism_web_name(organism: str) -> str:
         """Convert an organism name to the name used in browser URLs.
 
-        NOTE: this is not get_organism_url_name: the Ensembl browser
-        capitalises the organism, the REST API and the FTP site do
-        not.
+        This the form used by the Ensembl browser.
 
         :param organism: Organism name e.g. "Homo sapiens"
         :return: Name for use in browser URLs e.g. "Homo_sapiens"
@@ -69,10 +66,10 @@ class EnsemblAssemblyClient:
         and the region pages, not a page itself: what is appended to
         it is specific to the record being linked to.
 
-        :param archive: Archive the data was obtained from e.g.
-        "jul2023", or None if no archive is recorded
+        :param archive: Archive the data was obtained from or None if
+        no archive is recorded
         :param organism: Organism name e.g. "Homo sapiens"
-        :return: URL, or None if there is no archive to link to
+        :return: URL or None if there is no archive to link to
         """
         if archive is None:
             return None
@@ -81,10 +78,12 @@ class EnsemblAssemblyClient:
 
     @classmethod
     def get_ensembl_prefix(cls, gene_id: str) -> str:
-        """Extract the prefix incl. species code of an Ensembl stable identifier.
+        """Extract the prefix of an Ensembl stable identifier.
+
+        Include the species code.
 
         :param gene_id: Ensembl stable identifier, optionally with version
-        :raises ValueError: If not an Ensembl stable ID.
+        :raise ValueError: If not an Ensembl stable ID.
         :return: The prefix
         """
         match = cls._STABLE_ID.match(gene_id)
@@ -132,9 +131,6 @@ class EnsemblAssemblyClient:
     def get_data_release(self, archive: str) -> dict:
         """Query the REST API for the data release(s).
 
-        NOTE: the response is not currently checked against the release
-        that was requested, cf. #157.
-
         :param archive: Ensembl archive token e.g. "jul2023"
         :return: Response as json
         """
@@ -142,7 +138,7 @@ class EnsemblAssemblyClient:
         return self._web_service.request_as_json(url)
 
     def get_gene_build(self, organism: str, archive: str) -> dict:
-        """Query the REST API for the gene build (assembly info) of an organism.
+        """Query the REST API for the gene build (assembly info).
 
         :param organism: Organism name e.g. "Homo sapiens"
         :param archive: Ensembl archive token e.g. "jul2023"
@@ -201,7 +197,10 @@ class EnsemblAssemblyClient:
         seq_file_name = AssemblyFileType.DNA.value(
             organism=url_name.capitalize(), assembly=assembly_name, chrom=chrom
         )
-        seq_file_names = [seq_file_name, AssemblyFileType.get_alt_name(seq_file_name)]
+        seq_file_names = [
+            seq_file_name,
+            AssemblyFileType.get_alt_name(seq_file_name),
+        ]
         return [
             urljoin(
                 Ensembl.FTP.value,
@@ -237,7 +236,7 @@ class EnsemblAssemblyClient:
 
 @cache
 def get_ensembl_assembly_client() -> EnsemblAssemblyClient:
-    """Instantiate an EnsemblAssemblyClient object by injecting its dependencies.
+    """Instantiate an EnsemblAssemblyClient.
 
     :return: Ensembl assembly client instance
     """

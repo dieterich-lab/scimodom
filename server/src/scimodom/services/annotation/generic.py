@@ -1,17 +1,20 @@
+"""Provide a generic class for the annotation service."""
+
 import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, ClassVar
 
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session
+from sqlalchemy.sql.elements import ColumnElement
 
 from scimodom.database.models import (
-    Assembly,
     Annotation,
     AnnotationRelease,
     AnnotationVersion,
+    Assembly,
     GenomicAnnotation,
     Taxa,
 )
@@ -26,15 +29,20 @@ logger = logging.getLogger(__name__)
 
 
 class AnnotationNotFoundError(Exception):
-    """Exception handling for a non-existing Annotation
-    or Annotation that is not the current version."""
-
-    pass
+    """Exception handling for a non-existing Annotation."""
 
 
 class GenericAnnotationService(ABC):
-    # the AnnotationSource this service handles, cf.
-    # scimodom.utils.specs.enums.AnnotationSource
+    """General utility class to handle annotations.
+
+    :param session: SQLAlchemy ORM session
+    :param data_service: Data service instance
+    :param bedtools_service: Bedtools service instance
+    :param external_service: External service instance
+    :param web_service: Web Service instance
+    :param file_service: FileService
+    """
+
     ANNOTATION_SOURCE: ClassVar[str]
 
     def __init__(
@@ -47,22 +55,6 @@ class GenericAnnotationService(ABC):
         gene_service: GeneService,
         file_service: FileService,
     ) -> None:
-        """Utility class to handle annotations.
-
-        :param session: SQLAlchemy ORM session
-        :type session: Session
-        :param data_service: Data service instance
-        :type data service: DataService
-        :param bedtools_service: Bedtools service instance
-        :type bedtools_service: BedToolsService
-        :param external_service: External service instance
-        :type external_service: ExternalService
-        :param web_service: Web Service instance
-        :type web_service: WebService
-        :param file_service: FileService
-        :type file_service: FileService
-        """
-
         self._session = session
         self._data_service = data_service
         self._bedtools_service = bedtools_service
@@ -73,38 +65,47 @@ class GenericAnnotationService(ABC):
 
     @property
     def _version(self) -> str:
-        """Current annotation (database) version.
+        """Current annotation version.
 
-        This is read from the database on each access (not cached),
-        as for the assembly version: an upgrade changes it, and a
-        service built once at start-up would otherwise keep handing
-        out the version it saw then.
+        This is read from the database on each access (not cached).
         """
-        return self._session.execute(select(AnnotationVersion.version_num)).scalar_one()
+        return self._session.execute(
+            select(AnnotationVersion.version_num),
+        ).scalar_one()
 
-    def get_by_taxa_and_source(self, taxa_id: int, source: str) -> Annotation:
-        """Retrieve the current annotation of an organism and source.
+    @property
+    def _is_current(self) -> ColumnElement[bool]:
+        """Filter query for the current version.
 
-        NOTE: this returns one annotation, cf. get_annotations for
-        the catalog of all of them.
+        :return: column-oriented SQL expression, True if
+        the annotation version is the current, False otherwise
+        """
+        return Annotation.version == self._version
 
-        :param taxa_id: Taxonomy ID
-        :type taxa_id: int
+    @abstractmethod
+    def _annotate_data_in_database(self, taxa_id: int, dataset_id: str):
+        pass
+
+    def get_current_by_taxa_and_source(
+        self,
+        taxa_id: int,
+        source: str,
+    ) -> Annotation:
+        """Retrieve the current annotation of a taxon by source.
+
+        :param taxa_id: NCBI taxon
         :param source: Annotation source
-        :type source: str
-        :returns: Annotation instance
-        :rtype: Annotation
-
-        :raises: AnnotationNotFoundError
+        :raise: AnnotationNotFoundError
+        :return: Annotation instance
         """
         try:
             return self._session.execute(
                 select(Annotation)
                 .join(Assembly, Annotation.inst_assembly)
                 .where(
+                    self._is_current,
                     Assembly.taxa_id == taxa_id,
                     Annotation.source == source,
-                    Annotation.version == self._version,
                 )
             ).scalar_one()
         except NoResultFound:
@@ -112,21 +113,18 @@ class GenericAnnotationService(ABC):
                 f"No such {source} annotation for taxonomy ID: {taxa_id}."
             )
 
-    def get_annotations(self, taxa_id: int | None = None) -> list[dict[str, Any]]:
-        """Get the current annotations of this source.
-
-        Only the annotations in use are listed: a retired annotation
-        no longer has data in the database, cf. get_by_taxa_and_source.
-
-        The release is that of the annotation, not of the assembly:
-        an annotation-only upgrade moves one and not the other.
+    def get_annotations(
+        self,
+        taxa_id: int | None = None,
+    ) -> list[dict[str, Any]]:
+        """Get all current annotations of this source.
 
         A source that serves no browsable page for a release leaves
-        `browse_url` null, cf. EnsemblAnnotationService which
+        `browse_url` null, e.g. EnsemblAnnotationService which
         overrides this.
 
-        :param taxa_id: Taxonomy ID, or None for every organism
-        :return: Annotations
+        :param taxa_id: NCBI taxon or None
+        :return: JSON array with extended annotations
         """
         query = (
             select(Annotation, AnnotationRelease, Assembly, Taxa)
@@ -134,8 +132,8 @@ class GenericAnnotationService(ABC):
             .join(Taxa, Assembly.inst_taxa)
             .join(AnnotationRelease, Annotation.inst_release)
             .where(
+                self._is_current,
                 Annotation.source == self.ANNOTATION_SOURCE,
-                Annotation.version == self._version,
             )
         )
         if taxa_id is not None:
@@ -158,13 +156,8 @@ class GenericAnnotationService(ABC):
     def get_release_path(self, annotation: Annotation) -> Path:
         """Construct annotation release path.
 
-        The assembly comes from the annotation, so the path does not
-        depend on which assembly is current.
-
         :param annotation: Annotation instance
-        :type annotation: Annotation
-        :returns: Annotation release path
-        :rtype: Path
+        :return: Annotation release path
         """
         assembly = annotation.inst_assembly
         return self._file_service.get_annotation_release_dir(
@@ -174,24 +167,39 @@ class GenericAnnotationService(ABC):
             assembly_name=assembly.name,
         )
 
-    def _release_exists(self, annotation_id) -> bool:
-        """Check if release exists by checking if the database
-        contains records for this release."""
-        length = self._session.scalar(
-            select(func.count())
-            .select_from(GenomicAnnotation)
-            .filter_by(annotation_id=annotation_id)
-        )
-        logger.debug(f"Found {length} rows for annotation {annotation_id}.")
-        if length > 0:
-            return True
-        return False
+    def annotate_data(
+        self,
+        taxa_id: int,
+        dataset_id: str,
+        selection_ids: list[int],
+    ) -> None:
+        """Wrap data annotation.
 
-    def annotate_data(self, taxa_id: int, dataset_id: str, selection_ids: list[int]):
+        :param taxa_id: NCBI taxon
+        :dataset_id: Dataset identifier
+        :selection_ids: A list of associated selection identifiers
+        """
         self._annotate_data_in_database(taxa_id, dataset_id)
         for selection_id in selection_ids:
             self._gene_service.update_gene_cache(selection_id)
 
-    @abstractmethod
-    def _annotate_data_in_database(self, taxa_id: int, dataset_id: str):
-        pass
+    def _has_records(self, annotation: Annotation) -> bool:
+        """Check if records exist for this annotation.
+
+        The annotation table does not record the state of an annotation.
+        This function asserts if the annotation has been set up
+        by checking if the database contains GenomicAnnotation
+        records for it, which are created by `create_current`.
+        It is what makes the latter idempotent, so that re-running
+        it does not duplicate records.
+
+        :param annotation: Annotation instance
+        :return: True if this annotation has genes in the database
+        """
+        length = self._session.scalar(
+            select(func.count())
+            .select_from(GenomicAnnotation)
+            .filter_by(annotation_id=annotation.id)
+        )
+        logger.debug(f"Found {length} rows for annotation '{annotation.id}'")
+        return length > 0

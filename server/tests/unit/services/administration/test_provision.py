@@ -24,20 +24,22 @@ def assembly_service(mocker):
     assembly.id = 1
     assembly.name = "GRCh38"
     service.get_by_id.return_value = assembly
+    service.get_current.return_value = assembly
     service.get_coord_system_versions.return_value = ["GRCh38", "GRCh37", "NCBI36"]
     return service
 
 
 def test_plan(assembly_service):
-    plan = AssemblyProvisioningService(assembly_service).plan(1, 110, "jul2023")
+    plan = AssemblyProvisioningService(assembly_service).plan(9606, 110, "jul2023")
     assert plan == PLAN
+    assembly_service.get_current.assert_called_once_with(9606)
     assembly_service.create_current.assert_not_called()
 
 
-def test_plan_no_such_assembly(assembly_service):
-    assembly_service.get_by_id.side_effect = NoResultFound
+def test_plan_no_current_assembly(assembly_service):
+    assembly_service.get_current.side_effect = NoResultFound
     with pytest.raises(AssemblyNotFoundError):
-        AssemblyProvisioningService(assembly_service).plan(1, 110, "jul2023")
+        AssemblyProvisioningService(assembly_service).plan(9606, 110, "jul2023")
 
 
 def test_execute(mocker, assembly_service):

@@ -7,7 +7,7 @@ info:
 tags:
   - name: Nomenclature
     description: >-
-      Reference or seed data, definitions and controlled vocabularies
+      Reference (seed) data, definitions, and controlled vocabularies
   - name: Reference resources
     description: >-
       Configured genome assemblies and annotations
@@ -96,7 +96,7 @@ paths:
         - Reference resources
       summary: Get chromosomes and their size
       description: >-
-        The chromosomes of the current assembly of a taxon
+        The chromosomes of the current assembly per taxon
       parameters:
         - in: query
           name: taxaId
@@ -367,9 +367,8 @@ components:
       # `$ref` is ignored in OpenAPI 3.0, and `allOf` loses it
       nullable: true
       description: >-
-        What the assemblies of an organism were installed from;
-        only null where not recorded (manifest migration,
-        post-install).
+        Installation source per taxon; null indicates that
+        the source is not recorded and may suggest an installation issue
       required:
         - provider
         - release

@@ -1,3 +1,5 @@
+"""Package to handle annotations."""
+
 import logging
 from functools import cache
 from typing import Any
@@ -8,15 +10,15 @@ from sqlalchemy.orm import Session
 from scimodom.database.database import get_session
 from scimodom.database.models import (
     Annotation,
-    RNAType,
     Modification,
+    RNAType,
 )
 from scimodom.services.annotation.ensembl import (
     EnsemblAnnotationService,
 )
 from scimodom.services.annotation.generic import (
-    GenericAnnotationService,
     AnnotationNotFoundError,
+    GenericAnnotationService,
 )
 from scimodom.services.annotation.gtrnadb import GtRNAdbAnnotationService
 from scimodom.services.bedtools import get_bedtools_service
@@ -31,6 +33,8 @@ from scimodom.utils.specs.enums import AnnotationSource
 logger = logging.getLogger(__name__)
 
 
+__all__ = ["AnnotationNotFoundError"]
+
 # TODO MS14
 # defined independently from scalars(select(RNAType)).all()
 RNA_TYPE_TO_ANNOTATION_SOURCE_MAP = {
@@ -38,7 +42,7 @@ RNA_TYPE_TO_ANNOTATION_SOURCE_MAP = {
     "tRNA": AnnotationSource.GTRNADB,
 }
 
-# TODO MS14 cf. #119, #149
+# TODO MS14 cf. #149
 BIOTYPES = {
     "IG_C_gene": "Ig coding",
     "IG_D_gene": "Ig coding",
@@ -155,27 +159,22 @@ class AnnotationService:
     """Utility class to handle annotations.
 
     :param session: SQLAlchemy ORM session
-    :type session: Session
     :param data_service: Data service instance
-    :type data service: DataService
     :param bedtools_service: Bedtools service instance
-    :type bedtools_service: BedToolsService
     :param external_service: External service instance
-    :type external_service: ExternalService
     :param DATA_PATH: Path to data
-    :type DATA_PATH: str | Path
     :param ANNOTATION_PATH: Subpath to annotation
-    :type ANNOTATION_PATH: str
     :param CACHE_PATH: Path to gene cache
-    :type CACHE_PATH: Path
     """
 
     def __init__(
         self,
         session: Session,
-        services_by_annotation_source: dict[AnnotationSource, GenericAnnotationService],
+        services_by_annotation_source: dict[
+            AnnotationSource,
+            GenericAnnotationService,
+        ],
     ) -> None:
-        """Initializer method."""
         self._session = session
         self._services_by_annotation_source = services_by_annotation_source
 
@@ -200,28 +199,43 @@ class AnnotationService:
         )
         if len(rna_types) > 1:
             return False
-        if RNA_TYPE_TO_ANNOTATION_SOURCE_MAP[rna_types[0]] != annotation_source:
-            return False
-        return True
+        return RNA_TYPE_TO_ANNOTATION_SOURCE_MAP[rna_types[0]] == annotation_source
 
     def get_features(
         self, annotation_source: AnnotationSource
     ) -> dict[str, dict[str, str]]:
         return self._services_by_annotation_source[annotation_source].FEATURES
 
-    def get_by_taxa(
+    def get_current(
         self, annotation_source: AnnotationSource, taxa_id: int
     ) -> Annotation:
-        return self._services_by_annotation_source[annotation_source].get_by_taxa(
+        """Retrieve the current annotation for source.
+
+        :param annotation_source: Annotation source
+        :param taxa_id: NCBI taxon
+        :raise: AnnotationNotFoundError
+        :return: Annotation (by source) for the given taxa_id
+        """
+        return self._services_by_annotation_source[annotation_source].get_current(
             taxa_id
         )
 
-    def create_annotation(
+    def create_current_annotation(
         self, annotation_source: AnnotationSource, taxa_id: int, **kwargs
     ) -> Annotation:
-        return self._services_by_annotation_source[annotation_source].create_annotation(
-            taxa_id, **kwargs
-        )
+        """Create the current annotation of a taxon.
+
+        This functions sets up the annotation that is current in the database,
+        on the assembly that annotation references. It cannot be used to
+        install an arbitrary release.
+
+        :param annotation_source: Annotation source
+        :param taxa_id: NCBI taxon
+        :return: Annotation (by source) for the given taxa_id
+        """
+        return self._services_by_annotation_source[
+            annotation_source
+        ].create_current_annotation(taxa_id, **kwargs)
 
     def annotate_data(
         self,
@@ -234,7 +248,10 @@ class AnnotationService:
             taxa_id, dataset_id, selection_ids
         )
 
-    def get_annotations(self, taxa_id: int | None = None) -> list[dict[str, Any]]:
+    def get_annotations(
+        self,
+        taxa_id: int | None = None,
+    ) -> list[dict[str, Any]]:
         """Get the current annotations of every source.
 
         Each source answers for itself, cf.
@@ -262,7 +279,10 @@ class AnnotationService:
 
 @cache
 def get_annotation_service() -> AnnotationService:
-    """Helper function to set up an AnnotationService object by injecting its dependencies."""
+    """Instantiate an AnnotationService.
+
+    :return: Annotation service instance
+    """
     session = get_session()
     data_service = get_data_service()
     bedtools_service = get_bedtools_service()

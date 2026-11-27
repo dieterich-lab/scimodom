@@ -38,7 +38,6 @@ def test_import_limits():
 
 
 def test_ensembl():
-    # the enum is URL layout only: release and archive are supplied
     release = 110
     archive = "jul2023"
     assert Ensembl.FTP.value == "https://ftp.ensembl.org/pub"
